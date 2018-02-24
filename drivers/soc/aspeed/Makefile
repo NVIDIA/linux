@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 obj-$(CONFIG_ASPEED_BMC_DEV)		+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-bmc-dev.c))
 obj-$(CONFIG_ASPEED_HOST_BMC_DEV)	+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-host-bmc-dev.c))
+obj-$(CONFIG_ASPEED_ESPI_SLAVE)		+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-espi-slave.c))
 obj-$(CONFIG_ASPEED_LPC_CTRL)		+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-lpc-ctrl.c))
 obj-$(CONFIG_ASPEED_LPC_SNOOP)		+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-lpc-snoop.c))
 obj-$(CONFIG_ASPEED_LPC_MAILBOX)	+= $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/aspeed-lpc-mbox.c))
