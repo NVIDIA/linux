@@ -536,15 +536,29 @@ s32 i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 		   unsigned short flags, char read_write,
 		   u8 command, int protocol, union i2c_smbus_data *data)
 {
+	bool do_bus_lock = true;
 	s32 res;
 
-	res = __i2c_lock_bus_helper(adapter);
-	if (res)
-		return res;
+	/*
+	 * Do not lock a bus for delivering an unhold msg to a mux adpater.
+	 * This is just for a single length unhold msg case.
+	 */
+	if (i2c_parent_is_i2c_adapter(adapter) &&
+	    i2c_check_hold_msg(flags,
+			       protocol == I2C_SMBUS_WORD_DATA ? 2 : 0,
+			       &data->word) == I2C_HOLD_MSG_RESET)
+		do_bus_lock = false;
+
+	if (do_bus_lock) {
+		res = __i2c_lock_bus_helper(adapter);
+		if (res)
+			return res;
+	}
 
 	res = __i2c_smbus_xfer(adapter, addr, flags, read_write,
 			       command, protocol, data);
-	i2c_unlock_bus(adapter, I2C_LOCK_SEGMENT);
+	if (do_bus_lock)
+		i2c_unlock_bus(adapter, I2C_LOCK_SEGMENT);
 
 	return res;
 }

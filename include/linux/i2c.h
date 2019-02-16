@@ -21,6 +21,7 @@
 #include <linux/irqdomain.h>		/* for Host Notify IRQ */
 #include <linux/of.h>		/* for struct device_node */
 #include <linux/swab.h>		/* for swab16 */
+#include <linux/workqueue.h>
 #include <uapi/linux/i2c.h>
 
 extern struct bus_type i2c_bus_type;
@@ -776,7 +777,7 @@ struct i2c_adapter {
 	 * has these individually.
 	 */
 	struct mutex hold_lock; /* mutex for bus holding */
-	struct timer_list hold_timer;
+	struct delayed_work unhold_work;
 };
 #define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
 
