@@ -14,6 +14,7 @@
 #ifdef __KERNEL__
 
 #include <linux/bitops.h>
+#include <linux/workqueue.h>
 
 struct i2c_mux_core {
 	struct i2c_adapter *parent;
@@ -26,6 +27,9 @@ struct i2c_mux_core {
 
 	int (*select)(struct i2c_mux_core *, u32 chan_id);
 	int (*deselect)(struct i2c_mux_core *, u32 chan_id);
+
+	struct mutex hold_lock; /* mutex for channel holding */
+	struct delayed_work unhold_work;
 
 	int num_adapters;
 	int max_adapters;
