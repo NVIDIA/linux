@@ -15,17 +15,3 @@ menuconfig JTAG
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called jtag.
-
-menuconfig JTAG_ASPEED_INTERNAL
-	tristate "Aspeed SoC JTAG controller support internal"
-	depends on JTAG && HAS_IOMEM
-	depends on ARCH_ASPEED || COMPILE_TEST
-	help
-	  This provides a support for Aspeed JTAG device, equipped on
-	  Aspeed SoC 24xx, 25xx and 26xx families. Drivers allows programming
-	  of hardware devices, connected to SoC through the JTAG interface.
-
-	  If you want this support, you should say Y here.
-
-	  To compile this driver as a module, choose M here: the module will
-	  be called jtag-aspeed.
