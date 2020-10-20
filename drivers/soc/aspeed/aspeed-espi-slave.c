@@ -73,11 +73,11 @@
 /*
  * Setup Interrupt Type / Enable of System Event 1 from Master
  *                                T2 T1 T0
- *  1) SUS_WARN    : Rising Edge   0  0  1
+ *  1) SUS_WARN    : Dual Edge     1  0  0
  */
-#define ASPEED_ESPI_SYSEVT1_INT_T0_MASK		ASPEED_ESPI_SYSEVT1_SUS_WARN
+#define ASPEED_ESPI_SYSEVT1_INT_T0_MASK		0
 #define ASPEED_ESPI_SYSEVT1_INT_T1_MASK		0
-#define ASPEED_ESPI_SYSEVT1_INT_T2_MASK		0
+#define ASPEED_ESPI_SYSEVT1_INT_T2_MASK		ASPEED_ESPI_SYSEVT1_SUS_WARN
 #define ASPEED_ESPI_SYSEVT1_INT_MASK					       \
 		(ASPEED_ESPI_SYSEVT1_INT_T0_MASK |			       \
 		 ASPEED_ESPI_SYSEVT1_INT_T1_MASK |			       \
@@ -114,18 +114,24 @@ static void aspeed_espi_sys_event(struct aspeed_espi *priv)
 			     ASPEED_ESPI_SYSEVT_SLAVE_BOOT_DONE);
 		dev_dbg(priv->dev, "Setting espi slave boot done\n");
 	}
-	if (sts & ASPEED_ESPI_SYSEVT_HOST_RST_WARN &&
-	    evt & ASPEED_ESPI_SYSEVT_HOST_RST_WARN) {
-		regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
-				  ASPEED_ESPI_SYSEVT_HOST_RST_ACK,
-				  ASPEED_ESPI_SYSEVT_HOST_RST_ACK);
+	if (sts & ASPEED_ESPI_SYSEVT_HOST_RST_WARN) {
+		if (evt & ASPEED_ESPI_SYSEVT_HOST_RST_WARN)
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
+					  ASPEED_ESPI_SYSEVT_HOST_RST_ACK,
+					  ASPEED_ESPI_SYSEVT_HOST_RST_ACK);
+		else
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
+					  ASPEED_ESPI_SYSEVT_HOST_RST_ACK, 0);
 		dev_dbg(priv->dev, "SYSEVT_HOST_RST_WARN: acked\n");
 	}
-	if (sts & ASPEED_ESPI_SYSEVT_OOB_RST_WARN &&
-	    evt & ASPEED_ESPI_SYSEVT_OOB_RST_WARN) {
-		regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
-				  ASPEED_ESPI_SYSEVT_OOB_RST_ACK,
-				  ASPEED_ESPI_SYSEVT_OOB_RST_ACK);
+	if (sts & ASPEED_ESPI_SYSEVT_OOB_RST_WARN) {
+		if (evt & ASPEED_ESPI_SYSEVT_OOB_RST_WARN)
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
+					  ASPEED_ESPI_SYSEVT_OOB_RST_ACK,
+					  ASPEED_ESPI_SYSEVT_OOB_RST_ACK);
+		else
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT,
+					  ASPEED_ESPI_SYSEVT_OOB_RST_ACK, 0);
 		dev_dbg(priv->dev, "SYSEVT_OOB_RST_WARN: acked\n");
 	}
 	if (sts & ASPEED_ESPI_SYSEVT_PLTRSTN || priv->pltrstn == 'U') {
@@ -149,11 +155,14 @@ static void aspeed_espi_sys_event1(struct aspeed_espi *priv)
 
 	dev_dbg(priv->dev, "sys event1: sts = %08x, evt = %08x\n", sts, evt);
 
-	if (sts & ASPEED_ESPI_SYSEVT1_SUS_WARN &&
-	    evt & ASPEED_ESPI_SYSEVT1_SUS_WARN) {
-		regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT1,
-				  ASPEED_ESPI_SYSEVT1_SUS_ACK,
-				  ASPEED_ESPI_SYSEVT1_SUS_ACK);
+	if (sts & ASPEED_ESPI_SYSEVT1_SUS_WARN) {
+		if  (evt & ASPEED_ESPI_SYSEVT1_SUS_WARN)
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT1,
+					  ASPEED_ESPI_SYSEVT1_SUS_ACK,
+					  ASPEED_ESPI_SYSEVT1_SUS_ACK);
+		else
+			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT1,
+					  ASPEED_ESPI_SYSEVT1_SUS_ACK, 0);
 		dev_dbg(priv->dev, "SYSEVT1_SUS_WARN: acked\n");
 	}
 
