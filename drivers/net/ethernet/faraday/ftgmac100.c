@@ -1059,14 +1059,19 @@ static int ftgmac100_mii_probe(struct ftgmac100 *priv, phy_interface_t intf)
 	struct net_device *netdev = priv->netdev;
 	struct phy_device *phydev;
 
+#if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
+	char phy_id[IFNAMSIZ];
+	snprintf(phy_id, sizeof(phy_id), PHY_ID_FMT, "fixed-0", 0);
+	phydev = phy_connect(netdev, phy_id, &ftgmac100_adjust_link, intf);
+#else
 	phydev = phy_find_first(priv->mii_bus);
 	if (!phydev) {
 		netdev_info(netdev, "%s: no PHY found\n", netdev->name);
 		return -ENODEV;
 	}
-
 	phydev = phy_connect(netdev, phydev_name(phydev),
-			     &ftgmac100_adjust_link, intf);
+			    		&ftgmac100_adjust_link, intf);
+#endif
 
 	if (IS_ERR(phydev)) {
 		netdev_err(netdev, "%s: Could not attach to PHY\n", netdev->name);

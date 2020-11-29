@@ -98,20 +98,12 @@
 };
 
 // mdio3 for external phy connection
-&mdio3 {
-        status = "okay";
-
-        ethphy3: ethernet-phy@0 {
-                compatible = "ethernet-phy-ieee802.3-c22";
-                reg = <0>;
-        };
-};
 // MAC2 of SoC connected to external PHY
 &mac2 {
 	status = "okay";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mdio3_default>;
+	pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
 
 /*
