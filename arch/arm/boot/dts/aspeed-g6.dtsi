@@ -454,19 +454,36 @@
 			wdt2: watchdog@1e785040 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e785040 0x40>;
-				status = "disabled";
 			};
 
 			wdt3: watchdog@1e785080 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e785080 0x40>;
-				status = "disabled";
 			};
 
 			wdt4: watchdog@1e7850c0 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e7850C0 0x40>;
-				status = "disabled";
+			};
+
+			wdt5: watchdog@1e785100 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785100 0x40>;
+			};
+
+			wdt6: watchdog@1e785140 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785140 0x40>;
+			};
+
+			wdt7: watchdog@1e785180 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785180 0x40>;
+			};
+
+			wdt8: watchdog@1e7851c0 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e7851c0 0x40>;
 			};
 
 			lpc: lpc@1e789000 {
