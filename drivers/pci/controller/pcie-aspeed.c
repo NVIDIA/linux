@@ -237,6 +237,7 @@ static int aspeed_pcie_init_irq_domain(struct aspeed_pcie *pcie)
 			return -ENODEV;
 	}
 
+#ifdef CONFIG_PCI_MSI
 	/* MSI Domain operations */
 	pcie->msi_domain_ops.map = aspeed_pcie_msi_map;
 	pcie->aspeed_pcie_msi_chip.setup_irq = aspeed_pcie_msi_setup_irq;
@@ -246,6 +247,7 @@ static int aspeed_pcie_init_irq_domain(struct aspeed_pcie *pcie)
 	pcie->aspeed_msi_irq_chip.irq_disable = pci_msi_mask_irq;
 	pcie->aspeed_msi_irq_chip.irq_mask = pci_msi_mask_irq;
 	pcie->aspeed_msi_irq_chip.irq_unmask = pci_msi_unmask_irq;
+#endif
 
 	/* Setup MSI */
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
