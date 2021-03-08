@@ -92,7 +92,12 @@
 			    <0x40462000 0x1000>,
 			    <0x40464000 0x2000>,
 			    <0x40466000 0x2000>;
-			};
+		};
+
+		ahbc: ahbc@1e600000 {
+			compatible = "aspeed,aspeed-ahbc", "syscon";
+			reg = < 0x1e600000 0x100>;
+		};
 
 		fmc: spi@1e620000 {
 			reg = < 0x1e620000 0xc4
@@ -397,6 +402,7 @@
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_pcie1rc_default>;
 #endif
+				aspeed,ahbc = <&ahbc>;
 				status = "disabled";
 
 				pcie_intc0: legacy-interrupt-controller {
