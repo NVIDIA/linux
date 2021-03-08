@@ -371,13 +371,6 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 	   goto error;
 	}
 
-	err = devm_of_pci_get_host_bridge_resources(dev, 0, 0xff, &res,
-						    &iobase);
-	if (err) {
-		dev_err(dev, "Getting bridge resources failed\n");
-		return err;
-	}
-
 	err = devm_request_pci_bus_resources(dev, &res);
 	if (err)
 		goto error;
