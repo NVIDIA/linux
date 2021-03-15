@@ -298,6 +298,16 @@
 			status = "disabled";
 		};
 
+		udc: udc@1e6a2000 {
+			compatible = "aspeed,ast2600-udc";
+			reg = <0x1e6a2000 0x300>;
+			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon ASPEED_CLK_GATE_USBPORT2CLK>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usb2bd_default>;
+			status = "disabled";
+		};
+
 		apb {
 			compatible = "simple-bus";
 			#address-cells = <1>;
@@ -351,6 +361,51 @@
 				quality = <100>;
 			};
 
+			pcie_ep:pcie_ep@1e6ed000 {
+				compatible = "aspeed,aspeed-pcie";
+				reg = <0x1e6ed000 0x100>;
+
+				resets = <&syscon ASPEED_RESET_PCIE_DEV_O>;
+				rc_offset = <0x80>;
+				msi_address = <0x1e770058>;
+
+				status = "disabled";
+			};
+
+			pcie: pcie@1e6ed2000 {
+				compatible = "aspeed,ast2600-pcie";
+				reg = <0x1e6ed200 0x100>;
+				device_type = "pci";
+				bus-range = <0x00 0xff>;
+
+				#address-cells = <3>;
+				#size-cells = <2>;
+				ranges = <0x01000000 0 0x00010000 0x00010000 0x0 0x10000   /* I/O */
+					  0x02000000 0x0 0x70000000 0x70000000 0 0x0fffffff>; /* memory */
+				#interrupt-cells = <1>;
+
+				interrupt-map-mask = <0 0 0 7>;
+				interrupt-map = <0 0 0 1 &pcie_intc0 0>, /* INT A */
+						<0 0 0 2 &pcie_intc0 1>, /* INT B */
+						<0 0 0 3 &pcie_intc0 2>, /* INT C */
+						<0 0 0 4 &pcie_intc0 3>; /* INT D */
+
+				resets = <&syscon ASPEED_RESET_PCIE_RC_O>;
+				rc_offset = <0xC0>;
+				msi_address = <0x1e77005C>;
+#if 0
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_pcie1rc_default>;
+#endif
+				status = "disabled";
+
+				pcie_intc0: legacy-interrupt-controller {
+					interrupt-controller;
+					#interrupt-cells = <1>;
+					interrupt-parent = <&gic>;
+				};
+			};
+
 			xdma: xdma@1e6e7000 {
 				compatible = "aspeed,ast2600-xdma";
 				reg = <0x1e6e7000 0x100>;
@@ -362,6 +417,26 @@
 				aspeed,pcie-device = "bmc";
 				aspeed,scu = <&syscon>;
 				status = "disabled";
+			};
+
+			h2x: h2x@1e770000 {
+				compatible = "aspeed,ast2600-h2x";
+				reg = <0x1e770000 0x100>;
+				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&syscon ASPEED_RESET_H2X>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0x1e770000 0x100>;
+
+				status = "disabled";
+
+					pcie_cfg0: cfg0@80 {
+						reg = <0x80 0x80>;
+					};
+
+					pcie_cfg1: cfg1@C0 {
+						reg = <0xC0 0x80>;
+					};
 			};
 
 			gpio0: gpio@1e780000 {
@@ -444,19 +519,36 @@
 			wdt2: watchdog@1e785040 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e785040 0x40>;
-				status = "disabled";
 			};
 
 			wdt3: watchdog@1e785080 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e785080 0x40>;
-				status = "disabled";
 			};
 
 			wdt4: watchdog@1e7850c0 {
 				compatible = "aspeed,ast2600-wdt";
 				reg = <0x1e7850C0 0x40>;
-				status = "disabled";
+			};
+
+			wdt5: watchdog@1e785100 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785100 0x40>;
+			};
+
+			wdt6: watchdog@1e785140 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785140 0x40>;
+			};
+
+			wdt7: watchdog@1e785180 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785180 0x40>;
+			};
+
+			wdt8: watchdog@1e7851c0 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e7851c0 0x40>;
 			};
 
 			lpc: lpc@1e789000 {

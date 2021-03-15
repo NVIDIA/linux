@@ -208,10 +208,28 @@
 
 &i2c7 {
 	status = "okay";
+	temp@2e {
+		compatible = "adi,adt7490";
+		reg = <0x2e>;
+	};
+
+	eeprom@50 {
+		compatible = "atmel,24c08";
+		reg = <0x50>;
+		pagesize = <16>;
+	};
+
+
 };
 
 &i2c8 {
 	status = "okay";
+
+	lm75@4d {
+		compatible = "national,lm75";
+		reg = <0x4d>;
+	};
+
 };
 
 &i2c9 {
@@ -234,6 +252,33 @@
 	status = "okay";
 };
 
+&ehci1 {
+       status = "okay";
+};
+
+&uhci {
+       status = "okay";
+};
+
+&vhub {
+       status = "okay";
+       pinctrl-names = "default";
+};
+
 &fsim0 {
+	status = "okay";
+};
+
+&pcie {
+	status = "okay";
+
+	interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+	pcie_intc0: legacy-interrupt-controller {
+		interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+	};
+};
+
+&h2x {
 	status = "okay";
 };

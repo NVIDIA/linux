@@ -364,6 +364,10 @@ static int ehci_platform_probe(struct platform_device *dev)
 	if (err)
 		goto err_power;
 
+	if (of_device_is_compatible(dev->dev.of_node, "aspeed,ast2600-ehci")) {
+		writel(((readl(hcd->regs + 0x84) & ~0xC0) | 0x80), hcd->regs + 0x84);
+	}
+
 	device_wakeup_enable(hcd->self.controller);
 	device_enable_async_suspend(hcd->self.controller);
 	platform_set_drvdata(dev, hcd);
