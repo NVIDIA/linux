@@ -58,7 +58,7 @@
 
     iio-hwmon-12v-stdby {              
         compatible = "iio-hwmon";
-        io-channels = <&adc 1>;  
+        io-channels = <&adc 1>;
     };                           
 };
 
@@ -219,8 +219,88 @@
 	memory-region = <&video_engine_memory>;
 };
 
+&i2c1 {
+    status = "okay";
+
+    // UFRU1
+    eeprom@50 {
+        compatible = "atmel,24c512";
+        reg = <0x50>;
+        pagesize = <128>;
+        size = <65536>;
+    };
+
+    // TEMP_M.2_RISER U61
+    lm75@6a {
+        compatible = "ti,tmp75";
+        reg = <0x6a>;
+    };
+
+    // Planar Temp Sensor U60
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+
+    // Planar Temp Sensor U139
+    lm75@49 {
+        compatible = "ti,tmp75";
+        reg = <0x49>;
+    };
+
+    // i2c switch - U41
+    i2cswitch@70 {
+        compatible = "nxp,pca9548";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x70>;
+
+        i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+             // TEMP_M.2_0
+             lm75@4c {
+                 compatible = "ti,tmp75";
+                 reg = <0x4c>;
+             };
+        };
+
+        // I2C_SW6_SDA
+        i2c@6 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <6>;
+
+            // M.2 FRU
+            eeprom@51 {
+                compatible = "atmel,24c512";
+                reg = <0x51>;
+                pagesize = <128>;
+                size = <65536>;
+            };
+        };
+    };
+    // i2c switch - U143
+    i2cswitch@73 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x73>;
+    };
+};
+
 &i2c2 {             
 	status = "okay";
+
+	// Midplane FRU
+	eeprom@54 {
+		compatible = "atmel,24c512";
+		reg = <0x54>;
+		pagesize = <128>;
+		size = <65536>;
+	};
 
 	tca6507: tca6507@45 {
 		compatible = "ti,tca6507";
@@ -247,16 +327,19 @@
 &i2c3 {
 	status = "okay";
 
-	eeprom@50 {
-		compatible = "atmel,24c08";
-		reg = <0x50>;
-		pagesize = <16>;
+	// PDU FRU U7
+	eeprom@55 {
+		compatible = "atmel,24c512";
+		reg = <0x55>;
+		pagesize = <128>;
+		size = <65536>;
 	};
 
-    lm75@48 {                        
-        compatible = "national,lm75";
-        reg = <0x48>;                
-    };                               
+	// PDB Thermal 2 U2
+	lm75@48 {
+		compatible = "ti,tmp75";
+		reg = <0x48>;
+	};
 
     // 19115-1A PDB_20191018.pdf Page 3: SMB_PDB_2_* - I2C MUX U20
     /* Exclude in the device tree so MUX and PSU are accessible via SMBus
@@ -266,7 +349,7 @@
         reg = <0x70>;
 
         // CNPSU4
-        psu4@40 {
+        i2c@0 {
             reg = <0>;
 
             psu4@40 {
@@ -275,7 +358,7 @@
             };
         };
         // CNPSU5
-        psu5@41 {
+        i2c@1 {
             reg = <1>;
 
             psu5@41 {
@@ -284,7 +367,7 @@
             };
         };
         // CNPSU6
-        psu6@42 {
+        i2c@2 {
             reg = <2>;
 
             psu6@42 {
@@ -299,9 +382,9 @@
 &i2c4 {             
     status = "okay";
 
-    // PDB thermal 1
+    // PDB thermal 1 U1
     lm75@48 {                        
-        compatible = "national,lm75";
+        compatible = "ti,tmp75";
         reg = <0x48>;                
     };                               
 
@@ -312,8 +395,8 @@
         compatible = "nxp,pca9544";
         reg = <0x70>;
 
-       // CNPSU4
-        psu4@40 {
+       // CNPSU1
+        i2c@0 {
             reg = <0>;
 
             psu4@40 {
@@ -321,8 +404,8 @@
                 reg = <0x40>;
             };
         };
-        // CNPSU5
-        i2c@41 {
+        // CNPSU2
+        i2c@1 {
             reg = <1>;
 
             psu5@41 {
@@ -330,8 +413,8 @@
                 reg = <0x41>;
             };
         };
-        // CNPSU6
-        i2c@42 {
+        // CNPSU3
+        i2c@2 {
             reg = <2>;
 
             psu6@42 {
@@ -342,13 +425,16 @@
     };
     */
 };                  
+
 &i2c5 {             
     status = "okay";
 
-    // MB Fan
+    // MB Fan U1
     max31790@20 {
         compatible = "maxim,max31790";
         reg = <0x20>;
+        #address-cells = <1>;
+        #size-cells = <0>;
     };
 
 //    // GB1 Fan
@@ -357,9 +443,11 @@
 //        reg = <0x2c>;
 //    };
 };                  
+
 &i2c6 {             
     status = "okay";
 };                  
+
 &i2c7 {
 	status = "okay";
 
@@ -371,7 +459,8 @@
 
 &i2c9 {             
     status = "okay";
-};                  
+};
+
 &i2c10 {
 	status = "okay";
 };
