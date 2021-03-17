@@ -101,6 +101,7 @@
 	flash@0 {
 		status = "okay";
 		m25p,fast-read;
+		mx25l25635f-disable-dual-mode;
 		label = "bmc";
 #include "openbmc-flash-layout.dtsi"
 	};
