@@ -1235,7 +1235,7 @@ static const struct spi_nor_controller_ops aspeed_smc_controller_ops = {
 static int aspeed_smc_setup_flash(struct aspeed_smc_controller *controller,
 				  struct device_node *np, struct resource *r)
 {
-	const struct spi_nor_hwcaps hwcaps = {
+	struct spi_nor_hwcaps hwcaps = {
 		.mask = SNOR_HWCAPS_READ |
 			SNOR_HWCAPS_READ_FAST |
 			SNOR_HWCAPS_READ_1_1_2 |
@@ -1260,6 +1260,10 @@ static int aspeed_smc_setup_flash(struct aspeed_smc_controller *controller,
 		if (ret) {
 			dev_err(dev, "Couldn't not read chip select.\n");
 			break;
+		}
+
+		if (of_property_read_bool(child, "mx25l25635f-disable-dual-mode")) {
+			hwcaps.mask &= ~SNOR_HWCAPS_READ_1_1_2;
 		}
 
 		if (cs >= info->nce) {
