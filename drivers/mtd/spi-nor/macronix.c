@@ -23,8 +23,11 @@ mx25l25635_post_bfpt_fixups(struct spi_nor *nor,
 	 * seems that the F version advertises support for Fast Read 4-4-4 in
 	 * its BFPT table.
 	 */
-	if (bfpt->dwords[BFPT_DWORD(5)] & BFPT_DWORD5_FAST_READ_4_4_4)
+	if (bfpt->dwords[BFPT_DWORD(5)] & BFPT_DWORD5_FAST_READ_4_4_4) {
 		nor->flags |= SNOR_F_4B_OPCODES;
+		dev_info(nor->dev, "Disabling dual mode for mx25l25635f\n");
+		nor->params->hwcaps.mask &= ~SNOR_HWCAPS_READ_1_1_2;
+	}
 
 	return 0;
 }
