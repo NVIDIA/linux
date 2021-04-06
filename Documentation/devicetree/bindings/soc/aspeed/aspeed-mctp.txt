@@ -1,0 +1,25 @@
+* Aspeed AST2600 MCTP PCIe VDM Controller
+
+Required properties:
+- compatible		: must be "aspeed,ast2600-mctp"
+- reg			: contains the address and size of the memory region
+			  associated with the MCTP controller
+- resets		: reset specifier for the syscon reset associated with
+			  the MCTP controller
+- interrupts-extended	: two interrupt cells; the first specifies the global
+			  interrupt for MCTP controller and the second
+			  specifies the PCIe reset or PERST interrupt
+- aspeed,pcieh		: a phandle to the PCIe Host Controller node to be
+			  used in conjunction with the PCIe reset or PERST
+			  interrupt
+Example:
+
+mctp: mctp@1e6e8000 {
+	compatible = "aspeed,ast2600-mctp";
+	reg = <0x1e6e8000 0x1000>;
+	interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
+		      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
+	resets = <&syscon ASPEED_RESET_DEV_MCTP>;
+	aspeed,pcieh = <&pcieh>;
+	status = "disabled";
+};
