@@ -22,7 +22,9 @@
 #include <linux/of_platform.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/regmap.h>
 #include <linux/irqdomain.h>
+#include <linux/mfd/syscon.h>
 
 #include "h2x-ast2600.h"
 #include "../pci.h"
@@ -30,32 +32,25 @@
 #define MAX_LEGACY_IRQS			4
 #define MAX_MSI_HOST_IRQS		64
 
-/* PCI Host Controller registers */
-
+/*	PCI Host Controller registers */
 #define ASPEED_PCIE_CLASS_CODE		0x04
 #define ASPEED_PCIE_GLOBAL			0x30
 #define ASPEED_PCIE_CFG_DIN			0x50
 #define ASPEED_PCIE_CFG3			0x58
 #define ASPEED_PCIE_LOCK			0x7C
-
 #define ASPEED_PCIE_LINK			0xC0
 #define ASPEED_PCIE_INT				0xC4
 #define ASPEED_PCIE_LINK_STS		0xD0
-
-/* 	AST_PCIE_CFG2			0x04		*/
+/*	AST_PCIE_CFG2			0x04 */
 #define PCIE_CFG_CLASS_CODE(x)	(x << 8)
 #define PCIE_CFG_REV_ID(x)		(x)
-
-/* 	AST_PCIE_GLOBAL			0x30 	*/
+/*	AST_PCIE_GLOBAL			0x30 */
 #define ROOT_COMPLEX_ID(x)		(x << 4)
-
-/* 	AST_PCIE_LOCK			0x7C	*/
+/*	AST_PCIE_LOCK			0x7C */
 #define PCIE_UNLOCK				0xa8
-
-/*	AST_PCIE_LINK			0xC0	*/
+/*	AST_PCIE_LINK			0xC0 */
 #define PCIE_LINK_STS			BIT(5)
-
-/*  ASPEED_PCIE_LINK_STS	0xD0	*/
+/*  ASPEED_PCIE_LINK_STS	0xD0 */
 #define PCIE_LINK_5G			BIT(17)
 #define PCIE_LINK_2_5G			BIT(16)
 
@@ -163,7 +158,8 @@ static int aspeed_pcie_msi_map(struct irq_domain *domain, unsigned int irq,
 {
 	struct aspeed_pcie *pcie = (struct aspeed_pcie *)domain->host_data;
 
-	irq_set_chip_and_handler(irq, &pcie->aspeed_msi_irq_chip, handle_simple_irq);
+	irq_set_chip_and_handler(irq,
+				&pcie->aspeed_msi_irq_chip, handle_simple_irq);
 	irq_set_chip_data(irq, domain->host_data);
 
 	return 0;
@@ -178,11 +174,12 @@ static int aspeed_pcie_msi_map(struct irq_domain *domain, unsigned int irq,
  * Return: Always returns 0.
  */
 static int aspeed_pcie_intx_map(struct irq_domain *domain, unsigned int irq,
-                                  irq_hw_number_t hwirq)
+					irq_hw_number_t hwirq)
 {
 	struct aspeed_pcie *pcie = (struct aspeed_pcie *)domain->host_data;
 
-	irq_set_chip_and_handler(irq, &pcie->aspeed_h2x_intx_chip, handle_level_irq);
+	irq_set_chip_and_handler(irq,
+				&pcie->aspeed_h2x_intx_chip, handle_level_irq);
 	irq_set_chip_data(irq, domain->host_data);
 
 	return 0;
@@ -195,7 +192,6 @@ static int aspeed_pcie_intx_map(struct irq_domain *domain, unsigned int irq,
  *
  * Return: IRQ_HANDLED on success and IRQ_NONE on failure
  */
-
 static irqreturn_t aspeed_pcie_intr_handler(int irq, void *data)
 {
 	struct aspeed_pcie *pcie = (struct aspeed_pcie *)data;
@@ -228,13 +224,12 @@ static int aspeed_pcie_init_irq_domain(struct aspeed_pcie *pcie)
 	pcie->aspeed_h2x_intx_chip.irq_mask	= aspeed_h2x_intx_mask_irq;
 	pcie->aspeed_h2x_intx_chip.irq_unmask = aspeed_h2x_intx_unmask_irq;
 	pcie->intx_domain_ops.map = aspeed_pcie_intx_map;
-	pcie->leg_domain = irq_domain_add_linear(pcie_intc_node, MAX_LEGACY_IRQS,
-						 &pcie->intx_domain_ops,
-						 pcie);
+	pcie->leg_domain = irq_domain_add_linear(pcie_intc_node,
+				MAX_LEGACY_IRQS, &pcie->intx_domain_ops, pcie);
 	of_node_put(pcie_intc_node);
 	if (!pcie->leg_domain) {
-			dev_err(dev, "Failed to get a INTx IRQ domain\n");
-			return -ENODEV;
+		dev_err(dev, "unable get a INTx IRQ domain\n");
+		return -ENODEV;
 	}
 
 #ifdef CONFIG_PCI_MSI
@@ -251,13 +246,14 @@ static int aspeed_pcie_init_irq_domain(struct aspeed_pcie *pcie)
 
 	/* Setup MSI */
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
-		pcie->msi_domain = irq_domain_add_linear(node,
-								MAX_MSI_HOST_IRQS,
-								&pcie->msi_domain_ops,
-								pcie);
+		pcie->msi_domain =
+				irq_domain_add_linear(node,
+							MAX_MSI_HOST_IRQS,
+							&pcie->msi_domain_ops,
+							pcie);
 		if (!pcie->msi_domain) {
-		dev_err(dev, "Failed to get a MSI IRQ domain\n");
-		return -ENODEV;
+			dev_err(dev, "unable to get a MSI IRQ domain\n");
+			return -ENODEV;
 		}
 		//enable all msi interrupt
 		aspeed_h2x_msi_enable(pcie);
@@ -271,29 +267,41 @@ static int aspeed_pcie_init_irq_domain(struct aspeed_pcie *pcie)
  * @port: PCIe port information
  */
 
+#define AHBC_UNLOCK	0xAEED1A03
 static void aspeed_pcie_init_port(struct aspeed_pcie *pcie)
 {
-	//TODO : ahbc remap enable
-	//aspeed_ahbc_remap_enable(devfdt_get_addr_ptr(ahbc_dev));
+	struct regmap *ahbc =
+		syscon_regmap_lookup_by_compatible("aspeed,aspeed-ahbc");
+	if (!IS_ERR(ahbc)) {
+		//ahbc remap enable
+		regmap_write(ahbc, 0x00, AHBC_UNLOCK);
+		regmap_update_bits(ahbc, 0x8C, BIT(5), BIT(5));
+		regmap_write(ahbc, 0x00, 0x1);
+	} else {
+		dev_warn(pcie->dev,
+			"Unable to remap AHBC. %ld\n", PTR_ERR(ahbc));
+	}
 
 	aspeed_h2x_rc_init(pcie);
 
 	//plda init
 	writel(PCIE_UNLOCK, pcie->pciereg_base + ASPEED_PCIE_LOCK);
-//	writel(PCIE_CFG_CLASS_CODE(0x60000) | PCIE_CFG_REV_ID(4), pcie->pciereg_base + ASPEED_PCIE_CLASS_CODE);
+//	writel(PCIE_CFG_CLASS_CODE(0x60000) | PCIE_CFG_REV_ID(4),
+//				pcie->pciereg_base + ASPEED_PCIE_CLASS_CODE);
 	writel(ROOT_COMPLEX_ID(0x3), pcie->pciereg_base + ASPEED_PCIE_GLOBAL);
 
 	/* Don't register host if link is down */
 	if (readl(pcie->pciereg_base + ASPEED_PCIE_LINK) & PCIE_LINK_STS) {
 		aspeed_h2x_workaround(pcie);
-#if 1
-		if(readl(pcie->pciereg_base + ASPEED_PCIE_LINK_STS) & PCIE_LINK_5G)
-			printk("PCIE- Link up : 5G \n");
-		if(readl(pcie->pciereg_base + ASPEED_PCIE_LINK_STS) & PCIE_LINK_2_5G)
-			printk("PCIE- Link up : 2.5G \n");
-#endif
+
+		if (readl(pcie->pciereg_base
+				+ ASPEED_PCIE_LINK_STS) & PCIE_LINK_5G)
+			dev_info(pcie->dev, "PCIE- Link up : 5G\n");
+		if (readl(pcie->pciereg_base
+				+ ASPEED_PCIE_LINK_STS) & PCIE_LINK_2_5G)
+			dev_info(pcie->dev, "PCIE- Link up : 2.5G\n");
 	} else {
-		printk("PCIE- Link down\n");
+		dev_info(pcie->dev, "PCIE- Link down\n");
 	}
 
 }
@@ -304,14 +312,15 @@ static void aspeed_pcie_init_port(struct aspeed_pcie *pcie)
  *
  * Return: '0' on success and error value on failure
  */
-static int aspeed_pcie_parse_dt(struct aspeed_pcie *pcie, struct platform_device *pdev)
+static int aspeed_pcie_parse_dt(struct aspeed_pcie *pcie,
+					struct platform_device *pdev)
 {
 	struct device *dev = pcie->dev;
 	struct device_node *node = dev->of_node;
 	struct resource *res;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if(res) {
+	if (res) {
 		pcie->pciereg_base = devm_ioremap_resource(dev, res);
 		if (IS_ERR(pcie->pciereg_base))
 			return PTR_ERR(pcie->pciereg_base);
@@ -331,12 +340,13 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 	struct pci_bus *bus;
 	struct pci_bus *child;
 	struct pci_host_bridge *bridge;
+//	struct regmap *scu;
 	int err;
 	resource_size_t iobase = 0;
 	LIST_HEAD(res);
 
 	if (!dev->of_node)
-			 return -ENODEV;
+		return -ENODEV;
 
 	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
 	if (!bridge)
@@ -358,6 +368,14 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 		return PTR_ERR(pcie->reset);
 	}
 #if 0
+	scu = syscon_regmap_lookup_by_compatible("aspeed,aspeed-scu");
+	if (!IS_ERR(scu)) {
+		regmap_update_bits(scu, 0x500, BIT(24), BIT(24));
+		regmap_update_bits(scu, 0x40, BIT(19) | BIT(18),
+							BIT(19) | BIT(18));
+	} else
+		dev_warn(pcie->dev, "Unable to remap SCU. %ld\n", PTR_ERR(scu));
+#else
 	reset_control_assert(pcie->reset);
 	mdelay(50);
 	reset_control_deassert(pcie->reset);
@@ -368,7 +386,7 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 	err = aspeed_pcie_init_irq_domain(pcie);
 	if (err) {
 		dev_err(dev, "Failed creating IRQ Domain\n");
-	   goto error;
+		goto error;
 	}
 
 	err = devm_request_pci_bus_resources(dev, &res);
