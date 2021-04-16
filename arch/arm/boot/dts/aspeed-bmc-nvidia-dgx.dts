@@ -615,6 +615,16 @@
     };
 };
 
+&i2c8 {
+    status = "okay";
+
+    // Midplane thermal
+    lm75@4C {
+        compatible = "ti,tmp75";
+        reg = <0x4C>;
+    };
+};
+
 &i2c9 {             
     status = "okay";
 
