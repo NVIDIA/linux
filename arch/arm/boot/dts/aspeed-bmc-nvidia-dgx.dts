@@ -101,7 +101,6 @@
 	flash@0 {
 		status = "okay";
 		m25p,fast-read;
-		mx25l25635f-disable-dual-mode;
 		label = "bmc";
 #include "openbmc-flash-layout.dtsi"
 	};
@@ -224,17 +223,11 @@
     status = "okay";
 
     // UFRU1
-    eeprom@50 {
+    eeprom@54 {
         compatible = "atmel,24c512";
-        reg = <0x50>;
+        reg = <0x54>;
         pagesize = <128>;
         size = <65536>;
-    };
-
-    // TEMP_M.2_RISER U61
-    lm75@6a {
-        compatible = "ti,tmp75";
-        reg = <0x6a>;
     };
 
     // Planar Temp Sensor U60
@@ -282,13 +275,6 @@
                 size = <65536>;
             };
         };
-    };
-    // i2c switch - U143
-    i2cswitch@73 {
-        compatible = "nxp,pca9546";
-        #address-cells = <1>;
-        #size-cells = <0>;
-        reg = <0x73>;
     };
 };
 
@@ -456,6 +442,16 @@
 		compatible = "national,lm75";
 		reg = <0x4d>;
 	};
+};
+
+&i2c8 {
+    status = "okay";
+
+    // Midplane thermal
+    lm75@4C {
+        compatible = "ti,tmp75";
+        reg = <0x4C>;
+    };
 };
 
 &i2c9 {             
