@@ -1039,6 +1039,8 @@ patternProperties:
     description: Shenzhen Sunchip Technology Co., Ltd
   "^SUNW,.*":
     description: Sun Microsystems, Inc
+  "^supermicro,.*":
+    description: Super Micro Computer, Inc.
   "^swir,.*":
     description: Sierra Wireless
   "^syna,.*":
