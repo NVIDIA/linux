@@ -13,6 +13,14 @@
 		serial0 = &uart1;
 		serial2 = &uart3;
 		serial4 = &uart5;
+		i2c215 = &bus3_mux215;
+		i2c216 = &bus3_mux216;
+		i2c217 = &bus3_mux217;
+		i2c218 = &bus3_mux218;
+		i2c219 = &bus4_mux219;
+		i2c220 = &bus4_mux220;
+		i2c221 = &bus4_mux221;
+		i2c222 = &bus4_mux222;
 	};
 
 	chosen {
@@ -370,40 +378,43 @@
 
     // 19115-1A PDB_20191018.pdf Page 3: SMB_PDB_2_* - I2C MUX U20
     /* Exclude in the device tree so MUX and PSU are accessible via SMBus
-       (i.e. not owned by device tree binding drivers which makes device busy)
+       (i.e. not owned by device tree binding drivers which makes device busy)*/
     i2cmux@70 {
         compatible = "nxp,pca9544";
         reg = <0x70>;
 
-        // CNPSU4
-        i2c@0 {
+        // CNPSU1
+        bus3_mux215: i2c@0 {
             reg = <0>;
 
-            psu4@40 {
+            psu1@40 {
                 compatible = "ericsson,bmr453";
                 reg = <0x40>;
             };
         };
-        // CNPSU5
-        i2c@1 {
+        // CNPSU2
+        bus3_mux216: i2c@1 {
             reg = <1>;
 
-            psu5@41 {
+            psu2@41 {
                 compatible = "ericsson,bmr453";
                 reg = <0x41>;
             };
         };
-        // CNPSU6
-        i2c@2 {
+        // CNPSU3
+        bus3_mux217: i2c@2 {
             reg = <2>;
 
-            psu6@42 {
+            psu3@42 {
                 compatible = "ericsson,bmr453";
                 reg = <0x42>;
             };
         };
+
+        bus3_mux218: i2c@3 {
+            reg = <3>;
+        };
     };
-    */
 };
 
 &i2c4 {             
@@ -417,13 +428,13 @@
 
     // 19115-1A PDB_20191018.pdf Page 3: SMB_PDB_1_* - I2C MUX U19
     /* Exclude in the device tree so MUX and PSU are accessible via SMBus
-       *i.e. not owned by device tree binding drivers which makes device busy)
+       *i.e. not owned by device tree binding drivers which makes device busy)*/
     i2cmux@70 {
         compatible = "nxp,pca9544";
         reg = <0x70>;
 
-       // CNPSU1
-        i2c@0 {
+       // CNPSU4
+        bus4_mux219: i2c@0 {
             reg = <0>;
 
             psu4@40 {
@@ -431,8 +442,8 @@
                 reg = <0x40>;
             };
         };
-        // CNPSU2
-        i2c@1 {
+        // CNPSU5
+        bus4_mux220: i2c@1 {
             reg = <1>;
 
             psu5@41 {
@@ -440,8 +451,8 @@
                 reg = <0x41>;
             };
         };
-        // CNPSU3
-        i2c@2 {
+        // CNPSU6
+        bus4_mux221: i2c@2 {
             reg = <2>;
 
             psu6@42 {
@@ -449,8 +460,11 @@
                 reg = <0x42>;
             };
         };
+
+        bus4_mux222: i2c@3 {
+            reg = <3>;
+        };
     };
-    */
 };                  
 
 &i2c5 {             
