@@ -21,6 +21,22 @@
 		i2c220 = &bus4_mux220;
 		i2c221 = &bus4_mux221;
 		i2c222 = &bus4_mux222;
+		i2c231 = &bus7_mux231;
+		i2c232 = &bus7_mux232;
+		i2c233 = &bus7_mux233;
+		i2c234 = &bus7_mux234;
+		i2c235 = &bus7_mux235;
+		i2c236 = &bus7_mux236;
+		i2c237 = &bus7_mux237;
+		i2c238 = &bus7_mux238;
+		i2c239 = &bus9_mux239;
+		i2c240 = &bus9_mux240;
+		i2c241 = &bus9_mux241;
+		i2c242 = &bus9_mux242;
+		i2c243 = &bus9_mux243;
+		i2c244 = &bus9_mux244;
+		i2c245 = &bus9_mux245;
+		i2c246 = &bus9_mux246;
 	};
 
 	chosen {
@@ -496,6 +512,51 @@
 		compatible = "national,lm75";
 		reg = <0x4d>;
 	};
+
+    i2cmux@71 {
+        compatible = "nxp,pca9548";
+        reg = <0x71>;
+        bus7_mux231: i2c@0 {
+            reg = <0>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux232: i2c@1 {
+            reg = <1>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux233: i2c@2 {
+            reg = <2>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux234: i2c@3 {
+            reg = <3>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux235: i2c@4 {
+            reg = <4>;
+        };
+        bus7_mux236: i2c@5 {
+            reg = <5>;
+        };
+        bus7_mux237: i2c@6 {
+            reg = <6>;
+        };
+        bus7_mux238: i2c@7 {
+            reg = <7>;
+        };
+    };
 };
 
 &i2c8 {
@@ -510,6 +571,51 @@
 
 &i2c9 {             
     status = "okay";
+
+    i2cmux@72 {
+        compatible = "nxp,pca9548";
+        reg = <0x72>;
+         bus9_mux239: i2c@0 {
+            reg = <0>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux240: i2c@1 {
+            reg = <1>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux241: i2c@2 {
+            reg = <2>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux242: i2c@3 {
+            reg = <3>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux243: i2c@4 {
+            reg = <4>;
+        };
+        bus9_mux244: i2c@5 {
+            reg = <5>;
+        };
+        bus9_mux245: i2c@6 {
+            reg = <6>;
+        };
+        bus9_mux246: i2c@7 {
+            reg = <7>;
+        };
+    };
 };
 
 &i2c10 {
