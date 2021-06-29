@@ -478,11 +478,11 @@
         #size-cells = <0>;
     };
 
-//    // GB1 Fan
-//    max31790@2c {
-//        compatible = "maxim,max31790";
-//        reg = <0x2c>;
-//    };
+    // GB1 Fan
+    max31790@2c {
+        compatible = "maxim,max31790";
+        reg = <0x2c>;
+    };
 };                  
 
 &i2c6 {             
