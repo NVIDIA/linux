@@ -56,6 +56,16 @@
 		};
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		id-button {
+			label = "id-button";
+			gpios = <&gpio ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(H, 3)>;
+		};
+	};
+
 	iio-hwmon {
 		compatible = "iio-hwmon";
 		io-channels = <&adc 0>, <&adc 1>, <&adc 2>,
@@ -328,12 +338,12 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		power_led@0 {
+		power_led {
 			reg = <0x0>;
 			color = <LED_COLOR_ID_GREEN>;
 		};
 
-		fault_led@1 {
+		fault_led {
 			reg = <0x1>;
 			type = <LED_COLOR_ID_AMBER>;
 		};
