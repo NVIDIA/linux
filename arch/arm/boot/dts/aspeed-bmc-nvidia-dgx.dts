@@ -235,6 +235,20 @@
 	memory-region = <&video_engine_memory>;
 };
 
+&i2c0 {
+    status = "okay";
+
+    sbtsi@48 {
+        compatible = "amd,sbtsi";
+        reg = <0x48>;
+    };
+
+    sbtsi@4c {
+        compatible = "amd,sbtsi";
+        reg = <0x4c>;
+    };
+};
+
 &i2c1 {
     status = "okay";
 
