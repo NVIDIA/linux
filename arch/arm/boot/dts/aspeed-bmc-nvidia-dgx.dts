@@ -21,6 +21,14 @@
 		i2c220 = &bus4_mux220;
 		i2c221 = &bus4_mux221;
 		i2c222 = &bus4_mux222;
+		i2c223 = &bus8_mux223;
+		i2c224 = &bus8_mux224;
+		i2c225 = &bus8_mux225;
+		i2c226 = &bus8_mux226;
+		i2c227 = &bus8_mux227;
+		i2c228 = &bus8_mux228;
+		i2c229 = &bus8_mux229;
+		i2c230 = &bus8_mux230;
 		i2c231 = &bus7_mux231;
 		i2c232 = &bus7_mux232;
 		i2c233 = &bus7_mux233;
@@ -566,6 +574,44 @@
     lm75@4C {
         compatible = "ti,tmp75";
         reg = <0x4C>;
+    };
+
+    i2cmux@70 {
+        compatible = "nxp,pca9548";
+        reg = <0x70>;
+
+        // NVMe0
+        bus8_mux223: i2c@0 {
+            reg = <0>;
+        };
+        // NVMe1
+        bus8_mux224: i2c@1 {
+            reg = <1>;
+        };
+        // NVMe2
+        bus8_mux225: i2c@2 {
+            reg = <2>;
+        };
+        // NVMe3
+        bus8_mux226: i2c@3 {
+            reg = <3>;
+        };
+        // NVMe4
+        bus8_mux227: i2c@4 {
+            reg = <4>;
+        };
+        // NVMe5
+        bus8_mux228: i2c@5 {
+            reg = <5>;
+        };
+        // NVMe6
+        bus8_mux229: i2c@6 {
+            reg = <6>;
+        };
+        // NVMe7
+        bus8_mux230: i2c@7 {
+            reg = <7>;
+        };
     };
 };
 
