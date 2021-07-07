@@ -72,6 +72,7 @@ struct i2c_msg {
 #define I2C_M_RD		0x0001	/* read data, from slave to master */
 					/* I2C_M_RD is guaranteed to be 0x0001! */
 #define I2C_M_TEN		0x0010	/* this is a ten bit chip address */
+#define I2C_M_HOLD		0x0100	/* for holding a mux path */
 #define I2C_M_DMA_SAFE		0x0200	/* the buffer of this message is DMA safe */
 					/* makes only sense in kernelspace */
 					/* userspace buffers are copied anyway */
