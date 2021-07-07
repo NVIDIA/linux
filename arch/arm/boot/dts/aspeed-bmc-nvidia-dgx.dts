@@ -554,6 +554,13 @@
         };
         bus7_mux235: i2c@4 {
             reg = <4>;
+            // IOE board 0 FRU
+            eeprom@51 {
+                compatible = "atmel,24c512";
+                reg = <0x51>;
+                pagesize = <128>;
+                size = <65536>;
+            };
         };
         bus7_mux236: i2c@5 {
             reg = <5>;
@@ -661,6 +668,13 @@
         };
         bus9_mux243: i2c@4 {
             reg = <4>;
+            // IOE board 1 FRU
+            eeprom@52 {
+                compatible = "atmel,24c512";
+                reg = <0x52>;
+                pagesize = <128>;
+                size = <65536>;
+            };
         };
         bus9_mux244: i2c@5 {
             reg = <5>;
