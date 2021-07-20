@@ -18,6 +18,8 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <linux/bitfield.h>
+#include <linux/regmap.h>
+#include <linux/mfd/syscon.h>
 
 #include <linux/iio/iio.h>
 #include <linux/iio/driver.h>
@@ -61,6 +63,11 @@
 #define ASPEED_ADC_DEF_SAMPLING_RATE	250000
 #define ASPEED_ADC_MAX_RAW_DATA		GENMASK(9, 0)
 
+struct aspeed_adc_trim_locate {
+	const unsigned int offset;
+	const unsigned int field;
+};
+
 enum aspeed_adc_version {
 	aspeed_adc_ast2400,
 	aspeed_adc_ast2500,
@@ -72,6 +79,7 @@ struct aspeed_adc_model_data {
 	unsigned int max_sampling_rate;	// Hz
 	bool wait_init_sequence;
 	unsigned int num_channels;
+	const struct aspeed_adc_trim_locate *trim_locate;
 };
 
 struct adc_gain {
@@ -122,6 +130,45 @@ static const struct iio_chan_spec aspeed_adc_iio_channels[] = {
 	ASPEED_CHAN(14, 0x2C),
 	ASPEED_CHAN(15, 0x2E),
 };
+
+static int aspeed_adc_set_trim_data(struct platform_device *pdev)
+{
+	struct device_node *syscon;
+	struct regmap *scu;
+	u32 scu_otp, trimming_val;
+	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
+	struct aspeed_adc_data *data = iio_priv(indio_dev);
+	const struct aspeed_adc_model_data *model_data =
+		of_device_get_match_data(data->dev);
+
+	syscon = of_find_node_by_name(NULL, "syscon");
+	if (syscon == NULL) {
+		dev_warn(data->dev, "Couldn't find syscon node\n");
+		return -EOPNOTSUPP;
+	}
+	scu = syscon_node_to_regmap(syscon);
+	if (IS_ERR(scu)) {
+		dev_warn(data->dev, "Failed to get syscon regmap\n");
+		return -EOPNOTSUPP;
+	}
+	if (model_data->trim_locate) {
+		if (regmap_read(scu, model_data->trim_locate->offset,
+				&scu_otp)) {
+			dev_warn(data->dev,
+				 "Failed to get adc trimming data\n");
+			trimming_val = 0x8;
+		} else {
+			trimming_val = ((scu_otp) &
+					(model_data->trim_locate->field)) >>
+				       __ffs(model_data->trim_locate->field);
+		}
+	}
+	dev_dbg(data->dev, "trimming val = %d, offset = %08x, fields = %08x\n",
+		 trimming_val, model_data->trim_locate->offset,
+		 model_data->trim_locate->field);
+	writel(trimming_val, data->base + ASPEED_REG_COMPENSATION_TRIM);
+	return 0;
+}
 
 static int aspeed_adc_compensation(struct platform_device *pdev)
 {
@@ -428,7 +475,8 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 		if (ret)
 			goto poll_timeout_error;
 	}
-
+	if (of_find_property(data->dev->of_node, "aspeed,trim-data-valid", NULL))
+		aspeed_adc_set_trim_data(pdev);
 	ret = aspeed_adc_vref_config(pdev);
 	if (ret)
 		goto vref_config_error;
@@ -510,6 +558,21 @@ static int aspeed_adc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct aspeed_adc_trim_locate ast2500_adc_trim = {
+	.offset = 0x154,
+	.field = GENMASK(31, 28),
+};
+
+static const struct aspeed_adc_trim_locate ast2600_adc0_trim = {
+	.offset = 0x5d0,
+	.field = GENMASK(3, 0),
+};
+
+static const struct aspeed_adc_trim_locate ast2600_adc1_trim = {
+	.offset = 0x5d0,
+	.field = GENMASK(7, 4),
+};
+
 static const struct aspeed_adc_model_data ast2400_model_data = {
 	.version = aspeed_adc_ast2400,
 	.min_sampling_rate = 10000,
@@ -523,20 +586,32 @@ static const struct aspeed_adc_model_data ast2500_model_data = {
 	.max_sampling_rate = 500000,
 	.wait_init_sequence = true,
 	.num_channels = 16,
+	.trim_locate = &ast2500_adc_trim,
 };
 
-static const struct aspeed_adc_model_data ast2600_model_data = {
+static const struct aspeed_adc_model_data ast2600_adc0_model_data = {
 	.version = aspeed_adc_ast2600,
 	.min_sampling_rate = 10000,
 	.max_sampling_rate = 500000,
 	.wait_init_sequence = true,
 	.num_channels = 8,
+	.trim_locate = &ast2600_adc0_trim,
+};
+
+static const struct aspeed_adc_model_data ast2600_adc1_model_data = {
+	.version = aspeed_adc_ast2600,
+	.min_sampling_rate = 10000,
+	.max_sampling_rate = 500000,
+	.wait_init_sequence = true,
+	.num_channels = 8,
+	.trim_locate = &ast2600_adc1_trim,
 };
 
 static const struct of_device_id aspeed_adc_matches[] = {
 	{ .compatible = "aspeed,ast2400-adc", .data = &ast2400_model_data },
 	{ .compatible = "aspeed,ast2500-adc", .data = &ast2500_model_data },
-	{ .compatible = "aspeed,ast2600-adc", .data = &ast2600_model_data },
+	{ .compatible = "aspeed,ast2600-adc0", .data = &ast2600_adc0_model_data },
+	{ .compatible = "aspeed,ast2600-adc1", .data = &ast2600_adc1_model_data },
 	{},
 };
 MODULE_DEVICE_TABLE(of, aspeed_adc_matches);
