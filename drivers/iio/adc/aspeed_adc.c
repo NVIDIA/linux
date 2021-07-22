@@ -60,7 +60,12 @@
 
 #define ASPEED_ADC_INIT_POLLING_TIME	500
 #define ASPEED_ADC_INIT_TIMEOUT		500000
-#define ASPEED_ADC_DEF_SAMPLING_RATE	250000
+/*
+ * When the sampling rate is too high, the ADC may not have enough charging
+ * time, resulting in a low voltage value. Thus, default use slow sampling
+ * rate for most user case.
+ */
+#define ASPEED_ADC_DEF_SAMPLING_RATE	65000
 #define ASPEED_ADC_MAX_RAW_DATA		GENMASK(9, 0)
 
 struct aspeed_adc_trim_locate {
