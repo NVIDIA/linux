@@ -455,22 +455,6 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 			goto scaler_error;
 		}
 	}
-	if (of_find_property(data->dev->of_node, "battery-sensing", NULL)) {
-		if (model_data->version >= aspeed_adc_ast2600) {
-			data->battery_sensing = 1;
-			if (readl(data->base + ASPEED_REG_ENGINE_CONTROL) &
-			    ASPEED_ADC_BATTERY_SENSING_DIV_1_3) {
-				data->battery_mode_gain.mult = 3;
-				data->battery_mode_gain.div = 1;
-			} else {
-				data->battery_mode_gain.mult = 3;
-				data->battery_mode_gain.div = 2;
-			}
-		} else
-			dev_warn(&pdev->dev,
-				 "Failed to enable battey-sensing mode\n");
-	}
-
 	data->rst = devm_reset_control_get_shared(&pdev->dev, NULL);
 	if (IS_ERR(data->rst)) {
 		dev_err(&pdev->dev,
@@ -489,6 +473,22 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	ret = aspeed_adc_vref_config(pdev);
 	if (ret)
 		goto vref_config_error;
+
+	if (of_find_property(data->dev->of_node, "battery-sensing", NULL)) {
+		if (model_data->version >= aspeed_adc_ast2600) {
+			data->battery_sensing = 1;
+			if (readl(data->base + ASPEED_REG_ENGINE_CONTROL) &
+			    ASPEED_ADC_BATTERY_SENSING_DIV_1_3) {
+				data->battery_mode_gain.mult = 3;
+				data->battery_mode_gain.div = 1;
+			} else {
+				data->battery_mode_gain.mult = 3;
+				data->battery_mode_gain.div = 2;
+			}
+		} else
+			dev_warn(&pdev->dev,
+				 "Failed to enable battey-sensing mode\n");
+	}
 	if (model_data->wait_init_sequence) {
 		adc_engine_control_reg_val =
 			readl(data->base + ASPEED_REG_ENGINE_CONTROL);
@@ -535,8 +535,8 @@ iio_register_error:
 poll_timeout_error:
 	writel(ASPEED_ADC_OPERATION_MODE_POWER_DOWN,
 		data->base + ASPEED_REG_ENGINE_CONTROL);
-	clk_disable_unprepare(data->clk_scaler->clk);
 vref_config_error:
+	clk_disable_unprepare(data->clk_scaler->clk);
 clk_enable_error:
 	reset_control_assert(data->rst);
 reset_error:
