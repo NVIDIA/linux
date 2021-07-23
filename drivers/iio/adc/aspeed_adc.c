@@ -455,36 +455,6 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 			goto scaler_error;
 		}
 	}
-
-	data->rst = devm_reset_control_get_shared(&pdev->dev, NULL);
-	if (IS_ERR(data->rst)) {
-		dev_err(&pdev->dev,
-			"invalid or missing reset controller device tree entry");
-		ret = PTR_ERR(data->rst);
-		goto reset_error;
-	}
-	reset_control_deassert(data->rst);
-
-	if (model_data->wait_init_sequence) {
-		/* Enable engine in normal mode. */
-		writel(ASPEED_ADC_OPERATION_MODE_NORMAL | ASPEED_ADC_ENGINE_ENABLE,
-		       data->base + ASPEED_REG_ENGINE_CONTROL);
-
-		/* Wait for initial sequence complete. */
-		ret = readl_poll_timeout(data->base + ASPEED_REG_ENGINE_CONTROL,
-					 adc_engine_control_reg_val,
-					 adc_engine_control_reg_val &
-					 ASPEED_ADC_CTRL_INIT_RDY,
-					 ASPEED_ADC_INIT_POLLING_TIME,
-					 ASPEED_ADC_INIT_TIMEOUT);
-		if (ret)
-			goto poll_timeout_error;
-	}
-	if (of_find_property(data->dev->of_node, "aspeed,trim-data-valid", NULL))
-		aspeed_adc_set_trim_data(pdev);
-	ret = aspeed_adc_vref_config(pdev);
-	if (ret)
-		goto vref_config_error;
 	if (of_find_property(data->dev->of_node, "battery-sensing", NULL)) {
 		if (model_data->version >= aspeed_adc_ast2600) {
 			data->battery_sensing = 1;
@@ -500,10 +470,44 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 			dev_warn(&pdev->dev,
 				 "Failed to enable battey-sensing mode\n");
 	}
+
+	data->rst = devm_reset_control_get_shared(&pdev->dev, NULL);
+	if (IS_ERR(data->rst)) {
+		dev_err(&pdev->dev,
+			"invalid or missing reset controller device tree entry");
+		ret = PTR_ERR(data->rst);
+		goto reset_error;
+	}
+	reset_control_deassert(data->rst);
 	ret = clk_prepare_enable(data->clk_scaler->clk);
 	if (ret)
 		goto clk_enable_error;
 	aspeed_adc_set_sampling_rate(indio_dev, ASPEED_ADC_DEF_SAMPLING_RATE);
+
+	if (of_find_property(data->dev->of_node, "aspeed,trim-data-valid", NULL))
+		aspeed_adc_set_trim_data(pdev);
+	ret = aspeed_adc_vref_config(pdev);
+	if (ret)
+		goto vref_config_error;
+	if (model_data->wait_init_sequence) {
+		adc_engine_control_reg_val =
+			readl(data->base + ASPEED_REG_ENGINE_CONTROL);
+		/* Enable engine in normal mode. */
+		writel(adc_engine_control_reg_val |
+			       ASPEED_ADC_OPERATION_MODE_NORMAL |
+			       ASPEED_ADC_ENGINE_ENABLE,
+		       data->base + ASPEED_REG_ENGINE_CONTROL);
+
+		/* Wait for initial sequence complete. */
+		ret = readl_poll_timeout(data->base + ASPEED_REG_ENGINE_CONTROL,
+					 adc_engine_control_reg_val,
+					 adc_engine_control_reg_val &
+					 ASPEED_ADC_CTRL_INIT_RDY,
+					 ASPEED_ADC_INIT_POLLING_TIME,
+					 ASPEED_ADC_INIT_TIMEOUT);
+		if (ret)
+			goto poll_timeout_error;
+	}
 	aspeed_adc_compensation(pdev);
 	adc_engine_control_reg_val =
 		readl(data->base + ASPEED_REG_ENGINE_CONTROL);
@@ -528,12 +532,12 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	return 0;
 
 iio_register_error:
+poll_timeout_error:
 	writel(ASPEED_ADC_OPERATION_MODE_POWER_DOWN,
 		data->base + ASPEED_REG_ENGINE_CONTROL);
 	clk_disable_unprepare(data->clk_scaler->clk);
 vref_config_error:
 clk_enable_error:
-poll_timeout_error:
 	reset_control_assert(data->rst);
 reset_error:
 	clk_hw_unregister_divider(data->clk_scaler);
