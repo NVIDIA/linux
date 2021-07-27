@@ -1,0 +1,289 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "AST2600 dgx";
+	compatible = "aspeed,ast2600";
+
+	aliases {
+		serial0 = &uart1;
+		serial2 = &uart3;
+		serial4 = &uart5;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x20000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		uid_led {
+			gpios = <&gpio ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+    iio-hwmon-12v-stdby {              
+        compatible = "iio-hwmon";
+        io-channels = <&adc 1>;
+    };                           
+};
+
+&gpio {
+        gpio-line-names =
+        /*A0-A7*/       "","","","","","","","",
+        /*B0-B7*/       "i2c1_alert","i2c2_alert","gpu_base_stdby_en","base_prsnt","","","","",
+        /*C0-C7*/       "","","","","","","","",
+        /*D0-D7*/       "","","","","","","","",
+        /*E0-E7*/       "","","","","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","","","","","","","",
+        /*H0-H7*/       "","","","","","","","",
+        /*I0-I7*/       "","","","","","","","",
+        /*J0-J7*/       "","","","bmc_ready","","","","",
+        /*K0-K7*/       "hgx_fpga_ready","","midp_pwr_brake","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
+        /*L0-L7*/       "fpga_erot_fatal_err","","hmc_prsnt","hmc_ready","","","","",
+        /*M0-M7*/       "","","","","","","","",
+        /*N0-N7*/       "fpga_erot_rst","midp_erot_base_cpld_rst","midp_wp_hw_ctrl","","","","","",
+        /*O0-O7*/       "","","","","","","","psu_workok",
+        /*P0-P7*/       "","","psu_alert_n","","","","","psu_detect_n",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "hgx_pwr_gd","","","fpga_overt","","fpga_therm_overt","","",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "hgx_pwr_en","hgx_detect","","fpga_erot_recov","","","","",
+        /*Z0-Z7*/       "","","","","","","","",
+        /*AA0-AA7*/     "","","psu_ac_ok_all","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","";
+
+};
+
+&fmc {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = "bmc";
+#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
+	};
+        flash@1 {
+                status = "okay";
+                m25p,fast-read;
+                label = "bmc";
+#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
+        };
+};
+
+&spi1 {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = "pnor";
+	};
+};
+
+&spi2 {
+	status = "okay";
+};
+
+&uart1 {
+	// Rear COM1
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd1_default
+				 &pinctrl_rxd1_default>;
+};
+
+&uart3 {
+	// CPU UART1 (FIXME: SOL??)
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd3_default
+				 &pinctrl_rxd3_default>;
+};
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+&lpc_snoop {
+	// SBIOS Post Code Port
+	status = "okay";
+	snoop-ports = <0x80>;
+};
+
+&lpc_ctrl {
+	status = "okay";
+};
+
+&kcs2 {
+	// KCS Channel 2
+	status = "okay";
+	kcs_addr = <0xca8>;
+};
+
+&kcs3 {
+	// KCS Channel 3
+	status = "okay";
+	kcs_addr = <0xca2>;
+};
+
+&ibt {
+	// Block Transfer
+	status = "okay";
+};
+
+&mac0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mdio1_default>;
+};
+
+&mac1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mdio2_default>;
+};
+
+&vuart {
+	status = "okay";
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+	status = "okay";
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&uhci {
+	status = "okay";
+};
+
+&gfx {
+	status = "okay";
+	memory-region = <&gfx_memory>;
+};
+
+&adc {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_adc1_default>;
+};
+
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
+&i2c1 {
+    status = "okay";
+        eeprom@51 {
+        compatible = "atmel,24c512";
+               reg = <0x51>;
+               pagesize = <128>;
+               size = <65536>;
+            };
+};
+
+&i2c2 {             
+	status = "okay";
+
+};                  
+
+// AST2600 i2c4
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {             
+    status = "okay";
+
+};                  
+
+&i2c5 {             
+    status = "okay";
+
+};                  
+
+&i2c6 {             
+    status = "okay";
+};                  
+
+&i2c7 {
+	status = "okay";
+};
+
+&i2c8 {
+    status = "okay";
+};
+
+&i2c9 {             
+    status = "okay";
+};
+
+&i2c10 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+&i2c14 {
+    status = "okay";
+
+    // Midplane thermal
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
