@@ -58,7 +58,7 @@
 		reg = <0>;
 	};
 };
-
+/*
 &mac0 {
 	status = "okay";
 
@@ -68,7 +68,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
-
+*/
 
 &mac1 {
 	status = "okay";
@@ -79,7 +79,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii2_default>;
 };
-
+/*
 &mac2 {
 	status = "okay";
 
@@ -99,7 +99,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii4_default>;
 };
-
+*/
 &emmc_controller {
 	status = "okay";
 };
