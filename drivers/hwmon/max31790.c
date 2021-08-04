@@ -426,10 +426,24 @@ static const struct hwmon_chip_info max31790_chip_info = {
 	.info = max31790_info,
 };
 
+static void Luna_pwm_enable(struct i2c_client *client,
+				struct max31790_data *data)
+{
+	int i;
+	for(i = 0; i < NR_CHANNEL; i++)
+	{
+		i2c_smbus_write_byte_data(client, MAX31790_REG_FAN_CONFIG(i), 0x09);
+		i2c_smbus_write_byte_data(client, MAX31790_REG_FAN_DYNAMICS(i), 0x8c);
+	}
+	i2c_smbus_write_byte_data(client, MAX31790_REG_FAN_CONFIG(0), 0x48);
+}
+
 static int max31790_init_client(struct i2c_client *client,
 				struct max31790_data *data)
 {
 	int i, rv;
+
+	Luna_pwm_enable(client, data);
 
 	for (i = 0; i < NR_CHANNEL; i++) {
 		rv = i2c_smbus_read_byte_data(client,
