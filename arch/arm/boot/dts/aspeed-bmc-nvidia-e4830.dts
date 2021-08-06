@@ -6,7 +6,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-	model = "AST2600 dgx";
+	model = "AST2600 E4830";
 	compatible = "aspeed,ast2600";
 
 	aliases {
@@ -133,45 +133,12 @@
 				 &pinctrl_rxd1_default>;
 };
 
-&uart3 {
-	// CPU UART1 (FIXME: SOL??)
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_txd3_default
-				 &pinctrl_rxd3_default>;
-};
 
 &uart5 {
 	// BMC Debug Console
 	status = "okay";
 };
 
-&lpc_snoop {
-	// SBIOS Post Code Port
-	status = "okay";
-	snoop-ports = <0x80>;
-};
-
-&lpc_ctrl {
-	status = "okay";
-};
-
-&kcs2 {
-	// KCS Channel 2
-	status = "okay";
-	kcs_addr = <0xca8>;
-};
-
-&kcs3 {
-	// KCS Channel 3
-	status = "okay";
-	kcs_addr = <0xca2>;
-};
-
-&ibt {
-	// Block Transfer
-	status = "okay";
-};
 
 &mac0 {
 	status = "okay";
@@ -278,6 +245,15 @@
 &i2c11 {
 	status = "okay";
 };
+
+&i2c12 {
+	status = "okay";
+};
+
+&i2c13 {
+	status = "okay";
+};
+
 &i2c14 {
     status = "okay";
 
