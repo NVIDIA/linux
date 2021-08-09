@@ -10,8 +10,6 @@
 	compatible = "aspeed,ast2600";
 
 	aliases {
-		serial0 = &uart1;
-		serial2 = &uart3;
 		serial4 = &uart5;
 	};
 
@@ -21,48 +19,12 @@
 	};
 
 	memory@80000000 {
-		reg = <0x80000000 0x20000000>;
+		reg = <0x80000000 0x40000000>;
 	};
 
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		vga_memory: framebuffer@9f000000 {
-			no-map;
-			reg = <0x9f000000 0x01000000>; /* 16M */
-		};
-
-		gfx_memory: framebuffer {
-			size = <0x01000000>;
-			alignment = <0x01000000>;
-			compatible = "shared-dma-pool";
-			reusable;
-		};
-
-		video_engine_memory: jpegbuffer {
-			size = <0x02000000>;	/* 32M */
-			alignment = <0x01000000>;
-			compatible = "shared-dma-pool";
-			reusable;
-		};
-	};
-
-	leds {
-		compatible = "gpio-leds";
-		uid_led {
-			gpios = <&gpio ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
-		};
-	};
-
-    iio-hwmon-12v-stdby {              
-        compatible = "iio-hwmon";
-        io-channels = <&adc 1>;
-    };                           
 };
 
-&gpio {
+&gpio0 {
         gpio-line-names =
         /*A0-A7*/       "","","","","","","","",
         /*B0-B7*/       "i2c1_alert","i2c2_alert","gpu_base_stdby_en","base_prsnt","","","","",
@@ -89,48 +51,44 @@
         /*W0-W7*/       "","","","","","","","",
         /*X0-X7*/       "","","","","","","","",
         /*Y0-Y7*/       "hgx_pwr_en","hgx_detect","","fpga_erot_recov","","","","",
-        /*Z0-Z7*/       "","","","","","","","",
-        /*AA0-AA7*/     "","","psu_ac_ok_all","","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+};
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
         /*AB0-AB7*/     "","","","","","","","",
-        /*AC0-AC7*/     "","","","","","","","";
-
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
 };
 
+// Enabled Primary flash on FMC for bring up activity
 &fmc {
 	status = "okay";
 	flash@0 {
-		status = "okay";
-		m25p,fast-read;
-		label = "bmc";
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "bmc";
+                spi-max-frequency = <50000000>;
 #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
-        flash@1 {
-                status = "okay";
-                m25p,fast-read;
-                label = "bmc";
-#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
-        };
 };
 
 &spi1 {
-	status = "okay";
-	flash@0 {
-		status = "okay";
-		m25p,fast-read;
-		label = "pnor";
-	};
+        status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi1_default>;
+
+        flash@0 {
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "pnor";
+                spi-max-frequency = <100000000>;
+        };
 };
 
-&spi2 {
-	status = "okay";
-};
-
-&uart1 {
-	// Rear COM1
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_txd1_default
-				 &pinctrl_rxd1_default>;
+&rtc {
+        status = "okay";
 };
 
 
@@ -139,23 +97,21 @@
 	status = "okay";
 };
 
+// mdio3 for external phy connection
+&mdio3 {
+        status = "okay";
 
-&mac0 {
+        ethphy3: ethernet-phy@0 {
+                compatible = "ethernet-phy-ieee802.3-c22";
+                reg = <0>;
+        };
+};
+// MAC2 of SoC connected to external PHY
+&mac2 {
 	status = "okay";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mdio1_default>;
-};
-
-&mac1 {
-	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mdio2_default>;
-};
-
-&vuart {
-	status = "okay";
+	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mdio3_default>;
 };
 
 /*
@@ -165,31 +121,15 @@
  * host on both ports.
  */
 &vhub {
-	status = "okay";
+   status = "okay";
 };
-
+// USB 2.0 to HMC & Host BMC connectivity
 &ehci1 {
-	status = "okay";
+   status = "okay";
 };
-
+// USB 1.0
 &uhci {
-	status = "okay";
-};
-
-&gfx {
-	status = "okay";
-	memory-region = <&gfx_memory>;
-};
-
-&adc {
-    status = "okay";
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_adc1_default>;
-};
-
-&video {
-	status = "okay";
-	memory-region = <&video_engine_memory>;
+   status = "okay";
 };
 
 &i2c1 {
@@ -203,13 +143,12 @@
 };
 
 &i2c2 {             
-	status = "okay";
+    status = "okay";
 
 };                  
 
-// AST2600 i2c4
 &i2c3 {
-	status = "okay";
+    status = "okay";
 };
 
 &i2c4 {             
@@ -227,7 +166,7 @@
 };                  
 
 &i2c7 {
-	status = "okay";
+    status = "okay";
 };
 
 &i2c8 {
@@ -238,28 +177,32 @@
     status = "okay";
 };
 
-&i2c10 {
-	status = "okay";
-};
-
-&i2c11 {
-	status = "okay";
-};
-
 &i2c12 {
-	status = "okay";
+    status = "okay";
 };
 
 &i2c13 {
-	status = "okay";
+    status = "okay";
 };
 
 &i2c14 {
     status = "okay";
-
-    // Midplane thermal
     lm75@48 {
         compatible = "ti,tmp75";
         reg = <0x48>;
     };
+};
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
 };
