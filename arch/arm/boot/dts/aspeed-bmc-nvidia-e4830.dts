@@ -22,6 +22,10 @@
 		reg = <0x80000000 0x40000000>;
 	};
 
+        power-gpios{
+                sda-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        };
+
 };
 
 &gpio0 {
@@ -147,27 +151,6 @@
     status = "okay";
 
 };                  
-
-&i2c5 {             
-    status = "okay";
-
-};                  
-
-&i2c6 {             
-    status = "okay";
-};                  
-
-&i2c7 {
-    status = "okay";
-};
-
-&i2c8 {
-    status = "okay";
-};
-
-&i2c9 {             
-    status = "okay";
-};
 
 &i2c12 {
     status = "okay";
