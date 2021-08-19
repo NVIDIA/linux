@@ -170,29 +170,29 @@ config DAVICOM_PHY
 
 config DP83822_PHY
 	tristate "Texas Instruments DP83822 PHY"
-	---help---
+	help
 	  Supports the DP83822 PHY.
 
 config DP83TC811_PHY
 	tristate "Texas Instruments DP83TC822 PHY"
-	---help---
+	help
 	  Supports the DP83TC822 PHY.
 
 config DP83848_PHY
 	tristate "Texas Instruments DP83848 PHY"
-	---help---
+	help
 	  Supports the DP83848 PHY.
 
 config DP83867_PHY
 	tristate "Texas Instruments DP83867 Gigabit PHY"
-	---help---
+	help
 	  Currently supports the DP83867 PHY.
 
 config FIXED_PHY
 	tristate "MDIO Bus/PHY emulation with fixed speed/link PHYs"
 	depends on PHYLIB
 	select SWPHY
-	---help---
+	help
 	  Adds the platform "fixed" MDIO Bus to cover the boards that use
 	  PHYs that are not connected to the real MDIO bus.
 
@@ -201,7 +201,7 @@ config FIXED_PHY
 
 config FIXED_PHY_APPLY
 	tristate "Use MDIO Bus/PHY emulation with fixed speed/link PHYs"
-	---help---
+	help
 	  Adds the platform "fixed" MDIO Bus to cover the boards that use
 	  PHYs that are not connected to the real MDIO bus.
 
@@ -210,7 +210,7 @@ config FIXED_PHY_APPLY
 config FIXED_PHY_SPEED
 	int "Speed of the fixed phy link - 10/100/1000 Mbps"
 	default 1000
-	---help---
+	help
 	  Select speed settings of the fixed phy link.
 
 	  Currently tested with bluesphere.
@@ -218,7 +218,7 @@ config FIXED_PHY_SPEED
 config FIXED_PHY_FULL_DUPLEX
 	bool "Full duplex link seeting on fixed phy"
 	default 0
-	---help---
+	help
 	  Select duplex settings of the fixed phy link.
 
 	  Currently tested with bluesphere.
