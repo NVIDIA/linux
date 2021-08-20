@@ -171,7 +171,7 @@ EXPORT_SYMBOL_GPL(fixed_phy_add);
 static struct fixed_phy_status fixed_phy_status = { 
 	.link = 1,
 	.speed = 1000,
-	.duplex = 0,
+	.duplex = 1,
 };
 #endif
 
@@ -350,9 +350,9 @@ static int __init fixed_mdio_bus_init(void)
 	fixed_phy_status.speed = CONFIG_FTGMAC100_FIXED_PHY_SPEED;
 #endif
 
-#ifdef CONFIG_FTGMAC100_FIXED_PHY_FULL_DUPLEX
+//#ifdef CONFIG_FTGMAC100_FIXED_PHY_FULL_DUPLEX
 	fixed_phy_status.duplex = 1;
-#endif
+//#endif
 	ret = fixed_phy_add(PHY_POLL, 0, &fixed_phy_status);
 	if (ret < 0)
 	{
