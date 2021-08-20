@@ -8,6 +8,9 @@
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
 
+#define DEBUG 1
+
+
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/etherdevice.h>
@@ -30,6 +33,7 @@
 #include "ftgmac100.h"
 
 #define DRV_NAME	"ftgmac100"
+
 
 /* Arbitrary values, I am not sure the HW has limits */
 #define MAX_RX_QUEUE_ENTRIES	1024
@@ -1468,6 +1472,11 @@ static int ftgmac100_open(struct net_device *netdev)
 		priv->cur_speed = 0;
 	}
 
+	netdev_err(netdev, "cur_speed %d, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
+	priv->cur_duplex = DUPLEX_FULL;
+	priv->cur_speed = SPEED_1000;
+	netdev_info(netdev, "cur_speed %d, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
+
 	/* Reset the hardware */
 	err = ftgmac100_reset_and_config_mac(priv);
 	if (err)
@@ -1742,8 +1751,10 @@ static int ftgmac100_setup_clk(struct ftgmac100 *priv)
 	 * 1000Mbit link speeds. As NCSI is limited to 100Mbit, 25MHz
 	 * is sufficient
 	 */
+	netdev_err(priv->netdev, "clk %d, mapped at %p\n", priv->clk, priv->use_ncsi);
 	rc = clk_set_rate(priv->clk, priv->use_ncsi ? FTGMAC_25MHZ :
 			  FTGMAC_100MHZ);
+	netdev_err(priv->netdev, "irq %d, mapped at %p\n", priv->clk, priv->use_ncsi);
 	if (rc)
 		goto cleanup_clk;
 

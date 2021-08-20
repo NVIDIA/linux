@@ -23,7 +23,8 @@
 	};
 
         power-gpios{
-                sda-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+                n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+//                n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
         };
 
 };
@@ -39,22 +40,22 @@
         /*G0-G7*/       "","","","","","","","",
         /*H0-H7*/       "","","","","","","","",
         /*I0-I7*/       "","","","","","","","",
-        /*J0-J7*/       "","","","bmc_ready","","","","",
-        /*K0-K7*/       "hgx_fpga_ready","","midp_pwr_brake","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
-        /*L0-L7*/       "fpga_erot_fatal_err","","hmc_prsnt","hmc_ready","","","","",
+        /*J0-J7*/       "","","","","","","","",
+        /*K0-K7*/       "","","","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
+        /*L0-L7*/       "","","","","","","","",
         /*M0-M7*/       "","","","","","","","",
-        /*N0-N7*/       "fpga_erot_rst","midp_erot_base_cpld_rst","midp_wp_hw_ctrl","","","","","",
-        /*O0-O7*/       "","","","","","","","psu_workok",
-        /*P0-P7*/       "","","psu_alert_n","","","","","psu_detect_n",
+        /*N0-N7*/       "","","","","","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
         /*Q0-Q7*/       "","","","","","","","",
         /*R0-R7*/       "","","","","","","","",
         /*S0-S7*/       "","","","","","","","",
         /*T0-T7*/       "","","","","","","","",
-        /*U0-U7*/       "hgx_pwr_gd","","","fpga_overt","","fpga_therm_overt","","",
+        /*U0-U7*/       "","","","","","","","",
         /*V0-V7*/       "","","","","","","","",
         /*W0-W7*/       "","","","","","","","",
         /*X0-X7*/       "","","","","","","","",
-        /*Y0-Y7*/       "hgx_pwr_en","hgx_detect","","fpga_erot_recov","","","","",
+        /*Y0-Y7*/       "","","","","","","","",
         /*Z0-Z7*/       "","","","","","","","";
 };
 &gpio1 {
@@ -101,6 +102,25 @@
 	status = "okay";
 };
 
+
+//&mdio2 {
+//        status = "okay";
+//
+//        ethphy2: ethernet-phy@0 {
+//                compatible = "ethernet-phy-ieee802.3-c22";
+//                reg = <0>;
+//        };
+//};
+
+//&mdio3 {
+//        status = "okay";
+//
+//        ethphy3: ethernet-phy@0 {
+//                compatible = "ethernet-phy-ieee802.3-c22";
+//                reg = <0>;
+//        };
+//};
+
 // mdio3 for external phy connection
 // MAC2 of SoC connected to external PHY
 &mac2 {
@@ -128,11 +148,16 @@
    status = "okay";
 };
 
+&i2c0 {             
+    status = "okay";
+};                  
+
+
 &i2c1 {
     status = "okay";
-        eeprom@51 {
+        eeprom@53 {
         compatible = "atmel,24c512";
-               reg = <0x51>;
+               reg = <0x53>;
                pagesize = <128>;
                size = <65536>;
             };
@@ -147,10 +172,11 @@
     status = "okay";
 };
 
-&i2c4 {             
+// Ethernet SW 
+&i2c10 {
     status = "okay";
+};
 
-};                  
 
 &i2c12 {
     status = "okay";
