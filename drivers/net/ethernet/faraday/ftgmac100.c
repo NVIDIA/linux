@@ -1472,10 +1472,9 @@ static int ftgmac100_open(struct net_device *netdev)
 		priv->cur_speed = 0;
 	}
 
-	netdev_err(netdev, "cur_speed %d, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
+	netdev_err(netdev, "cur_speed %x, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
 	priv->cur_duplex = DUPLEX_FULL;
-	priv->cur_speed = SPEED_1000;
-	netdev_info(netdev, "cur_speed %d, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
+	netdev_info(netdev, "cur_speed %x, duplex at %d\n", priv->cur_speed, priv->cur_duplex);
 
 	/* Reset the hardware */
 	err = ftgmac100_reset_and_config_mac(priv);
