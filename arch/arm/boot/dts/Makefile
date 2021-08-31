@@ -1426,4 +1426,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	apseed-bmc-nvidia-dgx.dtb \
 	apseed-bmc-nvidia-dgx-a100-dp.dtb \
 	aspeed-bmc-nvidia-e4830.dtb \
+	aspeed-bmc-nvidia-e4830-bmc.dtb \
+	aspeed-bmc-nvidia-e4830-hmc.dtb \
 	apseed-bmc-nvidia-hgx.dtb
