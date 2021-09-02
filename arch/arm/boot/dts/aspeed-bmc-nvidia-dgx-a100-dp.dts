@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0+
 /dts-v1/;
 
-#include "aspeed-g5.dtsi"
+#include "aspeed-g6.dtsi"
+#include "aspeed-g6-pinctrl.dtsi"
 #include <dt-bindings/gpio/aspeed-gpio.h>
 #include <dt-bindings/leds/common.h>
 
 / {
-	model = "AST2500 dgx";
-	compatible = "aspeed,ast2500";
+	model = "AST2600 dgx-a100-dp";
+	compatible = "aspeed,ast2600";
 
 	aliases {
 		serial0 = &uart1;
 		serial2 = &uart3;
 		serial4 = &uart5;
-        i2c213 = &bus1_mux213;
-        i2c214 = &bus1_mux214;
+		i2c213 = &bus1_mux213;
+		i2c214 = &bus1_mux214;
 		i2c215 = &bus3_mux215;
 		i2c216 = &bus3_mux216;
 		i2c217 = &bus3_mux217;
@@ -86,7 +87,7 @@
 	leds {
 		compatible = "gpio-leds";
 		uid_led {
-			gpios = <&gpio ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -95,22 +96,22 @@
 
 		id-button {
 			label = "id-button";
-			gpios = <&gpio ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
 			linux,code = <ASPEED_GPIO(H, 3)>;
 		};
 	};
 
 	iio-hwmon {
 		compatible = "iio-hwmon";
-		io-channels = <&adc 0>, <&adc 1>, <&adc 2>,
-			<&adc 3>, <&adc 4>, <&adc 5>,
-			<&adc 6>, <&adc 7>, <&adc 8>,
-			<&adc 9>, <&adc 10>, <&adc 11>,
-			<&adc 12>;
+		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>,
+			<&adc0 3>, <&adc0 4>, <&adc0 5>,
+			<&adc0 6>, <&adc0 7>, <&adc0 8>,
+			<&adc0 9>, <&adc0 10>, <&adc0 11>,
+			<&adc0 12>;
 	};
 };
 
-&gpio {
+&gpio0 {
 	gpio-line-names =
 	/*A0-A7*/       "","","","","","","","",
 	/*B0-B7*/       "dimm_spd_sel","pwrgd_p3v3","bmc_rdv_set_ok","","","","","",
@@ -141,30 +142,39 @@
 	/*AA0-AA7*/     "","","psu_ac_ok_all","","","","","",
 	/*AB0-AB7*/     "","","","","","","","",
 	/*AC0-AC7*/     "","","","","","","","";
+};
 
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
 };
 
 &fmc {
 	status = "okay";
 	flash@0 {
-		status = "okay";
-		m25p,fast-read;
-		label = "bmc";
-#include "openbmc-flash-layout.dtsi"
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "bmc";
+                spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
 };
 
 &spi1 {
-	status = "okay";
-	flash@0 {
-		status = "okay";
-		m25p,fast-read;
-		label = "pnor";
-	};
-};
+        status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi1_default>;
 
-&spi2 {
-	status = "okay";
+        flash@0 {
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "pnor";
+                spi-max-frequency = <100000000>;
+        };
 };
 
 &uart1 {
@@ -220,18 +230,11 @@
 	aspeed,lpc-io-reg = <0xca2>;
 };
 
-&mac0 {
+&mac2 {
 	status = "okay";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mdio1_default>;
-};
-
-&mac1 {
-	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mdio2_default>;
+	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mdio3_default>;
 };
 
 /*
@@ -244,12 +247,19 @@
 	status = "okay";
 };
 
+/*
 &gfx {
 	status = "okay";
 	memory-region = <&gfx_memory>;
 };
 
-&adc {
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+*/
+
+&adc0 {
     status = "okay";
     pinctrl-names = "default";
     pinctrl-0 = <&pinctrl_adc0_default
@@ -265,11 +275,6 @@
             &pinctrl_adc10_default
             &pinctrl_adc11_default
             &pinctrl_adc12_default>;
-};
-
-&video {
-	status = "okay";
-	memory-region = <&video_engine_memory>;
 };
 
 &i2c0 {
@@ -689,29 +694,4 @@
 
 &i2c11 {
 	status = "okay";
-};
-
-
-/*
- * Enable port A as device (via the virtual hub) and port B as
- * host by default on the eval board. This can be easily changed
- * by replacing the override below with &ehci0 { ... } to enable
- * host on both ports.
- */
-&vhub {
-   status = "okay";
-};
-
-// USB 2.0 to HMC & Host BMC connectivity
-&ehci0 {
-   status = "okay";
-};
-
-&ehci1 {
-   status = "okay";
-};
-
-// USB 1.0
-&uhci {
-   status = "okay";
 };

@@ -1424,5 +1424,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-quanta-q71l.dtb \
 	aspeed-bmc-supermicro-x11spi.dtb \
 	apseed-bmc-nvidia-dgx.dtb \
+	apseed-bmc-nvidia-dgx-a100-dp.dtb \
 	aspeed-bmc-nvidia-e4830.dtb \
 	apseed-bmc-nvidia-hgx.dtb
