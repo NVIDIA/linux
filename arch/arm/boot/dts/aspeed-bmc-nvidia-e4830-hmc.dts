@@ -77,6 +77,13 @@
                 spi-max-frequency = <50000000>;
 #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
+        flash@1 {
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "alt";
+                spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-alt-flash-layout.dtsi"
+        };
 };
 
 &spi1 {

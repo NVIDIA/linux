@@ -32,7 +32,7 @@
 &gpio0 {
         gpio-line-names =
         /*A0-A7*/       "","","","","","","","",
-        /*B0-B7*/       "i2c1_alert","i2c2_alert","gpu_base_stdby_en","base_prsnt","","","","",
+        /*B0-B7*/       "","","","","","","","",
         /*C0-C7*/       "","","","","","","","",
         /*D0-D7*/       "","","","","","","","",
         /*E0-E7*/       "","","","","","","","",
@@ -41,7 +41,7 @@
         /*H0-H7*/       "","","","","","","","",
         /*I0-I7*/       "","","","","","","","",
         /*J0-J7*/       "","","","","","","","",
-        /*K0-K7*/       "","","","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
+        /*K0-K7*/       "","","","","","","","",
         /*L0-L7*/       "","","","","","","","",
         /*M0-M7*/       "","","","","","","","",
         /*N0-N7*/       "","","","","","","","",
@@ -77,6 +77,14 @@
                 spi-max-frequency = <50000000>;
 #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
+	flash@1 {
+                status = "okay";
+                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                label = "alt";
+                spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-alt-flash-layout.dtsi"
+	};
+
 };
 
 &spi1 {
