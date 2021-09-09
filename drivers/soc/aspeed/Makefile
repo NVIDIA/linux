@@ -5,3 +5,4 @@ obj-$(CONFIG_ASPEED_P2A_CTRL)	+= aspeed-p2a-ctrl.o
 obj-$(CONFIG_ASPEED_SOCINFO)	+= aspeed-socinfo.o
 obj-$(CONFIG_ASPEED_XDMA)	+= aspeed-xdma.o
 obj-$(CONFIG_ASPEED_MCTP)	+= aspeed-mctp.o
+obj-$(CONFIG_ASPEED_LPC_PCC)	+= aspeed-lpc-pcc.o

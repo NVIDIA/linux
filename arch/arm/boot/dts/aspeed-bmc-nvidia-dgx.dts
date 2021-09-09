@@ -200,6 +200,21 @@
 	snoop-ports = <0x80>;
 };
 
+&lpc_pcc {
+rec-mode = <0x1>;
+port-addr = <0x80>;
+port-addr-hbits-select = <0x1>;
+port-addr-xbits = <0x3>;
+pattern-a-en;
+pattern-a = <0x41424344>;
+pattern-a-len = <0x4>;
+pattern-a-write = <0x1>;
+pattern-a-port = <0x80>;
+status = "okay";
+dma-mode = <0x1>;
+};
+
+
 &lpc_ctrl {
 	status = "okay";
 };
