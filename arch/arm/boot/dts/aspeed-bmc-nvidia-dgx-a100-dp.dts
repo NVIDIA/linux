@@ -105,9 +105,9 @@
 		compatible = "iio-hwmon";
 		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>,
 			<&adc0 3>, <&adc0 4>, <&adc0 5>,
-			<&adc0 6>, <&adc0 7>, <&adc0 8>,
-			<&adc0 9>, <&adc0 10>, <&adc0 11>,
-			<&adc0 12>;
+			<&adc0 6>, <&adc0 7>, <&adc1 0>,
+			<&adc1 1>, <&adc1 2>, <&adc1 3>,
+			<&adc1 4>;
 	};
 };
 
@@ -153,17 +153,23 @@
         /*AE0-AE7*/     "","","","","","","","";
 };
 
+/* BMC Boot Flash */
 &fmc {
 	status = "okay";
 	flash@0 {
-                status = "okay";
-                compatible = "micron,mt25qu02g", "jedec,spi-nor";
-                label = "bmc";
-                spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
+        status = "okay";
+        label = "bmc";
+        #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
+    /*
+    flash@1 {
+        status = "okay";
+        label = "alt-bmc";
+	};
+    */
 };
 
+/* BIOS Flash */
 &spi1 {
         status = "okay";
         pinctrl-names = "default";
@@ -171,9 +177,19 @@
 
         flash@0 {
                 status = "okay";
-                compatible = "micron,mt25qu02g", "jedec,spi-nor";
-                label = "pnor";
-                spi-max-frequency = <100000000>;
+                label = "bios";
+        };
+};
+
+/* Config Flash */
+&spi2 {
+        status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi2_default>;
+
+        flash@0 {
+                status = "okay";
+                label = "config";
         };
 };
 
@@ -269,12 +285,20 @@
             &pinctrl_adc4_default
             &pinctrl_adc5_default
             &pinctrl_adc6_default
-            &pinctrl_adc7_default
-            &pinctrl_adc8_default
+            &pinctrl_adc7_default>;
+};
+
+&adc1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_adc8_default
             &pinctrl_adc9_default
             &pinctrl_adc10_default
             &pinctrl_adc11_default
-            &pinctrl_adc12_default>;
+            &pinctrl_adc12_default
+            &pinctrl_adc13_default
+            &pinctrl_adc14_default
+            &pinctrl_adc15_default>;
 };
 
 &i2c0 {
@@ -688,10 +712,16 @@
     };
 };
 
-&i2c10 {
+/* GPU 1 */
+&i2c11 {
+	status = "okay";
+};
+/* GPU 2 */
+&i2c12 {
 	status = "okay";
 };
 
-&i2c11 {
+/* CEC */
+&i2c13 {
 	status = "okay";
 };
