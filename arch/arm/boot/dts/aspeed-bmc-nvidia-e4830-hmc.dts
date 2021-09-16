@@ -32,7 +32,7 @@
 &gpio0 {
         gpio-line-names =
         /*A0-A7*/       "","","","","","","","",
-        /*B0-B7*/       "i2c1_alert","i2c2_alert","gpu_base_stdby_en","base_prsnt","","","","",
+        /*B0-B7*/       "","","","","","","","",
         /*C0-C7*/       "","","","","","","","",
         /*D0-D7*/       "","","","","","","","",
         /*E0-E7*/       "","","","","","","","",
@@ -41,7 +41,7 @@
         /*H0-H7*/       "","","","","","","","",
         /*I0-I7*/       "","","","","","","","",
         /*J0-J7*/       "","","","","","","","",
-        /*K0-K7*/       "","","","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
+        /*K0-K7*/       "","","","","","","","",
         /*L0-L7*/       "","","","","","","","",
         /*M0-M7*/       "","","","","","","","",
         /*N0-N7*/       "","","","","","","","",
@@ -67,7 +67,6 @@
         /*AE0-AE7*/     "","","","","","","","";
 };
 
-// Enabled Primary flash on FMC for bring up activity
 &fmc {
 	status = "okay";
 	flash@0 {
@@ -86,10 +85,10 @@
         };
 };
 
-&spi1 {
+&spi2 {
         status = "okay";
         pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_spi1_default>;
+        pinctrl-0 = <&pinctrl_spi2_default>;
 
         flash@0 {
                 status = "okay";

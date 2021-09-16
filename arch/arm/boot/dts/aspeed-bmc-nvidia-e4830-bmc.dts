@@ -87,10 +87,10 @@
 
 };
 
-&spi1 {
+&spi2 {
         status = "okay";
         pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_spi1_default>;
+        pinctrl-0 = <&pinctrl_spi2_default>;
 
         flash@0 {
                 status = "okay";
@@ -181,16 +181,6 @@
                size = <65536>;
             };
 };
-
-/*&i2c2 {             
-    status = "okay";
-
-};                  
-
-&i2c3 {
-    status = "okay";
-};
-*/
 
 // Ethernet SW 
 &i2c10 {
