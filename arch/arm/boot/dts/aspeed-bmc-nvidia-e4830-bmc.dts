@@ -72,17 +72,17 @@
 	status = "okay";
 	flash@0 {
                 status = "okay";
-                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                compatible = "jedec,spi-nor";
                 label = "bmc";
-                spi-max-frequency = <50000000>;
+                spi-max-frequency = <100000000>;
 #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
 	flash@1 {
                 status = "okay";
-                compatible = "micron,mt25qu02g", "jedec,spi-nor";
+                compatible = "jedec,spi-nor";
                 label = "alt";
-                spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-alt-flash-layout.dtsi"
+                spi-max-frequency = <100000000>;
+#include "aspeed-bmc-nvidia-alt-flash-layout-64.dtsi"
 	};
 
 };
@@ -95,7 +95,7 @@
         flash@0 {
                 status = "okay";
                 compatible = "micron,mt25qu02g", "jedec,spi-nor";
-                label = "pnor";
+                label = "config";
                 spi-max-frequency = <100000000>;
         };
 };
@@ -110,26 +110,6 @@
 	status = "okay";
 };
 
-
-//&mdio2 {
-//        status = "okay";
-//
-//        ethphy2: ethernet-phy@0 {
-//                compatible = "ethernet-phy-ieee802.3-c22";
-//                reg = <0>;
-//        };
-//};
-
-//&mdio3 {
-//        status = "okay";
-//
-//        ethphy3: ethernet-phy@0 {
-//                compatible = "ethernet-phy-ieee802.3-c22";
-//                reg = <0>;
-//        };
-//};
-
-// mdio3 for external phy connection
 // MAC2 of SoC connected to external PHY
 &mac2 {
 	status = "okay";
@@ -155,12 +135,6 @@
 &ehci1 {
    status = "okay";
 };
-
-/*
-&udc {
-   status = "okay";
-};
-*/
 
 // USB 1.0
 &uhci {

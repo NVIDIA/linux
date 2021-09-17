@@ -170,8 +170,7 @@ EXPORT_SYMBOL_GPL(fixed_phy_add);
 #if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
 static struct fixed_phy_status fixed_phy_status = { 
 	.link = 1,
-	.speed = 100,
-//	.speed = 1000, 
+	.speed = CONFIG_FIXED_PHY_SPEED,
 	.duplex = 1,
 };
 #endif
