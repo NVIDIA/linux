@@ -98,6 +98,12 @@
 			gpios = <&gpio ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
 			linux,code = <ASPEED_GPIO(H, 3)>;
 		};
+
+		lpc-reset {
+			label = "lpc-reset";
+			gpios = <&gpio ASPEED_GPIO(AC, 7) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(AC, 7)>;
+		};
 	};
 
 	iio-hwmon {
