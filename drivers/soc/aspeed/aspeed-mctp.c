@@ -212,6 +212,7 @@ struct aspeed_mctp {
 		int packet_counter;
 	} rx_runaway_wa;
 	u8 eid;
+	bool fast_poll;
 	struct platform_device *peci_mctp;
 };
 
@@ -399,8 +400,9 @@ aspeed_mctp_find_handler(struct aspeed_mctp *priv,
 	 * For consistency do not match type for any fragmented messages.
 	 */
 	som_eom = hdr[MCTP_HDR_TAG_OFFSET] & MCTP_HDR_SOM_EOM;
-	if (som_eom != MCTP_HDR_SOM_EOM)
-		return NULL;
+	if (som_eom != MCTP_HDR_SOM_EOM) {
+	    dev_dbg(priv->dev, "%s: Allowing multi-Rx packets\n", __func__);
+    }
 
 	mctp_type = hdr[MCTP_HDR_TYPE_OFFSET];
 	if (mctp_type == MCTP_HDR_TYPE_VDM_PCI) {
@@ -615,6 +617,9 @@ static void aspeed_mctp_rx_chan_init(struct mctp_channel *rx)
 	if (ASPEED_PCIE_REV(reg) < ASPEED_PCIE_A3_REV) {
 		priv->rx_runaway_wa.enable = true;
 	}
+
+	/* Enable fast poll by default */
+	priv->fast_poll = true;
 
 	/*
 	 * Hardware does not wrap around ASPEED_MCTP_RX_BUF_SIZE
@@ -1400,52 +1405,42 @@ static void aspeed_mctp_reset_work(struct work_struct *work)
 
 static void aspeed_mctp_poll_irq(struct aspeed_mctp *priv)
 {
-    u32 status;
-    static u32 count = 0, prev_count = 0;
-    static bool boot_set = true;
+	u32 status = 0;
 
-    /* This condition should execute once during boot up */
-    if (boot_set == true) {
+	/* Wait for few microseconds */
+	usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
+					MCTP_CTRL_SETUP_TIME_MAX_US);
 
-        /* Read the status for the first time */
-        regmap_read(priv->map, ASPEED_MCTP_CTRL, &status);
+	/* Enable fast polling only when needed (for better performance) */
+	if (priv->fast_poll == true) {
+		while (1) {
+			/* Wait for few microseconds */
+			usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
+							MCTP_CTRL_SETUP_TIME_MAX_US);
 
-        /* update count and prev_count variables */
-        count = (status & 0xFF000000);
-        prev_count = status;
+			regmap_read(priv->map, ASPEED_MCTP_INT_STS, &status);
+			if (status & RX_CMD_RECEIVE_INT) {
+				/* Clear the interrupt status for Rx */
+				regmap_write(priv->map, ASPEED_MCTP_INT_STS, RX_CMD_RECEIVE_INT);
 
-        /* update the boot_set once done */
-        boot_set = false;
+				/* Trigger Rx tasklet */
+				tasklet_hi_schedule(&priv->rx.tasklet);
 
-    } else {
-        /* Read the MCTP ctrl register */
-        regmap_read(priv->map, ASPEED_MCTP_CTRL, &status);
+				/* Wait for few microseconds */
+				usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
+								MCTP_CTRL_SETUP_TIME_MAX_US);
+			}
+		}
+	} else {
+		/* Wait for few microseconds */
+		usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
+						MCTP_CTRL_SETUP_TIME_MAX_US);
 
-        /* Get the counter */
-        count = (status & 0xFF000000);
-
-        if (count != prev_count) {
-            /* update previous count */
-            prev_count = count;
-
-            regmap_read(priv->map, ASPEED_MCTP_INT_STS, &status);
-            if (status & RX_CMD_RECEIVE_INT) {
-                /* Clear the interrupt status for Rx */
-                regmap_write(priv->map, ASPEED_MCTP_INT_STS, status);
-            }
-
-            /* Wait for few microseconds */
-            usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
-                            MCTP_CTRL_SETUP_TIME_MAX_US);
-
-            /* Trigger Rx tasklet */
-            tasklet_hi_schedule(&priv->rx.tasklet);
-        }
-    }
-
-    schedule_delayed_work(&priv->pcie.test_dwork, msecs_to_jiffies(100));
+		/* Trigger Rx tasklet (slow poll) */
+		tasklet_hi_schedule(&priv->rx.tasklet);
+		schedule_delayed_work(&priv->pcie.test_dwork, msecs_to_jiffies(100));
+	}
 }
-
 
 static void aspeed_mctp_irq_work(struct work_struct *work)
 {
