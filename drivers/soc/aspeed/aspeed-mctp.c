@@ -667,6 +667,12 @@ static int aspeed_mctp_open(struct inode *inode, struct file *file)
 	struct mctp_client *client;
     struct aspeed_mctp_type_handler_ioctl handler;
 	int ret;
+	u32 ctrl_reg;
+
+	/* Update Tx buffer size to 128 bytes */
+	regmap_read(priv->map, ASPEED_MCTP_ENGINE_CTRL, &ctrl_reg);
+	ctrl_reg |= 1;
+	regmap_write(priv->map, ASPEED_MCTP_ENGINE_CTRL, (ctrl_reg));
 
 	client = aspeed_mctp_create_client(priv);
 	if (!client)
@@ -1362,8 +1368,9 @@ static void aspeed_mctp_pcie_setup(struct aspeed_mctp *priv)
 	regmap_read(priv->pcie.map, ASPEED_PCIE_MISC_STS_1, &reg);
 
 	priv->pcie.bdf = PCI_DEVID(GET_PCI_BUS_NUM(reg), GET_PCI_DEV_NUM(reg));
-	//if (priv->pcie.bdf == 0)
-	if (reg == 0x62480000)
+
+	/* PERST bit need to be set for MCTP functionality */
+	if (reg & 0x80000)
 		cancel_delayed_work(&priv->pcie.rst_dwork);
 	else
 		schedule_delayed_work(&priv->pcie.rst_dwork,
