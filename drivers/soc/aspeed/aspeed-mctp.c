@@ -124,6 +124,11 @@
 
 /* PCIe Host Controller registers */
 #define ASPEED_PCIE_MISC_STS_1	0x0c4
+#define ASPEED_PCIE_CLASS_REV	0x004
+#define ASPEED_PCIE_REV_MASK    0xff
+#define ASPEED_PCIE_REV(x)      ((x) & ASPEED_PCIE_REV_MASK)
+#define ASPEED_PCIE_A0_REV      0x05
+#define ASPEED_PCIE_A3_REV      0x06
 
 /* PCI address definitions */
 #define PCI_DEV_NUM_MASK	GENMASK(4, 0)
@@ -314,8 +319,19 @@ static void aspeed_mctp_emit_tx_cmd(struct mctp_channel *tx,
 		sizeof(packet->data.hdr) / sizeof(u32);
 	u32 offset = tx->wr_ptr * sizeof(packet->data);
     int i;
+	struct aspeed_mctp *priv = container_of(tx, typeof(*priv), tx);
 
 	aspeed_mctp_swap_pcie_vdm_hdr(&packet->data);
+
+	dev_dbg(priv->dev, "MCTP-TX: %s: HDR: 0x%08x 0x%08x 0x%08x 0x%08x\n", __func__,
+		packet->data.hdr[0],
+		packet->data.hdr[1],
+		packet->data.hdr[2],
+		packet->data.hdr[3]);
+
+	dev_dbg(priv->dev, "MCTP-TX: %s: PAYLOAD[%d]: 0x%08x\n", __func__,
+		i, packet->data.payload[i]);
+
 	memcpy((u8 *)tx->data.vaddr + offset, &packet->data,
 	       sizeof(packet->data));
 
@@ -534,6 +550,14 @@ static void aspeed_mctp_rx_tasklet(unsigned long data)
 		rx_packet = aspeed_mctp_packet_alloc(GFP_ATOMIC);
 		if (rx_packet) {
 			memcpy(&rx_packet->data, hdr, sizeof(rx_packet->data));
+		dev_dbg(priv->dev, "MCTP-RX: %s: HDR: 0x%08x 0x%08x 0x%08x 0x%08x\n", __func__,
+				rx_packet->data.hdr[0],
+				rx_packet->data.hdr[1],
+				rx_packet->data.hdr[2],
+				rx_packet->data.hdr[3]);
+	    dev_dbg(priv->dev, "MCTP-RX: %s: PAYLOAD[0]: 0x%08x\n", __func__,
+		        rx_packet->data.payload[0]);
+
 			aspeed_mctp_swap_pcie_vdm_hdr(&rx_packet->data);
 
 			aspeed_mctp_dispatch_packet(priv, rx_packet);
@@ -556,9 +580,6 @@ static void aspeed_mctp_rx_tasklet(unsigned long data)
 	hw_read_ptr &= RX_BUF_RD_PTR_MASK;
 	regmap_write(priv->map, ASPEED_MCTP_RX_BUF_WR_PTR, (hw_read_ptr));
 
-	dev_dbg(priv->dev, "RX hw ptr %02d, sw ptr %2d\n",
-		hw_read_ptr, rx->wr_ptr);
-
 	/* Kick RX if it was stopped due to ring full condition */
 	if (rx->stopped) {
 		regmap_update_bits(priv->map, ASPEED_MCTP_CTRL, RX_CMD_READY,
@@ -574,6 +595,7 @@ static void aspeed_mctp_rx_chan_init(struct mctp_channel *rx)
 	u32 data_size = sizeof(struct mctp_pcie_packet_data);
 	u32 hw_rx_count = RX_PACKET_COUNT;
 	int i;
+	u32 reg;
 
 	for (i = 0; i < RX_PACKET_COUNT; i++) {
 		*rx_cmd = RX_DATA_ADDR(rx->data.dma_handle + data_size * i);
@@ -584,11 +606,15 @@ static void aspeed_mctp_rx_chan_init(struct mctp_channel *rx)
 	rx->buffer_count = RX_PACKET_COUNT;
 
 	/*
-	 * TODO: Once read pointer runaway bug is fixed in some future AST2x00
-	 * stepping then add chip revision detection and turn on this
-	 * workaround only when needed
+	 * The read pointer runaway bug is fixed in AST2600 A3 version
+	 * so this workaround is needed only for older versions
 	 */
-	priv->rx_runaway_wa.enable = true;
+	regmap_read(priv->pcie.map, ASPEED_PCIE_CLASS_REV, &reg);
+	dev_dbg(priv->dev, "PCIe Class code revision: 0x%x\n", reg);
+
+	if (ASPEED_PCIE_REV(reg) < ASPEED_PCIE_A3_REV) {
+		priv->rx_runaway_wa.enable = true;
+	}
 
 	/*
 	 * Hardware does not wrap around ASPEED_MCTP_RX_BUF_SIZE
