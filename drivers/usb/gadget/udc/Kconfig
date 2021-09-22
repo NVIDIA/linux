@@ -441,7 +441,6 @@ config USB_GADGET_XILINX
 	  dynamically linked module called "udc-xilinx" and force all
 	  gadget drivers to also be dynamically linked.
 
-
 config USB_MAX3420_UDC
 	tristate "MAX3420 (USB-over-SPI) support"
 	depends on SPI

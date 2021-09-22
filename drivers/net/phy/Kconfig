@@ -168,26 +168,6 @@ config DAVICOM_PHY
 	help
 	  Currently supports dm9161e and dm9131
 
-config DP83822_PHY
-	tristate "Texas Instruments DP83822 PHY"
-	help
-	  Supports the DP83822 PHY.
-
-config DP83TC811_PHY
-	tristate "Texas Instruments DP83TC822 PHY"
-	help
-	  Supports the DP83TC822 PHY.
-
-config DP83848_PHY
-	tristate "Texas Instruments DP83848 PHY"
-	help
-	  Supports the DP83848 PHY.
-
-config DP83867_PHY
-	tristate "Texas Instruments DP83867 Gigabit PHY"
-	help
-	  Currently supports the DP83867 PHY.
-
 config FIXED_PHY
 	tristate "MDIO Bus/PHY emulation with fixed speed/link PHYs"
 	depends on PHYLIB
