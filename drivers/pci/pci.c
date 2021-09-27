@@ -5040,7 +5040,9 @@ static void pci_dev_restore(struct pci_dev *dev)
 int __pci_reset_function_locked(struct pci_dev *dev)
 {
 	int rc;
-
+	rc = 0;
+	return rc;
+#if 0
 	might_sleep();
 
 	/*
@@ -5069,6 +5071,7 @@ int __pci_reset_function_locked(struct pci_dev *dev)
 	if (rc != -ENOTTY)
 		return rc;
 	return pci_parent_bus_reset(dev, 0);
+#endif
 }
 EXPORT_SYMBOL_GPL(__pci_reset_function_locked);
 

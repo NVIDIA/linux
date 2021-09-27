@@ -49,7 +49,7 @@ module_param(disable_vga, bool, S_IRUGO);
 MODULE_PARM_DESC(disable_vga, "Disable VGA resource access through vfio-pci");
 #endif
 
-static bool disable_idle_d3;
+static bool disable_idle_d3 = 1;
 module_param(disable_idle_d3, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(disable_idle_d3,
 		 "Disable using the PCI D3 low power state for idle, unused devices");
@@ -280,6 +280,8 @@ static void vfio_pci_probe_power_state(struct vfio_pci_device *vdev)
  */
 int vfio_pci_set_power_state(struct vfio_pci_device *vdev, pci_power_t state)
 {
+	return 0;
+#if 0
 	struct pci_dev *pdev = vdev->pdev;
 	bool needs_restore = false, needs_save = false;
 	int ret;
@@ -307,6 +309,7 @@ int vfio_pci_set_power_state(struct vfio_pci_device *vdev, pci_power_t state)
 	}
 
 	return ret;
+#endif
 }
 
 static int vfio_pci_enable(struct vfio_pci_device *vdev)
