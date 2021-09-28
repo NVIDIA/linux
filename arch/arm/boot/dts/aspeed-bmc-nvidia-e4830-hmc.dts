@@ -189,3 +189,7 @@
 &h2x {
         status = "okay";
 };
+
+&mctp {
+    status = "okay";
+};
