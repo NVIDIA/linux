@@ -36,7 +36,7 @@
         /*H0-H7*/       "","","","","","","","",
         /*I0-I7*/       "","","","","","","","",
         /*J0-J7*/       "","","","bmc_ready","","","","",
-        /*K0-K7*/       "hgx_fpga_ready","","midp_pwr_brake","pex_rst_2","pex_rst_1","pex_rst_0","pex_strap1","pex_strap0",
+        /*K0-K7*/       "hgx_fpga_ready","","midp_pwr_brake","","","","","",
         /*L0-L7*/       "fpga_erot_fatal_err","","hmc_prsnt","hmc_ready","","","","",
         /*M0-M7*/       "","","","","","","","",
         /*N0-N7*/       "fpga_erot_rst","midp_erot_base_cpld_rst","midp_wp_hw_ctrl","","","","","",
