@@ -118,11 +118,11 @@
 	/*C0-C7*/       "","","","","","","","",
 	/*D0-D7*/       "","","","","","","","",
 	/*E0-E7*/       "","","","","","","","",
-	/*F0-F7*/       "bmc_pwr_btn_n","latch_gpu1_thermtrip_cpld_n","","bmc_cpld_boot_n","sys_pwrok","","","",
+	/*F0-F7*/       "","latch_gpu1_thermtrip_cpld_n","","bmc_cpld_boot_n","sys_pwrok","","","",
 	/*G0-G7*/       "","","","","","","","",
 	/*H0-H7*/       "bmc_bios_update_n","","","","","","","",
-	/*I0-I7*/       "cpu1_present_n","cpu2_bmc_present_n","","","bmc_bios_spi_cs0_n","","","",
-	/*J0-J7*/       "","","bios_spi_cs_sel","bmc_ready","","","","",
+	/*I0-I7*/       "","","bios_spi_cs_sel","bmc_ready","","","","",
+	/*J0-J7*/       "","","","","","","","",
 	/*K0-K7*/       "","","","","","","","",
 	/*L0-L7*/       "","","","","","","","",
 	/*M0-M7*/       "","","","","","","","",
@@ -134,7 +134,7 @@
 	/*S0-S7*/       "","","","","","","","",
 	/*T0-T7*/       "","","","","","","","",
 	/*U0-U7*/       "","","","","","","","",
-	/*V0-V7*/       "","","","","","","","",
+	/*V0-V7*/       "bmc_pwr_btn_n","","","","","","","",
 	/*W0-W7*/       "","","","","","","","",
 	/*X0-X7*/       "","","","","","","","",
 	/*Y0-Y7*/       "","","","","","","","",
@@ -246,11 +246,21 @@
 	aspeed,lpc-io-reg = <0xca2>;
 };
 
+&mdio2 {
+        status = "okay";
+        ethphy0: ethernet-phy@0 {
+            compatible = "ethernet-phy-ieee802.3-c22";    
+            reg = <0>;
+       };
+};
+
 &mac2 {
 	status = "okay";
-
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii3_default &pinctrl_mdio3_default>;
+        phy-mode = "rgmii";
+        max-speed = <1000>;
+        phy-handle = <&ethphy0>;
+	pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
 
 /*
@@ -371,6 +381,14 @@
                 size = <65536>;
             };
         };
+    };
+    i2cmux@71 {
+        compatible = "nxp,pca9544";
+        reg = <0x71>;
+    };
+    i2cmux@73 {
+        compatible = "nxp,pca9544";
+        reg = <0x73>;
     };
 };
 
@@ -725,3 +743,19 @@
 &i2c13 {
 	status = "okay";
 };
+
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
+};
+
