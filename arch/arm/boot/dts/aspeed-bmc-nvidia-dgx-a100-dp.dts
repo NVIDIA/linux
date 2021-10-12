@@ -220,6 +220,20 @@
 	snoop-ports = <0x80>;
 };
 
+&lpc_pcc {
+	rec-mode = <0x1>;
+	port-addr = <0x80>;
+	port-addr-hbits-select = <0x1>;
+	port-addr-xbits = <0x3>;
+	pattern-a-en;
+	pattern-a = <0x41424344>;
+	pattern-a-len = <0x4>;
+	pattern-a-write = <0x1>;
+	pattern-a-port = <0x80>;
+	status = "okay";
+	dma-mode = <0x1>;
+};
+
 &lpc_ctrl {
 	status = "okay";
 };
@@ -664,16 +678,6 @@
     };
 };
 
-&i2c8 {
-    status = "okay";
-
-    // Midplane thermal
-    lm75@4C {
-        compatible = "ti,tmp75";
-        reg = <0x4C>;
-    };
-};
-
 &i2c9 {             
     status = "okay";
 
@@ -722,7 +726,14 @@
             reg = <5>;
         };
         bus9_mux245: i2c@6 {
-            reg = <6>;
+             reg = <6>;
+            // SW Board  FRU
+            eeprom@57 {
+                compatible = "atmel,24c512";
+                reg = <0x52>;
+                pagesize = <128>;
+                size = <65536>;
+            };
         };
         bus9_mux246: i2c@7 {
             reg = <7>;
@@ -734,15 +745,40 @@
 &i2c11 {
 	status = "okay";
 };
+
 /* GPU 2 */
 &i2c12 {
-	status = "okay";
+        status = "okay";
+
+    // GPU Baseboard FRU
+    eeprom@53 {
+        compatible = "atmel,24c512";
+        reg = <0x53>;
+        pagesize = <128>;
+        size = <65536>;
+    };
 };
+
 
 /* CEC */
 &i2c13 {
 	status = "okay";
 };
+
+// USB 2.0 to HMC & Host BMC connectivity
+&ehci0 {
+   status = "okay";
+};
+
+&ehci1 {
+   status = "okay";
+};
+
+// USB 1.0
+&uhci {
+   status = "okay";
+};
+
 
 // PCIe RC
 &pcie {

@@ -31,7 +31,6 @@ config ASPEED_LPC_PCC
           allowing the BMC to snoop data bytes written by the
           the host to an arbitrary LPC I/O port.
 
-
 config ASPEED_MCTP
 	tristate "Aspeed ast2600 MCTP Controller support"
 	depends on REGMAP && MFD_SYSCON
