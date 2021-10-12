@@ -687,6 +687,13 @@
         };
         bus9_mux245: i2c@6 {
             reg = <6>;
+            // SW FRU
+            eeprom@57 {
+                compatible = "atmel,24c512";
+                reg = <0x57>;
+                pagesize = <128>;
+                size = <65536>;
+            };
         };
         bus9_mux246: i2c@7 {
             reg = <7>;
@@ -700,6 +707,14 @@
 
 &i2c11 {
 	status = "okay";
+
+    // GPU Baseboard FRU
+    eeprom@53 {
+        compatible = "atmel,24c512";
+        reg = <0x53>;
+        pagesize = <128>;
+        size = <65536>;
+    };
 };
 
 
