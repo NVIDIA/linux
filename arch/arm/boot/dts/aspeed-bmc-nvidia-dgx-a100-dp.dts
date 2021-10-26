@@ -87,7 +87,7 @@
 	leds {
 		compatible = "gpio-leds";
 		uid_led {
-			gpios = <&gpio0 ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 ASPEED_GPIO(S, 0) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -96,8 +96,8 @@
 
 		id-button {
 			label = "id-button";
-			gpios = <&gpio0 ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
-			linux,code = <ASPEED_GPIO(H, 3)>;
+			gpios = <&gpio0 ASPEED_GPIO(E, 3) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(E, 3)>;
 		};
 	};
 
