@@ -315,6 +315,12 @@ config SPI_FALCON
 	  has only been tested with m25p80 type chips. The hardware has no
 	  support for other types of SPI peripherals.
 
+config SPI_FMC
+	tristate "Aspeed pure SPI Controller"
+	depends on ARCH_ASPEED
+	help
+	  This is a driver for the AST FMC SPI Controller
+
 config SPI_FSI
 	tristate "FSI SPI driver"
 	depends on FSI
