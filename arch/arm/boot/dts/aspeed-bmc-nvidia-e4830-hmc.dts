@@ -73,16 +73,9 @@
                 status = "okay";
                 compatible = "jedec,spi-nor";
                 label = "bmc";
-                spi-max-frequency = <100000000>;
+                spi-max-frequency = <50000000>;
 #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
 	};
-        flash@1 {
-                status = "okay";
-                compatible = "jedec,spi-nor";
-                label = "alt";
-                spi-max-frequency = <100000000>;
-#include "aspeed-bmc-nvidia-alt-flash-layout-64.dtsi"
-        };
 };
 
 &spi2 {
@@ -94,7 +87,22 @@
                 status = "okay";
                 compatible = "micron,mt25qu02g", "jedec,spi-nor";
                 label = "config";
-                spi-max-frequency = <100000000>;
+                spi-max-frequency = <50000000>;
+            partitions {
+                compatible = "fixed-partitions";
+                #address-cells = <1>;
+                #size-cells = <1>;
+
+				u-boot-env@0 {
+					reg = <0x0 0x20000>;
+					label = "u-boot-env";
+				};
+
+                rwfs@20000 {
+                    reg = <0x20000 0xfe0000>;
+                    label = "rwfs";
+                };
+            };
         };
 };
 
