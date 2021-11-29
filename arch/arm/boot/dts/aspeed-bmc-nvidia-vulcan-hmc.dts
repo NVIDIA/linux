@@ -132,21 +132,6 @@
     status = "okay";
 };
 
-&i2c0 {             
-    status = "okay";
-};                  
-
-
-&i2c1 {
-    status = "okay";
-        eeprom@53 {
-        compatible = "atmel,24c512";
-               reg = <0x53>;
-               pagesize = <128>;
-               size = <65536>;
-            };
-};
-
 &i2c2 {             
     status = "okay";
 
