@@ -830,3 +830,6 @@
         status = "okay";
 };
 
+&mctp {
+    status = "okay";
+};
