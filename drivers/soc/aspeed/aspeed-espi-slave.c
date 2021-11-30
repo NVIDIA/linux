@@ -294,24 +294,17 @@ static ssize_t aspeed_espi_pltrstn_read(struct file *filp, char __user *buf,
 {
 	struct aspeed_espi *priv = to_aspeed_espi(filp);
 	DECLARE_WAITQUEUE(wait, current);
-	unsigned long flags;
-	char old_sample;
+	char data, old_sample;
 	int ret = 0;
 
-	spin_lock_irqsave(&priv->pltrstn_lock, flags);
+	spin_lock_irq(&priv->pltrstn_lock);
 
 	if (filp->f_flags & O_NONBLOCK) {
 		if (!priv->pltrstn_in_avail) {
 			ret = -EAGAIN;
 			goto out_unlock;
 		}
-		char data = priv->pltrstn;
-		ret = put_user(data, (unsigned long __user *)buf);
-		if (!ret){
-			ret = sizeof(data);
-		} else{
-			ret = -EAGAIN;
-		}
+		data = priv->pltrstn;
 		priv->pltrstn_in_avail = false;
 	} else {
 		add_wait_queue(&priv->pltrstn_waitq, &wait);
@@ -320,22 +313,18 @@ static ssize_t aspeed_espi_pltrstn_read(struct file *filp, char __user *buf,
 		old_sample = priv->pltrstn;
 
 		do {
-			char new_sample = priv->pltrstn;
-
-			if (old_sample != new_sample) {
-				ret = put_user(new_sample,
-						 (unsigned long __user *)buf);
-				if (!ret)
-					ret = sizeof(new_sample);
-			} else if (signal_pending(current)) {
-				ret = -ERESTARTSYS;
+			if (old_sample != priv->pltrstn) {
+				data = priv->pltrstn;
+				priv->pltrstn_in_avail = false;
+				break;
 			}
 
-			if (!ret) {
-				spin_unlock_irqrestore(&priv->pltrstn_lock,
-							 flags);
+			if (signal_pending(current)) {
+				ret = -ERESTARTSYS;
+			} else {
+				spin_unlock_irq(&priv->pltrstn_lock);
 				schedule();
-				spin_lock_irqsave(&priv->pltrstn_lock, flags);
+				spin_lock_irq(&priv->pltrstn_lock);
 			}
 		} while (!ret);
 
@@ -343,7 +332,14 @@ static ssize_t aspeed_espi_pltrstn_read(struct file *filp, char __user *buf,
 		set_current_state(TASK_RUNNING);
 	}
 out_unlock:
-	spin_unlock_irqrestore(&priv->pltrstn_lock, flags);
+	spin_unlock_irq(&priv->pltrstn_lock);
+
+	if (ret)
+		return ret;
+
+	ret = put_user(data, buf);
+	if (!ret)
+		ret = sizeof(data);
 
 	return ret;
 }
