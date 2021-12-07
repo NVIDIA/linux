@@ -537,7 +537,8 @@ dma-mode = <0x1>;
 &i2c6 {             
     status = "okay";
 
-    i2c-switch@73 {
+    // U13 Mux in front of DIMM slots
+    i2cmux@73 {
 	compatible = "nxp,pca9545";
 	#address-cells = <1>;
 	#size-cells = <0>;
