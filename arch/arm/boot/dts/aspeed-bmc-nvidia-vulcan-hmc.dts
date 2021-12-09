@@ -68,35 +68,50 @@
 };
 
 &fmc {
-	status = "okay";
-	flash@0 {
-                status = "okay";
-                compatible = "jedec,spi-nor";
-                label = "bmc";
-                spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
-	};
-/*        flash@1 {
-                status = "okay";
-                compatible = "jedec,spi-nor";
-                label = "alt";
-                spi-max-frequency = <100000000>;
-#include "aspeed-bmc-nvidia-alt-flash-layout-64.dtsi"
-        };
-*/
+   status = "okay";
+   flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-vulcan-flash-layout-64.dtsi"
+   };
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
 };
 
 &spi2 {
-        status = "okay";
-        pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_spi2_default>;
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
 
-        flash@0 {
-                status = "okay";
-                compatible = "micron,mt25qu02g", "jedec,spi-nor";
-                label = "config";
-                spi-max-frequency = <50000000>;
+    flash@0 {
+        status = "okay";
+        compatible = "micron,mt25qu02g", "jedec,spi-nor";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;
+                label = "u-boot-env";
+            };
+
+            rwfs@20000 {
+                reg = <0x40000 0x1000000>;
+                label = "rwfs";
+            };
         };
+   };
 };
 
 
