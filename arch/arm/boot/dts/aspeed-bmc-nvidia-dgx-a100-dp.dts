@@ -48,10 +48,6 @@
 		i2c244 = &bus9_mux244;
 		i2c245 = &bus9_mux245;
 		i2c246 = &bus9_mux246;
-		i2c247 = &bus6_mux247;
-		i2c248 = &bus6_mux248;
-		i2c249 = &bus6_mux249;
-		i2c250 = &bus6_mux250;
 	};
 
 	chosen {
@@ -91,7 +87,7 @@
 	leds {
 		compatible = "gpio-leds";
 		uid_led {
-			gpios = <&gpio0 ASPEED_GPIO(S, 0) GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -100,8 +96,8 @@
 
 		id-button {
 			label = "id-button";
-			gpios = <&gpio0 ASPEED_GPIO(E, 3) GPIO_ACTIVE_HIGH>;
-			linux,code = <ASPEED_GPIO(E, 3)>;
+			gpios = <&gpio0 ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(H, 3)>;
 		};
 	};
 
@@ -279,6 +275,12 @@
         max-speed = <1000>;
         phy-handle = <&ethphy0>;
 	pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+&peci0{
+
+        status = "okay";
+
 };
 
 /*
@@ -571,38 +573,6 @@
 
 &i2c6 {             
     status = "okay";
-
-    // U13 Mux in front of DIMM slots
-    i2cmux@73 {
-	compatible = "nxp,pca9545";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	reg = <0x73>;
-
-	bus6_mux247: i2c@0 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0>;
-	};
-
-	bus6_mux248: i2c@1 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <1>;
-	};
-
-	bus6_mux249: i2c@2 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <2>;
-	};
-
-	bus6_mux250: i2c@3 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <3>;
-	};
-     };
 };                  
 
 &i2c7 {
@@ -830,6 +800,3 @@
         status = "okay";
 };
 
-&mctp {
-    status = "okay";
-};
