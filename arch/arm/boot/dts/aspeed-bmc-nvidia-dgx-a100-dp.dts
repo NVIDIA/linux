@@ -159,14 +159,16 @@
 	flash@0 {
         status = "okay";
         label = "bmc";
-        #include "aspeed-bmc-nvidia-flash-layout-64.dtsi"
-	};
-    /*
-    flash@1 {
+	#include "aspeed-bmc-nvidia-dgx-a100-flash-layout-64.dtsi"
+    	};
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
         status = "okay";
-        label = "alt-bmc";
-	};
-    */
+    };
 };
 
 /* BIOS Flash */
@@ -183,14 +185,31 @@
 
 /* Config Flash */
 &spi2 {
-        status = "okay";
-        pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_spi2_default>;
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
 
-        flash@0 {
-                status = "okay";
-                label = "config";
+    flash@0 {
+        status = "okay";
+        compatible = "mx66l51235l", "jedec,spi-nor";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;
+                label = "u-boot-env";
+            };
+
+            rwfs@20000 {
+                reg = <0x40000 0x1000000>;
+                label = "rwfs";
+            };
         };
+    };
 };
 
 &uart1 {
@@ -771,10 +790,6 @@
 	status = "okay";
 };
 
-&ehci0 {
-   status = "okay";
-};
-
 &ehci1 {
    status = "okay";
 };
@@ -800,3 +815,6 @@
         status = "okay";
 };
 
+&mctp {
+	status = "okay";
+};
