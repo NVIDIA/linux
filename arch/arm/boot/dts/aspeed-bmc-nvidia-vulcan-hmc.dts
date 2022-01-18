@@ -93,7 +93,6 @@
 
     flash@0 {
         status = "okay";
-        compatible = "micron,mt25qu02g", "jedec,spi-nor";
         label = "config";
         spi-max-frequency = <50000000>;
         partitions {
