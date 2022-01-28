@@ -317,12 +317,13 @@
 	status = "okay";
 	memory-region = <&gfx_memory>;
 };
+*/
 
 &video {
 	status = "okay";
 	memory-region = <&video_engine_memory>;
 };
-*/
+
 
 &adc0 {
     status = "okay";
