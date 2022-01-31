@@ -213,6 +213,7 @@ struct aspeed_mctp {
 	} rx_runaway_wa;
 	u8 eid;
 	bool fast_poll;
+	bool client_started;
 	struct platform_device *peci_mctp;
 };
 
@@ -618,9 +619,6 @@ static void aspeed_mctp_rx_chan_init(struct mctp_channel *rx)
 		priv->rx_runaway_wa.enable = true;
 	}
 
-	/* Enable fast poll by default */
-	priv->fast_poll = true;
-
 	/*
 	 * Hardware does not wrap around ASPEED_MCTP_RX_BUF_SIZE
 	 * correctly - we have to set number of buffers to n/4 -1
@@ -692,6 +690,13 @@ static int aspeed_mctp_open(struct inode *inode, struct file *file)
 	if (ret) {
 		aspeed_mctp_delete_client(client);
 	}
+
+	/* Set the client_started as true */
+	printk("%s: Setting up client_started\n", __func__);
+	priv->client_started = true;
+
+	/* Enable fast poll by default */
+	priv->fast_poll = true;
 
 	return 0;
 }
@@ -1366,6 +1371,7 @@ static void aspeed_mctp_pcie_setup(struct aspeed_mctp *priv)
 	u32 reg;
 
 	regmap_read(priv->pcie.map, ASPEED_PCIE_MISC_STS_1, &reg);
+	dev_dbg(priv->dev, "%s: PCIe BDF status: 0x%x\n", __func__, reg);
 
 	priv->pcie.bdf = PCI_DEVID(GET_PCI_BUS_NUM(reg), GET_PCI_DEV_NUM(reg));
 
@@ -1418,12 +1424,24 @@ static void aspeed_mctp_poll_irq(struct aspeed_mctp *priv)
 	usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
 					MCTP_CTRL_SETUP_TIME_MAX_US);
 
+	/* Make sure Client is started before receiving anything */
+	if (priv->client_started == false) {
+		schedule_delayed_work(&priv->pcie.test_dwork, msecs_to_jiffies(1000));
+		return;
+	}
+
 	/* Enable fast polling only when needed (for better performance) */
 	if (priv->fast_poll == true) {
 		while (1) {
 			/* Wait for few microseconds */
 			usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
 							MCTP_CTRL_SETUP_TIME_MAX_US);
+
+			/* Exit condition: Return if fast poll is diabled */
+			if (priv->fast_poll == false) {
+				schedule_delayed_work(&priv->pcie.test_dwork, msecs_to_jiffies(100));
+				return;
+			}
 
 			regmap_read(priv->map, ASPEED_MCTP_INT_STS, &status);
 			if (status & RX_CMD_RECEIVE_INT) {
@@ -1447,6 +1465,8 @@ static void aspeed_mctp_poll_irq(struct aspeed_mctp *priv)
 		tasklet_hi_schedule(&priv->rx.tasklet);
 		schedule_delayed_work(&priv->pcie.test_dwork, msecs_to_jiffies(100));
 	}
+
+    return;
 }
 
 static void aspeed_mctp_irq_work(struct work_struct *work)
@@ -1517,7 +1537,6 @@ static irqreturn_t aspeed_mctp_pcie_rst_irq_handler(int irq, void *arg)
 	priv->eid = 0;
 
 	schedule_delayed_work(&priv->pcie.rst_dwork, 0);
-	schedule_delayed_work(&priv->pcie.test_dwork, 0);
 
 	return IRQ_HANDLED;
 }
@@ -1532,25 +1551,34 @@ static void aspeed_mctp_drv_init(struct aspeed_mctp *priv)
 	mutex_init(&priv->endpoints_lock);
 
 	INIT_DELAYED_WORK(&priv->pcie.rst_dwork, aspeed_mctp_reset_work);
-	INIT_DELAYED_WORK(&priv->pcie.test_dwork, aspeed_mctp_irq_work);
-	schedule_delayed_work(&priv->pcie.test_dwork, 0);
 
 	tasklet_init(&priv->tx.tasklet, aspeed_mctp_tx_tasklet,
 		     (unsigned long)&priv->tx);
 	tasklet_init(&priv->rx.tasklet, aspeed_mctp_rx_tasklet,
 		     (unsigned long)&priv->rx);
+
+	/* Set default false */
+	priv->client_started = false;
+
+	INIT_DELAYED_WORK(&priv->pcie.test_dwork, aspeed_mctp_irq_work);
+	schedule_delayed_work(&priv->pcie.test_dwork, 0);
 }
 
 static void aspeed_mctp_drv_fini(struct aspeed_mctp *priv)
 {
+	cancel_delayed_work(&priv->pcie.test_dwork);
+	dev_info(priv->dev,
+		 "Cancelled Rx poll work successfully..\n");
+
+	cancel_delayed_work(&priv->pcie.rst_dwork);
+	dev_info(priv->dev,
+		 "Cancelled PCIe Reset work successfully..\n");
+
 	aspeed_mctp_eid_info_list_remove(&priv->endpoints);
 	tasklet_disable(&priv->tx.tasklet);
 	tasklet_kill(&priv->tx.tasklet);
 	tasklet_disable(&priv->rx.tasklet);
 	tasklet_kill(&priv->rx.tasklet);
-
-	cancel_delayed_work_sync(&priv->pcie.rst_dwork);
-	cancel_delayed_work_sync(&priv->pcie.test_dwork);
 }
 
 static void aspeed_mctp_dev_hw_reset(struct aspeed_mctp *priv)
@@ -1694,6 +1722,21 @@ static int aspeed_mctp_irq_init(struct aspeed_mctp *priv)
 	return 0;
 }
 
+static int aspeed_mctp_irq_remove(struct aspeed_mctp *priv)
+{
+	struct platform_device *pdev = to_platform_device(priv->dev);
+	int irq, ret;
+
+	irq = platform_get_irq(pdev, 0);
+	if (!irq)
+		return -ENODEV;
+
+    devm_free_irq(priv->dev, irq, priv);
+
+	return 0;
+}
+
+
 static void aspeed_mctp_hw_reset(struct aspeed_mctp *priv)
 {
 	u32 reg;
@@ -1790,11 +1833,21 @@ static int aspeed_mctp_remove(struct platform_device *pdev)
 {
 	struct aspeed_mctp *priv = platform_get_drvdata(pdev);
 
+	/* Disable fast poll */
+	priv->client_started = false;
+	priv->fast_poll = false;
+
+	/* Wait for few microseconds */
+	usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US,
+					MCTP_CTRL_SETUP_TIME_MAX_US);
+
 	platform_device_unregister(priv->peci_mctp);
 
 	misc_deregister(&aspeed_mctp_miscdev);
 
 	aspeed_mctp_irq_disable(priv);
+
+    aspeed_mctp_irq_remove(priv);
 
 	aspeed_mctp_dma_fini(priv);
 
