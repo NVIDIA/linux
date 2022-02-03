@@ -153,6 +153,17 @@
 
 &i2c3 {
     status = "okay";
+    // GPU Baseboard FRU
+    eeprom@53 {
+    compatible = "atmel,24c256";
+    reg = <0x53>;
+    };
+
+    // HMC FRU
+    eeprom@4E {
+    compatible = "atmel,24c256";
+    reg = <0x4E>;
+    };
 };
 
 // Ethernet SW 
