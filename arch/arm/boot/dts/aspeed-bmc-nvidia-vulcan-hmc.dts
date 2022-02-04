@@ -101,13 +101,18 @@
             #size-cells = <1>;
 
             u-boot-env@0 {
-                reg = <0x0 0x40000>;
+                reg = <0x0 0x40000>;         // 0.25 MB
                 label = "u-boot-env";
             };
 
-            rwfs@20000 {
-                reg = <0x40000 0x1000000>;
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;   // 16 MB
                 label = "rwfs";
+            };
+
+            log@3800000 {
+                reg = <0x3800000 0xc800000>; // 200 MB
+                label = "log";
             };
         };
    };
@@ -146,10 +151,10 @@
     status = "okay";
 };
 
-&i2c2 {             
+&i2c2 {
     status = "okay";
 
-};                  
+};
 
 &i2c3 {
     status = "okay";
@@ -166,7 +171,7 @@
     };
 };
 
-// Ethernet SW 
+// Ethernet SW
 &i2c10 {
     status = "okay";
 };
