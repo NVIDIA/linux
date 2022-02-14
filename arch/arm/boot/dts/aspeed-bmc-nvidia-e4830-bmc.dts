@@ -94,7 +94,6 @@
 
     flash@0 {
         status = "okay";
-        compatible = "micron,mt25qu02g", "jedec,spi-nor";
         label = "config";
         spi-max-frequency = <50000000>;
         partitions {
@@ -107,7 +106,7 @@
                 label = "u-boot-env";
             };
 
-            rwfs@20000 {
+            rwfs@40000 {
                 reg = <0x40000 0x1000000>;
                 label = "rwfs";
             };
