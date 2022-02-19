@@ -10,6 +10,7 @@
 
 #include <linux/i3c/master.h>
 #include <linux/io.h>
+#include <linux/i3c/target.h>
 
 void i3c_bus_normaluse_lock(struct i3c_bus *bus);
 void i3c_bus_normaluse_unlock(struct i3c_bus *bus);
@@ -68,4 +69,5 @@ static inline void i3c_readl_fifo(const void __iomem *addr, void *buf,
 	}
 }
 
+int i3c_dev_generate_ibi_locked(struct i3c_dev_desc *dev, const u8 *data, int len);
 #endif /* I3C_INTERNAL_H */
