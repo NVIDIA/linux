@@ -853,7 +853,7 @@ static void aspeed_smc_chip_set_4b(struct aspeed_smc_chip *chip)
 	u32 reg;
 
 	reg = readl(controller->regs + CE_CONTROL_REG);
-	reg |= 1 << chip->cs;
+	reg |= 0x11 << chip->cs;
 	writel(reg, controller->regs + CE_CONTROL_REG);
 }
 
