@@ -20,6 +20,7 @@
 
 #include "aspeed-espi-ctrl.h"
 #include "aspeed-espi-oob.h"
+#include "aspeed-espi-vw.h"
 
 struct aspeed_espi {
 	struct regmap		*map;
@@ -166,6 +167,7 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 		aspeed_espi_boot_ack(priv);
 		sts_handled |= ASPEED_ESPI_HW_RESET;
 		aspeed_espi_oob_enable(priv->espi_ctrl->oob);
+		aspeed_espi_vw_enable(priv->espi_ctrl->vw);
 	}
 
 	regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts);
@@ -342,6 +344,11 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to allocate espi out-of-band channel\n");
 		return PTR_ERR(espi_ctrl->oob);
 	}
+	espi_ctrl->vw = aspeed_espi_vw_init(&pdev->dev, espi_ctrl);
+	if (IS_ERR(espi_ctrl->vw)) {
+		dev_err(&pdev->dev, "Failed to allocate espi virtual wire channel\n");
+		return PTR_ERR(espi_ctrl->vw);
+	}
 
 	spin_lock_init(&priv->pltrstn_lock);
 	init_waitqueue_head(&priv->pltrstn_waitq);
@@ -425,6 +432,7 @@ static int aspeed_espi_remove(struct platform_device *pdev)
 	struct aspeed_espi *priv = dev_get_drvdata(&pdev->dev);
 
 	aspeed_espi_oob_free(priv->dev, priv->espi_ctrl->oob);
+	aspeed_espi_vw_fini(priv->dev, priv->espi_ctrl->vw);
 	misc_deregister(&priv->pltrstn_miscdev);
 	clk_disable_unprepare(priv->clk);
 	return 0;
