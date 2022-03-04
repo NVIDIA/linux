@@ -26,3 +26,4 @@ obj-y					+= espi/
 obj-y					+= aspeed-2600-ara.o
 obj-$(CONFIG_ASPEED_ESPI_SLAVE)		+= aspeed-espi.o
 aspeed-espi-y := aspeed-espi-slave.o aspeed-espi-oob.o
+aspeed-espi-y := aspeed-espi-slave.o aspeed-espi-oob.o aspeed-espi-vw.o
