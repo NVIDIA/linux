@@ -7,6 +7,31 @@
 
 #include <linux/bits.h>
 
+enum aspeed_espi_version {
+	ASPEED_ESPI_AST2500,
+	ASPEED_ESPI_AST2600,
+};
+
+struct aspeed_espi_model {
+	u32 version;
+};
+
+struct aspeed_espi_ctrl {
+	struct device *dev;
+
+	struct regmap *map;
+	struct clk *clk;
+
+	int irq;
+
+	struct aspeed_espi_perif *perif;
+	struct aspeed_espi_vw *vw;
+	struct aspeed_espi_oob *oob;
+	struct aspeed_espi_flash *flash;
+
+	const struct aspeed_espi_model *model;
+};
+
 /* eSPI register offset */
 #define ASPEED_ESPI_CTRL		0x000
 #define   ASPEED_ESPI_CTRL_SW_RESET			GENMASK(31, 24)

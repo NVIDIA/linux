@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2015-2019, Intel Corporation.
 
+#include <linux/aspeed-espi-ioc.h>
 #include <linux/clk.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
@@ -8,6 +9,7 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/regmap.h>
@@ -17,6 +19,7 @@
 #include <linux/uaccess.h>
 
 #include "aspeed-espi-ctrl.h"
+#include "aspeed-espi-oob.h"
 
 struct aspeed_espi {
 	struct regmap		*map;
@@ -32,6 +35,8 @@ struct aspeed_espi {
 	wait_queue_head_t	pltrstn_waitq;
 	char			pltrstn;
 	bool			pltrstn_in_avail;
+	struct aspeed_espi_ctrl *espi_ctrl;
+
 };
 
 static void aspeed_espi_sys_event(struct aspeed_espi *priv)
@@ -138,12 +143,14 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 		aspeed_espi_sys_event(priv);
 		sts_handled |= ASPEED_ESPI_VW_SYSEVT;
 	}
-
 	if (sts & ASPEED_ESPI_VW_SYSEVT1) {
 		aspeed_espi_sys_event1(priv);
 		sts_handled |= ASPEED_ESPI_VW_SYSEVT1;
 	}
-
+	if (sts & ASPEED_ESPI_INT_STS_OOB_BITS) {
+		aspeed_espi_oob_event(sts, priv->espi_ctrl->oob);
+		regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts & ASPEED_ESPI_INT_STS_OOB_BITS);
+	}
 	if (sts & ASPEED_ESPI_HW_RESET) {
 		if (priv->rst_irq < 0) {
 			regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
@@ -158,6 +165,7 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 				  ASPEED_ESPI_CTRL_OOB_CHRDY);
 		aspeed_espi_boot_ack(priv);
 		sts_handled |= ASPEED_ESPI_HW_RESET;
+		aspeed_espi_oob_enable(priv->espi_ctrl->oob);
 	}
 
 	regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts);
@@ -294,11 +302,12 @@ static const struct regmap_config aspeed_espi_regmap_cfg = {
 	.reg_bits	= 32,
 	.reg_stride	= 4,
 	.val_bits	= 32,
-	.max_register	= ASPEED_ESPI_SYSEVT1_INT_STS,
+	.max_register	= 0x200,
 };
 
 static int aspeed_espi_probe(struct platform_device *pdev)
 {
+	struct aspeed_espi_ctrl *espi_ctrl;
 	struct aspeed_espi *priv;
 	struct resource *res;
 	void __iomem *regs;
@@ -314,13 +323,25 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	if (!priv)
 		return -ENOMEM;
 
+	espi_ctrl = devm_kzalloc(&pdev->dev, sizeof(*espi_ctrl), GFP_KERNEL);
+	if (!espi_ctrl)
+		return -ENOMEM;
+
 	dev_set_drvdata(&pdev->dev, priv);
 	priv->dev = &pdev->dev;
-
+	priv->espi_ctrl = espi_ctrl;
+	espi_ctrl->model = of_device_get_match_data(&pdev->dev);
 	priv->map = devm_regmap_init_mmio(&pdev->dev, regs,
 					  &aspeed_espi_regmap_cfg);
 	if (IS_ERR(priv->map))
 		return PTR_ERR(priv->map);
+	espi_ctrl->map = priv->map;
+	aspeed_espi_config_irq(priv);
+	espi_ctrl->oob = aspeed_espi_oob_alloc(&pdev->dev, espi_ctrl);
+	if (IS_ERR(espi_ctrl->oob)) {
+		dev_err(&pdev->dev, "Failed to allocate espi out-of-band channel\n");
+		return PTR_ERR(espi_ctrl->oob);
+	}
 
 	spin_lock_init(&priv->pltrstn_lock);
 	init_waitqueue_head(&priv->pltrstn_waitq);
@@ -388,7 +409,6 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 		goto err_clk_disable_out;
 	}
 
-	aspeed_espi_config_irq(priv);
 	aspeed_espi_boot_ack(priv);
 
 	dev_info(&pdev->dev, "eSPI registered, irq %d\n", priv->irq);
@@ -404,15 +424,20 @@ static int aspeed_espi_remove(struct platform_device *pdev)
 {
 	struct aspeed_espi *priv = dev_get_drvdata(&pdev->dev);
 
+	aspeed_espi_oob_free(priv->dev, priv->espi_ctrl->oob);
 	misc_deregister(&priv->pltrstn_miscdev);
 	clk_disable_unprepare(priv->clk);
-
 	return 0;
 }
 
+static const struct aspeed_espi_model ast2600_model = {
+	.version = ASPEED_ESPI_AST2600,
+};
+
 static const struct of_device_id of_espi_match_table[] = {
 	{ .compatible = "aspeed,ast2500-espi-slave" },
-	{ .compatible = "aspeed,ast2600-espi-slave" },
+	{ .compatible = "aspeed,ast2600-espi-slave",
+	  .data	      = &ast2600_model},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, of_espi_match_table);
