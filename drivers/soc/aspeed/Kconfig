@@ -13,10 +13,10 @@ config ASPEED_HOST_BMC_DEV
 config ASPEED_ESPI_SLAVE
 	depends on ARCH_ASPEED || COMPILE_TEST
 	depends on REGMAP_MMIO
-	tristate "Aspeed ast2500 eSPI slave device driver"
+	tristate "Aspeed ast2500/2600 eSPI slave device driver"
 	help
-	  Control Aspeed ast2500 eSPI slave controller to handle event
-	  which needs the firmware's processing.
+	  Enable driver support for the Aspeed eSPI engine. Handles event
+	  arising from firmware bootup and enable espi oob channel.
 
 config ASPEED_LPC_CTRL
 	tristate "ASPEED LPC firmware cycle control"
