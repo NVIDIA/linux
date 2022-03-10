@@ -16,72 +16,7 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 
-#define ASPEED_ESPI_CTRL			0x00
-#define  ASPEED_ESPI_CTRL_SW_RESET		GENMASK(31, 24)
-#define  ASPEED_ESPI_CTRL_OOB_CHRDY		BIT(4)
-#define ASPEED_ESPI_INT_STS			0x08
-#define  ASPEED_ESPI_HW_RESET			BIT(31)
-#define  ASPEED_ESPI_VW_SYSEVT1			BIT(22)
-#define  ASPEED_ESPI_VW_SYSEVT			BIT(8)
-#define ASPEED_ESPI_INT_EN			0x0C
-#define ASPEED_ESPI_DATA_PORT			0x28
-#define ASPEED_ESPI_SYSEVT_INT_EN		0x94
-#define ASPEED_ESPI_SYSEVT			0x98
-#define  ASPEED_ESPI_SYSEVT_HOST_RST_ACK	BIT(27)
-#define  ASPEED_ESPI_SYSEVT_SLAVE_BOOT_STATUS	BIT(23)
-#define  ASPEED_ESPI_SYSEVT_SLAVE_BOOT_DONE	BIT(20)
-#define  ASPEED_ESPI_SYSEVT_OOB_RST_ACK		BIT(16)
-#define ASPEED_ESPI_SYSEVT_INT_T0 		0x110
-#define ASPEED_ESPI_SYSEVT_INT_T1 		0x114
-#define ASPEED_ESPI_SYSEVT_INT_T2 		0x118
-#define ASPEED_ESPI_SYSEVT_INT_STS		0x11C
-#define  ASPEED_ESPI_SYSEVT_HOST_RST_WARN	BIT(8)
-#define  ASPEED_ESPI_SYSEVT_OOB_RST_WARN	BIT(6)
-#define  ASPEED_ESPI_SYSEVT_PLTRSTN		BIT(5)
-#define ASPEED_ESPI_SYSEVT1_INT_EN		0x100
-#define ASPEED_ESPI_SYSEVT1			0x104
-#define  ASPEED_ESPI_SYSEVT1_SUS_ACK		BIT(20)
-#define ASPEED_ESPI_SYSEVT1_INT_T0		0x120
-#define ASPEED_ESPI_SYSEVT1_INT_T1		0x124
-#define ASPEED_ESPI_SYSEVT1_INT_T2		0x128
-#define ASPEED_ESPI_SYSEVT1_INT_STS		0x12C
-#define  ASPEED_ESPI_SYSEVT1_SUS_WARN		BIT(0)
-
-#define ASPEED_ESPI_INT_MASK						       \
-		(ASPEED_ESPI_HW_RESET |					       \
-		 ASPEED_ESPI_VW_SYSEVT1 |				       \
-		 ASPEED_ESPI_VW_SYSEVT)
-
-/*
- * Setup Interrupt Type / Enable of System Event from Master
- *                                T2 T1 T0
- *  1) HOST_RST_WARN : Dual Edge   1  0  0
- *  2) OOB_RST_WARN  : Dual Edge   1  0  0
- *  3) PLTRSTN       : Dual Edge   1  0  0
- */
-#define ASPEED_ESPI_SYSEVT_INT_T0_MASK		0
-#define ASPEED_ESPI_SYSEVT_INT_T1_MASK		0
-#define ASPEED_ESPI_SYSEVT_INT_T2_MASK					       \
-		(ASPEED_ESPI_SYSEVT_HOST_RST_WARN |			       \
-		 ASPEED_ESPI_SYSEVT_OOB_RST_WARN |			       \
-		 ASPEED_ESPI_SYSEVT_PLTRSTN)
-#define ASPEED_ESPI_SYSEVT_INT_MASK					       \
-		(ASPEED_ESPI_SYSEVT_INT_T0_MASK |			       \
-		 ASPEED_ESPI_SYSEVT_INT_T1_MASK |			       \
-		 ASPEED_ESPI_SYSEVT_INT_T2_MASK)
-
-/*
- * Setup Interrupt Type / Enable of System Event 1 from Master
- *                                T2 T1 T0
- *  1) SUS_WARN    : Dual Edge     1  0  0
- */
-#define ASPEED_ESPI_SYSEVT1_INT_T0_MASK		0
-#define ASPEED_ESPI_SYSEVT1_INT_T1_MASK		0
-#define ASPEED_ESPI_SYSEVT1_INT_T2_MASK		ASPEED_ESPI_SYSEVT1_SUS_WARN
-#define ASPEED_ESPI_SYSEVT1_INT_MASK					       \
-		(ASPEED_ESPI_SYSEVT1_INT_T0_MASK |			       \
-		 ASPEED_ESPI_SYSEVT1_INT_T1_MASK |			       \
-		 ASPEED_ESPI_SYSEVT1_INT_T2_MASK)
+#include "aspeed-espi-ctrl.h"
 
 struct aspeed_espi {
 	struct regmap		*map;
@@ -155,14 +90,14 @@ static void aspeed_espi_sys_event1(struct aspeed_espi *priv)
 
 	dev_dbg(priv->dev, "sys event1: sts = %08x, evt = %08x\n", sts, evt);
 
-	if (sts & ASPEED_ESPI_SYSEVT1_SUS_WARN) {
-		if  (evt & ASPEED_ESPI_SYSEVT1_SUS_WARN)
+	if (sts & ASPEED_ESPI_SYSEVT1_SUSPEND_WARN) {
+		if  (evt & ASPEED_ESPI_SYSEVT1_SUSPEND_WARN)
 			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT1,
-					  ASPEED_ESPI_SYSEVT1_SUS_ACK,
-					  ASPEED_ESPI_SYSEVT1_SUS_ACK);
+					  ASPEED_ESPI_SYSEVT1_SUSPEND_ACK,
+					  ASPEED_ESPI_SYSEVT1_SUSPEND_ACK);
 		else
 			regmap_write_bits(priv->map, ASPEED_ESPI_SYSEVT1,
-					  ASPEED_ESPI_SYSEVT1_SUS_ACK, 0);
+					  ASPEED_ESPI_SYSEVT1_SUSPEND_ACK, 0);
 		dev_dbg(priv->dev, "SYSEVT1_SUS_WARN: acked\n");
 	}
 
@@ -182,10 +117,10 @@ static void aspeed_espi_boot_ack(struct aspeed_espi *priv)
 	}
 
 	regmap_read(priv->map, ASPEED_ESPI_SYSEVT1, &evt);
-	if (evt & ASPEED_ESPI_SYSEVT1_SUS_WARN &&
-	    !(evt & ASPEED_ESPI_SYSEVT1_SUS_ACK)) {
+	if (evt & ASPEED_ESPI_SYSEVT1_SUSPEND_WARN &&
+	    !(evt & ASPEED_ESPI_SYSEVT1_SUSPEND_ACK)) {
 		regmap_write(priv->map, ASPEED_ESPI_SYSEVT1,
-			     evt | ASPEED_ESPI_SYSEVT1_SUS_ACK);
+			     evt | ASPEED_ESPI_SYSEVT1_SUSPEND_ACK);
 		dev_dbg(priv->dev, "Boot SYSEVT1_SUS_WARN: acked\n");
 	}
 }
@@ -232,25 +167,16 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 
 static void aspeed_espi_config_irq(struct aspeed_espi *priv)
 {
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T0,
-		     ASPEED_ESPI_SYSEVT_INT_T0_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T1,
-		     ASPEED_ESPI_SYSEVT_INT_T1_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T2,
-		     ASPEED_ESPI_SYSEVT_INT_T2_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_EN,
-		     ASPEED_ESPI_SYSEVT_INT_MASK);
-
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T0,
-		     ASPEED_ESPI_SYSEVT1_INT_T0_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T1,
-		     ASPEED_ESPI_SYSEVT1_INT_T1_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T2,
-		     ASPEED_ESPI_SYSEVT1_INT_T2_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_EN,
-		     ASPEED_ESPI_SYSEVT1_INT_MASK);
-
-	regmap_write(priv->map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T0, ASPEED_ESPI_SYSEVT_INT_T0_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T1, ASPEED_ESPI_SYSEVT_INT_T1_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T2, ASPEED_ESPI_SYSEVT_INT_T2_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_EN, 0xFFFFFFFF);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T0, ASPEED_ESPI_SYSEVT1_INT_T0_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T1, ASPEED_ESPI_SYSEVT1_INT_T1_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T2, ASPEED_ESPI_SYSEVT1_INT_T2_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_EN, ASPEED_ESPI_SYSEVT1_INT_MASK);
+	regmap_write_bits(priv->map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_MASK,
+			  ASPEED_ESPI_INT_MASK);
 }
 
 static irqreturn_t aspeed_espi_reset_isr(int irq, void *arg)
@@ -281,9 +207,10 @@ static inline struct aspeed_espi *to_aspeed_espi(struct file *filp)
 
 static int aspeed_espi_pltrstn_open(struct inode *inode, struct file *filp)
 {
+	struct aspeed_espi *priv = to_aspeed_espi(filp);
+
 	if ((filp->f_flags & O_ACCMODE) != O_RDONLY)
 		return -EACCES;
-	struct aspeed_espi *priv = to_aspeed_espi(filp);
 	priv->pltrstn_in_avail = true ; /*Setting true returns first data after file open*/
 
 	return 0;
@@ -349,8 +276,8 @@ static unsigned int aspeed_espi_pltrstn_poll(struct file *file,
 {
 	struct aspeed_espi *priv = to_aspeed_espi(file);
 	unsigned int mask = 0;
-	poll_wait(file, &priv->pltrstn_waitq, wait);
 
+	poll_wait(file, &priv->pltrstn_waitq, wait);
 	if (priv->pltrstn_in_avail)
 		mask |= POLLIN;
 	return mask;
@@ -470,7 +397,6 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 
 err_clk_disable_out:
 	clk_disable_unprepare(priv->clk);
-
 	return ret;
 }
 
