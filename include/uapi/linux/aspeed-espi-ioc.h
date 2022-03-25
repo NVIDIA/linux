@@ -48,7 +48,7 @@ struct espi_comm_hdr {
 	u8 len_h : 4;
 	u8 tag : 4;
 	u8 len_l;
-};
+} __packed;
 
 struct espi_perif_mem32 {
 	u8 cyc;
@@ -92,7 +92,7 @@ struct espi_oob_msg {
 	u8 tag : 4;
 	u8 len_l;
 	u8 data[];
-};
+} __packed;
 
 struct espi_flash_rwe {
 	u8 cyc;
