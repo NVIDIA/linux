@@ -210,3 +210,13 @@
 &mctp {
     status = "okay";
 };
+
+// I2C between BMC and HMC
+&i2c0 {
+    status = "okay";
+
+};
+&i2c1 {
+    status = "okay";
+
+};
