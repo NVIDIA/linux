@@ -744,6 +744,12 @@
 				};
 			};
 
+			otp: otp@1e6f2000 {
+				compatible = "aspeed,ast2600-otp";
+				reg = <0x1e6f2000 0x940>;
+				aspeed,scu = <&syscon>;
+			};
+
 			sdc: sdc@1e740000 {
 				compatible = "aspeed,ast2600-sd-controller";
 				reg = <0x1e740000 0x100>;
