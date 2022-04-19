@@ -77,6 +77,10 @@ config ASPEED_SBC
 	  Say yes to provide information about the secure boot controller in
 	  debugfs.
 
+config ASPEED_OTP
+        tristate "Aspeed OTP Driver"
+        depends on MACH_ASPEED_G6
+
 endmenu
 
 endif
