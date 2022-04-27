@@ -36,9 +36,11 @@ struct i2c_mux_priv {
 	u32 chan_id;
 };
 
-static void i2c_mux_hold(struct i2c_mux_core *muxc, unsigned long timeout)
+static void i2c_mux_hold(struct i2c_mux_core *muxc, u32 chan_id,
+			 unsigned long timeout)
 {
 	mutex_lock(&muxc->hold_lock);
+	muxc->holder_chan_id = chan_id;
 	schedule_delayed_work(&muxc->unhold_work, timeout);
 }
 
@@ -53,6 +55,9 @@ static void i2c_mux_unhold_work(struct work_struct *work)
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct i2c_mux_core *muxc = container_of(dwork, struct i2c_mux_core,
 						 unhold_work);
+
+	if (muxc->deselect)
+		muxc->deselect(muxc, muxc->holder_chan_id);
 
 	mutex_unlock(&muxc->hold_lock);
 }
@@ -74,7 +79,7 @@ static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 				      (u16 *)msgs[num - 1].buf);
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
-		i2c_mux_hold(muxc, timeout);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
 		mutex_lock(&muxc->hold_lock);
 	}
@@ -112,7 +117,7 @@ static int i2c_mux_master_xfer(struct i2c_adapter *adap,
 				      (u16 *)msgs[num - 1].buf);
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
-		i2c_mux_hold(muxc, timeout);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
 		mutex_lock(&muxc->hold_lock);
 	}
@@ -150,7 +155,7 @@ static int __i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 				      &data->word);
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(data->word);
-		i2c_mux_hold(muxc, timeout);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
 		mutex_lock(&muxc->hold_lock);
 	}
@@ -189,7 +194,7 @@ static int i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 				      &data->word);
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(data->word);
-		i2c_mux_hold(muxc, timeout);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
 		mutex_lock(&muxc->hold_lock);
 	}
