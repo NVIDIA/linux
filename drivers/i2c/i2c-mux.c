@@ -36,6 +36,32 @@ struct i2c_mux_priv {
 	u32 chan_id;
 };
 
+static void i2c_mux_hold(struct i2c_mux_core *muxc, u32 chan_id,
+			 unsigned long timeout)
+{
+	mutex_lock(&muxc->hold_lock);
+	muxc->holder_chan_id = chan_id;
+	schedule_delayed_work(&muxc->unhold_work, timeout);
+}
+
+static void i2c_mux_unhold(struct i2c_mux_core *muxc)
+{
+	cancel_delayed_work_sync(&muxc->unhold_work);
+	mutex_unlock(&muxc->hold_lock);
+}
+
+static void i2c_mux_unhold_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct i2c_mux_core *muxc = container_of(dwork, struct i2c_mux_core,
+						 unhold_work);
+
+	if (muxc->deselect)
+		muxc->deselect(muxc, muxc->holder_chan_id);
+
+	mutex_unlock(&muxc->hold_lock);
+}
+
 static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 				 struct i2c_msg msgs[], int num)
 {
@@ -46,6 +72,15 @@ static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 
 	/* Switch to the right mux port and perform the transfer. */
 
+	hold_msg = i2c_check_hold_msg(msgs[num - 1].flags,
+				      msgs[num - 1].len,
+				      (u16 *)msgs[num - 1].buf);
+	if (hold_msg == I2C_HOLD_MSG_SET) {
+		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
+	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
+		mutex_lock(&muxc->hold_lock);
+	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = __i2c_transfer(parent, msgs, num);
@@ -65,6 +100,15 @@ static int i2c_mux_master_xfer(struct i2c_adapter *adap,
 
 	/* Switch to the right mux port and perform the transfer. */
 
+	hold_msg = i2c_check_hold_msg(msgs[num - 1].flags,
+				      msgs[num - 1].len,
+				      (u16 *)msgs[num - 1].buf);
+	if (hold_msg == I2C_HOLD_MSG_SET) {
+		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
+	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
+		mutex_lock(&muxc->hold_lock);
+	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = i2c_transfer(parent, msgs, num);
@@ -86,6 +130,15 @@ static int __i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 
 	/* Select the right mux port and perform the transfer. */
 
+	hold_msg = i2c_check_hold_msg(flags,
+				      size == I2C_SMBUS_WORD_DATA ? 2 : 0,
+				      &data->word);
+	if (hold_msg == I2C_HOLD_MSG_SET) {
+		timeout = msecs_to_jiffies(data->word);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
+	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
+		mutex_lock(&muxc->hold_lock);
+	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = __i2c_smbus_xfer(parent, addr, flags,
@@ -108,6 +161,15 @@ static int i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 
 	/* Select the right mux port and perform the transfer. */
 
+	hold_msg = i2c_check_hold_msg(flags,
+				      size == I2C_SMBUS_WORD_DATA ? 2 : 0,
+				      &data->word);
+	if (hold_msg == I2C_HOLD_MSG_SET) {
+		timeout = msecs_to_jiffies(data->word);
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
+	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
+		mutex_lock(&muxc->hold_lock);
+	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
 		ret = i2c_smbus_xfer(parent, addr, flags,
