@@ -194,5 +194,12 @@ struct aspeed_espi_ioc {
 					     0x30, struct aspeed_espi_ioc)
 #define ASPEED_ESPI_FLASH_PUT_TX	_IOW(__ASPEED_ESPI_IOCTL_MAGIC, \
 					     0x31, struct aspeed_espi_ioc)
+/*
+ * eSPI SMI OUT
+ *  - ASPEED_ESPI_SMI_GET
+ *      Receive an eSPI status of SMI Out(Bit 9)
+ */
+#define ASPEED_ESPI_SMI_GET	_IOR(__ASPEED_ESPI_IOCTL_MAGIC, \
+					     0x40, struct aspeed_espi_ioc)
 
 #endif
