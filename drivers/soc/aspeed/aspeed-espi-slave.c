@@ -32,10 +32,16 @@ struct aspeed_espi {
 
 	/* for PLTRST_N signal monitoring interface */
 	struct miscdevice	pltrstn_miscdev;
+	/* for SMI Interrupt monitoring interface */
+	struct miscdevice	smi_miscdev;
 	spinlock_t		pltrstn_lock; /* for PLTRST_N signal sampling */
 	wait_queue_head_t	pltrstn_waitq;
 	char			pltrstn;
 	bool			pltrstn_in_avail;
+	spinlock_t		smi_lock; /* for SMI signal sampling */
+	wait_queue_head_t	smi_waitq;
+	char			smi;
+	bool			smi_is_avail;
 	struct aspeed_espi_ctrl *espi_ctrl;
 
 };
@@ -82,6 +88,14 @@ static void aspeed_espi_sys_event(struct aspeed_espi *priv)
 		spin_unlock(&priv->pltrstn_lock);
 		wake_up_interruptible(&priv->pltrstn_waitq);
 		dev_dbg(priv->dev, "SYSEVT_PLTRSTN: %c\n", priv->pltrstn);
+	}
+	if (sts & ASPEED_ESPI_SYSEVT_SMI_OUT || priv->smi == 'U') {
+		spin_lock(&priv->smi_lock);
+		priv->smi = (evt & ASPEED_ESPI_SYSEVT_SMI_OUT) ? '0' : '1';
+		priv->smi_is_avail = true;
+		spin_unlock(&priv->smi_lock);
+		wake_up_interruptible(&priv->smi_waitq);
+		dev_dbg(priv->dev, "SYSEVT_SMI: %c\n", priv->smi);
 	}
 
 	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_STS, sts);
@@ -215,6 +229,11 @@ static inline struct aspeed_espi *to_aspeed_espi(struct file *filp)
 			    pltrstn_miscdev);
 }
 
+static inline struct aspeed_espi *to_aspeed_espi_smi(struct file *filp)
+{
+	return container_of(filp->private_data, struct aspeed_espi, smi_miscdev);
+}
+
 static int aspeed_espi_pltrstn_open(struct inode *inode, struct file *filp)
 {
 	struct aspeed_espi *priv = to_aspeed_espi(filp);
@@ -222,6 +241,36 @@ static int aspeed_espi_pltrstn_open(struct inode *inode, struct file *filp)
 	if ((filp->f_flags & O_ACCMODE) != O_RDONLY)
 		return -EACCES;
 	priv->pltrstn_in_avail = true ; /*Setting true returns first data after file open*/
+
+	return 0;
+}
+
+static int aspeed_espi_smi_open(struct inode *inode, struct file *filp)
+{
+	struct aspeed_espi *priv = to_aspeed_espi_smi(filp);
+
+	if ((filp->f_flags & O_ACCMODE) != O_RDONLY)
+		return -EACCES;
+	priv->smi_is_avail = true;
+
+	return 0;
+}
+
+static long aspeed_espi_smi_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
+{
+	struct aspeed_espi *espi_smi = to_aspeed_espi_smi(fp);
+	u32 val = 0;
+
+	switch (cmd) {
+	case ASPEED_ESPI_SMI_GET:
+		regmap_read(espi_smi->map, ASPEED_ESPI_SYSEVT, &val);
+		if (put_user(val, (uint32_t __user *)arg))
+			return -EFAULT;
+		break;
+
+	default:
+		return -ENOTTY;
+	};
 
 	return 0;
 }
@@ -281,6 +330,61 @@ out_unlock:
 	return ret;
 }
 
+static ssize_t aspeed_espi_smi_read(struct file *filp, char __user *buf,
+				    size_t count, loff_t *offset)
+{
+	struct aspeed_espi *priv = to_aspeed_espi_smi(filp);
+	DECLARE_WAITQUEUE(wait, current);
+	char data, old_sample;
+	int ret = 0;
+
+	spin_lock_irq(&priv->smi_lock);
+
+	if (filp->f_flags & O_NONBLOCK) {
+		if (!priv->smi_is_avail) {
+			ret = -EAGAIN;
+			goto out_unlock;
+		}
+		data = priv->smi;
+		priv->smi_is_avail = false;
+	} else {
+		add_wait_queue(&priv->smi_waitq, &wait);
+		set_current_state(TASK_INTERRUPTIBLE);
+
+		old_sample = priv->smi;
+
+		do {
+			if (old_sample != priv->smi) {
+				data = priv->smi;
+				priv->smi_is_avail = false;
+				break;
+			}
+
+			if (signal_pending(current)) {
+				ret = -ERESTARTSYS;
+			} else {
+				spin_unlock_irq(&priv->smi_lock);
+				schedule();
+				spin_lock_irq(&priv->smi_lock);
+			}
+		} while (!ret);
+
+		remove_wait_queue(&priv->smi_waitq, &wait);
+		set_current_state(TASK_RUNNING);
+	}
+out_unlock:
+	spin_unlock_irq(&priv->smi_lock);
+
+	if (ret)
+		return ret;
+
+	ret = put_user(data, buf);
+	if (ret)
+		return ret;
+
+	return sizeof(data);
+}
+
 static unsigned int aspeed_espi_pltrstn_poll(struct file *file,
 						 poll_table *wait)
 {
@@ -293,11 +397,31 @@ static unsigned int aspeed_espi_pltrstn_poll(struct file *file,
 	return mask;
 }
 
+static unsigned int aspeed_espi_smi_poll(struct file *file, poll_table *wait)
+{
+	struct aspeed_espi *priv = to_aspeed_espi_smi(file);
+	unsigned int mask = 0;
+
+	poll_wait(file, &priv->smi_waitq, wait);
+
+	if (priv->smi_is_avail)
+		mask |= POLLIN;
+	return mask;
+}
+
 static const struct file_operations aspeed_espi_pltrstn_fops = {
 	.owner	= THIS_MODULE,
 	.open	= aspeed_espi_pltrstn_open,
 	.read	= aspeed_espi_pltrstn_read,
 	.poll	= aspeed_espi_pltrstn_poll,
+};
+
+static const struct file_operations aspeed_espi_smi_fops = {
+	.owner	= THIS_MODULE,
+	.open	= aspeed_espi_smi_open,
+	.read	= aspeed_espi_smi_read,
+	.poll	= aspeed_espi_smi_poll,
+	.unlocked_ioctl = aspeed_espi_smi_ioctl,
 };
 
 static const struct regmap_config aspeed_espi_regmap_cfg = {
@@ -351,8 +475,11 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&priv->pltrstn_lock);
+	spin_lock_init(&priv->smi_lock);
 	init_waitqueue_head(&priv->pltrstn_waitq);
+	init_waitqueue_head(&priv->smi_waitq);
 	priv->pltrstn = 'U'; /* means it's not reported yet from master */
+	priv->smi = 'U';
 
 	priv->irq = platform_get_irq(pdev, 0);
 	if (priv->irq < 0)
@@ -410,9 +537,20 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	priv->pltrstn_miscdev.fops = &aspeed_espi_pltrstn_fops;
 	priv->pltrstn_miscdev.parent = &pdev->dev;
 
+	priv->smi_miscdev.minor = MISC_DYNAMIC_MINOR - 1;
+	priv->smi_miscdev.name = "espi-smi";
+	priv->smi_miscdev.fops = &aspeed_espi_smi_fops;
+	priv->smi_miscdev.parent = &pdev->dev;
+
 	ret = misc_register(&priv->pltrstn_miscdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Unable to register device\n");
+		goto err_clk_disable_out;
+	}
+
+	ret = misc_register(&priv->smi_miscdev);
+	if (ret) {
+		dev_err(&pdev->dev, "Unable to register SMI device\n");
 		goto err_clk_disable_out;
 	}
 
@@ -434,6 +572,7 @@ static int aspeed_espi_remove(struct platform_device *pdev)
 	aspeed_espi_oob_free(priv->dev, priv->espi_ctrl->oob);
 	aspeed_espi_vw_fini(priv->dev, priv->espi_ctrl->vw);
 	misc_deregister(&priv->pltrstn_miscdev);
+	misc_deregister(&priv->smi_miscdev);
 	clk_disable_unprepare(priv->clk);
 	return 0;
 }
