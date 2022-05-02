@@ -24,6 +24,8 @@ static siphash_key_t ts_secret __read_mostly;
 
 #define EPHEMERAL_PORT_SHUFFLE_PERIOD (10 * HZ)
 
+#define EPHEMERAL_PORT_SHUFFLE_PERIOD (10 * HZ)
+
 static __always_inline void net_secret_init(void)
 {
 	net_get_random_once(&net_secret, sizeof(net_secret));
