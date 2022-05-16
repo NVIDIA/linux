@@ -173,6 +173,10 @@
 	compatible = "snps,dw-apb-uart";
 };
 
+&rng {
+	status = "okay";
+};
+
 &i2c0 {
 	status = "okay";
 
