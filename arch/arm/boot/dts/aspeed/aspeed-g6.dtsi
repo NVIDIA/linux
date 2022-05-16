@@ -373,11 +373,11 @@
 				};
 			};
 
-			rng: hwrng@1e6e2524 {
-				compatible = "timeriomem_rng";
-				reg = <0x1e6e2524 0x4>;
-				period = <1>;
-				quality = <100>;
+			rng: hwrng@1e6e2520 {
+				compatible = "aspeed,ast2600-trng";
+				reg = <0x1e6e2520 0x20>;
+				aspeed,scu = <&syscon>;
+				status = "disabled";
 			};
 
 			gfx: display@1e6e6000 {
