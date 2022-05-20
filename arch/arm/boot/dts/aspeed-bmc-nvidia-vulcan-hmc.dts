@@ -211,6 +211,10 @@
     status = "okay";
 };
 
+&rng {
+    status = "okay";
+};
+
 // I2C between BMC and HMC
 &i2c0 {
     status = "okay";
