@@ -26,6 +26,7 @@
 #include <linux/of_device.h>
 #include <linux/uaccess.h>
 #include <uapi/linux/jtag.h>
+#include <linux/gpio.h>
 /******************************************************************************/
 #define ASPEED_JTAG_DATA		0x00
 #define ASPEED_JTAG_INST		0x04
@@ -134,6 +135,7 @@ struct aspeed_jtag_info {
 	u32				mode;
 	u8 pad_data_one[ASPEED_JTAG_MAX_PAD_SIZE];
 	u8 pad_data_zero[ASPEED_JTAG_MAX_PAD_SIZE];
+	struct gpio_desc *mux_gpiod;
 };
 /******************************************************************************/
 static inline u32
@@ -914,11 +916,20 @@ static int aspeed_jtag_mode_set(struct jtag *jtag, struct jtag_mode *jtag_mode)
 
 static int aspeed_jtag_enable(struct jtag *jtag)
 {
+	struct aspeed_jtag_info *aspeed_jtag = jtag_priv(jtag);
+
+	if (!IS_ERR(aspeed_jtag->mux_gpiod))
+		gpiod_set_value(aspeed_jtag->mux_gpiod, 1);
 	return 0;
 }
 
 static int aspeed_jtag_disable(struct jtag *jtag)
 {
+	struct aspeed_jtag_info *aspeed_jtag = jtag_priv(jtag);
+
+	if (!IS_ERR(aspeed_jtag->mux_gpiod))
+		gpiod_set_value(aspeed_jtag->mux_gpiod, 0);
+
 	return 0;
 }
 
@@ -954,6 +965,8 @@ static int aspeed_jtag_probe(struct platform_device *pdev)
 	jtag_dev_id = of_match_device(aspeed_jtag_of_matches, &pdev->dev);
 	if (!jtag_dev_id)
 		return -EINVAL;
+
+	aspeed_jtag->mux_gpiod = devm_gpiod_get_index(&pdev->dev, "mux", 0, GPIOD_OUT_LOW);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
