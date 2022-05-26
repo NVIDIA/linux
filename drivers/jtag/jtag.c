@@ -19,6 +19,7 @@ struct jtag {
 	const struct jtag_ops *ops;
 	int id;
 	unsigned long priv[0];
+	bool locked;
 };
 
 static DEFINE_IDA(jtag_ida);
@@ -200,17 +201,23 @@ static int jtag_open(struct inode *inode, struct file *file)
 	struct jtag *jtag = container_of(file->private_data,
 					 struct jtag,
 					 miscdev);
+	int ret = 0;
 
 	file->private_data = jtag;
-	if (jtag->ops->enable(jtag))
+	if (jtag->ops->enable(jtag) || jtag->locked)
 		return -EBUSY;
-	return nonseekable_open(inode, file);
+
+	ret = nonseekable_open(inode, file);
+	if (!ret)
+		jtag->locked = true;
+	return ret;
 }
 
 static int jtag_release(struct inode *inode, struct file *file)
 {
 	struct jtag *jtag = file->private_data;
 
+	jtag->locked = false;
 	if (jtag->ops->disable(jtag))
 		return -EBUSY;
 	return 0;
@@ -283,6 +290,7 @@ static int jtag_register(struct jtag *jtag)
 		dev_err(jtag->miscdev.parent, "Unable to register device\n");
 		goto err_jtag_name;
 	}
+	jtag->locked = false;
 	return 0;
 
 err_jtag_name:
