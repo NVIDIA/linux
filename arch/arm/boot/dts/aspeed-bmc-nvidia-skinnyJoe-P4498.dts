@@ -348,22 +348,7 @@
    status = "okay";
 };
 
-&i2c0 {             
-    status = "okay";
-};                  
-
-
-&i2c1 {
-    status = "okay";
-        eeprom@53 {
-        compatible = "atmel,24c512";
-               reg = <0x53>;
-               pagesize = <128>;
-               size = <65536>;
-            };
-};
-
-// SSIF IPMI interface
+// I2C1, SSIF IPMI interface
 &i2c0 {
     status = "okay";
         ssif-bmc@10 {
@@ -372,27 +357,76 @@
         };
 };
 
-// Ethernet SW 
-&i2c10 {
+// I2C2, BMC_I2C1_FPGA
+&i2c1 {
     status = "okay";
 };
 
-
-&i2c12 {
+// I2C3, BMC_I2C0_FPGA
+&i2c2 {
     status = "okay";
 };
 
-&i2c13 {
+// I2C4, BMC_I2C0_FPGA
+&i2c3 {
     status = "okay";
 };
 
-&i2c14 {
+// I2C5, BMC_I2C_STBY_TELEM
+&i2c4 {
     status = "okay";
+    lm75@49 {
+        compatible = "ti,tmp75";
+        reg = <0x49>;
+    };
+
+    lm75@4a {
+        compatible = "ti,tmp75";
+        reg = <0x4a>;
+    };
+};
+
+// I2C6, I2C_BMC_IOM_EXP
+&i2c5 {
+    status = "okay";
+};
+
+// I2C7, I2C_BMC_IOM_EXP
+&i2c6 {
+    status = "okay";
+};
+
+// I2C8, BMC_I2C_PCI
+&i2c7 {
+    status = "okay";
+};
+
+// I2C12, I2C12_BSDL
+&i2c11 {
+    status = "okay";
+
+    // FRU
+    eeprom@50 {
+    compatible = "atmel,24c256";
+    reg = <0x50>;
+    };
+
     lm75@48 {
         compatible = "ti,tmp75";
         reg = <0x48>;
     };
 };
+
+// I2C14, BMC_I2C_HDR1
+&i2c13 {
+    status = "okay";
+};
+
+// I2C15, BMC_I2C_HDR2
+&i2c14 {
+    status = "okay";
+};
+
 // PCIe RC
 &pcie {
         status = "okay";
