@@ -170,6 +170,15 @@
             };
 };
 
+// SSIF IPMI interface
+&i2c1 {
+    status = "okay";
+        ssif-bmc@10 {
+        compatible = "ssif-bmc";
+               reg = <0x10>;
+        };
+};
+
 // Ethernet SW 
 &i2c10 {
     status = "okay";
