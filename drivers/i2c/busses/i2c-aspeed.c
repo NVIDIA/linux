@@ -78,8 +78,8 @@
  * These share bit definitions, so use the same values for the enable &
  * status bits.
  */
-#define ASPEED_I2CD_INTR_RECV_MASK			0xf000ffff
 #define ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATOR		BIT(31)
+#define ASPEED_I2CD_INTR_RECV_MASK			0xf000efff
 #define ASPEED_I2CD_INTR_SDA_DL_TIMEOUT			BIT(14)
 #define ASPEED_I2CD_INTR_BUS_RECOVER_DONE		BIT(13)
 #define ASPEED_I2CD_INTR_SLAVE_MATCH			BIT(7)
@@ -282,7 +282,7 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			i2c_slave_event(slave, I2C_SLAVE_STOP, &value);
 		}
 		if (irq_status & ASPEED_I2CD_INTR_TX_NAK &&
-			bus->slave_state == ASPEED_I2C_SLAVE_READ_PROCESSED) {
+			bus->slave_state[idx] == ASPEED_I2C_SLAVE_READ_PROCESSED) {
 			irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
  			i2c_slave_event(slave, I2C_SLAVE_STOP, &value);
  		}
