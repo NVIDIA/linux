@@ -32,6 +32,7 @@ struct jtag_ops {
 	int (*status_set)(struct jtag *jtag, struct jtag_tap_state *endst);
 	int (*xfer)(struct jtag *jtag, struct jtag_xfer *xfer, u8 *xfer_data);
 	int (*mode_set)(struct jtag *jtag, struct jtag_mode *jtag_mode);
+	int (*trst_set)(struct jtag *jtag, u32 active);
 	int (*bitbang)(struct jtag *jtag, struct bitbang_packet *bitbang,
 		       struct tck_bitbang *bitbang_data);
 	int (*enable)(struct jtag *jtag);
