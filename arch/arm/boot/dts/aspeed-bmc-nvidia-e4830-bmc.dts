@@ -110,6 +110,10 @@
                 reg = <0x40000 0x1000000>;
                 label = "rwfs";
             };
+            log@3800000 {
+                reg = <0x3800000 0xc800000>; // 200 MB
+                label = "log";
+            };
         };
     };
 };
@@ -130,6 +134,17 @@
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
 };
 
 /*
@@ -158,17 +173,6 @@
 &i2c0 {             
     status = "okay";
 };                  
-
-
-&i2c1 {
-    status = "okay";
-        eeprom@53 {
-        compatible = "atmel,24c512";
-               reg = <0x53>;
-               pagesize = <128>;
-               size = <65536>;
-            };
-};
 
 // SSIF IPMI interface
 &i2c1 {
