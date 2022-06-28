@@ -437,6 +437,7 @@
                 interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
         };
 };
+
 // Bridge between AHB bus and PCIe RC.
 &h2x {
         status = "okay";
@@ -450,3 +451,8 @@
 		mux-gpios = <&gpio0 126 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		status = "okay";
 };
+
+&rng {
+	status = "okay";
+};
+
