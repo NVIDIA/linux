@@ -222,3 +222,7 @@
 &mctp {
     status = "okay";
 };
+
+&rng {
+	status = "okay";
+};
