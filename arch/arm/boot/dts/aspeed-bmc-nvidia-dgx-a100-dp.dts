@@ -186,7 +186,7 @@
 
         flash@0 {
                 status = "okay";
-                label = "bios";
+                label = "pnor";
         };
 };
 
