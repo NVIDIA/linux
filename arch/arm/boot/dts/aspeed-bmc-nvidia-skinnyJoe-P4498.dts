@@ -6,8 +6,8 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-	model = "AST2600 SkinnyJoe BMC";
-	compatible = "aspeed,ast2600";
+    model = "AST2600 SkinnyJoe BMC";
+    compatible = "aspeed,ast2600";
 
 	aliases {
 		serial2 = &uart3;
@@ -16,223 +16,221 @@
 
 	chosen {
 		stdout-path = &uart5;
-		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+		bootargs = "console=tty0 console=ttyS4,115200n8 earlyprintk";
 	};
 
 	memory@80000000 {
-		reg = <0x80000000 0x40000000>;
+		device_type = "memory";
+		reg = <0x80000000 0x80000000>;
 	};
 
-        power-gpios{
-                n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-                n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-        };
-
+    power-gpios{
+        n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+    };
 };
 
 &gpio0 {
-        gpio-line-names =
+    gpio-line-names =
 
-        /* gpio-line-names are the combination of <AST2600 gpio>-<signal>-<I/O> , "" is the placeholder for the unused pins*/
-        
-	/* 204 (26*8) 3.3V GPIOs */
+    /* gpio-line-names are the combination of <AST2600 gpio>-<signal>-<I/O> , "" is the placeholder for the unused pins*/
 
-	/*A0-A7*/
-	"", "", "", "", "", "", "", "",
-	
-	/*B0-B7*/
-	"B0-BMC_I2C_SSIF_ALERT_L-O",
-	"B1-BMC_I2C0_FPGA_ALERT_L-I",
-	"B2-BMC_I2C1_FPGA_ALERT_L-I",
-	"B3-I2C_3P3V_BR_ALERT_L-I",
-	"B4-SHDN_OK_L-I",
-	"B5-SHDN_REQ_L-O",
-	"", "",
+    /* 204 (26*8) 3.3V GPIOs */
 
-	/*C0-C7*/
-	"", "", "", "", "", "", "", "",
+    /*A0-A7*/
+    "", "", "", "", "", "", "", "",
 
-	/*D0-D7*/
-	"", "", "", "", "", "", "", "",
-	
-	/*E0-E7*/
-	"", "", "", "", "", "", "", "",
+    /*B0-B7*/
+    "B0-BMC_I2C_SSIF_ALERT_L-O",
+    "B1-BMC_I2C0_FPGA_ALERT_L-I",
+    "B2-BMC_I2C1_FPGA_ALERT_L-I",
+    "B3-I2C_3P3V_BR_ALERT_L-I",
+    "B4-SHDN_OK_L-I",
+    "B5-SHDN_REQ_L-O",
+    "", "",
 
-	/*F0-F7*/
-	"F0-IOM0_MOD_ID0-O",
-	"F1-IOM0_MOD_ID1-O",
-	"F2-IOM0_MOD_ID2-O",
-	"F3-IOM0_MOD_ID3-O",
-	"F4-IOM_PWR_EN-O",
-	"F5-IOM_PWR_SYS_GOOD-I",
-	"F6-IOM0_OVT_SHTDN-I",
-	"F7-IOM0_OVT_WARN_L-I",
+    /*C0-C7*/
+    "", "", "", "", "", "", "", "",
 
-	/*G0-G7*/
-	"", "", "", "", "", "", "", "",
+    /*D0-D7*/
+    "", "", "", "", "", "", "", "",
 
-	/*H0-H7*/
-	"H0-FPGA_RSVD_FFU4-I/O",
-	"H1-FPGA_RSVD_FFU3-I/O",
-	"H2-FPGA_RSVD_FFU2-I/O",
-	"H3-FPGA_RSVD_FFU5-I/O",
-	"", "", "", "",
+    /*E0-E7*/
+    "", "", "", "", "", "", "", "",
 
-	/*I0-I7*/
-	"", "", "", "", "",
-	"I5-QSPI2_RST*_SP-O",
-	"I6-GLOBAL_WP-O",
-	"I7-BMC_DDR4_TEN_SP-O",
+    /*F0-F7*/
+    "F0-IOM0_MOD_ID0-O",
+    "F1-IOM0_MOD_ID1-O",
+    "F2-IOM0_MOD_ID2-O",
+    "F3-IOM0_MOD_ID3-O",
+    "F4-IOM_PWR_EN-O",
+    "F5-IOM_PWR_SYS_GOOD-I",
+    "F6-IOM0_OVT_SHTDN-I",
+    "F7-IOM0_OVT_WARN_L-I",
 
-	/*J0-J7*/
-	"", "", "", "", "", "", "", "",
- 
-	/*K0-K7*/
-	"", "", "", "", "", "", "", "",
+    /*G0-G7*/
+    "", "", "", "", "", "", "", "",
 
-	/*L0-L7*/
-	"", "", "", "", "", "", "", "",
+    /*H0-H7*/
+    "H0-FPGA_RSVD_FFU4-I/O",
+    "H1-FPGA_RSVD_FFU3-I/O",
+    "H2-FPGA_RSVD_FFU2-I/O",
+    "H3-FPGA_RSVD_FFU5-I/O",
+    "", "", "", "",
 
-	/*M0-M7*/
-	"", "", "", "", "", "", "", "",
+    /*I0-I7*/
+    "", "", "", "", "",
+    "I5-QSPI2_RST*_SP-O",
+    "I6-GLOBAL_WP-O",
+    "I7-BMC_DDR4_TEN_SP-O",
 
-	/*N0-N7*/
-	"N0-L2_RST_REQ_OUT_L-I",
-	"N1-L0L1_RST_REQ_OUT_L-I",
-	"N2-SYS_RST_OUT_L-I",
-	"N3-SYS_RST_IN_L-O",
-	"N4-RSVD_PARTNER0-I/O",	
-	"N5-RSVD_PARTNER1-I/O",
-	"", "",
+    /*J0-J7*/
+    "", "", "", "", "", "", "", "",
 
-	/*O0-O7*/
-	"O0-LOCAL_RUN_PWR_EN-O",
-	"O1-RUN_POWER_PG-I",
-	"O2-PWR_BRAKE_L-O",
-	"O3-RUN_POWER_EN-O",
-	"O4-RUN_POWER_FAULT_L-I",
-	"O5-THERM_BB_OVERT_L-I",
-	"O6-THERM_BB_WARN_L-I",
-	"O7-THERM_FPGA_OVERT_L-I",
+    /*K0-K7*/
+    "", "", "", "", "", "", "", "",
 
-	/*P0-P7*/
-	"P0-IOM1_PRSNT_L-I",
-	"P1-IOM0_PRSNT_L-I",
-	"P2-I2C_RTC_ALERT_L-I",
-	"P3-RTC_CLR_L-O",
-	"P4-BB_PRSNT_L-I",
-	"P5-PCB_TEMP_ALERT_L-I",
-	"P6-JTAG_MUX_SELECT-O",
-	"P7-BMC_HBLED-O",
+    /*L0-L7*/
+    "", "", "", "", "", "", "", "",
 
-	/*Q0-Q7*/
-	"Q0-IOM1_MOD_ID0-O",
-	"Q1-IOM1_MOD_ID1-O",
-	"Q2-IOM1_MOD_ID2-O",
-	"Q3-IOM1_MOD_ID3-O",
-	"Q4-SHDN_FORCE_L-O",
-	"Q5-IOM1_PGOOD-I",
-	"Q6-IOM1_OVT_SHTDN_LATCH-I",
-	"Q7-IOM1_OVT_WARN_L-I",
+    /*M0-M7*/
+    "", "", "", "", "", "", "", "",
 
-	/*R0-R7*/
-	"R0-FPGA_READY-I",
-	"R1-SP0_AP_INTR_N-I",
-	"R2-BMC_EP_PERST_EN-O",
-	"R3-BMC_SPI_EROT_FPGA_INT_L-I",
-	"R4-BMC_EROT_FPGA_SPI_MUX_SEL-O",
-	"R5-EROT_FPGA_RST_L-O",
-	"R6-FPGA_EROT_RECOVERY_L-O",
-	"R7-FPGA_EROT_FATAL_ERROR_L-I",
+    /*N0-N7*/
+    "N0-L2_RST_REQ_OUT_L-I",
+    "N1-L0L1_RST_REQ_OUT_L-I",
+    "N2-SYS_RST_OUT_L-I",
+    "N3-SYS_RST_IN_L-O",
+    "N4-RSVD_PARTNER0-I/O",
+    "N5-RSVD_PARTNER1-I/O",
+    "", "",
 
-	/*S0-S7*/
-	"", "", "", "", "", "", "", "",
+    /*O0-O7*/
+    "O0-LOCAL_RUN_PWR_EN-O",
+    "O1-RUN_POWER_PG-I",
+    "O2-PWR_BRAKE_L-O",
+    "O3-RUN_POWER_EN-O",
+    "O4-RUN_POWER_FAULT_L-I",
+    "O5-THERM_BB_OVERT_L-I",
+    "O6-THERM_BB_WARN_L-I",
+    "O7-THERM_FPGA_OVERT_L-I",
 
-	/*T0-T7*/
-	"T0-SLOT1_PRSNT_L",
-	"T1-SLOT2_PRSNT_L",
-	"T2-SLOT3_PRSNT_L",
-	"T3-SLOT4_PRSNT_L",
-	"T4-SLOT5_PRSNT_L",
-	"", "", "",
+    /*P0-P7*/
+    "P0-IOM1_PRSNT_L-I",
+    "P1-IOM0_PRSNT_L-I",
+    "P2-I2C_RTC_ALERT_L-I",
+    "P3-RTC_CLR_L-O",
+    "P4-BB_PRSNT_L-I",
+    "P5-PCB_TEMP_ALERT_L-I",
+    "P6-JTAG_MUX_SELECT-O",
+    "P7-BMC_HBLED-O",
 
-	/*U0-U7*/
-	"U0-I2C_M20_ALERT_L-I",
-	"U1-I2C_M21_ALERT_L-I",
-	"U2-10GBE_SMBALRT_L-I",
-	"U3-PWR_BTN_L-I",
-	"U4-RST_BTN_L-I",
-	"", "", "",
+    /*Q0-Q7*/
+    "Q0-IOM1_MOD_ID0-O",
+    "Q1-IOM1_MOD_ID1-O",
+    "Q2-IOM1_MOD_ID2-O",
+    "Q3-IOM1_MOD_ID3-O",
+    "Q4-SHDN_FORCE_L-O",
+    "Q5-IOM1_PGOOD-I",
+    "Q6-IOM1_OVT_SHTDN_LATCH-I",
+    "Q7-IOM1_OVT_WARN_L-I",
 
-	/*V0-V7*/
-	"V0-AP_EROT_REQ-O",
-	"V1-EROT_AP_GNT-I",
-	"V2-BMC_READY-O",
-	"V3-FPGA_RSVD_FFU1-I/O",
-	"V4-LOC_PCB_TEMP_ALERT_L-I",
-	"V5-I2C_BUS8_MUX_RESET_L-I/O",
-	"V6-I2C_BUS7_MUX_RESET_L-I/O",
-	"V7-I2C_BUS6_MUX_RESET_L-I/O",
+    /*R0-R7*/
+    "R0-FPGA_READY-I",
+    "R1-SP0_AP_INTR_N-I",
+    "R2-BMC_EP_PERST_EN-O",
+    "R3-BMC_SPI_EROT_FPGA_INT_L-I",
+    "R4-BMC_EROT_FPGA_SPI_MUX_SEL-O",
+    "R5-EROT_FPGA_RST_L-O",
+    "R6-FPGA_EROT_RECOVERY_L-O",
+    "R7-FPGA_EROT_FATAL_ERROR_L-I",
 
-	/*W0-W7*/
-	"W0-HMC_PRESENT_L-I",
-	"W1-HMC_READY-I",
-	"W2-3V3_M21_PG-I",
-	"W3-3V3_M20_PG-I",
-	"W4-PS_VDD_1P05V_PGOOD-I",
-	"W5-FPGA_RST_L-O",
-	"W6-STBY_POWER_PG-I",
-	"W7-STBY_POWER_EN-O",
+    /*S0-S7*/
+    "", "", "", "", "", "", "", "",
 
-	/*X0-X7*/
-	"", "", "", "", "", "", "", "",
+    /*T0-T7*/
+    "T0-SLOT1_PRSNT_L",
+    "T1-SLOT2_PRSNT_L",
+    "T2-SLOT3_PRSNT_L",
+    "T3-SLOT4_PRSNT_L",
+    "T4-SLOT5_PRSNT_L",
+    "", "", "",
 
-	/*Y0-Y7*/
-	"Y0-FPGA_WATCH_DOG_TIMER0_L-I",
-	"Y1-FPGA_WATCH_DOG_TIMER1_L-I",
-	"Y2-FPGA_WATCH_DOG_TIMER2_L-I",
-	"",
-	"Y4-BMC_EMMC_RST_L-O",
-	"", "", "",
+    /*U0-U7*/
+    "U0-I2C_M20_ALERT_L-I",
+    "U1-I2C_M21_ALERT_L-I",
+    "U2-10GBE_SMBALRT_L-I",
+    "U3-PWR_BTN_L-I",
+    "U4-RST_BTN_L-I",
+    "", "", "",
 
-	
-	/*Z0-Z7*/
-	"", "", "", "", "", "", "", "";
+    /*V0-V7*/
+    "V0-AP_EROT_REQ-O",
+    "V1-EROT_AP_GNT-I",
+    "V2-BMC_READY-O",
+    "V3-FPGA_RSVD_FFU1-I/O",
+    "V4-LOC_PCB_TEMP_ALERT_L-I",
+    "V5-I2C_BUS8_MUX_RESET_L-I/O",
+    "V6-I2C_BUS7_MUX_RESET_L-I/O",
+    "V7-I2C_BUS6_MUX_RESET_L-I/O",
 
-     
+    /*W0-W7*/
+    "W0-HMC_PRESENT_L-I",
+    "W1-HMC_READY-I",
+    "W2-3V3_M21_PG-I",
+    "W3-3V3_M20_PG-I",
+    "W4-PS_VDD_1P05V_PGOOD-I",
+    "W5-FPGA_RST_L-O",
+    "W6-STBY_POWER_PG-I",
+    "W7-STBY_POWER_EN-O",
+
+    /*X0-X7*/
+    "", "", "", "", "", "", "", "",
+
+    /*Y0-Y7*/
+    "Y0-FPGA_WATCH_DOG_TIMER0_L-I",
+    "Y1-FPGA_WATCH_DOG_TIMER1_L-I",
+    "Y2-FPGA_WATCH_DOG_TIMER2_L-I",
+    "",
+    "Y4-BMC_EMMC_RST_L-O",
+    "", "", "",
+
+    /*Z0-Z7*/
+    "", "", "", "", "", "", "", "";
 };
+
 &gpio1 {
-        /* 36 1.8V GPIOs */
-	gpio-line-names =
-	/*AA0-AA7*/
-	"18A0-PS_VDD_3P3V_PGOOD-I",
-	"18A1-PS_VDD_5P0V_PGOOD-I",
-	"18A2-ID_BTN_N-I",
-	"18A3-ID_LED_N-O",
-	"18A4-SYS_FAULT_LED_N-O",
-	"18A5-PWR_LED_N-O",
-	"18A6-CHASSIS_CPLD_LATCH_N-O",
-	"18A7-CPLD_REFRESH_DONE-I",
+    /* 36 1.8V GPIOs */
+    gpio-line-names =
+    /*AA0-AA7*/
+    "18A0-PS_VDD_3P3V_PGOOD-I",
+    "18A1-PS_VDD_5P0V_PGOOD-I",
+    "18A2-ID_BTN_N-I",
+    "18A3-ID_LED_N-O",
+    "18A4-SYS_FAULT_LED_N-O",
+    "18A5-PWR_LED_N-O",
+    "18A6-CHASSIS_CPLD_LATCH_N-O",
+    "18A7-CPLD_REFRESH_DONE-I",
 
-	/*AB0-AB7*/
-	/* Dragon Support */
-	"18B0-PMBUS_REQ_N-O",
-	"18B1-PMBUS_GNT_N-I",
-	"18B2-PSU_FW_UPDATE_REQ_N-O",
-	"18B3-PSU_FW_UPDATING_N-I",
-	"18B4-NODE_LOC_ID3-I",
-	"18B5-NODE_LOC_ID2-I",
-	"18B6-NODE_LOC_ID1-I",
-	"18B7-NODE_LOC_ID0-I",
+    /*AB0-AB7*/
+    /* Dragon Support */
+    "18B0-PMBUS_REQ_N-O",
+    "18B1-PMBUS_GNT_N-I",
+    "18B2-PSU_FW_UPDATE_REQ_N-O",
+    "18B3-PSU_FW_UPDATING_N-I",
+    "18B4-NODE_LOC_ID3-I",
+    "18B5-NODE_LOC_ID2-I",
+    "18B6-NODE_LOC_ID1-I",
+    "18B7-NODE_LOC_ID0-I",
 
-	/*AC0-AC7*/
-	"", "", "", "", "", "", "", "",
+    /*AC0-AC7*/
+    "", "", "", "", "", "", "", "",
 
-	/*AD0-AD7*/
-	"", "", "", "", "", "", "", "",
+    /*AD0-AD7*/
+    "", "", "", "", "", "", "", "",
 
-        /*AE0-AE7*/     
-	"", "", "", "", "", "", "", "";
+    /*AE0-AE7*/
+    "", "", "", "", "", "", "", "";
 };
 
 // Enabled Primary flash on FMC for bring up activity
@@ -260,6 +258,7 @@
     pinctrl-names = "default";
     pinctrl-0 = <&pinctrl_spi2_default>;
 
+    // Data SPI is 64MB in size
     flash@0 {
         status = "okay";
         label = "config";
@@ -270,25 +269,25 @@
             #size-cells = <1>;
 
             u-boot-env@0 {
-                reg = <0x0 0x40000>;
+                reg = <0x0 0x40000>;            // 256KB at offset 0
                 label = "u-boot-env";
             };
 
             rwfs@40000 {
-                reg = <0x40000 0x1000000>;
+                reg = <0x40000 0x1000000>;      // 16MB at offset 0x40000
                 label = "rwfs";
             };
 
-            log@3800000 {
-                reg = <0x3800000 0xc800000>; // 200 MB
-                label = "log";
+            log@0x1040000 {
+                reg = <0x1040000 0x2800000>;    // 40MB at offset 0x1040000
+                label = "log";                  // Move log to EMMC, make this unused
             };
         };
     };
 };
 
 &rtc {
-        status = "okay";
+    status = "okay";
 };
 
 &uart3 {
@@ -297,39 +296,39 @@
         
 };
 
-
 &uart5 {
-	// BMC Debug Console
-	status = "okay";
+    // BMC Debug Console
+    status = "okay";
 };
 
 // MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
 // This is "mac2" in zero-based DTS
 &mdio2 {
-        status = "okay";
-        ethphy0: ethernet-phy@0 {
-            compatible = "ethernet-phy-ieee802.3-c22";
-            reg = <0>;
-       };
+    status = "okay";
+    ethphy0: ethernet-phy@0 {
+        compatible = "ethernet-phy-ieee802.3-c22";
+        reg = <0>;
+    };
 };
 
 &mac2 {
-	status = "okay";
-	pinctrl-names = "default";
-        phy-mode = "rgmii";
-        max-speed = <1000>;
-        phy-handle = <&ethphy0>;
-	pinctrl-0 = <&pinctrl_rgmii3_default>;
+    status = "okay";
+    pinctrl-names = "default";
+    phy-mode = "rgmii";
+    max-speed = <1000>;
+    phy-handle = <&ethphy0>;
+    pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
+
 // Enable emmc
 &emmc_controller {
-        status = "okay";
+    status = "okay";
 };
 
 &emmc {
-        non-removable;
-        bus-width = <4>;
-        max-frequency = <52000000>;
+    non-removable;
+    bus-width = <4>;
+    max-frequency = <52000000>;
 };
 
 /*
@@ -354,9 +353,9 @@
 // I2C1, SSIF IPMI interface
 &i2c0 {
     status = "okay";
-        ssif-bmc@10 {
+    ssif-bmc@10 {
         compatible = "ssif-bmc";
-               reg = <0x10>;
+        reg = <0x10>;
         };
 };
 
@@ -378,15 +377,16 @@
 // I2C5, BMC_I2C_STBY_TELEM
 &i2c4 {
     status = "okay";
-    lm75@49 {
-        compatible = "ti,tmp75";
-        reg = <0x49>;
-    };
+    // enable in entity-manager instead
+    //lm75@49 {
+    //    compatible = "ti,tmp75";
+    //    reg = <0x49>;
+    //};
 
-    lm75@4a {
-        compatible = "ti,tmp75";
-        reg = <0x4a>;
-    };
+    //lm75@4a {
+    //    compatible = "ti,tmp75";
+    //    reg = <0x4a>;
+    //};
 };
 
 // I2C6, I2C_BMC_IOM_EXP
@@ -408,16 +408,18 @@
 &i2c11 {
     status = "okay";
 
-    // FRU
+    // P4498 FRU EEPROM - 256 bytes
     eeprom@50 {
-    compatible = "atmel,24c256";
-    reg = <0x50>;
+        compatible = "atmel,24c02";
+        reg = <0x50>;
+        pagesize = <8>;
     };
 
-    lm75@48 {
-        compatible = "ti,tmp75";
-        reg = <0x48>;
-    };
+    // enable in entity-manager instead
+    //lm75@48 {
+    //    compatible = "ti,tmp75";
+    //    reg = <0x48>;
+    //};
 };
 
 // I2C14, BMC_I2C_HDR1
@@ -432,18 +434,18 @@
 
 // PCIe RC
 &pcie {
-        status = "okay";
+    status = "okay";
 
-        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+    interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
 
-        pcie_intc0: legacy-interrupt-controller {
-                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
-        };
+    pcie_intc0: legacy-interrupt-controller {
+                    interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+    };
 };
 
 // Bridge between AHB bus and PCIe RC.
 &h2x {
-        status = "okay";
+    status = "okay";
 };
 
 &mctp {
@@ -451,11 +453,11 @@
 };
 
 &jtag1 {
-		mux-gpios = <&gpio0 126 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-		status = "okay";
+    mux-gpios = <&gpio0 126 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+    status = "okay";
 };
 
 &rng {
-	status = "okay";
+    status = "okay";
 };
 
