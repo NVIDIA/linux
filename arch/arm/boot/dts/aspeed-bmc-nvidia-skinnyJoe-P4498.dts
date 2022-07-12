@@ -432,6 +432,11 @@
     status = "okay";
 };
 
+// I2C16
+&i2c15 {
+    status = "okay";
+};
+
 // PCIe RC
 &pcie {
     status = "okay";
