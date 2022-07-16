@@ -82,10 +82,6 @@
     };
 };
 
-&rtc {
-    status = "okay";
-};
-
 &uart3 {
         //Enabling SOL
         status = "okay";
@@ -173,8 +169,8 @@
 };
 
 // I2C5, BMC_I2C_STBY_TELEM
-&i2c4 {
-    status = "okay";
+//&i2c4 {
+//    status = "okay";
     // enable in entity-manager instead
     //lm75@49 {
     //    compatible = "ti,tmp75";
@@ -185,7 +181,17 @@
     //    compatible = "ti,tmp75";
     //    reg = <0x4a>;
     //};
+//};
+
+//RTC Driver
+&i2c4 {
+    status = "okay";
+        rtc@6f {
+            compatible = "nuvoton,nct3018y";
+            reg = <0x6f>;
+        };
 };
+
 
 // I2C6, I2C_BMC_IOM_EXP
 &i2c5 {
