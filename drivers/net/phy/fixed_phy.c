@@ -167,6 +167,14 @@ int fixed_phy_add(unsigned int irq, int phy_addr,
 }
 EXPORT_SYMBOL_GPL(fixed_phy_add);
 
+#if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
+static struct fixed_phy_status fixed_phy_status = { 
+	.link = 1,
+	.speed = CONFIG_FIXED_PHY_SPEED,
+	.duplex = 1,
+};
+#endif
+
 static DEFINE_IDA(phy_fixed_ida);
 
 static void fixed_phy_del(int phy_addr)
@@ -336,6 +344,22 @@ static int __init fixed_mdio_bus_init(void)
 {
 	struct fixed_mdio_bus *fmb = &platform_fmb;
 	int ret;
+
+#if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
+#ifdef CONFIG_FTGMAC100_FIXED_PHY_SPEED
+	fixed_phy_status.speed = CONFIG_FTGMAC100_FIXED_PHY_SPEED;
+#endif
+
+#ifdef CONFIG_FTGMAC100_FIXED_PHY_FULL_DUPLEX
+	fixed_phy_status.duplex = 1;
+#endif
+	ret = fixed_phy_add(PHY_POLL, 0, &fixed_phy_status);
+	if (ret < 0)
+	{
+		pr_err("could not add fixed phy.\n");
+		return ret;
+	}
+#endif
 
 	pdev = platform_device_register_simple("Fixed MDIO bus", 0, NULL, 0);
 	if (IS_ERR(pdev))

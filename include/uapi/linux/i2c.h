@@ -75,6 +75,7 @@ struct i2c_msg {
 	__u16 flags;
 #define I2C_M_RD		0x0001	/* guaranteed to be 0x0001! */
 #define I2C_M_TEN		0x0010	/* use only if I2C_FUNC_10BIT_ADDR */
+#define I2C_M_HOLD		0x0100	/* for holding a mux path */
 #define I2C_M_DMA_SAFE		0x0200	/* use only in kernel space */
 #define I2C_M_RECV_LEN		0x0400	/* use only if I2C_FUNC_SMBUS_READ_BLOCK_DATA */
 #define I2C_M_NO_RD_ACK		0x0800	/* use only if I2C_FUNC_PROTOCOL_MANGLING */

@@ -168,6 +168,41 @@ config DAVICOM_PHY
 	help
 	  Currently supports dm9161e and dm9131
 
+config FIXED_PHY
+	tristate "MDIO Bus/PHY emulation with fixed speed/link PHYs"
+	depends on PHYLIB
+	select SWPHY
+	help
+	  Adds the platform "fixed" MDIO Bus to cover the boards that use
+	  PHYs that are not connected to the real MDIO bus.
+
+	  Currently tested with mpc866ads and mpc8349e-mitx.
+
+
+config FIXED_PHY_APPLY
+	tristate "Use MDIO Bus/PHY emulation with fixed speed/link PHYs"
+	help
+	  Adds the platform "fixed" MDIO Bus to cover the boards that use
+	  PHYs that are not connected to the real MDIO bus.
+
+	  Currently tested with bluesphere.
+
+config FIXED_PHY_SPEED
+	int "Speed of the fixed phy link - 10/100/1000 Mbps"
+	default 1000
+	help
+	  Select speed settings of the fixed phy link.
+
+	  Currently tested with bluesphere.
+
+config FIXED_PHY_FULL_DUPLEX
+	bool "Full duplex link seeting on fixed phy"
+	default 0
+	help
+	  Select duplex settings of the fixed phy link.
+
+	  Currently tested with bluesphere.
+
 config ICPLUS_PHY
 	tristate "ICPlus PHYs"
 	help

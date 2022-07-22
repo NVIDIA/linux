@@ -1,0 +1,834 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g5.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "AST2500 dgx";
+	compatible = "aspeed,ast2500";
+
+	aliases {
+		serial0 = &uart1;
+		serial2 = &uart3;
+		serial4 = &uart5;
+	i2c210 = &bus1_mux210;
+        i2c211 = &bus1_mux211;
+        i2c212 = &bus1_mux212;
+        i2c213 = &bus1_mux213;
+        i2c214 = &bus1_mux214;
+		i2c215 = &bus3_mux215;
+		i2c216 = &bus3_mux216;
+		i2c217 = &bus3_mux217;
+		i2c218 = &bus3_mux218;
+		i2c219 = &bus4_mux219;
+		i2c220 = &bus4_mux220;
+		i2c221 = &bus4_mux221;
+		i2c222 = &bus4_mux222;
+		i2c223 = &bus8_mux223;
+		i2c224 = &bus8_mux224;
+		i2c225 = &bus8_mux225;
+		i2c226 = &bus8_mux226;
+		i2c227 = &bus8_mux227;
+		i2c228 = &bus8_mux228;
+		i2c229 = &bus8_mux229;
+		i2c230 = &bus8_mux230;
+		i2c231 = &bus7_mux231;
+		i2c232 = &bus7_mux232;
+		i2c233 = &bus7_mux233;
+		i2c234 = &bus7_mux234;
+		i2c235 = &bus7_mux235;
+		i2c236 = &bus7_mux236;
+		i2c237 = &bus7_mux237;
+		i2c238 = &bus7_mux238;
+		i2c239 = &bus9_mux239;
+		i2c240 = &bus9_mux240;
+		i2c241 = &bus9_mux241;
+		i2c242 = &bus9_mux242;
+		i2c243 = &bus9_mux243;
+		i2c244 = &bus9_mux244;
+		i2c245 = &bus9_mux245;
+		i2c246 = &bus9_mux246;
+		i2c247 = &bus6_mux247;
+		i2c248 = &bus6_mux248;
+		i2c249 = &bus6_mux249;
+		i2c250 = &bus6_mux250;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x20000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		uid_led {
+			gpios = <&gpio ASPEED_GPIO(H, 0) GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		id-button {
+			label = "id-button";
+			gpios = <&gpio ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(H, 3)>;
+		};
+
+		lpc-reset {
+			label = "lpc-reset";
+			gpios = <&gpio ASPEED_GPIO(AC, 7) GPIO_ACTIVE_HIGH>;
+			linux,code = <ASPEED_GPIO(AC, 7)>;
+		};
+	};
+
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&adc 0>, <&adc 1>, <&adc 2>,
+			<&adc 3>, <&adc 4>, <&adc 5>,
+			<&adc 6>, <&adc 7>, <&adc 8>,
+			<&adc 9>, <&adc 10>, <&adc 11>,
+			<&adc 12>;
+	};
+};
+
+&gpio {
+	gpio-line-names =
+	/*A0-A7*/       "","","","","","","","",
+	/*B0-B7*/       "dimm_spd_sel","pwrgd_p3v3","bmc_rdv_set_ok","","ps_on_n","","","",
+	/*C0-C7*/       "","","","","","","","",
+	/*D0-D7*/       "","","","","","","","",
+	/*E0-E7*/       "","","","","","","","",
+	/*F0-F7*/       "bmc_pwr_btn_n","latch_gpu1_thermtrip_cpld_n","","bmc_cpld_boot_n","host0-ready","","","",
+	/*G0-G7*/       "","","","","","","","",
+	/*H0-H7*/       "","","","","","bmc_bios_update_n","","",
+	/*I0-I7*/       "cpu1_present_n","cpu2_bmc_present_n","","","bmc_bios_spi_cs0_n","","","",
+	/*J0-J7*/       "","","bios_spi_cs_sel","bmc_ready","","","","",
+	/*K0-K7*/       "","","","","","","","",
+	/*L0-L7*/       "","","","","","","","",
+	/*M0-M7*/       "","","","","","","","",
+	/*N0-N7*/       "","","","","","bat_det_en","","",
+	/*O0-O7*/       "","","","","","","","psu_workok",
+	/*P0-P7*/       "","","psu_alert_n","","","","","psu_detect_n",
+	/*Q0-Q7*/       "","","","","","","","",
+	/*R0-R7*/       "","","","","","","","",
+	/*S0-S7*/       "","","","","","","","",
+	/*T0-T7*/       "","","","","","","","",
+	/*U0-U7*/       "","","","","","","","",
+	/*V0-V7*/       "","","","","","","","",
+	/*W0-W7*/       "","","","","","","","",
+	/*X0-X7*/       "","","","","","","","",
+	/*Y0-Y7*/       "","","","","","","","",
+	/*Z0-Z7*/       "","","","","","","","",
+	/*AA0-AA7*/     "","","psu_ac_ok_all","","","","","",
+	/*AB0-AB7*/     "","","","","","","","",
+	/*AC0-AC7*/     "","","","","","","","";
+
+};
+
+&fmc {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = "bmc";
+#include "openbmc-flash-layout.dtsi"
+	};
+};
+
+&spi1 {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = "pnor";
+	};
+};
+
+&spi2 {
+	status = "okay";
+};
+
+&uart1 {
+	// Rear COM1
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd1_default
+				 &pinctrl_rxd1_default>;
+};
+
+&uart3 {
+	// CPU UART1 (FIXME: SOL??)
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd3_default
+				 &pinctrl_rxd3_default>;
+};
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+&lpc_snoop {
+	// SBIOS Post Code Port
+	status = "okay";
+	snoop-ports = <0x80>;
+};
+
+&lpc_pcc {
+rec-mode = <0x1>;
+port-addr = <0x80>;
+port-addr-hbits-select = <0x1>;
+port-addr-xbits = <0x3>;
+pattern-a-en;
+pattern-a = <0x41424344>;
+pattern-a-len = <0x4>;
+pattern-a-write = <0x1>;
+pattern-a-port = <0x80>;
+status = "okay";
+dma-mode = <0x1>;
+};
+
+
+&lpc_ctrl {
+	status = "okay";
+};
+
+&lpc_reset {
+	status = "okay";
+};
+
+&kcs1 {
+	// KCS Channel 1
+	status = "okay";
+	aspeed,lpc-io-reg = <0xca0>;
+};
+
+&kcs2 {
+	// KCS Channel 2
+	status = "okay";
+	aspeed,lpc-io-reg = <0xca8>;
+};
+
+&kcs3 {
+	// KCS Channel 3
+	status = "okay";
+	aspeed,lpc-io-reg = <0xca2>;
+};
+
+&mac0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mdio1_default>;
+};
+
+&mac1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii2_default &pinctrl_mdio2_default>;
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+	status = "okay";
+};
+
+&gfx {
+	status = "okay";
+	memory-region = <&gfx_memory>;
+};
+
+&adc {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_adc0_default
+            &pinctrl_adc1_default
+            &pinctrl_adc2_default
+            &pinctrl_adc3_default
+            &pinctrl_adc4_default
+            &pinctrl_adc5_default
+            &pinctrl_adc6_default
+            &pinctrl_adc7_default
+            &pinctrl_adc8_default
+            &pinctrl_adc9_default
+            &pinctrl_adc10_default
+            &pinctrl_adc11_default
+            &pinctrl_adc12_default>;
+};
+
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
+&i2c0 {
+    status = "okay";
+
+    sbtsi@48 {
+        compatible = "amd,sbtsi";
+        reg = <0x48>;
+    };
+
+    sbtsi@4c {
+        compatible = "amd,sbtsi";
+        reg = <0x4c>;
+    };
+	
+    sbrmi@38 {
+        compatible = "amd,sbrmi";
+        reg = <0x38>;
+    };
+
+    sbrmi@3c {
+        compatible = "amd,sbrmi";
+        reg = <0x3c>;
+    };
+};
+
+&i2c1 {
+    status = "okay";
+
+    // UFRU1
+    eeprom@54 {
+        compatible = "atmel,24c512";
+        reg = <0x54>;
+        pagesize = <128>;
+        size = <65536>;
+    };
+
+    // Planar Temp Sensor U60
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+
+    // Planar Temp Sensor U139
+    lm75@49 {
+        compatible = "ti,tmp75";
+        reg = <0x49>;
+    };
+
+    // i2c switch - U41
+    i2cswitch@70 {
+        compatible = "nxp,pca9548";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x70>;
+
+        bus1_mux213: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+             // TEMP_M.2_0
+             lm75@4c {
+                 compatible = "ti,tmp75";
+                 reg = <0x4c>;
+             };
+        };
+
+        // I2C_SW6_SDA
+        bus1_mux214: i2c@6 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <6>;
+
+            // M.2 FRU
+            eeprom@51 {
+                compatible = "atmel,24c512";
+                reg = <0x51>;
+                pagesize = <128>;
+                size = <65536>;
+            };
+        };
+
+        // TEMP_M.2_1
+        bus1_mux212: i2c@7 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <7>;
+        };
+     };
+
+     // TEMP_MB_AD_CARD0 and TMEP_MB_AD_CARD1
+     i2cswitch@72 {
+        compatible = "nxp,pca9548";
+        reg = <0x72>;
+        bus1_mux210: i2c@0 {
+            reg = <0>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus1_mux211: i2c@1 {
+            reg = <1>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+     };
+};
+
+&i2c2 {             
+	status = "okay";
+
+	// Midplane FRU
+	eeprom@54 {
+		compatible = "atmel,24c512";
+		reg = <0x54>;
+		pagesize = <128>;
+		size = <65536>;
+	};
+
+	tca6507: tca6507@45 {
+		compatible = "ti,tca6507";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x45>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		power_led {
+			reg = <0x0>;
+			color = <LED_COLOR_ID_GREEN>;
+		};
+
+		fault_led {
+			reg = <0x1>;
+			type = <LED_COLOR_ID_AMBER>;
+		};
+
+		motherboard_debug_led {
+			reg = <0x2>;
+			type = <LED_COLOR_ID_BLUE>;
+		};
+	};
+};                  
+
+// AST2500 i2c4
+&i2c3 {
+	status = "okay";
+
+	// PDU FRU U7
+	eeprom@55 {
+		compatible = "atmel,24c512";
+		reg = <0x55>;
+		pagesize = <128>;
+		size = <65536>;
+	};
+
+	// PDB Thermal 2 U2
+	lm75@48 {
+		compatible = "ti,tmp75";
+		reg = <0x48>;
+	};
+
+    // 19115-1A PDB_20191018.pdf Page 3: SMB_PDB_2_* - I2C MUX U20
+    /* Exclude in the device tree so MUX and PSU are accessible via SMBus
+       (i.e. not owned by device tree binding drivers which makes device busy)*/
+    i2cmux@70 {
+        compatible = "nxp,pca9544";
+        reg = <0x70>;
+
+        // CNPSU1
+        bus3_mux215: i2c@0 {
+            reg = <0>;
+
+            psu1@40 {
+                compatible = "ericsson,bmr453";
+                reg = <0x40>;
+            };
+        };
+        // CNPSU2
+        bus3_mux216: i2c@1 {
+            reg = <1>;
+
+            psu2@41 {
+                compatible = "ericsson,bmr453";
+                reg = <0x41>;
+            };
+        };
+        // CNPSU3
+        bus3_mux217: i2c@2 {
+            reg = <2>;
+
+            psu3@42 {
+                compatible = "ericsson,bmr453";
+                reg = <0x42>;
+            };
+        };
+
+        bus3_mux218: i2c@3 {
+            reg = <3>;
+        };
+    };
+};
+
+&i2c4 {             
+    status = "okay";
+
+    // PDB thermal 1 U1
+    lm75@48 {                        
+        compatible = "ti,tmp75";
+        reg = <0x48>;                
+    };                               
+
+    // 19115-1A PDB_20191018.pdf Page 3: SMB_PDB_1_* - I2C MUX U19
+    /* Exclude in the device tree so MUX and PSU are accessible via SMBus
+       *i.e. not owned by device tree binding drivers which makes device busy)*/
+    i2cmux@70 {
+        compatible = "nxp,pca9544";
+        reg = <0x70>;
+
+       // CNPSU4
+        bus4_mux219: i2c@0 {
+            reg = <0>;
+
+            psu4@40 {
+                compatible = "ericsson,bmr453";
+                reg = <0x40>;
+            };
+        };
+        // CNPSU5
+        bus4_mux220: i2c@1 {
+            reg = <1>;
+
+            psu5@41 {
+                compatible = "ericsson,bmr453";
+                reg = <0x41>;
+            };
+        };
+        // CNPSU6
+        bus4_mux221: i2c@2 {
+            reg = <2>;
+
+            psu6@42 {
+                compatible = "ericsson,bmr453";
+                reg = <0x42>;
+            };
+        };
+
+        bus4_mux222: i2c@3 {
+            reg = <3>;
+        };
+    };
+};                  
+
+&i2c5 {             
+    status = "okay";
+
+    // MB Fan U1
+    max31790@20 {
+        compatible = "maxim,max31790";
+        reg = <0x20>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+
+    // GB1 Fan
+    max31790@2c {
+        compatible = "maxim,max31790";
+        reg = <0x2c>;
+    };
+};                  
+
+&i2c6 {             
+    status = "okay";
+
+    // U13 Mux in front of DIMM slots
+    i2cmux@73 {
+	compatible = "nxp,pca9545";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg = <0x73>;
+
+	bus6_mux247: i2c@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0>;
+	};
+
+	bus6_mux248: i2c@1 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <1>;
+	};
+
+	bus6_mux249: i2c@2 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <2>;
+	};
+
+	bus6_mux250: i2c@3 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <3>;
+	};
+     };
+};                  
+
+&i2c7 {
+	status = "okay";
+
+	lm75@4d {
+		compatible = "national,lm75";
+		reg = <0x4d>;
+	};
+
+    i2cmux@71 {
+        compatible = "nxp,pca9548";
+        reg = <0x71>;
+        bus7_mux231: i2c@0 {
+            reg = <0>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux232: i2c@1 {
+            reg = <1>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux233: i2c@2 {
+            reg = <2>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux234: i2c@3 {
+            reg = <3>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus7_mux235: i2c@4 {
+            reg = <4>;
+            // IOE board 0 FRU
+            eeprom@51 {
+                compatible = "atmel,24c512";
+                reg = <0x51>;
+                pagesize = <128>;
+                size = <65536>;
+            };
+        };
+        bus7_mux236: i2c@5 {
+            reg = <5>;
+        };
+        bus7_mux237: i2c@6 {
+            reg = <6>;
+        };
+        bus7_mux238: i2c@7 {
+            reg = <7>;
+        };
+    };
+};
+
+&i2c8 {
+    status = "okay";
+
+    // Midplane thermal
+    lm75@4C {
+        compatible = "ti,tmp75";
+        reg = <0x4C>;
+    };
+
+    i2cmux@70 {
+        compatible = "nxp,pca9548";
+        reg = <0x70>;
+
+        // NVMe0
+        bus8_mux223: i2c@0 {
+            reg = <0>;
+        };
+        // NVMe1
+        bus8_mux224: i2c@1 {
+            reg = <1>;
+        };
+        // NVMe2
+        bus8_mux225: i2c@2 {
+            reg = <2>;
+        };
+        // NVMe3
+        bus8_mux226: i2c@3 {
+            reg = <3>;
+        };
+        // NVMe4
+        bus8_mux227: i2c@4 {
+            reg = <4>;
+        };
+        // NVMe5
+        bus8_mux228: i2c@5 {
+            reg = <5>;
+        };
+        // NVMe6
+        bus8_mux229: i2c@6 {
+            reg = <6>;
+        };
+        // NVMe7
+        bus8_mux230: i2c@7 {
+            reg = <7>;
+        };
+    };
+};
+
+&i2c8 {
+    status = "okay";
+
+    // Midplane thermal
+    lm75@4C {
+        compatible = "ti,tmp75";
+        reg = <0x4C>;
+    };
+};
+
+&i2c9 {             
+    status = "okay";
+
+    i2cmux@72 {
+        compatible = "nxp,pca9548";
+        reg = <0x72>;
+         bus9_mux239: i2c@0 {
+            reg = <0>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux240: i2c@1 {
+            reg = <1>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux241: i2c@2 {
+            reg = <2>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux242: i2c@3 {
+            reg = <3>;
+            tmp421@1f {
+                compatible = "ti,tmp421";
+                reg = <0x1f>;
+            };
+        };
+        bus9_mux243: i2c@4 {
+            reg = <4>;
+            // IOE board 1 FRU
+            eeprom@52 {
+                compatible = "atmel,24c512";
+                reg = <0x52>;
+                pagesize = <128>;
+                size = <65536>;
+            };
+        };
+        bus9_mux244: i2c@5 {
+            reg = <5>;
+        };
+        bus9_mux245: i2c@6 {
+            reg = <6>;
+            // SW FRU
+            eeprom@57 {
+                compatible = "atmel,24c512";
+                reg = <0x57>;
+                pagesize = <128>;
+                size = <65536>;
+            };
+        };
+        bus9_mux246: i2c@7 {
+            reg = <7>;
+        };
+    };
+};
+
+&i2c10 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+
+    // GPU Baseboard FRU
+    eeprom@53 {
+        compatible = "atmel,24c512";
+        reg = <0x53>;
+        pagesize = <128>;
+        size = <65536>;
+    };
+};
+
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+   status = "okay";
+};
+
+// USB 2.0 to HMC & Host BMC connectivity
+&ehci0 {
+   status = "okay";
+};
+
+&ehci1 {
+   status = "okay";
+};
+
+// USB 1.0
+&uhci {
+   status = "okay";
+};

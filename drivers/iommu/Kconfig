@@ -9,7 +9,7 @@ config IOASID
 
 # IOMMU_API always gets selected by whoever wants it.
 config IOMMU_API
-	bool
+	def_bool y
 
 menuconfig IOMMU_SUPPORT
 	bool "IOMMU Hardware Support"
@@ -138,6 +138,7 @@ config OF_IOMMU
 # IOMMU-agnostic DMA-mapping layer
 config IOMMU_DMA
 	bool
+	default y
 	select DMA_OPS
 	select IOMMU_API
 	select IOMMU_IOVA

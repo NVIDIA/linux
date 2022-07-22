@@ -276,9 +276,23 @@ static inline void arch_teardown_msi_irqs(struct pci_dev *dev)
 void arch_restore_msi_irqs(struct pci_dev *dev);
 void default_restore_msi_irqs(struct pci_dev *dev);
 
+struct msi_controller {
+	struct module *owner;
+	struct device *dev;
+	struct device_node *of_node;
+	struct list_head list;
+
+	int (*setup_irq)(struct msi_controller *chip, struct pci_dev *dev,
+			 struct msi_desc *desc);
+	int (*setup_irqs)(struct msi_controller *chip, struct pci_dev *dev,
+			  int nvec, int type);
+	void (*teardown_irq)(struct msi_controller *chip, unsigned int irq);
+};
+
 #ifdef CONFIG_GENERIC_MSI_IRQ_DOMAIN
 
 #include <linux/irqhandler.h>
+#include <asm/msi.h>
 
 struct irq_domain;
 struct irq_domain_ops;

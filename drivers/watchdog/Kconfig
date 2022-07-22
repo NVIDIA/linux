@@ -908,6 +908,23 @@ config ASPEED_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called aspeed_wdt.
 
+config ASPEED_WATCHDOG_DEFAULT_TIMEOUT
+	int "ASPEED BMC Watchdog Timer Default Timeout"
+	depends on ASPEED_WATCHDOG
+	default 30
+	help
+	  Select the default watchdog timer period to be used by the ASPEED
+	  watchdog driver.
+
+config ASPEED_WATCHDOG_FEED_PREBOOT
+	bool "Feed watchdogs that are already running when the driver loads"
+	depends on ASPEED_WATCHDOG
+	default y
+	help
+	  Feed watchdogs that are already running when the driver loads.
+	  Disable to preserve preboot watchdogs.
+
+
 config STM32_WATCHDOG
 	tristate "STM32 Independent WatchDoG (IWDG) support"
 	depends on ARCH_STM32

@@ -1508,4 +1508,12 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-tyan-s8036.dtb \
 	aspeed-bmc-vegman-n110.dtb \
 	aspeed-bmc-vegman-rx20.dtb \
-	aspeed-bmc-vegman-sx20.dtb
+	aspeed-bmc-vegman-sx20.dtb \
+	apseed-bmc-nvidia-dgx.dtb \
+	apseed-bmc-nvidia-dgx-a100-dp.dtb \
+	aspeed-bmc-nvidia-e4830.dtb \
+	aspeed-bmc-nvidia-e4830-bmc.dtb \
+	aspeed-bmc-nvidia-e4830-hmc.dtb \
+	apseed-bmc-nvidia-hgx.dtb \
+	apseed-bmc-nvidia-vulcan-hmc.dtb \
+	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb 

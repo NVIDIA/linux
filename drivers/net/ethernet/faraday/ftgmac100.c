@@ -1088,6 +1088,11 @@ static int ftgmac100_mii_probe(struct net_device *netdev)
 			    phy_modes(phy_intf));
 	}
 
+#if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
+	char phy_id[IFNAMSIZ];
+	snprintf(phy_id, sizeof(phy_id), PHY_ID_FMT, "fixed-0", 0);
+	phydev = phy_connect(netdev, phy_id, &ftgmac100_adjust_link, phy_intf);
+#else
 	phydev = phy_find_first(priv->mii_bus);
 	if (!phydev) {
 		netdev_info(netdev, "%s: no PHY found\n", netdev->name);
@@ -1096,6 +1101,7 @@ static int ftgmac100_mii_probe(struct net_device *netdev)
 
 	phydev = phy_connect(netdev, phydev_name(phydev),
 			     &ftgmac100_adjust_link, phy_intf);
+#endif
 
 	if (IS_ERR(phydev)) {
 		netdev_err(netdev, "%s: Could not attach to PHY\n", netdev->name);
