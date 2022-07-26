@@ -1,0 +1,189 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "nvidia-gh-bmc-core.dtsi"
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "AST2600 E4830 BMC";
+	compatible = "aspeed,ast2600";
+
+	aliases {
+		serial4 = &uart5;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x40000000>;
+	};
+
+        power-gpios{
+                n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+                n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        };
+
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+    status = "okay";
+    flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-e4830-flash-layout-64.dtsi"
+    };
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
+&spi2 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
+
+    flash@0 {
+        status = "okay";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;
+                label = "u-boot-env";
+            };
+
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;
+                label = "rwfs";
+            };
+            log@3800000 {
+                reg = <0x3800000 0xc800000>; // 200 MB
+                label = "log";
+            };
+        };
+    };
+};
+
+&rtc {
+        status = "okay";
+};
+
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+// MAC2 of SoC connected to external PHY
+&mac2 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+   status = "okay";
+};
+// USB 2.0 to HMC & Host BMC connectivity
+&ehci0 {
+   status = "okay";
+};
+
+&ehci1 {
+   status = "okay";
+};
+
+// USB 1.0
+&uhci {
+   status = "okay";
+};
+
+&i2c0 {             
+    status = "okay";
+};                  
+
+// SSIF IPMI interface
+&i2c1 {
+    status = "okay";
+        ssif-bmc@10 {
+        compatible = "ssif-bmc";
+               reg = <0x10>;
+        };
+};
+
+// Ethernet SW 
+&i2c10 {
+    status = "okay";
+};
+
+
+&i2c12 {
+    status = "okay";
+};
+
+&i2c13 {
+    status = "okay";
+};
+
+&i2c14 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
+};
+
+&mctp {
+    status = "okay";
+};
+
+&rng {
+	status = "okay";
+};
