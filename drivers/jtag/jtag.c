@@ -18,8 +18,8 @@ struct jtag {
 	struct miscdevice miscdev;
 	const struct jtag_ops *ops;
 	int id;
-	unsigned long priv[0];
 	bool locked;
+	unsigned long priv[0];
 };
 
 static DEFINE_IDA(jtag_ida);
