@@ -17,6 +17,8 @@
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
+#include <linux/delay.h>
+#include <asm/io.h>
 
 #include "ssif_bmc.h"
 
@@ -38,6 +40,15 @@ static const char *state_to_string(enum ssif_state state)
 	default:
 		return "SSIF_STATE_UNKNOWN";
 	}
+}
+static void aspeed_response_nack(struct ssif_bmc_ctx *ssif_bmc)
+{
+	struct aspeed_i2c_bus *bus;
+
+	bus = (struct aspeed_i2c_bus *)ssif_bmc->priv;
+	if (!bus)
+		return;
+	writel(ASPEED_I2CD_M_S_RX_CMD_LAST, bus->base + ASPEED_I2C_CMD_REG);
 }
 
 /* Handle SSIF message that will be sent to user */
@@ -669,6 +680,10 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 		break;
 
 	case I2C_SLAVE_WRITE_REQUESTED:
+		if (ssif_bmc->busy && !ssif_bmc->response_in_progress) {
+			mdelay(30);
+			aspeed_response_nack(ssif_bmc);
+		}
 		on_write_requested_event(ssif_bmc, val);
 		break;
 
@@ -728,6 +743,7 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	/* Register I2C slave */
 	i2c_set_clientdata(client, ssif_bmc);
+	ssif_bmc->priv = i2c_get_adapdata(client->adapter);
 	ret = i2c_slave_register(client, ssif_bmc_cb);
 	if (ret) {
 		misc_deregister(&ssif_bmc->miscdev);
