@@ -302,6 +302,7 @@ static int ipmb_slave_cb(struct i2c_client *client,
 static int ipmb_probe(struct i2c_client *client)
 {
 	struct ipmb_dev *ipmb_dev;
+	u32 inst_slave_addr;
 	int ret;
 
 	ipmb_dev = devm_kzalloc(&client->dev, sizeof(*ipmb_dev),
@@ -318,9 +319,10 @@ static int ipmb_probe(struct i2c_client *client)
 
 	ipmb_dev->miscdev.minor = MISC_DYNAMIC_MINOR;
 
+	device_property_read_u32(&client->dev, "reg", &inst_slave_addr);
 	ipmb_dev->miscdev.name = devm_kasprintf(&client->dev, GFP_KERNEL,
-						"%s%d", "ipmb-",
-						client->adapter->nr);
+						"%s%d-%x", "ipmb-",
+						client->adapter->nr, inst_slave_addr & 0xFF);
 	ipmb_dev->miscdev.fops = &ipmb_fops;
 	ipmb_dev->miscdev.parent = &client->dev;
 	ret = misc_register(&ipmb_dev->miscdev);
