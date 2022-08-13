@@ -168,27 +168,13 @@
     status = "okay";
 };
 
-// I2C5, BMC_I2C_STBY_TELEM
-//&i2c4 {
-//    status = "okay";
-    // enable in entity-manager instead
-    //lm75@49 {
-    //    compatible = "ti,tmp75";
-    //    reg = <0x49>;
-    //};
-
-    //lm75@4a {
-    //    compatible = "ti,tmp75";
-    //    reg = <0x4a>;
-    //};
-//};
 
 //RTC Driver
 &i2c4 {
     status = "okay";
-        rtc@6f {
-            compatible = "nuvoton,nct3018y";
-            reg = <0x6f>;
+    rtc@6f {
+        compatible = "nuvoton,nct3018y";
+        reg = <0x6f>;
         };
 };
 
