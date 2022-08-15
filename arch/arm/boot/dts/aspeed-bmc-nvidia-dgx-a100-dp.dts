@@ -201,6 +201,7 @@
         compatible = "mx66l51235l", "jedec,spi-nor";
         label = "config";
         spi-max-frequency = <50000000>;
+
         partitions {
             compatible = "fixed-partitions";
             #address-cells = <1>;
@@ -211,8 +212,8 @@
                 label = "u-boot-env";
             };
 
-            rwfs@20000 {
-                reg = <0x40000 0x1000000>;
+            rwfs@40000 {
+                reg = <0x40000 0x1600000>;
                 label = "rwfs";
             };
         };

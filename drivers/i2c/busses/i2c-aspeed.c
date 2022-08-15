@@ -19,22 +19,13 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <linux/kernel.h>
-#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <linux/regmap.h>
 #include <linux/reset.h>
 #include <linux/slab.h>
-
-/* I2C Global Registers */
-/* 0x00 : I2CG Interrupt Status Register  */
-/* 0x08 : I2CG Interrupt Target Assignment  */
-/* 0x0c : I2CG Global Control Register (AST2500)  */
-#define ASPEED_I2CG_GLOBAL_CTRL_REG			0x0c
-#define  ASPEED_I2CG_SRAM_BUFFER_EN			BIT(0)
 
 /* I2C Register */
 #define ASPEED_I2C_FUN_CTRL_REG				0x00
@@ -263,11 +254,6 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 
 	/* Slave was requested, restart state machine. */
 	if (irq_status & ASPEED_I2CD_INTR_SLAVE_MATCH) {
-		if (irq_status & ASPEED_I2CD_INTR_TX_NAK &&
-			bus->slave_state == ASPEED_I2C_SLAVE_READ_PROCESSED) {
-			irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
-			i2c_slave_event(slave, I2C_SLAVE_STOP, &value);
-		}
 		irq_handled |= ASPEED_I2CD_INTR_SLAVE_MATCH;
 		bus->slave_state = ASPEED_I2C_SLAVE_START;
 	}
@@ -346,12 +332,6 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 		break;
 	}
 
-	if (irq_handled != irq_status)
-		dev_err(bus->dev,
-			"irq handled != irq. expected %x, but was %x\n",
-			irq_status, irq_handled);
-	writel(irq_handled, bus->base + ASPEED_I2C_INTR_STS_REG);
-
 	return irq_handled;
 }
 #endif /* CONFIG_I2C_SLAVE */
@@ -426,11 +406,6 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	struct i2c_msg *msg;
 	u8 recv_byte;
 	int ret;
-
-	irq_status = readl(bus->base + ASPEED_I2C_INTR_STS_REG);
-	/* Ack all interrupt bits. */
-	writel(irq_status, bus->base + ASPEED_I2C_INTR_STS_REG);
-	readl(bus->base + ASPEED_I2C_INTR_STS_REG);
 
 	if (irq_status & ASPEED_I2CD_INTR_BUS_RECOVER_DONE) {
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
@@ -616,10 +591,6 @@ out_complete:
 		bus->master_xfer_result = bus->msgs_index + 1;
 	complete(&bus->cmd_complete);
 out_no_complete:
-	if (irq_status != irq_handled)
-		dev_err(bus->dev,
-			"irq handled != irq. expected 0x%08x, but was 0x%08x\n",
-			irq_status, irq_handled);
 	return irq_handled;
 }
 
@@ -630,6 +601,10 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 
 	spin_lock(&bus->lock);
 	irq_received = readl(bus->base + ASPEED_I2C_INTR_STS_REG);
+	/* Ack all interrupts except for Rx done */
+	writel(irq_received & ~ASPEED_I2CD_INTR_RX_DONE,
+	       bus->base + ASPEED_I2C_INTR_STS_REG);
+	readl(bus->base + ASPEED_I2C_INTR_STS_REG);
 	irq_received &= ASPEED_I2CD_INTR_RECV_MASK;
 	irq_remaining = irq_received;
 
@@ -672,6 +647,12 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 			"irq handled != irq. expected 0x%08x, but was 0x%08x\n",
 			irq_received, irq_handled);
 
+	/* Ack Rx done */
+	if (irq_received & ASPEED_I2CD_INTR_RX_DONE) {
+		writel(ASPEED_I2CD_INTR_RX_DONE,
+		       bus->base + ASPEED_I2C_INTR_STS_REG);
+		readl(bus->base + ASPEED_I2C_INTR_STS_REG);
+	}
 	spin_unlock(&bus->lock);
 	return irq_remaining ? IRQ_NONE : IRQ_HANDLED;
 }
@@ -727,11 +708,6 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 		spin_lock_irqsave(&bus->lock, flags);
 		if (bus->master_state == ASPEED_I2C_MASTER_PENDING)
 			bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
-		/*
-		 * All the buffers may be freed after returning to caller, so
-		 * set msgs to NULL to avoid memory reference after freeing.
-		 */
-		bus->msgs = NULL;
 		spin_unlock_irqrestore(&bus->lock, flags);
 
 		return -ETIMEDOUT;
@@ -1000,20 +976,6 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 	struct clk *parent_clk;
 	struct resource *res;
 	int irq, ret;
-
-	if (of_device_is_compatible(pdev->dev.of_node,
-					"aspeed,ast2600-i2c-bus")) {
-		u32 global_ctrl;
-		struct regmap *gr_regmap = syscon_regmap_lookup_by_compatible("aspeed,ast2600-i2c-global");
-
-		if (IS_ERR(gr_regmap))
-			ret = PTR_ERR(gr_regmap);
-		else {
-			regmap_read(gr_regmap, ASPEED_I2CG_GLOBAL_CTRL_REG, &global_ctrl);
-			if (global_ctrl & BIT(2))
-				return -EIO;
-		}
-	}
 
 	bus = devm_kzalloc(&pdev->dev, sizeof(*bus), GFP_KERNEL);
 	if (!bus)

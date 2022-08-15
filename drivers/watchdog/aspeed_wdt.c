@@ -93,6 +93,7 @@ MODULE_DEVICE_TABLE(of, aspeed_wdt_of_table);
 
 /* 32 bits at 1MHz, in milliseconds */
 #define WDT_MAX_TIMEOUT_MS	4294967
+#define WDT_DEFAULT_TIMEOUT	30
 #define WDT_RATE_1MHZ		1000000
 
 static struct aspeed_wdt *to_aspeed_wdt(struct watchdog_device *wdd)
@@ -262,7 +263,7 @@ static int aspeed_wdt_probe(struct platform_device *pdev)
 	wdt->wdd.max_hw_heartbeat_ms = WDT_MAX_TIMEOUT_MS;
 	wdt->wdd.parent = dev;
 
-	wdt->wdd.timeout = CONFIG_ASPEED_WATCHDOG_DEFAULT_TIMEOUT;
+	wdt->wdd.timeout = WDT_DEFAULT_TIMEOUT;
 	watchdog_init_timeout(&wdt->wdd, 0, dev);
 
 	np = dev->of_node;

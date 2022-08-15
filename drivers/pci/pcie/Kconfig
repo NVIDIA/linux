@@ -111,8 +111,7 @@ config PCIEASPM_PERFORMANCE
 endchoice
 
 config PCIE_PME
-	bool "PCIe Native PME support"
-	default y
+	def_bool y
 	depends on PCIEPORTBUS && PM
 
 config PCIE_DPC
