@@ -250,18 +250,13 @@
 	status = "okay";
 };
 
-//USB 2.0 (BMC to BF3)
-&udc {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usb2bd_default>;
 
+//USB 2.0 (BMC to BF3)
+&ehci0 {
+	status = "okay";
 };
 
 // USB 1.0
-&uhci {
+&ehci1 {
 	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usb2ah_default>;
-
 };
