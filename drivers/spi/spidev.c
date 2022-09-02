@@ -676,6 +676,7 @@ static struct class *spidev_class;
 static const struct spi_device_id spidev_spi_ids[] = {
 	{ .name = "dh2228fv" },
 	{ .name = "ltc2488" },
+	{ .name = "glacier" },
 	{ .name = "sx1301" },
 	{ .name = "bk4" },
 	{ .name = "dhcom-board" },
@@ -690,6 +691,7 @@ MODULE_DEVICE_TABLE(spi, spidev_spi_ids);
 static const struct of_device_id spidev_dt_ids[] = {
 	{ .compatible = "rohm,dh2228fv" },
 	{ .compatible = "lineartechnology,ltc2488" },
+	{ .compatible = "hgx,glacier" },
 	{ .compatible = "semtech,sx1301" },
 	{ .compatible = "lwn,bk4" },
 	{ .compatible = "dh,dhcom-board" },
