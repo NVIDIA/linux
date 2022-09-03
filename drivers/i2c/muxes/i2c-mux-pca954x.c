@@ -419,8 +419,10 @@ static int pca954x_probe(struct i2c_client *client,
 	struct gpio_desc *gpio;
 	struct i2c_mux_core *muxc;
 	struct pca954x *data;
+	bool nr_taken = true;
 	int num;
 	int ret;
+	int nr;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
 		return -ENODEV;
@@ -488,9 +490,16 @@ static int pca954x_probe(struct i2c_client *client,
 	if (ret)
 		goto fail_cleanup;
 
+	if (device_property_read_u32(dev, "numbered-adapter", &nr)) {
+		nr = 0;
+		nr_taken = false;
+	}
 	/* Now create an adapter for each channel */
 	for (num = 0; num < data->chip->nchans; num++) {
-		ret = i2c_mux_add_adapter(muxc, 0, num, 0);
+		int n = 0;
+		if (nr_taken)
+			n = nr + num;
+		ret = i2c_mux_add_adapter(muxc, n, num, 0);
 		if (ret)
 			goto fail_cleanup;
 	}
