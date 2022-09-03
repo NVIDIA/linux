@@ -190,16 +190,37 @@
 // I2C6, I2C_BMC_IOM_EXP
 &i2c5 {
     status = "okay";
+	i2c-switch@70 {
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		numbered-adapter = <16>;
+	};
 };
 
 // I2C7, I2C_BMC_IOM_EXP
 &i2c6 {
     status = "okay";
+	i2c-switch@70 {
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		numbered-adapter = <20>;
+	};
 };
 
 // I2C8, BMC_I2C_PCI
 &i2c7 {
     status = "okay";
+	i2c-switch@70 {
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		numbered-adapter = <24>;
+	};
 };
 
 // I2C12, I2C12_BSDL
@@ -228,6 +249,13 @@
 // I2C15, BMC_I2C_HDR2
 &i2c14 {
     status = "okay";
+	i2c-switch@70 {
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		numbered-adapter = <28>;
+	};
 };
 
 // I2C16
