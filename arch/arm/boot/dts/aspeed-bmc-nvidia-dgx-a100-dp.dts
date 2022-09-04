@@ -128,7 +128,7 @@
 	/*F0-F7*/       "","latch_gpu1_thermtrip_cpld_n","","bmc_cpld_boot_n","ps_on_n","","","",
 	/*G0-G7*/       "","","","","","","","",
 	/*H0-H7*/       "","","","","","","","",
-	/*I0-I7*/       "","","bios_spi_cs_sel","bmc_ready","global_wp_n","","","",
+	/*I0-I7*/       "","","bios_spi_cs_sel","bmc_ready","global_wp_n","cpu1_present_n","","cpu2_bmc_present_n",
 	/*J0-J7*/       "","","","","","","","",
 	/*K0-K7*/       "","","","","","","","",
 	/*L0-L7*/       "","","","","","","","",
@@ -201,7 +201,6 @@
         compatible = "mx66l51235l", "jedec,spi-nor";
         label = "config";
         spi-max-frequency = <50000000>;
-
         partitions {
             compatible = "fixed-partitions";
             #address-cells = <1>;

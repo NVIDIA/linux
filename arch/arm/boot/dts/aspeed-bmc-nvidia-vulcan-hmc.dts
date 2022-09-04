@@ -27,6 +27,19 @@
                 n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
         };
 
+	reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        ramoops@0xbc000000 {
+                compatible = "ramoops";
+                reg = <0 0xbc000000 0 0x100000>; // 1MB at 0xbc000000
+                record-size = <0x10000>; // 64kB per record
+                console-size = <0x10000>; // 64kB for console output
+                pmsg-size = <0x1000>; // 4kB for user messages
+        };
+    };
 };
 
 &gpio0 {
@@ -165,7 +178,7 @@
     };
 
     // HMC FRU
-    eeprom@4E {
+    eeprom@4e {
     compatible = "atmel,24c256";
     reg = <0x4E>;
     };
