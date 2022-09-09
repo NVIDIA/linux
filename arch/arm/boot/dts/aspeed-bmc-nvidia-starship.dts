@@ -1,0 +1,247 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "nvidia-gh-bmc-core.dtsi"
+#include "aspeed-bmc-nvidia-gh-i2c-arb.dtsi"
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "AST2600 Starship BMC";
+	compatible = "aspeed,ast2600";
+
+	aliases {
+		i2c24 = &i2carb;
+		serial2 = &uart3;
+		serial4 = &uart5;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200n8 earlyprintk";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x80000000>;
+	};
+
+	power-gpios{
+		n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+		n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+	};
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		compatible = "jedec,spi-nor";
+		label = "bmc";
+		spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-e4830-flash-layout-64.dtsi"
+	};
+};
+
+&fmcraw {
+	status = "okay";
+	spidev@0 {
+		compatible = "hgx,glacier";
+		status = "okay";
+	};
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2_default>;
+
+	// Data SPI is 64MB in size
+	flash@0 {
+		status = "okay";
+		label = "config";
+		spi-max-frequency = <50000000>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			u-boot-env@0 {
+				reg = <0x0 0x40000>;			// 256KB at offset 0
+				label = "u-boot-env";
+			};
+
+			rwfs@40000 {
+				reg = <0x40000 0x1000000>;		// 16MB at offset 0x40000
+				label = "rwfs";
+			};
+
+			log@0x1040000 {
+				reg = <0x1040000 0x2800000>;	// 40MB at offset 0x1040000
+				label = "log";					// Move log to EMMC, make this unused
+			};
+		};
+	};
+};
+
+&rtc {
+	status = "okay";
+};
+
+&uart3 {
+	//Enabling SOL
+	status = "okay";
+};
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+// MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
+// This is "mac2" in zero-based DTS
+&mdio2 {
+	status = "okay";
+	ethphy0: ethernet-phy@0 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0>;
+	};
+};
+
+&mac2 {
+	status = "okay";
+	pinctrl-names = "default";
+	phy-mode = "rgmii";
+	max-speed = <1000>;
+	phy-handle = <&ethphy0>;
+	pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+// Enable emmc
+&emmc_controller {
+	status = "okay";
+};
+
+&emmc {
+	non-removable;
+	bus-width = <4>;
+	max-frequency = <52000000>;
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+	status = "okay";
+};
+
+// USB 2.0 to HMC & Host BMC connectivity
+&ehci1 {
+	status = "okay";
+};
+
+// USB 1.0
+&uhci {
+	status = "okay";
+};
+
+// I2C1, SSIF IPMI interface
+&i2c0 {
+	status = "okay";
+};
+
+// I2C2, BMC_I2C1_FPGA
+&i2c1 {
+	status = "okay";
+};
+
+// I2C3, BMC_I2C0_FPGA
+&i2c2 {
+	status = "okay";
+};
+
+// I2C4, BMC_I2C0_FPGA
+&i2c3 {
+	status = "okay";
+};
+
+// I2C5, BMC_I2C_STBY_TELEM
+&i2c4 {
+	status = "okay";
+};
+
+// I2C6, I2C_BMC_IOM_EXP
+&i2c5 {
+	status = "okay";
+};
+
+// I2C7, I2C_BMC_IOM_EXP
+&i2c6 {
+	status = "okay";
+};
+
+// I2C8, BMC_I2C_PCI
+&i2c7 {
+	status = "okay";
+};
+
+// I2C12, I2C12_BSDL
+&i2c11 {
+	status = "okay";
+
+};
+
+// I2C14, BMC_I2C_HDR1
+&i2c13 {
+	status = "okay";
+};
+
+// I2C15, BMC_I2C_HDR2
+&i2c14 {
+	status = "okay";
+};
+
+// I2C16
+&i2c15 {
+	status = "okay";
+};
+
+// PCIe RC
+&pcie {
+	status = "okay";
+
+	interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+	pcie_intc0: legacy-interrupt-controller {
+					interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+	};
+};
+
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+	status = "okay";
+};
+
+&mctp {
+	status = "okay";
+};
+
+&rng {
+	status = "okay";
+};
+
+&i2carb {
+	i2c-parent = <&i2c14>;
+	cpld-address = <0x20>;
+	i2c-cpld = <&i2c15>;
+
+	our-claim-gpio = <&gpio1 8 GPIO_ACTIVE_LOW>;
+	their-claim-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+	slew-delay-us = <10>;
+	wait-retry-us = <3000>;
+	wait-free-us = <50000>;
+	status = "okay";
+};
