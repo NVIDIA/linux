@@ -23,6 +23,31 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
+    reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+	};
+
     power-gpios{
         n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
         n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
@@ -139,7 +164,15 @@
  */
 &vhub {
    status = "okay";
+   pinctrl-names = "default"; 
+   pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
+
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
 // USB 2.0 to HMC & Host BMC connectivity
 &ehci1 {
    status = "okay";
