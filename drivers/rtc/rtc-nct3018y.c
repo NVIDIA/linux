@@ -521,8 +521,7 @@ static int nct3018y_probe(struct i2c_client *client,
 		}
 	}
 
-	//return devm_rtc_register_device(nct3018y->rtc);
-	return rtc_register_device(nct3018y->rtc);
+	return devm_rtc_register_device(nct3018y->rtc);
 
 #ifdef CONFIG_COMMON_CLK
 	/* register clk in common clk framework */
