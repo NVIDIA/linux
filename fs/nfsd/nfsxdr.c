@@ -342,11 +342,9 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p)
 	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
 		return 0;
 	if (args->len > NFSSVC_MAXBLKSIZE_V2)
-		return 0;
-	if (!xdr_stream_subsegment(xdr, &args->payload, args->len))
-		return 0;
+		return false;
 
-	return 1;
+	return xdr_stream_subsegment(xdr, &args->payload, args->len);
 }
 
 int

@@ -1059,7 +1059,7 @@ open_file:
  * scraping this file for info should test the labels to ensure they're
  * getting the correct field.
  */
-static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
 {
 	unsigned int i, count = 0, longest = 0;
 	unsigned long hits = 0;
@@ -1085,9 +1085,4 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
 	seq_printf(m, "longest chain: %u\n", longest);
 	seq_printf(m, "cache hits:    %lu\n", hits);
 	return 0;
-}
-
-int nfsd_file_cache_stats_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, nfsd_file_cache_stats_show, NULL);
 }
