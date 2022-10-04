@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * The driver for BMC side of SSIF interface
  *
@@ -17,9 +17,97 @@
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
-#include <asm/io.h>
+#include <linux/ipmi_ssif_bmc.h>
 
-#include "ssif_bmc.h"
+#define DEVICE_NAME                             "ipmi-ssif-host"
+
+#define GET_8BIT_ADDR(addr_7bit)                (((addr_7bit) << 1) & 0xff)
+
+/* A standard SMBus Transaction is limited to 32 data bytes */
+#define MAX_PAYLOAD_PER_TRANSACTION             32
+/* Transaction includes the address, the command, the length and the PEC byte */
+#define MAX_TRANSACTION                         (MAX_PAYLOAD_PER_TRANSACTION + 4)
+
+#define MAX_IPMI_DATA_PER_START_TRANSACTION     30
+#define MAX_IPMI_DATA_PER_MIDDLE_TRANSACTION    31
+
+#define SSIF_IPMI_SINGLEPART_WRITE              0x2
+#define SSIF_IPMI_SINGLEPART_READ               0x3
+#define SSIF_IPMI_MULTIPART_WRITE_START         0x6
+#define SSIF_IPMI_MULTIPART_WRITE_MIDDLE        0x7
+#define SSIF_IPMI_MULTIPART_WRITE_END           0x8
+#define SSIF_IPMI_MULTIPART_READ_START          0x3
+#define SSIF_IPMI_MULTIPART_READ_MIDDLE         0x9
+
+/*
+ * IPMI 2.0 Spec, section 12.7 SSIF Timing,
+ * Request-to-Response Time is T6max(250ms) - T1max(20ms) - 3ms = 227ms
+ * Recover ssif_bmc from busy state if it takes up to 500ms
+ */
+#define RESPONSE_TIMEOUT                        500 /* ms */
+
+struct ssif_part_buffer {
+	u8 address;
+	u8 smbus_cmd;
+	u8 length;
+	u8 payload[MAX_PAYLOAD_PER_TRANSACTION];
+	u8 pec;
+	u8 index;
+};
+
+/*
+ * SSIF internal states:
+ *   SSIF_READY         0x00 : Ready state
+ *   SSIF_START         0x01 : Start smbus transaction
+ *   SSIF_SMBUS_CMD     0x02 : Received SMBus command
+ *   SSIF_REQ_RECVING   0x03 : Receiving request
+ *   SSIF_RES_SENDING   0x04 : Sending response
+ *   SSIF_ABORTING      0x05 : Aborting state
+ */
+enum ssif_state {
+	SSIF_READY,
+	SSIF_START,
+	SSIF_SMBUS_CMD,
+	SSIF_REQ_RECVING,
+	SSIF_RES_SENDING,
+	SSIF_ABORTING,
+	SSIF_STATE_MAX
+};
+
+struct ssif_bmc_ctx {
+	struct i2c_client       *client;
+	struct miscdevice       miscdev;
+	int                     msg_idx;
+	bool                    pec_support;
+	/* ssif bmc spinlock */
+	spinlock_t              lock;
+	wait_queue_head_t       wait_queue;
+	u8                      running;
+	enum ssif_state         state;
+	/* Timeout waiting for response */
+	struct timer_list       response_timer;
+	bool                    response_timer_inited;
+	/* Flag to identify a Multi-part Read Transaction */
+	bool                    is_singlepart_read;
+	u8                      nbytes_processed;
+	u8                      remain_len;
+	u8                      recv_len;
+	/* Block Number of a Multi-part Read Transaction */
+	u8                      block_num;
+	bool                    request_available;
+	bool                    response_in_progress;
+	bool                    busy;
+	bool                    aborting;
+	/* Buffer for SSIF Transaction part*/
+	struct ssif_part_buffer part_buf;
+	struct ipmi_ssif_msg    response;
+	struct ipmi_ssif_msg    request;
+};
+
+static inline struct ssif_bmc_ctx *to_ssif_bmc(struct file *file)
+{
+	return container_of(file->private_data, struct ssif_bmc_ctx, miscdev);
+}
 
 static const char *state_to_string(enum ssif_state state)
 {
@@ -40,21 +128,12 @@ static const char *state_to_string(enum ssif_state state)
 		return "SSIF_STATE_UNKNOWN";
 	}
 }
-static void aspeed_response_nack(struct ssif_bmc_ctx *ssif_bmc)
-{
-	struct aspeed_i2c_bus *bus;
-
-	bus = (struct aspeed_i2c_bus *)ssif_bmc->priv;
-	if (!bus)
-		return;
-	writel(ASPEED_I2CD_M_S_RX_CMD_LAST, bus->base + ASPEED_I2C_CMD_REG);
-}
 
 /* Handle SSIF message that will be sent to user */
 static ssize_t ssif_bmc_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
-	struct ssif_msg msg;
+	struct ipmi_ssif_msg msg;
 	unsigned long flags;
 	ssize_t ret;
 
@@ -70,11 +149,15 @@ static ssize_t ssif_bmc_read(struct file *file, char __user *buf, size_t count, 
 		spin_lock_irqsave(&ssif_bmc->lock, flags);
 	}
 
-	if (count < min_t(ssize_t, ssif_bmc->request.len + 1, sizeof(struct ssif_msg))) {
+	if (count < min_t(ssize_t,
+			  sizeof_field(struct ipmi_ssif_msg, len) + ssif_bmc->request.len,
+			  sizeof(struct ipmi_ssif_msg))) {
 		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
 		ret = -EINVAL;
 	} else {
-		count = min_t(ssize_t, ssif_bmc->request.len + 1, sizeof(struct ssif_msg));
+		count = min_t(ssize_t,
+			      sizeof_field(struct ipmi_ssif_msg, len) + ssif_bmc->request.len,
+			      sizeof(struct ipmi_ssif_msg));
 		memcpy(&msg, &ssif_bmc->request, count);
 		ssif_bmc->request_available = false;
 		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
@@ -90,17 +173,17 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 			      loff_t *ppos)
 {
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
-	struct ssif_msg msg;
+	struct ipmi_ssif_msg msg;
 	unsigned long flags;
 	ssize_t ret;
 
-	if (count > sizeof(struct ssif_msg))
+	if (count > sizeof(struct ipmi_ssif_msg))
 		return -EINVAL;
 
 	if (copy_from_user(&msg, buf, count))
 		return -EFAULT;
 
-	if (!msg.len || count < msg.len + 1)
+	if (!msg.len || count < sizeof_field(struct ipmi_ssif_msg, len) + msg.len)
 		return -EINVAL;
 
 	spin_lock_irqsave(&ssif_bmc->lock, flags);
@@ -136,7 +219,7 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	ssif_bmc->busy = false;
 
 	/* Clean old request buffer */
-	memset(&ssif_bmc->request, 0, sizeof(struct ssif_msg));
+	memset(&ssif_bmc->request, 0, sizeof(struct ipmi_ssif_msg));
 exit:
 	spin_unlock_irqrestore(&ssif_bmc->lock, flags);
 
@@ -238,7 +321,7 @@ static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 	/* Request message is available to process */
 	ssif_bmc->request_available = true;
 	/* Clean old response buffer */
-	memset(&ssif_bmc->response, 0, sizeof(struct ssif_msg));
+	memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg));
 	/* This is the new READ request.*/
 	wake_up_all(&ssif_bmc->wait_queue);
 
@@ -271,7 +354,7 @@ static void set_singlepart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 	struct ssif_part_buffer *part = &ssif_bmc->part_buf;
 
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
-	part->length = ssif_bmc->response.len;
+	part->length = (u8)ssif_bmc->response.len;
 
 	/* Clear the rest to 0 */
 	memset(part->payload + part->length, 0, MAX_PAYLOAD_PER_TRANSACTION - part->length);
@@ -308,7 +391,7 @@ static void set_multipart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 		 * IPMI READ Middle or READ End messages can carry up to 31 bytes
 		 * IPMI data plus block number byte.
 		 */
-		if (ssif_bmc->remain_len < MAX_IPMI_DATA_PER_MIDDLE_TRANSACTION) {
+		if (ssif_bmc->remain_len <= MAX_IPMI_DATA_PER_MIDDLE_TRANSACTION) {
 			/*
 			 * This is READ End message
 			 *  Return length is the remaining response data length
@@ -389,8 +472,12 @@ static void handle_read_processed(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 static void handle_write_received(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
-	/* msg_idx should not be 0 when reach here */
-	if (!ssif_bmc->msg_idx || ssif_bmc->msg_idx > MAX_TRANSACTION)
+	/*
+	 * The msg_idx must be 1 when first enter SSIF_REQ_RECVING state
+	 * And it would never exceeded 36 bytes included the 32 bytes max payload +
+	 * the address + the command + the len and the PEC.
+	 */
+	if (ssif_bmc->msg_idx < 1  || ssif_bmc->msg_idx > MAX_TRANSACTION)
 		return;
 
 	if (ssif_bmc->msg_idx == 1) {
@@ -451,6 +538,7 @@ exit:
 static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 {
 	struct ssif_part_buffer *part = &ssif_bmc->part_buf;
+	unsigned int len;
 
 	switch (part->smbus_cmd) {
 	case SSIF_IPMI_SINGLEPART_WRITE:
@@ -460,21 +548,22 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 
 		break;
 	case SSIF_IPMI_MULTIPART_WRITE_START:
-			ssif_bmc->request.len = 0;
+		ssif_bmc->request.len = 0;
 
 		fallthrough;
 	case SSIF_IPMI_MULTIPART_WRITE_MIDDLE:
 	case SSIF_IPMI_MULTIPART_WRITE_END:
+		len = ssif_bmc->request.len + part->length;
 		/* Do the bound check here, not allow the request len exceed 254 bytes */
-		if (ssif_bmc->request.len <= MSG_PAYLOAD_LEN_MAX - part->length) {
-			memcpy(ssif_bmc->request.payload + ssif_bmc->request.len,
-			       part->payload, part->length);
-			ssif_bmc->request.len += part->length;
-		} else {
+		if (len > IPMI_SSIF_PAYLOAD_MAX) {
 			dev_warn(&ssif_bmc->client->dev,
 				 "Warn: Request exceeded 254 bytes, aborting");
 			/* Request too long, aborting */
 			ssif_bmc->aborting =  true;
+		} else {
+			memcpy(ssif_bmc->request.payload + ssif_bmc->request.len,
+			       part->payload, part->length);
+			ssif_bmc->request.len += part->length;
 		}
 		break;
 	default:
@@ -487,25 +576,24 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 
 static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
+	/* SMBUS command can vary (single or multi-part) */
+	ssif_bmc->part_buf.smbus_cmd = *val;
+	ssif_bmc->msg_idx = 1;
+	memset(&ssif_bmc->part_buf.payload[0], 0, MAX_PAYLOAD_PER_TRANSACTION);
+
 	if (*val == SSIF_IPMI_SINGLEPART_WRITE || *val == SSIF_IPMI_MULTIPART_WRITE_START) {
 		/*
 		 * The response maybe not come in-time, causing host SSIF driver
 		 * to timeout and resend a new request. In such case check for
 		 * pending response and clear it
 		 */
-		if (ssif_bmc->response_in_progress) {
-			/* retain address of the request */
-			u8 addr = ssif_bmc->part_buf.address;
+		if (ssif_bmc->response_in_progress)
 			complete_response(ssif_bmc);
-			ssif_bmc->part_buf.address = addr;
-		}
+
 		/* This is new request, flip aborting flag if set */
 		if (ssif_bmc->aborting)
 			ssif_bmc->aborting = false;
 	}
-	/* SMBUS command can vary (single or multi-part) */
-	ssif_bmc->part_buf.smbus_cmd = *val;
-	ssif_bmc->msg_idx = 1;
 }
 
 static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
@@ -518,6 +606,9 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ REQUESTED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
+		*val = 0;
+		return;
+
 	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
 		if (!supported_read_cmd(ssif_bmc->part_buf.smbus_cmd)) {
 			dev_warn(&ssif_bmc->client->dev, "Warn: Unknown SMBus read command=0x%x",
@@ -535,16 +626,7 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	/* Send 0 if there is nothing to send */
 	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
-		*val = 1;
-		struct ssif_part_buffer *part = &ssif_bmc->part_buf;
-
-		part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
-		part->length = 0x1;
-		/* Clear the rest to 0 */
-		memset(part->payload, 0, MAX_PAYLOAD_PER_TRANSACTION);
-		part->payload[0] = 0xff;
-		calculate_response_part_pec(&ssif_bmc->part_buf);
-		part->index = 0;
+		*val = 0;
 		return;
 	}
 
@@ -568,6 +650,12 @@ static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ PROCESSED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
+		*val = 0;
+		return;
+	}
+
+	/* Send 0 if there is nothing to send */
+	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
 		*val = 0;
 		return;
 	}
@@ -681,9 +769,6 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 		break;
 
 	case I2C_SLAVE_WRITE_REQUESTED:
-		if (ssif_bmc->busy && !ssif_bmc->response_in_progress) {
-			aspeed_response_nack(ssif_bmc);
-		}
 		on_write_requested_event(ssif_bmc, val);
 		break;
 
@@ -736,28 +821,17 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	ssif_bmc->miscdev.parent = &client->dev;
 	ret = misc_register(&ssif_bmc->miscdev);
 	if (ret)
-		goto out;
+		return ret;
 
 	ssif_bmc->client = client;
 	ssif_bmc->client->flags |= I2C_CLIENT_SLAVE;
 
 	/* Register I2C slave */
 	i2c_set_clientdata(client, ssif_bmc);
-	ssif_bmc->priv = i2c_get_adapdata(client->adapter);
 	ret = i2c_slave_register(client, ssif_bmc_cb);
-	if (ret) {
+	if (ret)
 		misc_deregister(&ssif_bmc->miscdev);
-		goto out;
-	}
-	struct aspeed_i2c_bus *bus = (struct aspeed_i2c_bus *)ssif_bmc->priv;
 
-	u32 func_ctrl = ~ASPEED_I2CD_MASTER_EN &
-			readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
-	writel(func_ctrl, bus->base + ASPEED_I2C_FUN_CTRL_REG);
-
-	return 0;
-out:
-	devm_kfree(&client->dev, ssif_bmc);
 	return ret;
 }
 

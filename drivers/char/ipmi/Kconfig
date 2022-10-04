@@ -179,8 +179,7 @@ config ASPEED_BT_IPMI_BMC
 
 config SSIF_IPMI_BMC
 	tristate "SSIF IPMI BMC driver"
-	select I2C
-	select I2C_SLAVE
+	depends on I2C && I2C_SLAVE
 	help
 	  This enables the IPMI SMBus system interface (SSIF) at the
 	  management (BMC) side.
