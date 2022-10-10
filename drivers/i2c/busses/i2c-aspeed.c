@@ -642,10 +642,11 @@ out_no_complete:
 static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 {
 	struct aspeed_i2c_bus *bus = dev_id;
-	u32 irq_received, irq_remaining, irq_handled;
+	u32 irq_received, irq_remaining, irq_handled, func_ctrl;
 
 	spin_lock(&bus->lock);
 	irq_received = readl(bus->base + ASPEED_I2C_INTR_STS_REG);
+	func_ctrl = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
 	irq_received &= ASPEED_I2CD_INTR_RECV_MASK;
 	irq_remaining = irq_received;
 
@@ -659,16 +660,20 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 	 */
 	if (bus->master_state != ASPEED_I2C_MASTER_INACTIVE &&
 	    bus->master_state != ASPEED_I2C_MASTER_PENDING) {
-		irq_handled = aspeed_i2c_master_irq(bus, irq_remaining);
+		if (func_ctrl & ASPEED_I2CD_MASTER_EN)
+			irq_handled = aspeed_i2c_master_irq(bus, irq_remaining);
+
 		irq_remaining &= ~irq_handled;
 		if (irq_remaining)
 			irq_handled |= aspeed_i2c_slave_irq(bus, irq_remaining);
 	} else {
 		irq_handled = aspeed_i2c_slave_irq(bus, irq_remaining);
 		irq_remaining &= ~irq_handled;
-		if (irq_remaining)
-			irq_handled |= aspeed_i2c_master_irq(bus,
-							     irq_remaining);
+		if (irq_remaining) {
+			if (func_ctrl & ASPEED_I2CD_MASTER_EN)
+				irq_handled |= aspeed_i2c_master_irq(
+					bus, irq_remaining);
+		}
 	}
 
 	/*

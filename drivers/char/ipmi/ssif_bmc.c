@@ -17,7 +17,6 @@
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
-#include <linux/delay.h>
 #include <asm/io.h>
 
 #include "ssif_bmc.h"
@@ -488,10 +487,6 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 
 static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
-	/* SMBUS command can vary (single or multi-part) */
-	ssif_bmc->part_buf.smbus_cmd = *val;
-	ssif_bmc->msg_idx = 1;
-
 	if (*val == SSIF_IPMI_SINGLEPART_WRITE || *val == SSIF_IPMI_MULTIPART_WRITE_START) {
 		/*
 		 * The response maybe not come in-time, causing host SSIF driver
@@ -499,12 +494,19 @@ static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 		 * pending response and clear it
 		 */
 		if (ssif_bmc->response_in_progress)
+		{
+			/* retain address of the request */
+			u8 addr = ssif_bmc->part_buf.address;
 			complete_response(ssif_bmc);
-
+			ssif_bmc->part_buf.address = addr;
+		}
 		/* This is new request, flip aborting flag if set */
 		if (ssif_bmc->aborting)
 			ssif_bmc->aborting = false;
 	}
+	/* SMBUS command can vary (single or multi-part) */
+	ssif_bmc->part_buf.smbus_cmd = *val;
+	ssif_bmc->msg_idx = 1;
 }
 
 static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
@@ -517,9 +519,6 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ REQUESTED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		*val = 0;
-		return;
-
 	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
 		if (!supported_read_cmd(ssif_bmc->part_buf.smbus_cmd)) {
 			dev_warn(&ssif_bmc->client->dev, "Warn: Unknown SMBus read command=0x%x",
@@ -537,7 +536,15 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	/* Send 0 if there is nothing to send */
 	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
-		*val = 0;
+		*val = 1;
+		struct ssif_part_buffer *part = &ssif_bmc->part_buf;
+		part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
+		part->length = 0x1;
+		/* Clear the rest to 0 */
+		memset(part->payload, 0, MAX_PAYLOAD_PER_TRANSACTION);
+		part->payload[0] = 0xff;
+		calculate_response_part_pec(&ssif_bmc->part_buf);
+		part->index = 0;
 		return;
 	}
 
@@ -561,12 +568,6 @@ static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ PROCESSED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		*val = 0;
-		return;
-	}
-
-	/* Send 0 if there is nothing to send */
-	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
 		*val = 0;
 		return;
 	}
@@ -681,7 +682,12 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 
 	case I2C_SLAVE_WRITE_REQUESTED:
 		if (ssif_bmc->busy && !ssif_bmc->response_in_progress) {
-			mdelay(30);
+			/*
+			 * Removed the 30ms delay while sending Nack as 
+			 * this violate the IPMI SSIF Timing. Instead 
+			 * the retry count from Host side is increased 
+			 * to support long IPMI commands.
+			 */
 			aspeed_response_nack(ssif_bmc);
 		}
 		on_write_requested_event(ssif_bmc, val);
@@ -749,6 +755,10 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 		misc_deregister(&ssif_bmc->miscdev);
 		goto out;
 	}
+	struct aspeed_i2c_bus *bus = (struct aspeed_i2c_bus *)ssif_bmc->priv;
+
+	u32 func_ctrl = ~ASPEED_I2CD_MASTER_EN & readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
+        writel(func_ctrl , bus->base + ASPEED_I2C_FUN_CTRL_REG);
 
 	return 0;
 out:

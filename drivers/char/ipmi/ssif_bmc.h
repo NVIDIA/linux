@@ -29,6 +29,8 @@
 #define SSIF_IPMI_MULTIPART_READ_MIDDLE		0x9
 #define ASPEED_I2C_CMD_REG		0x14
 #define ASPEED_I2CD_M_S_RX_CMD_LAST	BIT(4)
+#define ASPEED_I2C_FUN_CTRL_REG 0x00
+#define ASPEED_I2CD_MASTER_EN BIT(0)
 
 /* Include netfn and cmd field */
 #define MSG_PAYLOAD_LEN_MAX			254
