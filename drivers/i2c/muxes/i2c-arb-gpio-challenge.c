@@ -14,6 +14,10 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
+#if CONFIG_DRAGON_CHASSIS
+#include <linux/device.h>
+#include <linux/timer.h>
+#endif //CONFIG_DRAGON_CHASSIS
 
 /**
  * struct i2c_arbitrator_data - Driver data for I2C arbitrator
@@ -28,9 +32,17 @@
 struct i2c_arbitrator_data {
 	struct gpio_desc *our_gpio;
 	struct gpio_desc *their_gpio;
+	struct gpio_desc *cpld_refresh;
 	unsigned int slew_delay_us;
 	unsigned int wait_retry_us;
 	unsigned int wait_free_us;
+	struct timer_list timer;
+	struct i2c_mux_core *muxc;
+#if CONFIG_DRAGON_CHASSIS
+	struct i2c_adapter *cpld_access;
+	u8 cpld_address;
+	bool bus_locked;
+#endif //CONFIG_DRAGON_CHASSIS
 };
 
 
@@ -43,6 +55,17 @@ static int i2c_arbitrator_select(struct i2c_mux_core *muxc, u32 chan)
 {
 	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
 	unsigned long stop_retry, stop_time;
+
+#if CONFIG_DRAGON_CHASSIS
+	if (!IS_ERR(arb->cpld_refresh)) {
+		if (gpiod_get_value(arb->cpld_refresh))
+			return -EBUSY;
+	}
+
+	if (arb->bus_locked)
+		return 0;
+
+#endif //CONFIG_DRAGON_CHASSIS
 
 	/* Start a round of trying to claim the bus */
 	stop_time = jiffies + usecs_to_jiffies(arb->wait_free_us) + 1;
@@ -86,12 +109,128 @@ static int i2c_arbitrator_deselect(struct i2c_mux_core *muxc, u32 chan)
 {
 	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
 
+#if CONFIG_DRAGON_CHASSIS
+	if (arb->bus_locked) //if bus is locked do not deselect it
+		return 0;
+#endif //CONFIG_DRAGON_CHASSIS
+
 	/* Release the bus and wait for the other master to notice */
 	gpiod_set_value(arb->our_gpio, 0);
 	udelay(arb->slew_delay_us);
 
 	return 0;
 }
+
+#if CONFIG_DRAGON_CHASSIS
+static ssize_t cpld_refresh_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
+	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
+	int gpio_val = -1;
+
+	if (!IS_ERR(arb->cpld_refresh))
+		gpio_val = gpiod_get_value(arb->cpld_refresh);
+
+	return sprintf(buf, "%d\n", gpio_val);
+}
+static DEVICE_ATTR_RO(cpld_refresh);
+
+static ssize_t arb_state_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
+	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
+
+	int gpio_val = gpiod_get_value(arb->their_gpio);
+
+	if (!IS_ERR(arb->cpld_refresh)) {
+		if (gpiod_get_value(arb->cpld_refresh))
+			return -EBUSY;
+	}
+
+	return sprintf(buf, "%d\n", gpio_val);
+}
+
+static ssize_t arb_state_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
+	struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
+	int val;
+	int ret;
+
+	ret = kstrtoint(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+
+	if (val != 0 && val != 1)
+		return -EINVAL;
+
+	if (!val) {
+		arb->bus_locked = false;
+		del_timer_sync(&arb->timer);
+		i2c_arbitrator_deselect(muxc, 0);
+	} else {
+		ret = i2c_arbitrator_select(muxc, 0);
+		if (ret < 0)
+			return ret;
+		arb->timer.expires = jiffies + HZ;
+		add_timer(&arb->timer);
+		arb->bus_locked = true;
+	}
+	return count;
+}
+static DEVICE_ATTR_RW(arb_state);
+
+static void pet_cpld_register(struct timer_list *t)
+{
+	struct i2c_arbitrator_data *arb = from_timer(arb, t, timer);
+	struct i2c_mux_core *muxc = arb->muxc;
+	int gpio_val;
+	u8 out_buf0[2];
+	u8 out_buf1[2];
+	struct i2c_msg msgs[] = {
+		{
+			.addr = arb->cpld_address,
+			.flags = 0,
+			.len = 2,
+			.buf = out_buf0,
+		},
+		{
+			.addr = arb->cpld_address,
+			.flags = 0,
+			.len = 2,
+			.buf = out_buf1,
+		}
+	};
+
+	out_buf0[0] = 16;
+	out_buf0[1] = 0x5;
+	out_buf1[0] = 16;
+	out_buf1[1] = 0xA;
+
+	gpio_val = gpiod_get_value(arb->their_gpio);
+
+	if (!gpio_val)
+	{
+		if (i2c_transfer(arb->cpld_access, msgs, 2) != 2)
+			dev_err(muxc->dev, "Could not access cpld to pet the watchdog\n");
+
+		mod_timer(&arb->timer, jiffies + HZ);
+	}
+	else
+	{
+			dev_err(muxc->dev, "Unexpected gpio value in timer.\n");
+	}
+}
+#endif //CONFIG_DRAGON_CHASSIS
 
 static int i2c_arbitrator_probe(struct platform_device *pdev)
 {
@@ -102,6 +241,10 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 	struct i2c_arbitrator_data *arb;
 	struct gpio_desc *dummy;
 	int ret;
+
+#if CONFIG_DRAGON_CHASSIS
+	struct device_node *cpld_np;
+#endif //CONFIG_DRAGON_CHASSIS
 
 	/* We only support probing from device tree; no platform_data */
 	if (!np) {
@@ -118,6 +261,7 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 	if (!muxc)
 		return -ENOMEM;
 	arb = i2c_mux_priv(muxc);
+	arb->muxc = muxc;
 
 	platform_set_drvdata(pdev, muxc);
 
@@ -136,6 +280,8 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 		return PTR_ERR(arb->their_gpio);
 	}
 
+	arb->cpld_refresh = devm_gpiod_get(dev, "cpld-refresh", GPIOD_IN);
+
 	/* At the moment we only support a single two master (us + 1 other) */
 	dummy = devm_gpiod_get_index(dev, "their-claim", 1, GPIOD_IN);
 	if (!IS_ERR(dummy)) {
@@ -152,6 +298,24 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 		arb->wait_retry_us = 3000;
 	if (of_property_read_u32(np, "wait-free-us", &arb->wait_free_us))
 		arb->wait_free_us = 50000;
+
+#if CONFIG_DRAGON_CHASSIS
+	if (of_property_read_u8(np, "cpld-address", &arb->cpld_address))
+		return -EINVAL;
+
+	/* Find our cpld i2c bus */
+	cpld_np = of_parse_phandle(np, "i2c-cpld", 0);
+	if (!cpld_np) {
+		dev_err(dev, "Cannot parse i2c-cpld\n");
+		return -EINVAL;
+	}
+	arb->cpld_access = of_get_i2c_adapter_by_node(cpld_np);
+	of_node_put(cpld_np);
+	if (!arb->cpld_access) {
+		dev_err(dev, "Cannot find cpld bus\n");
+		return -EPROBE_DEFER;
+	}
+#endif //CONFIG_DRAGON_CHASSIS
 
 	/* Find our parent */
 	parent_np = of_parse_phandle(np, "i2c-parent", 0);
@@ -171,12 +335,24 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 	if (ret)
 		i2c_put_adapter(muxc->parent);
 
+#if CONFIG_DRAGON_CHASSIS
+	timer_setup(&arb->timer, pet_cpld_register, 0);
+	device_create_file(dev, &dev_attr_arb_state);
+	device_create_file(dev, &dev_attr_cpld_refresh);
+	arb->bus_locked = false;
+#endif //CONFIG_DRAGON_CHASSIS
+
 	return ret;
 }
 
 static int i2c_arbitrator_remove(struct platform_device *pdev)
 {
 	struct i2c_mux_core *muxc = platform_get_drvdata(pdev);
+
+#if CONFIG_DRAGON_CHASSIS
+	device_remove_file(&pdev->dev, &dev_attr_arb_state);
+	device_remove_file(&pdev->dev, &dev_attr_cpld_refresh);
+#endif //CONFIG_DRAGON_CHASSIS
 
 	i2c_mux_del_adapters(muxc);
 	i2c_put_adapter(muxc->parent);
