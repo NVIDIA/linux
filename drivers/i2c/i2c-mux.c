@@ -436,7 +436,11 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 			}
 		}
 
-		priv->adap.dev.of_node = child;
+		if (child)
+			priv->adap.dev.of_node = child;
+		else
+			priv->adap.dev.of_node = mux_node;
+
 		of_node_put(mux_node);
 	}
 

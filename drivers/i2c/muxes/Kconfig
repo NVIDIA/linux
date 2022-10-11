@@ -118,5 +118,9 @@ config I2C_MUX_MLXCPLD
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-mux-mlxcpld.
-
+config DRAGON_CHASSIS
+	bool "Nvidia Dragon Chassis support"
+	help
+	  This enables all the necessary code for the support of the
+	  Dragon Chassis features.
 endmenu
