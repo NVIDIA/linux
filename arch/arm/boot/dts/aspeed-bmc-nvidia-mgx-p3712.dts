@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+       model = "AST2600 MGX/IGX";
+       compatible = "aspeed,ast2600";
+
+       aliases {
+               serial4 = &uart5;
+       };
+
+       chosen {
+               stdout-path = &uart5;
+               bootargs = "console=ttyS4,115200n8 root=/dev/ram rw earlyprintk";
+       };
+
+       memory@80000000 {
+               reg = <0x80000000 0x40000000>;
+       };
+
+};
+
+&gpio0 {
+        gpio-line-names =
+        /*A0-A7*/       "","","","","","","","",
+        /*B0-B7*/       "prereg_force_off","soc_prereg_on","system_oc_n","vin_pwr_on","","","","",
+        /*C0-C7*/       "","","","","","","","",
+        /*D0-D7*/       "","","","","","","","",
+        /*E0-E7*/       "","","","","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","","","","","","","",
+        /*H0-H7*/       "","","","","","","","",
+        /*I0-I7*/       "","","","","","","","",
+        /*J0-J7*/       "","","","bmc_ready","","","","",
+        /*K0-K7*/       "","","pcie_pwrbrk_n","mod_shdn_n","temp_alert_n","","bmc_rst_btn_n","bmc_pwr_btn_n",
+        /*L0-L7*/       "","bmc_rec_btn_n","phy_rst","","","","","",
+        /*M0-M7*/       "","","","","","","","",
+        /*N0-N7*/       "bmc_gpio_n0","bmc_gpio_n1","","","sys_pwrok","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "vcomp_alert_n","vmon_irq_n","","pwr_irq_n","","","12v_prereg_pg","mv_prereg_pg",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "vbat_soc_fault","","soc_safestate","soc_pwr_req","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+};
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+       status = "okay";
+       m25p,fast-read;
+       flash@0 {
+               status = "okay";
+               label = "bmc";
+#include "openbmc-flash-layout-64.dtsi"
+       };
+};
+
+&spi2 {
+       status = "okay";
+       pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi2_default>;
+       flash@0 {
+               status = "okay";
+               label = "config";
+               spi-max-frequency = <50000000>;
+               partitions {
+                       compatible = "fixed-partitions";
+                       #address-cells = <1>;
+                       #size-cells = <1>;
+
+                       u-boot-env@0 {
+                               reg = <0x0 0x40000>;
+                               label = "u-boot-env";
+                       };
+
+                       rwfs@40000 {
+                               reg = <0x40000 0x1000000>;
+                               label = "rwfs";
+                       };
+               };
+       };
+};
+
+&rtc {
+        status = "okay";
+};
+
+&uart1 {
+       // Host  Debug Console
+       status = "okay";
+};
+
+&uart5 {
+       // BMC Debug Console
+       status = "okay";
+};
+
+// MAC2 of SoC connected to external PHY
+&mac2 {
+       status = "okay";
+       phy-mode = "rgmii";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_rgmii3_default>;
+       fixed-link {
+               speed = <1000>;
+               full-duplex;
+       };
+};
+
+/* Tegra USB Path */
+&ehci0 {
+   status = "okay";
+};
+
+&i2c1 {
+    status = "okay";
+};
+
+&i2c2 {
+    status = "okay";
+};
+
+&i2c10 {
+    status = "okay";
+};
+
+&i2c14 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
