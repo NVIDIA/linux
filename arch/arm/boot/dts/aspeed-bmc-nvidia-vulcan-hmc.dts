@@ -150,6 +150,17 @@
 	pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
 
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
+};
+
 /*
  * Enable port A as device (via the virtual hub) and port B as
  * host by default on the eval board. This can be easily changed
