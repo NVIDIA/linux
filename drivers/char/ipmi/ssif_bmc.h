@@ -27,15 +27,15 @@
 #define SSIF_IPMI_MULTIPART_WRITE_END		0x8
 #define SSIF_IPMI_MULTIPART_READ_START		0x3
 #define SSIF_IPMI_MULTIPART_READ_MIDDLE		0x9
+#define ASPEED_I2C_CMD_REG 0x14
+#define ASPEED_I2CD_M_S_RX_CMD_LAST BIT(4)
+#define ASPEED_I2C_FUN_CTRL_REG 0x00
+#define ASPEED_I2CD_MASTER_EN BIT(0)
 
 /* Include netfn and cmd field */
 #define MSG_PAYLOAD_LEN_MAX			254
-/*
- * IPMI 2.0 Spec, section 12.7 SSIF Timing,
- * Request-to-Response Time is T6max(250ms) - T1max(20ms) - 3ms = 227ms
- * Recover ssif_bmc from busy state if it takes up to 500ms
- */
-#define RESPONSE_TIMEOUT			500 /* ms */
+/*Set response timeout as 15 seconds */
+#define RESPONSE_TIMEOUT 15000
 
 struct ssif_msg {
 	u8 len;
@@ -98,10 +98,19 @@ struct ssif_bmc_ctx {
 	struct ssif_part_buffer	part_buf;
 	struct ssif_msg		response;
 	struct ssif_msg		request;
+	void *priv;
 };
 
 static inline struct ssif_bmc_ctx *to_ssif_bmc(struct file *file)
 {
 	return container_of(file->private_data, struct ssif_bmc_ctx, miscdev);
 }
+struct aspeed_i2c_bus {
+	struct i2c_adapter adap;
+	struct device *dev;
+	void __iomem *base;
+	struct reset_control *rst;
+	/* Synchronizes I/O mem access to base. */
+	spinlock_t lock;
+};
 #endif /* __SSIF_BMC_H__ */
