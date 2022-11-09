@@ -53,3 +53,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb2ah_default>;
 };
+
+&rtc {
+	status = "okay";
+};
