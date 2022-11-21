@@ -82,6 +82,10 @@
     };
 };
 
+&uart1 {
+        status = "okay";        
+};
+
 &uart3 {
         //Enabling SOL
         status = "okay";
@@ -91,6 +95,10 @@
 &uart5 {
     // BMC Debug Console
     status = "okay";
+};
+
+&uart_routing {
+       status = "okay";
 };
 
 // MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
