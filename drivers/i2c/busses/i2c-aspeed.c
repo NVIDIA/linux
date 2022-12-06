@@ -629,11 +629,10 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 	 * interrupt bits. Each case needs to be handled using corresponding
 	 * handlers depending on the current state.
 	 */
-	if (func_ctrl & ASPEED_I2CD_MASTER_EN) {
-		irq_handled = aspeed_i2c_slave_irq(bus, irq_remaining);
-		irq_remaining &= ~irq_handled;
-	}
-	if (irq_remaining || !(func_ctrl & ASPEED_I2CD_MASTER_EN))
+	irq_handled = aspeed_i2c_slave_irq(bus, irq_remaining);
+	irq_remaining &= ~irq_handled;
+	
+	if (irq_remaining && (func_ctrl & ASPEED_I2CD_MASTER_EN))
 		irq_handled |= aspeed_i2c_master_irq(bus, irq_remaining);
 #else
 	irq_handled = aspeed_i2c_master_irq(bus, irq_remaining);
