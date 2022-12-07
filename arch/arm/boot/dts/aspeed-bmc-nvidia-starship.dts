@@ -25,120 +25,136 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
-	power-gpios{
-		n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-		n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+    reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
 	};
 
-	leds {
-                compatible = "gpio-leds";
-                uid_led {
-                        gpios = <&gpio1 ASPEED_GPIO(A, 3) GPIO_ACTIVE_LOW>;
-                };
-		fault_led {
-                        gpios = <&gpio1 ASPEED_GPIO(A, 4) GPIO_ACTIVE_LOW>;
-                };
-		power_led {
-			gpios = <&gpio1 ASPEED_GPIO(A, 5) GPIO_ACTIVE_LOW>;
-		};
-        };
+    power-gpios{
+        n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+    };
 };
 
 // Enabled Primary flash on FMC for bring up activity
 &fmc {
-	status = "okay";
-	flash@0 {
-		status = "okay";
-		compatible = "jedec,spi-nor";
-		label = "bmc";
-		spi-max-frequency = <50000000>;
+    status = "okay";
+    flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
 #include "aspeed-bmc-nvidia-e4830-flash-layout-64.dtsi"
-	};
+    };
 };
 
 &fmcraw {
-	status = "okay";
-	spidev@0 {
-		compatible = "hgx,glacier";
-		status = "okay";
-	};
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
 };
 
 &spi2 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_spi2_default>;
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
 
-	// Data SPI is 64MB in size
-	flash@0 {
-		status = "okay";
-		label = "config";
-		spi-max-frequency = <50000000>;
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
+    // Data SPI is 64MB in size
+    flash@0 {
+        status = "okay";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
 
-			u-boot-env@0 {
-				reg = <0x0 0x40000>;			// 256KB at offset 0
-				label = "u-boot-env";
-			};
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;            // 256KB at offset 0
+                label = "u-boot-env";
+            };
 
-			rwfs@40000 {
-				reg = <0x40000 0x1000000>;		// 16MB at offset 0x40000
-				label = "rwfs";
-			};
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;      // 16MB at offset 0x40000
+                label = "rwfs";
+            };
 
-			log@0x1040000 {
-				reg = <0x1040000 0x2800000>;	// 40MB at offset 0x1040000
-				label = "log";					// Move log to EMMC, make this unused
-			};
-		};
-	};
+            log@0x1040000 {
+                reg = <0x1040000 0x2800000>;    // 40MB at offset 0x1040000
+                label = "log";                  // Move log to EMMC, make this unused
+            };
+        };
+    };
 };
 
-&rtc {
-	status = "okay";
+&uart1 {
+        status = "okay";
 };
 
 &uart3 {
-	//Enabling SOL
-	status = "okay";
+        //Enabling SOL
+        status = "okay";
 };
 
 &uart5 {
-	// BMC Debug Console
-	status = "okay";
+    // BMC Debug Console
+    status = "okay";
+};
+
+&uart_routing {
+       status = "okay";
 };
 
 // MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
 // This is "mac2" in zero-based DTS
 &mdio2 {
-	status = "okay";
-	ethphy0: ethernet-phy@0 {
-		compatible = "ethernet-phy-ieee802.3-c22";
-		reg = <0>;
-	};
+    status = "okay";
+    ethphy0: ethernet-phy@0 {
+        compatible = "ethernet-phy-ieee802.3-c22";
+        reg = <0>;
+    };
 };
 
 &mac2 {
-	status = "okay";
-	pinctrl-names = "default";
-	phy-mode = "rgmii";
-	max-speed = <1000>;
-	phy-handle = <&ethphy0>;
-	pinctrl-0 = <&pinctrl_rgmii3_default>;
+    status = "okay";
+    pinctrl-names = "default";
+    phy-mode = "rgmii";
+    max-speed = <1000>;
+    phy-handle = <&ethphy0>;
+    pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
 
 // Enable emmc
 &emmc_controller {
-	status = "okay";
+    status = "okay";
 };
 
 &emmc {
-	non-removable;
-	bus-width = <4>;
-	max-frequency = <52000000>;
+    non-removable;
+    bus-width = <4>;
+    max-frequency = <52000000>;
 };
 
 /*
@@ -148,102 +164,170 @@
  * host on both ports.
  */
 &vhub {
-	status = "okay";
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
 // USB 2.0 to HMC & Host BMC connectivity
 &ehci1 {
-	status = "okay";
+   status = "okay";
 };
 
 // USB 1.0
 &uhci {
-	status = "okay";
+   status = "okay";
 };
 
 // I2C1, SSIF IPMI interface
 &i2c0 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
+    ssif-bmc@10 {
+        compatible = "ssif-bmc";
+        reg = <0x10>;
+        };
 };
 
 // I2C2, BMC_I2C1_FPGA
 &i2c1 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C3, BMC_I2C0_FPGA
 &i2c2 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C4, BMC_I2C0_FPGA
 &i2c3 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
-// I2C5, BMC_I2C_STBY_TELEM
+
+//RTC Driver
 &i2c4 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
+    rtc@6f {
+        compatible = "nuvoton,nct3018y";
+        reg = <0x6f>;
+        };
 };
+
 
 // I2C6, I2C_BMC_IOM_EXP
 &i2c5 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C7, I2C_BMC_IOM_EXP
 &i2c6 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C8, BMC_I2C_PCI
 &i2c7 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
+};
+
+// I2C9
+&i2c8 {
+    status = "okay";
+    bus-frequency = <400000>;
+};
+
+// I2C10
+&i2c9 {
+    status = "okay";
+    bus-frequency = <400000>;
+};
+
+// I2C11
+&i2c10 {
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C12, I2C12_BSDL
 &i2c11 {
-	status = "okay";
+    status = "okay";
 
+    // P4498 FRU EEPROM - 256 bytes
+    eeprom@50 {
+        compatible = "atmel,24c02";
+        reg = <0x50>;
+        pagesize = <8>;
+    };
+
+    // enable in entity-manager instead
+    //lm75@48 {
+    //    compatible = "ti,tmp75";
+    //    reg = <0x48>;
+    //};
+};
+
+// I2C13
+&i2c12 {
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C14, BMC_I2C_HDR1
 &i2c13 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C15, BMC_I2C_HDR2
 &i2c14 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // I2C16
 &i2c15 {
-	status = "okay";
+    status = "okay";
+    bus-frequency = <400000>;
 };
 
 // PCIe RC
 &pcie {
-	status = "okay";
+    status = "okay";
 
-	interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+    interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
 
-	pcie_intc0: legacy-interrupt-controller {
-					interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
-	};
+    pcie_intc0: legacy-interrupt-controller {
+                    interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+    };
 };
 
 // Bridge between AHB bus and PCIe RC.
 &h2x {
-	status = "okay";
+    status = "okay";
 };
 
 &mctp {
-	status = "okay";
+    status = "okay";
+};
+
+&jtag1 {
+    mux-gpios = <&gpio0 126 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    status = "okay";
 };
 
 &rng {
-	status = "okay";
+    status = "okay";
 };
 
 &i2carb {

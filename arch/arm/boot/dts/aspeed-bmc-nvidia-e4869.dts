@@ -5,7 +5,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-    model = "AST2600 SkinnyJoe BMC";
+    model = "AST2600 E4869 BMC";
     compatible = "aspeed,ast2600";
 
 	aliases {
@@ -164,7 +164,7 @@
  */
 &vhub {
     status = "okay";
-    pinctrl-names = "default";
+    pinctrl-names = "default"; 
     pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
@@ -310,6 +310,10 @@
 &i2c15 {
     status = "okay";
     bus-frequency = <400000>;
+    pca9847: mux@5e {
+        compatible = "nxp,pca9847";
+        reg = <0x5e>;
+    };
 };
 
 // PCIe RC
@@ -333,7 +337,7 @@
 };
 
 &jtag1 {
-    mux-gpios = <&gpio0 126 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    mux-gpios = <&gpio0 126 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
     status = "okay";
 };
 

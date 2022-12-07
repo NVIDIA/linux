@@ -5,7 +5,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-    model = "AST2600 SkinnyJoe BMC";
+    model = "AST2600 Ranger BMC";
     compatible = "aspeed,ast2600";
 
 	aliases {
@@ -164,7 +164,7 @@
  */
 &vhub {
     status = "okay";
-    pinctrl-names = "default";
+    pinctrl-names = "default"; 
     pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
@@ -226,20 +226,12 @@
 &i2c5 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@70 {
-        compatible = "nxp,pca9546";
-        reg = <0x70>;
-    };
 };
 
 // I2C7, I2C_BMC_IOM_EXP
 &i2c6 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@70 {
-        compatible = "nxp,pca9546";
-        reg = <0x70>;
-    };
 };
 
 // I2C8, BMC_I2C_PCI
