@@ -16,7 +16,8 @@
 
 #if CONFIG_DRAGON_CHASSIS
 #include <linux/device.h>
-#include <linux/timer.h>
+#include <linux/workqueue.h>
+#include <linux/spinlock.h>
 #endif //CONFIG_DRAGON_CHASSIS
 
 /**
@@ -42,6 +43,9 @@ struct i2c_arbitrator_data {
 	struct i2c_adapter *cpld_access;
 	u8 cpld_address;
 	bool bus_locked;
+	struct workqueue_struct *wq;
+	struct delayed_work dwork;
+	spinlock_t bus_locked_spin;
 #endif //CONFIG_DRAGON_CHASSIS
 };
 
@@ -79,7 +83,7 @@ static int i2c_arbitrator_select(struct i2c_mux_core *muxc, u32 chan)
 		while (time_before(jiffies, stop_retry)) {
 			int gpio_val = gpiod_get_value(arb->their_gpio);
 
-			if (!gpio_val) {
+			if (gpio_val) {
 				/* We got it, so return */
 				return 0;
 			}
@@ -122,6 +126,36 @@ static int i2c_arbitrator_deselect(struct i2c_mux_core *muxc, u32 chan)
 }
 
 #if CONFIG_DRAGON_CHASSIS
+static ssize_t gpio_our_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
+	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
+	int gpio_val = -1;
+
+	gpio_val = gpiod_get_value(arb->our_gpio);
+
+	return sprintf(buf, "%d\n", gpio_val);
+}
+static DEVICE_ATTR_RO(gpio_our);
+
+static ssize_t gpio_their_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
+	const struct i2c_arbitrator_data *arb = i2c_mux_priv(muxc);
+	int gpio_val = -1;
+
+	gpio_val = gpiod_get_value(arb->their_gpio);
+
+	return sprintf(buf, "%d\n", gpio_val);
+}
+static DEVICE_ATTR_RO(gpio_their);
+
 static ssize_t cpld_refresh_show(struct device *dev,
 				 struct device_attribute *attr,
 				 char *buf)
@@ -174,24 +208,28 @@ static ssize_t arb_state_store(struct device *dev,
 		return -EINVAL;
 
 	if (!val) {
+		spin_lock(&arb->bus_locked_spin);
 		arb->bus_locked = false;
-		del_timer_sync(&arb->timer);
+		spin_unlock(&arb->bus_locked_spin);
+		cancel_delayed_work_sync(&arb->dwork);
 		i2c_arbitrator_deselect(muxc, 0);
 	} else {
 		ret = i2c_arbitrator_select(muxc, 0);
 		if (ret < 0)
 			return ret;
-		arb->timer.expires = jiffies + HZ;
-		add_timer(&arb->timer);
+		spin_lock(&arb->bus_locked_spin);
 		arb->bus_locked = true;
+		spin_unlock(&arb->bus_locked_spin);
+		queue_delayed_work(arb->wq, &arb->dwork, 0);
 	}
 	return count;
 }
 static DEVICE_ATTR_RW(arb_state);
 
-static void pet_cpld_register(struct timer_list *t)
+static void pet_cpld_register(struct work_struct *work)
 {
-	struct i2c_arbitrator_data *arb = from_timer(arb, t, timer);
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct i2c_arbitrator_data *arb = container_of(dwork, struct i2c_arbitrator_data, dwork);
 	struct i2c_mux_core *muxc = arb->muxc;
 	int gpio_val;
 	u8 out_buf0[2];
@@ -212,22 +250,32 @@ static void pet_cpld_register(struct timer_list *t)
 	};
 
 	out_buf0[0] = 16;
-	out_buf0[1] = 0x5;
+	out_buf0[1] = 0x20;
 	out_buf1[0] = 16;
-	out_buf1[1] = 0xA;
+	out_buf1[1] = 0x10;
 
 	gpio_val = gpiod_get_value(arb->their_gpio);
 
-	if (!gpio_val)
+	if (gpio_val)
 	{
-		if (i2c_transfer(arb->cpld_access, msgs, 2) != 2)
+		if (i2c_transfer(arb->cpld_access, msgs, 2) != 2) {
 			dev_err(muxc->dev, "Could not access cpld to pet the watchdog\n");
+			spin_lock(&arb->bus_locked_spin);
+			arb->bus_locked = false;
+			spin_unlock(&arb->bus_locked_spin);
+			i2c_arbitrator_deselect(muxc, 0);
 
-		mod_timer(&arb->timer, jiffies + HZ);
+		}
+		else
+			queue_delayed_work(arb->wq, &arb->dwork, msecs_to_jiffies(1000));
 	}
 	else
 	{
-			dev_err(muxc->dev, "Unexpected gpio value in timer.\n");
+			spin_lock(&arb->bus_locked_spin);
+			arb->bus_locked = false;
+			spin_unlock(&arb->bus_locked_spin);
+			i2c_arbitrator_deselect(muxc, 0);
+			dev_err(muxc->dev, "Arbitration was unexpectedly dropped.\n");
 	}
 }
 #endif //CONFIG_DRAGON_CHASSIS
@@ -300,9 +348,6 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 		arb->wait_free_us = 50000;
 
 #if CONFIG_DRAGON_CHASSIS
-	if (of_property_read_u8(np, "cpld-address", &arb->cpld_address))
-		return -EINVAL;
-
 	/* Find our cpld i2c bus */
 	cpld_np = of_parse_phandle(np, "i2c-cpld", 0);
 	if (!cpld_np) {
@@ -315,6 +360,17 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 		dev_err(dev, "Cannot find cpld bus\n");
 		return -EPROBE_DEFER;
 	}
+	if (of_property_read_u8(np, "cpld-address", &arb->cpld_address)) {
+		dev_err(dev, "cpld-address must be present in dts\n");
+		return -EINVAL;
+	}
+
+	arb->wq = create_singlethread_workqueue("i2c_arb_events");
+	if (!arb->wq) {
+		dev_err(dev, "Cannot create work queue\n");
+		return -ENOMEM;
+	}
+	spin_lock_init(&arb->bus_locked_spin);
 #endif //CONFIG_DRAGON_CHASSIS
 
 	/* Find our parent */
@@ -336,9 +392,11 @@ static int i2c_arbitrator_probe(struct platform_device *pdev)
 		i2c_put_adapter(muxc->parent);
 
 #if CONFIG_DRAGON_CHASSIS
-	timer_setup(&arb->timer, pet_cpld_register, 0);
+	INIT_DELAYED_WORK(&arb->dwork, pet_cpld_register);
 	device_create_file(dev, &dev_attr_arb_state);
 	device_create_file(dev, &dev_attr_cpld_refresh);
+	device_create_file(dev, &dev_attr_gpio_our);
+	device_create_file(dev, &dev_attr_gpio_their);
 	arb->bus_locked = false;
 #endif //CONFIG_DRAGON_CHASSIS
 

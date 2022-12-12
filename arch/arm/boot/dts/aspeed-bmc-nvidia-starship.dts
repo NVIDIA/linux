@@ -344,12 +344,13 @@
 };
 
 &i2carb {
-	i2c-parent = <&i2c14>;
-	cpld-address = <0x20>;
-	i2c-cpld = <&i2c15>;
+	i2c-parent = <&i2c13>;
+	cpld-address = /bits/ 8 <0x33>;
+	i2c-cpld = <&i2c14>;
 
 	our-claim-gpio = <&gpio1 8 GPIO_ACTIVE_LOW>;
 	their-claim-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+	cpld-refresh-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
 	slew-delay-us = <10>;
 	wait-retry-us = <3000>;
 	wait-free-us = <50000>;
