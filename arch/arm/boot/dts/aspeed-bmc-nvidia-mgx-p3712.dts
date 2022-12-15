@@ -39,7 +39,7 @@
         /*K0-K7*/       "shifter_enable_uart","","pcie_pwrbrk_n","mod_shdn_n","temp_alert_n","","bmc_rst_btn_n","bmc_pwr_btn_n",
         /*L0-L7*/       "","bmc_rec_btn_n","phy_rst","","","","","",
         /*M0-M7*/       "","","","","","","","",
-        /*N0-N7*/       "bmc_gpio_n0","bmc_gpio_n1","","","sys_pwrok","","","",
+        /*N0-N7*/       "bmc_gpio_n0","bmc_gpio_n1","bmc_gpio_n2","","sys_pwrok","","","",
         /*O0-O7*/       "","","","","","","","",
         /*P0-P7*/       "","","","","","","","",
         /*Q0-Q7*/       "","","","","","","","",
