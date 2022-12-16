@@ -167,6 +167,13 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 		regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts & ASPEED_ESPI_INT_STS_OOB_BITS);
 	}
 	if (sts & ASPEED_ESPI_HW_RESET) {
+		spin_lock(&priv->pltrstn_lock);
+		priv->pltrstn = 'U';
+		priv->pltrstn_in_avail = true;
+		spin_unlock(&priv->pltrstn_lock);
+		wake_up_interruptible(&priv->pltrstn_waitq);
+		dev_dbg(priv->dev, "SYSEVT_PLTRSTN: %c\n", priv->pltrstn);
+
 		if (priv->rst_irq < 0) {
 			regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
 					  ASPEED_ESPI_CTRL_SW_RESET, 0);
