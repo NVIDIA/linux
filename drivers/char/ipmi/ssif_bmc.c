@@ -18,6 +18,9 @@
 #include <linux/timer.h>
 #include <linux/jiffies.h>
 #include <linux/ipmi_ssif_bmc.h>
+#include <linux/kfifo.h>
+#include <linux/gpio/consumer.h>
+#include <linux/delay.h>
 
 #define DEVICE_NAME                             "ipmi-ssif-host"
 
@@ -39,12 +42,7 @@
 #define SSIF_IPMI_MULTIPART_READ_START          0x3
 #define SSIF_IPMI_MULTIPART_READ_MIDDLE         0x9
 
-/*
- * IPMI 2.0 Spec, section 12.7 SSIF Timing,
- * Request-to-Response Time is T6max(250ms) - T1max(20ms) - 3ms = 227ms
- * Recover ssif_bmc from busy state if it takes up to 500ms
- */
-#define RESPONSE_TIMEOUT                        500 /* ms */
+#define BUFFER_SIZE 1024
 
 struct ssif_part_buffer {
 	u8 address;
@@ -80,13 +78,13 @@ struct ssif_bmc_ctx {
 	int                     msg_idx;
 	bool                    pec_support;
 	/* ssif bmc spinlock */
-	spinlock_t              lock;
-	wait_queue_head_t       wait_queue;
+	spinlock_t              lock_rd;
+	spinlock_t              lock_wr;
+	wait_queue_head_t       wait_queue_rd;
 	u8                      running;
 	enum ssif_state         state;
 	/* Timeout waiting for response */
 	struct timer_list       response_timer;
-	bool                    response_timer_inited;
 	/* Flag to identify a Multi-part Read Transaction */
 	bool                    is_singlepart_read;
 	u8                      nbytes_processed;
@@ -94,14 +92,17 @@ struct ssif_bmc_ctx {
 	u8                      recv_len;
 	/* Block Number of a Multi-part Read Transaction */
 	u8                      block_num;
-	bool                    request_available;
-	bool                    response_in_progress;
-	bool                    busy;
 	bool                    aborting;
 	/* Buffer for SSIF Transaction part*/
 	struct ssif_part_buffer part_buf;
 	struct ipmi_ssif_msg    response;
 	struct ipmi_ssif_msg    request;
+	struct kfifo fifo;
+	u8 msg_count;
+	ktime_t msg_time;
+	u32 timeout;
+	struct gpio_desc *alert;
+	u32 pulse_width;
 };
 
 static inline struct ssif_bmc_ctx *to_ssif_bmc(struct file *file)
@@ -129,43 +130,24 @@ static const char *state_to_string(enum ssif_state state)
 	}
 }
 
-/* Handle SSIF message that will be sent to user */
-static ssize_t ssif_bmc_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+static ssize_t ssif_bmc_read(struct file *file, char __user *buf, size_t count_in, loff_t *ppos)
 {
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
-	struct ipmi_ssif_msg msg;
 	unsigned long flags;
-	ssize_t ret;
+	unsigned int count_out;
+	ssize_t ret = 0;
 
-	spin_lock_irqsave(&ssif_bmc->lock, flags);
-	while (!ssif_bmc->request_available) {
-		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
+	if (kfifo_is_empty(&ssif_bmc->fifo)) {
 		if (file->f_flags & O_NONBLOCK)
 			return -EAGAIN;
-		ret = wait_event_interruptible(ssif_bmc->wait_queue,
-					       ssif_bmc->request_available);
-		if (ret)
-			return ret;
-		spin_lock_irqsave(&ssif_bmc->lock, flags);
+		ret = wait_event_interruptible(ssif_bmc->wait_queue_rd, !kfifo_is_empty(&ssif_bmc->fifo));
+		if (ret == -ERESTARTSYS)
+			return ret; 
 	}
-
-	if (count < min_t(ssize_t,
-			  sizeof_field(struct ipmi_ssif_msg, len) + ssif_bmc->request.len,
-			  sizeof(struct ipmi_ssif_msg))) {
-		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-		ret = -EINVAL;
-	} else {
-		count = min_t(ssize_t,
-			      sizeof_field(struct ipmi_ssif_msg, len) + ssif_bmc->request.len,
-			      sizeof(struct ipmi_ssif_msg));
-		memcpy(&msg, &ssif_bmc->request, count);
-		ssif_bmc->request_available = false;
-		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-
-		ret = copy_to_user(buf, &msg, count);
-	}
-
-	return (ret < 0) ? ret : count;
+	spin_lock_irqsave(&ssif_bmc->lock_rd, flags);
+	ret = kfifo_to_user(&ssif_bmc->fifo, buf, count_in, &count_out);
+	spin_unlock_irqrestore(&ssif_bmc->lock_rd, flags);
+	return (ret < 0) ? ret : count_out;
 }
 
 /* Handle SSIF message that is written by user */
@@ -176,53 +158,47 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	struct ipmi_ssif_msg msg;
 	unsigned long flags;
 	ssize_t ret;
+	ktime_t delta;
+	ktime_t now;
+	s64 timer;
 
 	if (count > sizeof(struct ipmi_ssif_msg))
+	{
 		return -EINVAL;
-
-	if (copy_from_user(&msg, buf, count))
-		return -EFAULT;
-
-	if (!msg.len || count < sizeof_field(struct ipmi_ssif_msg, len) + msg.len)
-		return -EINVAL;
-
-	spin_lock_irqsave(&ssif_bmc->lock, flags);
-	while (ssif_bmc->response_in_progress) {
-		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-		if (file->f_flags & O_NONBLOCK)
-			return -EAGAIN;
-		ret = wait_event_interruptible(ssif_bmc->wait_queue,
-					       !ssif_bmc->response_in_progress);
-		if (ret)
-			return ret;
-		spin_lock_irqsave(&ssif_bmc->lock, flags);
 	}
 
-	/*
-	 * The write must complete before the response timeout fired, otherwise
-	 * the response is aborted and wait for next request
-	 * Return -EINVAL if the response is aborted
-	 */
-	ret = (ssif_bmc->response_timer_inited) ? 0 : -EINVAL;
-	if (ret)
-		goto exit;
+	if (copy_from_user(&msg, buf, count)) {
+		return -EFAULT;
+	}
+	//the message count must match, otherwise it is wrong message
+	//tell upper layers that all is fine even though the message was dropped by the user
+	if (msg.header.msg_num != ssif_bmc->msg_count) {
+		return count;
+	}
 
-	del_timer(&ssif_bmc->response_timer);
-	ssif_bmc->response_timer_inited = false;
+	if (!msg.header.len || count < sizeof(struct ipmi_ssif_msg_header) + msg.header.len) {
+		return -EINVAL;
+	}
+	now = ktime_get();
+	delta = ktime_sub(now, ssif_bmc->msg_time);
+	timer = ktime_to_ms(delta);
+	if (timer > (s64)(ssif_bmc->timeout)){
+		return -EPERM;
+	}
 
+	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	memcpy(&ssif_bmc->response, &msg, count);
-	ssif_bmc->is_singlepart_read = (msg.len <= MAX_PAYLOAD_PER_TRANSACTION);
+	ssif_bmc->is_singlepart_read = (msg.header.len <= MAX_PAYLOAD_PER_TRANSACTION);
+	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 
-	ssif_bmc->response_in_progress = true;
+	//if gpio is already asserted toggle it
+	if (gpiod_get_value(ssif_bmc->alert))
+	{
+		gpiod_set_value(ssif_bmc->alert, 0);
+		udelay(ssif_bmc->pulse_width);
+	}
 
-	/* ssif_bmc not busy */
-	ssif_bmc->busy = false;
-
-	/* Clean old request buffer */
-	memset(&ssif_bmc->request, 0, sizeof(struct ipmi_ssif_msg));
-exit:
-	spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-
+	gpiod_set_value(ssif_bmc->alert, 1);
 	return (ret < 0) ? ret : count;
 }
 
@@ -231,12 +207,10 @@ static int ssif_bmc_open(struct inode *inode, struct file *file)
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
 	int ret = 0;
 
-	spin_lock_irq(&ssif_bmc->lock);
 	if (!ssif_bmc->running)
 		ssif_bmc->running = 1;
 	else
 		ret = -EBUSY;
-	spin_unlock_irq(&ssif_bmc->lock);
 
 	return ret;
 }
@@ -244,27 +218,19 @@ static int ssif_bmc_open(struct inode *inode, struct file *file)
 static __poll_t ssif_bmc_poll(struct file *file, poll_table *wait)
 {
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
-	__poll_t mask = 0;
 
-	poll_wait(file, &ssif_bmc->wait_queue, wait);
-
-	spin_lock_irq(&ssif_bmc->lock);
-	/* The request is available, userspace application can get the request */
-	if (ssif_bmc->request_available)
-		mask |= POLLIN;
-
-	spin_unlock_irq(&ssif_bmc->lock);
-
-	return mask;
+	poll_wait(file, &ssif_bmc->wait_queue_rd, wait);
+	if (!kfifo_is_empty(&ssif_bmc->fifo)) {
+		return POLLIN | POLLRDNORM;
+	}
+	return 0;
 }
 
 static int ssif_bmc_release(struct inode *inode, struct file *file)
 {
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
 
-	spin_lock_irq(&ssif_bmc->lock);
 	ssif_bmc->running = 0;
-	spin_unlock_irq(&ssif_bmc->lock);
 
 	return 0;
 }
@@ -282,55 +248,38 @@ static const struct file_operations ssif_bmc_fops = {
 };
 
 /* Called with ssif_bmc->lock held. */
-static void complete_response(struct ssif_bmc_ctx *ssif_bmc)
-{
-	/* Invalidate response in buffer to denote it having been sent. */
-	ssif_bmc->response.len = 0;
-	ssif_bmc->response_in_progress = false;
-	ssif_bmc->nbytes_processed = 0;
-	ssif_bmc->remain_len = 0;
-	ssif_bmc->busy = false;
-	memset(&ssif_bmc->part_buf, 0, sizeof(struct ssif_part_buffer));
-	wake_up_all(&ssif_bmc->wait_queue);
-}
-
-static void response_timeout(struct timer_list *t)
-{
-	struct ssif_bmc_ctx *ssif_bmc = from_timer(ssif_bmc, t, response_timer);
-	unsigned long flags;
-
-	spin_lock_irqsave(&ssif_bmc->lock, flags);
-
-	/* Do nothing if the response is in progress */
-	if (!ssif_bmc->response_in_progress) {
-		/* Recover ssif_bmc from busy */
-		ssif_bmc->busy = false;
-		ssif_bmc->response_timer_inited = false;
-		/* Set aborting flag */
-		ssif_bmc->aborting = true;
-	}
-
-	spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-}
-
-/* Called with ssif_bmc->lock held. */
 static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 {
-	/* set ssif_bmc to busy waiting for response */
-	ssif_bmc->busy = true;
-	/* Request message is available to process */
-	ssif_bmc->request_available = true;
-	/* Clean old response buffer */
-	memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg));
-	/* This is the new READ request.*/
-	wake_up_all(&ssif_bmc->wait_queue);
+	unsigned long flags = 0;
+	int rc = 0;
 
-	/* Armed timer to recover slave from busy state in case of no response */
-	if (!ssif_bmc->response_timer_inited) {
-		timer_setup(&ssif_bmc->response_timer, response_timeout, 0);
-		ssif_bmc->response_timer_inited = true;
+	if (kfifo_initialized(&ssif_bmc->fifo)) {
+		ssize_t to_send = sizeof(struct ipmi_ssif_msg_header) + ssif_bmc->request.header.len;
+		if (to_send > BUFFER_SIZE) {
+			return;
+		}
+
+		if ((BUFFER_SIZE - kfifo_len(&ssif_bmc->fifo)) < to_send)
+			kfifo_reset(&ssif_bmc->fifo);
+
+		spin_lock_irqsave(&ssif_bmc->lock_rd, flags);
+		rc = kfifo_in(&ssif_bmc->fifo, &ssif_bmc->request.header,  sizeof(struct ipmi_ssif_msg_header));
+		if (rc != sizeof(struct ipmi_ssif_msg_header)) {
+			kfifo_reset(&ssif_bmc->fifo);
+			spin_unlock_irqrestore(&ssif_bmc->lock_rd, flags);
+			return;
+		}
+		to_send = min_t(ssize_t, ssif_bmc->request.header.len, IPMI_SSIF_PAYLOAD_MAX);
+		rc = kfifo_in(&ssif_bmc->fifo, ssif_bmc->request.payload, to_send);
+		spin_unlock_irqrestore(&ssif_bmc->lock_rd, flags);
+		if (rc != to_send) {
+			kfifo_reset(&ssif_bmc->fifo);
+			return;
+		}
+
+		ssif_bmc->msg_time = ktime_get();
+		wake_up_all(&ssif_bmc->wait_queue_rd);
 	}
-	mod_timer(&ssif_bmc->response_timer, jiffies + msecs_to_jiffies(RESPONSE_TIMEOUT));
 }
 
 static void calculate_response_part_pec(struct ssif_part_buffer *part)
@@ -352,18 +301,22 @@ static void calculate_response_part_pec(struct ssif_part_buffer *part)
 static void set_singlepart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 {
 	struct ssif_part_buffer *part = &ssif_bmc->part_buf;
+	unsigned long flags;
 
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
-	part->length = (u8)ssif_bmc->response.len;
+	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
+	part->length = (u8)ssif_bmc->response.header.len;
 
 	/* Clear the rest to 0 */
 	memset(part->payload + part->length, 0, MAX_PAYLOAD_PER_TRANSACTION - part->length);
 	memcpy(&part->payload[0], &ssif_bmc->response.payload[0], part->length);
+	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 }
 
 static void set_multipart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 {
 	struct ssif_part_buffer *part = &ssif_bmc->part_buf;
+	unsigned long flags;
 	u8 part_len = 0;
 
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
@@ -378,12 +331,14 @@ static void set_multipart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 		ssif_bmc->block_num = 0;
 		part->length = MAX_PAYLOAD_PER_TRANSACTION;
 		part_len = MAX_IPMI_DATA_PER_START_TRANSACTION;
-		ssif_bmc->remain_len = ssif_bmc->response.len - part_len;
+		spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
+		ssif_bmc->remain_len = ssif_bmc->response.header.len - part_len;
 
 		part->payload[0] = 0x00; /* Start Flag */
 		part->payload[1] = 0x01; /* Start Flag */
 
 		memcpy(&part->payload[2], &ssif_bmc->response.payload[0], part_len);
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		break;
 
 	case SSIF_IPMI_MULTIPART_READ_MIDDLE:
@@ -419,8 +374,10 @@ static void set_multipart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 		}
 
 		ssif_bmc->remain_len -= part_len;
+		spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 		memcpy(&part->payload[1], ssif_bmc->response.payload + ssif_bmc->nbytes_processed,
 		       part_len);
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		break;
 
 	default:
@@ -543,17 +500,19 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 	switch (part->smbus_cmd) {
 	case SSIF_IPMI_SINGLEPART_WRITE:
 		/* save the whole part to request*/
-		ssif_bmc->request.len = part->length;
+		ssif_bmc->request.header.len = part->length;
+		ssif_bmc->request.header.msg_num = ssif_bmc->msg_count;
 		memcpy(ssif_bmc->request.payload, part->payload, part->length);
 
 		break;
 	case SSIF_IPMI_MULTIPART_WRITE_START:
-		ssif_bmc->request.len = 0;
+		ssif_bmc->request.header.len = 0;
+		ssif_bmc->request.header.msg_num = ssif_bmc->msg_count;
 
 		fallthrough;
 	case SSIF_IPMI_MULTIPART_WRITE_MIDDLE:
 	case SSIF_IPMI_MULTIPART_WRITE_END:
-		len = ssif_bmc->request.len + part->length;
+		len = ssif_bmc->request.header.len + part->length;
 		/* Do the bound check here, not allow the request len exceed 254 bytes */
 		if (len > IPMI_SSIF_PAYLOAD_MAX) {
 			dev_warn(&ssif_bmc->client->dev,
@@ -561,9 +520,9 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 			/* Request too long, aborting */
 			ssif_bmc->aborting =  true;
 		} else {
-			memcpy(ssif_bmc->request.payload + ssif_bmc->request.len,
+			memcpy(ssif_bmc->request.payload + ssif_bmc->request.header.len,
 			       part->payload, part->length);
-			ssif_bmc->request.len += part->length;
+			ssif_bmc->request.header.len += part->length;
 		}
 		break;
 	default:
@@ -582,17 +541,11 @@ static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	memset(&ssif_bmc->part_buf.payload[0], 0, MAX_PAYLOAD_PER_TRANSACTION);
 
 	if (*val == SSIF_IPMI_SINGLEPART_WRITE || *val == SSIF_IPMI_MULTIPART_WRITE_START) {
-		/*
-		 * The response maybe not come in-time, causing host SSIF driver
-		 * to timeout and resend a new request. In such case check for
-		 * pending response and clear it
-		 */
-		if (ssif_bmc->response_in_progress)
-			complete_response(ssif_bmc);
-
+		gpiod_set_value(ssif_bmc->alert, 0);
 		/* This is new request, flip aborting flag if set */
 		if (ssif_bmc->aborting)
 			ssif_bmc->aborting = false;
+		ssif_bmc->msg_count++;
 	}
 }
 
@@ -625,7 +578,7 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	ssif_bmc->msg_idx = 0;
 
 	/* Send 0 if there is nothing to send */
-	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
+	if (ssif_bmc->state == SSIF_ABORTING) {
 		*val = 0;
 		return;
 	}
@@ -638,6 +591,7 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	calculate_response_part_pec(&ssif_bmc->part_buf);
 	ssif_bmc->part_buf.index = 0;
 	*val = ssif_bmc->part_buf.length;
+	gpiod_set_value(ssif_bmc->alert, 0);
 }
 
 static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
@@ -655,7 +609,7 @@ static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	}
 
 	/* Send 0 if there is nothing to send */
-	if (!ssif_bmc->response_in_progress || ssif_bmc->state == SSIF_ABORTING) {
+	if (ssif_bmc->state == SSIF_ABORTING) {
 		*val = 0;
 		return;
 	}
@@ -742,9 +696,6 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			ssif_bmc->aborting = true;
 		}
 	} else if (ssif_bmc->state == SSIF_RES_SENDING) {
-		if (ssif_bmc->is_singlepart_read || ssif_bmc->block_num == 0xFF)
-			/* Invalidate response buffer to denote it is sent */
-			complete_response(ssif_bmc);
 		ssif_bmc->state = SSIF_READY;
 	}
 
@@ -757,11 +708,8 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
  */
 static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8 *val)
 {
-	unsigned long flags;
 	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
 	int ret = 0;
-
-	spin_lock_irqsave(&ssif_bmc->lock, flags);
 
 	switch (event) {
 	case I2C_SLAVE_READ_REQUESTED:
@@ -789,11 +737,6 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 		break;
 	}
 
-	if (!ssif_bmc->aborting && ssif_bmc->busy)
-		ret = -EBUSY;
-
-	spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-
 	return ret;
 }
 
@@ -806,13 +749,29 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	if (!ssif_bmc)
 		return -ENOMEM;
 
-	spin_lock_init(&ssif_bmc->lock);
+	/* Request GPIO for alerting the host that response is ready */
+	ssif_bmc->alert = devm_gpiod_get(&client->dev, "alert", GPIOD_OUT_LOW);
+	if (IS_ERR(ssif_bmc->alert)) {
+		dev_err(&client->dev, "could not get alert GPIO (%ld)\n",
+			PTR_ERR(ssif_bmc->alert));
+		return PTR_ERR(ssif_bmc->alert);
+	}
 
-	init_waitqueue_head(&ssif_bmc->wait_queue);
-	ssif_bmc->request_available = false;
-	ssif_bmc->response_in_progress = false;
-	ssif_bmc->busy = false;
-	ssif_bmc->response_timer_inited = false;
+	if (of_property_read_u32(client->dev.of_node, "timeout_ms", &ssif_bmc->timeout))
+		ssif_bmc->timeout = 250;
+	if (of_property_read_u32(client->dev.of_node, "pulse_width_us", &ssif_bmc->pulse_width))
+		ssif_bmc->pulse_width = 5;
+
+	ret = kfifo_alloc(&ssif_bmc->fifo, BUFFER_SIZE, GFP_KERNEL);
+	if (ret)
+		return ret;
+
+	ssif_bmc->msg_count = 0;
+	ssif_bmc->running = 0;
+	spin_lock_init(&ssif_bmc->lock_rd);
+	spin_lock_init(&ssif_bmc->lock_wr);
+
+	init_waitqueue_head(&ssif_bmc->wait_queue_rd);
 
 	/* Register misc device interface */
 	ssif_bmc->miscdev.minor = MISC_DYNAMIC_MINOR;
@@ -832,6 +791,7 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	if (ret)
 		misc_deregister(&ssif_bmc->miscdev);
 
+	gpiod_set_value(ssif_bmc->alert, 0);
 	return ret;
 }
 
@@ -839,6 +799,7 @@ static int ssif_bmc_remove(struct i2c_client *client)
 {
 	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
 
+	kfifo_free(&ssif_bmc->fifo);
 	i2c_slave_unregister(client);
 	misc_deregister(&ssif_bmc->miscdev);
 
