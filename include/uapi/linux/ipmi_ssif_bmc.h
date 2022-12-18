@@ -10,8 +10,13 @@
 
 /* Max length of ipmi ssif message included netfn and cmd field */
 #define IPMI_SSIF_PAYLOAD_MAX         254
-struct ipmi_ssif_msg {
+struct ipmi_ssif_msg_header {
 	unsigned int len;
+	u8 msg_num;
+} __attribute((packed));
+
+struct ipmi_ssif_msg {
+	struct ipmi_ssif_msg_header header;
 	__u8    payload[IPMI_SSIF_PAYLOAD_MAX];
 };
 
