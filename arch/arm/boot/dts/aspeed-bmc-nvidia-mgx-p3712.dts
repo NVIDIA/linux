@@ -127,16 +127,22 @@
        status = "okay";
 };
 
-// MAC2 of SoC connected to external PHY
+&mdio2 {
+       status = "okay";
+       ethphy2: ethernet-phy@1 {
+               compatible = "ethernet-phy-ieee802.3-c22";
+               reg = <1>;
+       };
+};
+
+/* MAC2 of SoC connected to external PHY */
 &mac2 {
        status = "okay";
        phy-mode = "rgmii";
+       phy-handle = <&ethphy2>;
+
        pinctrl-names = "default";
        pinctrl-0 = <&pinctrl_rgmii3_default>;
-       fixed-link {
-               speed = <1000>;
-               full-duplex;
-       };
 };
 
 /* Tegra USB Path */
@@ -152,8 +158,12 @@
     status = "okay";
 };
 
-&i2c10 {
-    status = "okay";
+&i2c5 {
+        status = "okay";
+        rtl8367@5c {
+                compatible = "rtl8367-i2c";
+                reg = <0x5c>;
+        };
 };
 
 &i2c14 {
@@ -162,4 +172,8 @@
         compatible = "ti,tmp75";
         reg = <0x48>;
     };
+};
+
+&i2c15 {
+       status = "okay";
 };

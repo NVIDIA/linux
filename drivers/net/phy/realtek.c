@@ -34,6 +34,10 @@
 #define RTL8211F_TX_DELAY			BIT(8)
 #define RTL8211F_RX_DELAY			BIT(3)
 
+#define RTL8211F_MODE_SEL			(BIT(2) | BIT(1) | BIT(0))
+#define RTL8211F_SGMII_RGMII_PM			0x4
+#define RTL8211F_SGMII_RGMII_MP			0x5
+
 #define RTL8211F_ALDPS_PLL_OFF			BIT(1)
 #define RTL8211F_ALDPS_ENABLE			BIT(2)
 #define RTL8211F_ALDPS_XTAL_OFF			BIT(12)
@@ -370,8 +374,51 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		return 0;
 	}
 
+	/* RTL8211F SGMII to RGMII MODE verification - NVIDIA BMC */
+	ret = phy_read_paged(phydev, 0xd40, 0x10);
+	if(ret < 0) {
+		dev_err(dev, "Failed to read Mode Selection\n");
+		return ret;
+	}
+
+	ret = ret & RTL8211F_MODE_SEL;
+
+	if (ret == RTL8211F_SGMII_RGMII_PM || ret == RTL8211F_SGMII_RGMII_MP) {
+
+		/* Force hardware straps 3'b100, SGMII(PHY Side) to RGMII(MAC Side) for NVIDIA BMC*/
+		ret = phy_modify_paged_changed(phydev, 0xd40, 0x10, RTL8211F_MODE_SEL, RTL8211F_SGMII_RGMII_PM);
+		if(ret < 0) {
+			dev_err(dev, "Failed to update the Mode selection \n");
+			return ret;
+		}
+
+		/* set bit 0.15 => PHY RESET */
+		ret = phy_modify_paged_changed(phydev, 0x0, 0x0, BIT(15), BIT(15));
+		if(ret < 0) {
+			dev_err(dev, "Failed to reset PHY \n");
+			return ret;
+		}
+
+		/* SGMII ANAR (SGMII Auto-Negotiation Advertising Register) */
+		/*Link status : set to 1 , Duplex Mode : Full Duplex*/
+		ret = phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(3) | BIT(2), BIT(3) | BIT(2));
+		if(ret < 0) {
+			dev_err(dev, "Failed to update the Link & Duplex \n");
+			return ret;
+		}
+
+		/* Speed : 1000Mbps */
+		ret = phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(1) | BIT(0), 0x2);
+		if(ret < 0){
+			dev_err(dev, "Failed to update the Speed \n");
+			return ret;
+		}
+
+	}
+
 	ret = phy_modify_paged_changed(phydev, 0xd08, 0x11, RTL8211F_TX_DELAY,
 				       val_txdly);
+
 	if (ret < 0) {
 		dev_err(dev, "Failed to update the TX delay register\n");
 		return ret;
@@ -533,6 +580,44 @@ static int rtlgen_get_speed(struct phy_device *phydev)
 		break;
 	default:
 		break;
+	}
+
+	return 0;
+}
+
+static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
+{
+	int ret;
+
+	/* RTL8211F SGMII to RGMII MODE verification - NVIDIA BMC */
+	ret = phy_read_paged(phydev, 0xd40, 0x10);
+	if(ret < 0) {
+		dev_err(&phydev->mdio.dev, "Failed to read Mode Selection\n");
+		return ret;
+	}
+
+	ret = ret & RTL8211F_MODE_SEL;
+
+	if (ret == RTL8211F_SGMII_RGMII_PM || ret == RTL8211F_SGMII_RGMII_MP) {
+
+		/* Check Link status */
+		ret = phy_read_paged(phydev, 0xdcf, 0x15);
+		if (ret < 0) {
+			dev_err(&phydev->mdio.dev,"failed to read  link status \n");
+			return ret;
+		}
+		/* Link is Up */
+		if (ret &  BIT(4)) {
+			phydev->link = 1;
+			phydev->speed = 1000;
+			phydev->duplex=DUPLEX_FULL;
+		}
+	} else {
+		ret = genphy_read_status(phydev);
+		if (ret < 0)
+			return ret;
+
+		return rtlgen_get_speed(phydev);
 	}
 
 	return 0;
@@ -916,7 +1001,7 @@ static struct phy_driver realtek_drvs[] = {
 		.name		= "RTL8211F Gigabit Ethernet",
 		.probe		= rtl821x_probe,
 		.config_init	= &rtl8211f_config_init,
-		.read_status	= rtlgen_read_status,
+		.read_status	= rtl8211f_rtlgen_read_status,
 		.config_intr	= &rtl8211f_config_intr,
 		.handle_interrupt = rtl8211f_handle_interrupt,
 		.suspend	= genphy_suspend,
