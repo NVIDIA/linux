@@ -1517,4 +1517,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	apseed-bmc-nvidia-hgx.dtb \
 	apseed-bmc-nvidia-vulcan-hmc.dtb \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb \
-	apseed-bmc-nvidia-mgx-p3712.dtb
+	aspeed-bmc-nvidia-mgx-p3712.dtb \
+	aspeed-bmc-nvidia-mgx-3809.dtb 

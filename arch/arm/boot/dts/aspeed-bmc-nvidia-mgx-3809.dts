@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+       model = "AST2600 MGX/IGX";
+       compatible = "aspeed,ast2600";
+
+       aliases {
+               serial4 = &uart5;
+       };
+
+       chosen {
+               stdout-path = &uart5;
+               bootargs = "console=ttyS4,115200n8 root=/dev/ram rw earlyprintk";
+       };
+
+       memory@80000000 {
+               reg = <0x80000000 0x40000000>;
+       };
+
+};
+
+&gpio0 {
+        gpio-line-names =
+        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","","","VM_EN1",
+        /*B0-B7*/       "","","","","","","","",
+        /*C0-C7*/       "","","soc_reset","soc_safestate","","","vmon_irq","",
+        /*D0-D7*/       "soc_pwr_req","bmc_pwr_btn_n","bmc_rec_btn_n","","","","","",
+        /*E0-E7*/       "","","","bmc_gpio_e3","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","","","","","","","",
+        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
+        /*I0-I7*/       "","","","","","","global_wp","",
+        /*J0-J7*/       "carrier_pwr_on","","","pwr_irq","ephy_irq","ephy_rst","soc_temp_alert","shifter_enable_uart",
+        /*K0-K7*/       "","aurix_int","","","","","bmc_rst_btn_n","",
+        /*L0-L7*/       "","","","","","","","",
+        /*M0-M7*/       "","","","","","","","",
+        /*N0-N7*/       "","","","","","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","sp0_ap_intr","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "","","","","","","","",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "","","","","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+};
+
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
+};
+
+/* Primary flash - FMC */
+&fmc {
+       status = "okay";
+       flash@0 {
+               status = "okay";
+               m25p,fast-read;
+               label = "bmc";
+               spi-max-frequency = <50000000>;
+               #include "aspeed-bmc-nvidia-vulcan-flash-layout-64.dtsi"
+       };
+};
+
+&fmcraw {
+         status = "okay";
+         spidev@0 {
+                  compatible = "hgx,glacier";
+                  status = "okay";
+         };
+};
+
+&spi2 {
+       status = "okay";
+       pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi2_default>;
+       flash@0 {
+               status = "okay";
+               label = "config";
+               spi-max-frequency = <50000000>;
+               partitions {
+                       compatible = "fixed-partitions";
+                       #address-cells = <1>;
+                       #size-cells = <1>;
+
+                       u-boot-env@0 {
+                               reg = <0x0 0x40000>;
+                               label = "u-boot-env";
+                       };
+
+                       rwfs@40000 {
+                               reg = <0x40000 0x1000000>;
+                               label = "rwfs";
+                       };
+
+                       log@3800000 {
+                               reg = <0x3800000 0xc800000>;
+                               label = "log";
+                       };
+               };
+       };
+};
+
+&rtc {
+        status = "okay";
+};
+
+&uart3 {
+       // Host  Debug Console
+       status = "okay";
+};
+
+&uart5 {
+       // BMC Debug Console
+       status = "okay";
+};
+
+&mdio0 {
+       status = "okay";
+       ethphy0: ethernet-phy@1 {
+               compatible = "ethernet-phy-ieee802.3-c22";
+               reg = <1>;
+       };
+};
+
+/* MAC1 of SoC connected to external PHY */
+&mac0 {
+       status = "okay";
+       phy-mode = "rgmii-rxid";
+       phy-handle = <&ethphy0>;
+
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_rgmii1_default>;
+};
+
+/* Tegra USB Path */
+&ehci0 {
+   status = "okay";
+};
+
+&i2c5 {
+    status = "okay";
+};
+
+&i2c6 {
+    status = "okay";
+};
+
+&i2c9 {
+        status = "okay";
+        rtl8367@5c {
+                compatible = "rtl8367-i2c";
+                reg = <0x5c>;
+        };
+};
+
+&i2c10 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
