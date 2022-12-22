@@ -188,6 +188,9 @@
     bus-frequency = <400000>;
     ssif-bmc@10 {
         compatible = "ssif-bmc";
+        alert-gpio = <&gpio0 8 GPIO_ACTIVE_LOW>;
+        pulse_width_us = <5>;
+        timeout_ms = <250>;
         reg = <0x10>;
         };
 };
