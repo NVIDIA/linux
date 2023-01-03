@@ -266,7 +266,7 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	u8 value;
 
 	idx = (irq_status & ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATOR) ? 1 : 0;
-
+	irq_handled |= (irq_status & ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATOR);
 	slave = bus->slave[idx];
 
 	if (!slave)
