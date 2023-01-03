@@ -98,16 +98,6 @@
 		};
 	};
 
-	gpio-keys {
-		compatible = "gpio-keys";
-
-		id-button {
-			label = "id-button";
-			gpios = <&gpio0 ASPEED_GPIO(E, 3) GPIO_ACTIVE_HIGH>;
-			linux,code = <ASPEED_GPIO(E, 3)>;
-		};
-	};
-
 	iio-hwmon {
 		compatible = "iio-hwmon";
 		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>,
@@ -124,7 +114,7 @@
 	/*B0-B7*/       "dimm_spd_sel","pwrgd_p3v3","bmc_rdv_set_ok","","","","","",
 	/*C0-C7*/       "","","","","","","","",
 	/*D0-D7*/       "","","","","","","","",
-	/*E0-E7*/       "","","","","","bmc_bios_update_n","","",
+	/*E0-E7*/       "","","","ID_BTN","","bmc_bios_update_n","","",
 	/*F0-F7*/       "","latch_gpu1_thermtrip_cpld_n","","bmc_cpld_boot_n","ps_on_n","","","",
 	/*G0-G7*/       "","","","","","","","",
 	/*H0-H7*/       "","","","","","","","",
