@@ -110,10 +110,6 @@
 	max-frequency = <52000000>;
 };
 
-&rtc {
-	status = "okay";
-};
-
 &fmc {
 	status = "okay";
 	flash@0 {
@@ -200,6 +196,10 @@
 
 &i2c4 {
 	status = "okay";
+	rtc@32 {
+		compatible = "epson,rx8130";
+		reg = <0x32>;
+	};
 };
 
 &i2c5 {
