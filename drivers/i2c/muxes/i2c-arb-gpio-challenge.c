@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
+#define BUS_TIMEOUT 600
 #endif //CONFIG_DRAGON_CHASSIS
 
 /**
@@ -46,6 +47,7 @@ struct i2c_arbitrator_data {
 	struct workqueue_struct *wq;
 	struct delayed_work dwork;
 	spinlock_t bus_locked_spin;
+	int cnt;
 #endif //CONFIG_DRAGON_CHASSIS
 };
 
@@ -219,6 +221,7 @@ static ssize_t arb_state_store(struct device *dev,
 			return ret;
 		spin_lock(&arb->bus_locked_spin);
 		arb->bus_locked = true;
+		arb->cnt = 0;
 		spin_unlock(&arb->bus_locked_spin);
 		queue_delayed_work(arb->wq, &arb->dwork, 0);
 	}
@@ -266,8 +269,20 @@ static void pet_cpld_register(struct work_struct *work)
 			i2c_arbitrator_deselect(muxc, 0);
 
 		}
-		else
-			queue_delayed_work(arb->wq, &arb->dwork, msecs_to_jiffies(1000));
+		else {
+			spin_lock(&arb->bus_locked_spin);
+			arb->cnt++;
+			spin_unlock(&arb->bus_locked_spin);
+			if (arb->cnt >= BUS_TIMEOUT) {
+				dev_err(muxc->dev, "Bus was held for more than %d seconds. Cancel arbitration\n", BUS_TIMEOUT);
+				spin_lock(&arb->bus_locked_spin);
+				arb->bus_locked = false;
+				spin_unlock(&arb->bus_locked_spin);
+				i2c_arbitrator_deselect(muxc, 0);
+			}
+			else
+				queue_delayed_work(arb->wq, &arb->dwork, msecs_to_jiffies(1000));
+		}
 	}
 	else
 	{
