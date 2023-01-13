@@ -147,7 +147,13 @@
 
 /* Tegra USB Path */
 &ehci0 {
-   status = "okay";
+   status = "disabled";
+};
+
+&vhub {
+       status = "okay";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
 &i2c1 {
