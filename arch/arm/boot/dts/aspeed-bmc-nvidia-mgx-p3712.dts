@@ -27,7 +27,7 @@
 &gpio0 {
         gpio-line-names =
         /*A0-A7*/       "","","","","","","","",
-        /*B0-B7*/       "prereg_force_off","soc_prereg_on","system_oc_n","vin_pwr_on","","","","",
+        /*B0-B7*/       "prereg_force_off","tlf_aurix_reset","system_oc_n","vin_pwr_on","","","","",
         /*C0-C7*/       "","","","","","","","",
         /*D0-D7*/       "","","","","","","","",
         /*E0-E7*/       "","","","","","","","",
@@ -39,7 +39,7 @@
         /*K0-K7*/       "shifter_enable_uart","","pcie_pwrbrk_n","mod_shdn_n","temp_alert_n","","bmc_rst_btn_n","bmc_pwr_btn_n",
         /*L0-L7*/       "","bmc_rec_btn_n","phy_rst","","","","","",
         /*M0-M7*/       "","","","","","","","",
-        /*N0-N7*/       "bmc_gpio_n0","bmc_gpio_n1","bmc_gpio_n2","","sys_pwrok","","","",
+        /*N0-N7*/       "bmc_gpio_n0","bmc_gpio_n1","tlf_aurix_hwcfg3","","sys_pwrok","","","",
         /*O0-O7*/       "","","","","","","","",
         /*P0-P7*/       "","","","","","","","",
         /*Q0-Q7*/       "","","","","","","","",
@@ -182,4 +182,19 @@
 
 &i2c15 {
        status = "okay";
+};
+
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
 };
