@@ -1284,6 +1284,12 @@ config SENSORS_MC34VR500
 	  If you say yes here you get support for the temperature and input
 	  voltage sensors of the NXP MC34VR500.
 
+config LUNA_FAN
+	bool "Fan config flag for LUNA"
+	help
+	  This enables all the necessary code for the support of the
+	  Fan configuration.
+
 config SENSORS_MCP3021
 	tristate "Microchip MCP3021 and compatibles"
 	depends on I2C
