@@ -1099,6 +1099,12 @@ config SENSORS_MAX31790
 	  This driver can also be built as a module. If so, the module
 	  will be called max31790.
 
+config LUNA_FAN
+        bool "Fan config flag for LUNA"
+        help
+        This enables all the necessary code for the support of the
+        LUNA Fan configuration.
+
 config SENSORS_MCP3021
 	tristate "Microchip MCP3021 and compatibles"
 	depends on I2C
