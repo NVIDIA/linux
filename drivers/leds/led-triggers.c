@@ -291,12 +291,6 @@ int led_trigger_register(struct led_trigger *trig)
 	down_write(&triggers_list_lock);
 	/* Make sure the trigger's name isn't already in use */
 	list_for_each_entry(_trig, &trigger_list, next_trig) {
-		if (_trig->name == 0) {
-			return -EFAULT;
-		}
-		if (trig->name == 0) {
-			return -EFAULT;
-		}
 		if (!strcmp(_trig->name, trig->name) &&
 		    (trig->trigger_type == _trig->trigger_type ||
 		     !trig->trigger_type || !_trig->trigger_type)) {
@@ -311,12 +305,6 @@ int led_trigger_register(struct led_trigger *trig)
 	/* Register with any LEDs that have this as a default trigger */
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
-		if (led_cdev->default_trigger == 0) {
-			return -EFAULT;
-		}
-		if (trig->name == 0) {
-			return -EFAULT;
-		}
 
 		down_write(&led_cdev->trigger_lock);
 		if (!led_cdev->trigger && led_cdev->default_trigger &&

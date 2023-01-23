@@ -58,13 +58,13 @@
     leds {
                 compatible = "gpio-leds";
                 uid_led {
-                        gpios = <&gpio1 ASPEED_GPIO(AA, 3) GPIO_ACTIVE_LOW>;
+                        gpios = <&gpio1 ASPEED_GPIO(A, 3) GPIO_ACTIVE_LOW>;
                 };
                 fault_led {
-                        gpios = <&gpio1 ASPEED_GPIO(AA, 4) GPIO_ACTIVE_LOW>;
+                        gpios = <&gpio1 ASPEED_GPIO(A, 4) GPIO_ACTIVE_LOW>;
                 };
                 power_led {
-                        gpios = <&gpio1 ASPEED_GPIO(AA, 5) GPIO_ACTIVE_LOW>;
+                        gpios = <&gpio1 ASPEED_GPIO(A, 5) GPIO_ACTIVE_LOW>;
                 };
         };
 };
