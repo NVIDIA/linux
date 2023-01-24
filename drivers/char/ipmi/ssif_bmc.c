@@ -22,6 +22,9 @@
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 
+#include <linux/aspeed-2600-ara.h>
+#include <linux/i2c-aspeed.h>
+
 #define DEVICE_NAME                             "ipmi-ssif-host"
 #ifdef CONFIG_SEPARATE_SSIF_POSTCODES
 #define DEVICE_NAME_POST                        "ipmi-ssif-postcodes"
@@ -115,8 +118,63 @@ struct ssif_bmc_ctx {
 	u8                      running_post;
 	struct kfifo fifo_post;
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
-
+	struct ast2600_ara *ara;
 };
+
+void disable_ast2600_slave(struct i2c_client *client)
+{
+	u32 addr_reg_val;
+	struct aspeed_i2c_bus *bus;
+
+	if (!client)
+		return;
+
+	bus = i2c_get_adapdata(client->adapter);
+	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	if ((addr_reg_val & 0x7F) == client->addr)
+	{//THIS BIT CANNOT BE DISABLED WITH OLD REGISTER MODE
+		addr_reg_val &= 0xFFFFFF7F;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+	if (((addr_reg_val >> 8) & 0x7F) == client->addr)
+	{
+		addr_reg_val &= 0xFFFF7FFF;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+	if (((addr_reg_val >> 16) & 0x7F) == client->addr)
+	{
+		addr_reg_val &= 0xFF7FFFFF;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+}
+
+void enable_ast2600_slave(struct i2c_client *client)
+{
+	u32 addr_reg_val;
+	struct aspeed_i2c_bus *bus;
+
+	if (!client)
+		return;
+
+	bus = i2c_get_adapdata(client->adapter);
+	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	if ((addr_reg_val & 0x7F) == client->addr)
+	{
+		addr_reg_val |= 0x80;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+	else if (((addr_reg_val >> 8) & 0x7F) == client->addr)
+	{
+		addr_reg_val |= 0x8000;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+	else if (((addr_reg_val >> 16) & 0x7F) == client->addr)
+	{
+		addr_reg_val |= 0x800000;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+}
+
 
 static inline struct ssif_bmc_ctx *to_ssif_bmc(struct file *file)
 {
@@ -267,13 +325,11 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	s64 timer;
 
 	if (count > sizeof(struct ipmi_ssif_msg))
-	{
 		return -EINVAL;
-	}
 
-	if (copy_from_user(&msg, buf, count)) {
+	if (copy_from_user(&msg, buf, count))
 		return -EFAULT;
-	}
+
 	//the message count must match, otherwise it is wrong message
 	//tell upper layers that all is fine even though the message was dropped by the user
 	if (msg.header.msg_num != ssif_bmc->msg_count) {
@@ -286,14 +342,16 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	now = ktime_get();
 	delta = ktime_sub(now, ssif_bmc->msg_time);
 	timer = ktime_to_ms(delta);
-	if (timer > (s64)(ssif_bmc->timeout)){
+	if (timer > (s64)(ssif_bmc->timeout))
 		return -EPERM;
-	}
 
 	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	memcpy(&ssif_bmc->response, &msg, count);
 	ssif_bmc->is_singlepart_read = (msg.header.len <= MAX_PAYLOAD_PER_TRANSACTION);
 	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
+
+	enable_ast2600_ara(ssif_bmc->client);
+	enable_ast2600_slave(ssif_bmc->client);
 
 	//if gpio is already asserted toggle it
 	if (gpiod_get_value(ssif_bmc->alert))
@@ -389,6 +447,8 @@ static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 			return;
 		}
 
+		disable_ast2600_slave(ssif_bmc->client);
+		memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg_header));
 		ssif_bmc->msg_time = ktime_get();
 		wake_up_all(&ssif_bmc->wait_queue_rd);
 	}
@@ -925,6 +985,7 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 		misc_deregister(&ssif_bmc->miscdev_post);
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 	}
+	ssif_bmc->ara = register_ast2600_ara(client);
 
 	gpiod_set_value(ssif_bmc->alert, 0);
 	return ret;
@@ -934,6 +995,7 @@ static int ssif_bmc_remove(struct i2c_client *client)
 {
 	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
 
+	unregister_ast2600_ara(ssif_bmc->ara);
 	kfifo_free(&ssif_bmc->fifo);
 	i2c_slave_unregister(client);
 	misc_deregister(&ssif_bmc->miscdev);
