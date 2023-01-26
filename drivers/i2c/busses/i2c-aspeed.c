@@ -109,14 +109,17 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	int idx;
 	u8 value;
 
-	idx = (irq_status & ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATOR) ? 1 : 0;
+	idx = (irq_status & ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORH) ? 1 : 0;
 	slave = bus->slave[idx];
 
 	if (!slave)
 		return 0;
 	command = readl(bus->base + ASPEED_I2C_CMD_REG);
 
-	irq_handled |= ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATOR;
+	if (idx)
+		irq_handled |= ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORH;
+	else
+		irq_handled |= ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORL;
 
 	/* Slave was requested, restart state machine. */
 	if (irq_status & ASPEED_I2CD_INTR_SLAVE_MATCH) {
@@ -605,16 +608,18 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 				u32 dev_add_mask, u32 en_slave_dev_add2)
 {
 	u32 addr_reg_val, func_ctrl_reg_val;
-	u8 shift;
+	u8 shift = ASPEED_I2CD_DEV_ADDR1_SHIFT;
 
 	/* Set slave device address 1 or 2 */
 	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
 	addr_reg_val &= ~dev_add_mask;
 	addr_reg_val |= en_slave_dev_add2;
-	shift = en_slave_dev_add2 ? ASPEED_I2CD_DEV_ADDR2_SHIFT : ASPEED_I2CD_DEV_ADDR1_SHIFT;
+	if (en_slave_dev_add2 == ASPEED_I2CD_EN_SLAVE_DEV_ADDR2)
+		shift = ASPEED_I2CD_DEV_ADDR2_SHIFT;
 	addr_reg_val |= ((slave_addr << shift) & dev_add_mask);
 	writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
 
+	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
 	/*
 	 * Turn on slave mode. It is alright to do this even if it was
 	 * already enabled previously.
@@ -641,7 +646,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 
 	if (id == 0) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR1_MASK;
-		en_slave_dev_add2 = 0;
+		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR1;
 	} else if (id == 1) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR2_MASK;
 		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR2;
