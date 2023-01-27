@@ -319,10 +319,21 @@
     bus-frequency = <400000>;
 };
 
-// I2C16
+// I2C16, Fan controllers
 &i2c15 {
     status = "okay";
     bus-frequency = <400000>;
+    max31790_1 {
+        compatible = "maxim,max31790";
+        reg = <0x20>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+    // GB1 Fan
+    max31790_2 {
+        compatible = "maxim,max31790";
+        reg = <0x2f>;
+    };
 };
 
 // PCIe RC
