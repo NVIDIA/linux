@@ -109,6 +109,7 @@ struct ssif_bmc_ctx {
 	u8 msg_count;
 	ktime_t msg_time;
 	u32 timeout;
+	unsigned long response_timeout;
 	struct gpio_desc *alert;
 	u32 pulse_width;
 #ifdef CONFIG_SEPARATE_SSIF_POSTCODES
@@ -350,6 +351,7 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	ssif_bmc->is_singlepart_read = (msg.header.len <= MAX_PAYLOAD_PER_TRANSACTION);
 	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 
+	del_timer_sync(&ssif_bmc->response_timer);
 	enable_ast2600_ara(ssif_bmc->client);
 	enable_ast2600_slave(ssif_bmc->client);
 
@@ -448,6 +450,8 @@ static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 		}
 
 		disable_ast2600_slave(ssif_bmc->client);
+		mod_timer(&ssif_bmc->response_timer, jiffies + msecs_to_jiffies(ssif_bmc->response_timeout));
+
 		memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg_header));
 		ssif_bmc->msg_time = ktime_get();
 		wake_up_all(&ssif_bmc->wait_queue_rd);
@@ -912,6 +916,14 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 	return ret;
 }
 
+static void retry_timeout(struct timer_list *t)
+{
+	struct ssif_bmc_ctx *ssif_bmc = from_timer(ssif_bmc, t, response_timer);
+
+	dev_warn(&ssif_bmc->client->dev, "Userspace did not respond in time. Force enable i2c target\n");
+	enable_ast2600_slave(ssif_bmc->client);
+}
+
 static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct ssif_bmc_ctx *ssif_bmc;
@@ -933,6 +945,8 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 		ssif_bmc->timeout = 250;
 	if (of_property_read_u32(client->dev.of_node, "pulse_width_us", &ssif_bmc->pulse_width))
 		ssif_bmc->pulse_width = 5;
+
+	ssif_bmc->response_timeout = ssif_bmc->timeout + 5;
 
 	ret = kfifo_alloc(&ssif_bmc->fifo, BUFFER_SIZE, GFP_KERNEL);
 	if (ret)
@@ -976,6 +990,7 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	ssif_bmc->client = client;
 	ssif_bmc->client->flags |= I2C_CLIENT_SLAVE;
 
+	timer_setup(&ssif_bmc->response_timer, retry_timeout, 0);
 	/* Register I2C slave */
 	i2c_set_clientdata(client, ssif_bmc);
 	ret = i2c_slave_register(client, ssif_bmc_cb);
