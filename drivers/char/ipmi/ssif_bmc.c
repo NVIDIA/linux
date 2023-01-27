@@ -352,17 +352,20 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 
 	del_timer_sync(&ssif_bmc->response_timer);
-	enable_ast2600_ara(ssif_bmc->client);
 	enable_ast2600_slave(ssif_bmc->client);
 
-	//if gpio is already asserted toggle it
-	if (gpiod_get_value(ssif_bmc->alert))
-	{
-		gpiod_set_value(ssif_bmc->alert, 0);
-		udelay(ssif_bmc->pulse_width);
+	if (!IS_ERR(ssif_bmc->alert)) {
+		enable_ast2600_ara(ssif_bmc->client);
+		//if gpio is already asserted toggle it
+		if (gpiod_get_value(ssif_bmc->alert))
+		{
+			gpiod_set_value(ssif_bmc->alert, 0);
+			udelay(ssif_bmc->pulse_width);
+		}
+
+		gpiod_set_value(ssif_bmc->alert, 1);
 	}
 
-	gpiod_set_value(ssif_bmc->alert, 1);
 	return (ret < 0) ? ret : count;
 }
 
@@ -717,7 +720,8 @@ static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	memset(&ssif_bmc->part_buf.payload[0], 0, MAX_PAYLOAD_PER_TRANSACTION);
 
 	if (*val == SSIF_IPMI_SINGLEPART_WRITE || *val == SSIF_IPMI_MULTIPART_WRITE_START) {
-		gpiod_set_value(ssif_bmc->alert, 0);
+		if (!IS_ERR(ssif_bmc->alert))
+			gpiod_set_value(ssif_bmc->alert, 0);
 		/* This is new request, flip aborting flag if set */
 		if (ssif_bmc->aborting)
 			ssif_bmc->aborting = false;
@@ -767,7 +771,8 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	calculate_response_part_pec(&ssif_bmc->part_buf);
 	ssif_bmc->part_buf.index = 0;
 	*val = ssif_bmc->part_buf.length;
-	gpiod_set_value(ssif_bmc->alert, 0);
+	if (!IS_ERR(ssif_bmc->alert))
+		gpiod_set_value(ssif_bmc->alert, 0);
 }
 
 static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
@@ -935,11 +940,6 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 
 	/* Request GPIO for alerting the host that response is ready */
 	ssif_bmc->alert = devm_gpiod_get(&client->dev, "alert", GPIOD_OUT_LOW);
-	if (IS_ERR(ssif_bmc->alert)) {
-		dev_err(&client->dev, "could not get alert GPIO (%ld)\n",
-			PTR_ERR(ssif_bmc->alert));
-		return PTR_ERR(ssif_bmc->alert);
-	}
 
 	if (of_property_read_u32(client->dev.of_node, "timeout_ms", &ssif_bmc->timeout))
 		ssif_bmc->timeout = 250;
