@@ -132,11 +132,6 @@
 };
 
 
-&rtc {
-        status = "okay";
-};
-
-
 &uart5 {
 	// BMC Debug Console
 	status = "okay";
@@ -173,6 +168,14 @@
     eeprom@4e {
     compatible = "atmel,24c256";
     reg = <0x4E>;
+    };
+};
+
+&i2c4 {
+    status = "okay";
+    rtc@32 {
+        compatible = "epson,rx8130";
+        reg = <0x32>;
     };
 };
 
