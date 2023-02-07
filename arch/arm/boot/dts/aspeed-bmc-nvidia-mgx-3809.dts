@@ -30,7 +30,7 @@
         /*B0-B7*/       "","","","","","","","",
         /*C0-C7*/       "","","soc_reset","soc_safestate","","","vmon_irq","",
         /*D0-D7*/       "soc_pwr_req","bmc_pwr_btn_n","bmc_rec_btn_n","","","","","",
-        /*E0-E7*/       "","","","bmc_gpio_e3","","","","tlf_aurix_reset",
+        /*E0-E7*/       "","","","bmc_gpio_e3","","","tlf_aurix_reset","",
         /*F0-F7*/       "","","","","","","","",
         /*G0-G7*/       "","","","","","","","",
         /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
