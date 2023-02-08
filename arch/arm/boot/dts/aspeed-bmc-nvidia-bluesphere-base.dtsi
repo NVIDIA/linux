@@ -181,20 +181,6 @@
 	status = "disabled";
 };
 
-&i2c10 {
-	status = "okay";
-
-        powrseq@20 {
-		compatible = "powr1220";
-		reg = <0x20>;
-	};
-
-        powrseq@21 {
-		compatible = "powr1220";
-		reg = <0x21>;
-	};
-};
-
 &i2c12 {
 	status = "okay";
 };
