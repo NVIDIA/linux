@@ -6,7 +6,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-       model = "AST2600 MGX/IGX";
+       model = "AST2600 MGX/IGX - p3809";
        compatible = "aspeed,ast2600";
 
        aliases {
@@ -26,11 +26,11 @@
 
 &gpio0 {
         gpio-line-names =
-        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","","","VM_EN1",
+        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","tlf_aurix_reset_i2c","","VM_EN1",
         /*B0-B7*/       "","","","","","","","",
         /*C0-C7*/       "","","soc_reset","soc_safestate","","","vmon_irq","",
         /*D0-D7*/       "soc_pwr_req","bmc_pwr_btn_n","bmc_rec_btn_n","","","","","",
-        /*E0-E7*/       "","","","bmc_gpio_e3","","","tlf_aurix_reset","",
+        /*E0-E7*/       "","","","bmc_gpio_e3","","","tlf_aurix_reset_gpio","",
         /*F0-F7*/       "","","","","","","","",
         /*G0-G7*/       "","","","","","","","",
         /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
@@ -71,7 +71,7 @@
                m25p,fast-read;
                label = "bmc";
                spi-max-frequency = <50000000>;
-               #include "aspeed-bmc-nvidia-vulcan-flash-layout-64.dtsi"
+	       #include "aspeed-bmc-nvidia-mgx-flash-layout-64.dtsi"
        };
 };
 
@@ -163,6 +163,7 @@
         status = "okay";
         rtl8367@5c {
                 compatible = "rtl8367-i2c";
+		ethernet-gpios = <&gpio0 ASPEED_GPIO(A, 6) GPIO_ACTIVE_LOW>;
                 reg = <0x5c>;
         };
 };

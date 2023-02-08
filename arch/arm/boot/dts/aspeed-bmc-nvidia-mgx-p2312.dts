@@ -6,7 +6,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-       model = "AST2600 MGX/IGX";
+       model = "AST2600 MGX/IGX - p2312";
        compatible = "aspeed,ast2600";
 
        aliases {
