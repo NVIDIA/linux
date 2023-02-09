@@ -13,6 +13,8 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-mem.h>
+#include <linux/gpio/consumer.h>
+#include <linux/delay.h>
 
 #define DEVICE_NAME "spi-aspeed-smc"
 
@@ -101,6 +103,8 @@ struct aspeed_spi {
 	u32			 clk_freq;
 
 	struct aspeed_spi_chip	 chips[ASPEED_SPI_MAX_NUM_CS];
+
+	struct gpio_desc *mux_gpio;
 };
 
 static u32 aspeed_spi_get_io_mode(const struct spi_mem_op *op)
@@ -365,10 +369,25 @@ static int do_aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 static int aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 {
 	int ret;
+	struct aspeed_spi *aspi = spi_controller_get_devdata(mem->spi->master);
+
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 1);
+		//spi mux takes time to settle down.
+		//50us has been shown not to experience
+		//communication failures
+		udelay(50);
+	}
 
 	ret = do_aspeed_spi_exec_op(mem, op);
 	if (ret)
 		dev_err(&mem->spi->dev, "operation failed: %d\n", ret);
+
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 0);
+	}
+
+
 	return ret;
 }
 
@@ -571,7 +590,10 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	/* Only for reads */
 	if (op->data.dir != SPI_MEM_DATA_IN)
 		return -EOPNOTSUPP;
-
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 1);
+		udelay(50);
+	}
 	aspeed_spi_chip_adjust_window(chip, desc->info.offset, desc->info.length);
 
 	if (desc->info.length > chip->ahb_window_size)
@@ -609,7 +631,9 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	writel(chip->ctl_val[ASPEED_SPI_READ], chip->ctl);
 
 	ret = aspeed_spi_do_calibration(chip);
-
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 0);
+	}
 	dev_info(aspi->dev, "CE%d read buswidth:%d [0x%08x]\n",
 		 chip->cs, op->data.buswidth, chip->ctl_val[ASPEED_SPI_READ]);
 
@@ -621,19 +645,30 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 {
 	struct aspeed_spi *aspi = spi_controller_get_devdata(desc->mem->spi->master);
 	struct aspeed_spi_chip *chip = &aspi->chips[desc->mem->spi->chip_select];
+	int rlen = len;
+
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 1);
+		udelay(50);
+	}
 
 	/* Switch to USER command mode if mapping window is too small */
 	if (chip->ahb_window_size < offset + len) {
 		int ret;
 
 		ret = aspeed_spi_read_user(chip, &desc->info.op_tmpl, offset, len, buf);
-		if (ret < 0)
-			return ret;
+		if (ret < 0) {
+			rlen = ret;
+			goto out;
+		}
 	} else {
 		memcpy_fromio(buf, chip->ahb_base + offset, len);
 	}
-
-	return len;
+out:
+	if (!IS_ERR(aspi->mux_gpio)) {
+		gpiod_set_value(aspi->mux_gpio, 0);
+	}
+	return rlen;
 }
 
 static const struct spi_controller_mem_ops aspeed_spi_mem_ops = {
@@ -747,6 +782,8 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 		dev_err(dev, "missing AHB mapping window\n");
 		return PTR_ERR(aspi->ahb_base);
 	}
+
+	aspi->mux_gpio = devm_gpiod_get(dev, "mux", GPIOD_OUT_LOW);
 
 	aspi->ahb_window_size = resource_size(res);
 	aspi->ahb_base_phy = res->start;

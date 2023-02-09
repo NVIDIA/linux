@@ -81,14 +81,6 @@
     };
 };
 
-&fmcraw {
-    status = "okay";
-    spidev@0 {
-        compatible = "hgx,glacier";
-        status = "okay";
-    };
-};
-
 &spi2 {
     status = "okay";
     pinctrl-names = "default";
@@ -119,6 +111,20 @@
                 label = "log";                  // Move log to EMMC, make this unused
             };
         };
+    };
+};
+
+&spi1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+	mux-gpio = <&gpio0 140 GPIO_ACTIVE_LOW>;
+
+    flash@0 {
+        status = "okay";
+        label = "fpga1";
+        spi-rx-bus-width = <1>;
+        spi-max-frequency = <20000000>;
     };
 };
 
