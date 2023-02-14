@@ -180,7 +180,7 @@
 };
 
 // HMC - FPGA Bus
-&i2c7 {
+&i2c6 {
     status = "okay";
 };
 
