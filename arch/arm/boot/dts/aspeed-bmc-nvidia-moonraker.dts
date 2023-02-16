@@ -210,6 +210,11 @@
 	};
 };
 
+//aux eth sw
+&i2c4 {
+	status = "okay";
+};
+
 //NIC
 &i2c5 {
 	status = "okay";
