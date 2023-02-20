@@ -4,6 +4,7 @@
 #include "aspeed-g6.dtsi"
 #include <dt-bindings/gpio/aspeed-gpio.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/i2c/i2c.h>
 
 / {
 	model = "AST2600 Vulcan HMC";
@@ -154,6 +155,10 @@
 &i2c2 {
     status = "okay";
 
+    i2c-slave-mqueue@18 {
+        compatible = "slave-mqueue";
+        reg = <(I2C_OWN_SLAVE_ADDRESS | 0x18)>;
+    };
 };
 
 &i2c3 {
