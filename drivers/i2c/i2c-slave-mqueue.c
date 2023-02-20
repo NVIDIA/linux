@@ -159,7 +159,7 @@ static int i2c_slave_mqueue_probe(struct i2c_client *client,
 
 	mq->queue = devm_kzalloc(dev, sizeof(*mq->queue) * MQ_QUEUE_SIZE,
 				 GFP_KERNEL);
-	if (!buf)
+	if (!mq->queue)
 		return -ENOMEM;
 
 	for (i = 0; i < MQ_QUEUE_SIZE; i++)
