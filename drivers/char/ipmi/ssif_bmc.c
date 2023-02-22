@@ -275,7 +275,7 @@ static __poll_t ssif_bmc_poll_post(struct file *file, poll_table *wait)
 
 static int ssif_bmc_release_post(struct inode *inode, struct file *file)
 {
-	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
+	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc_post(file);
 
 	ssif_bmc->running_post = 0;
 
