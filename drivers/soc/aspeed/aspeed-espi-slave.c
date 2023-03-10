@@ -6,6 +6,7 @@
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -431,27 +432,13 @@ static const struct file_operations aspeed_espi_smi_fops = {
 	.unlocked_ioctl = aspeed_espi_smi_ioctl,
 };
 
-static const struct regmap_config aspeed_espi_regmap_cfg = {
-	.reg_bits	= 32,
-	.reg_stride	= 4,
-	.val_bits	= 32,
-	.max_register	= 0x200,
-};
-
 static int aspeed_espi_probe(struct platform_device *pdev)
 {
 	struct aspeed_espi_ctrl *espi_ctrl;
 	struct aspeed_espi *priv;
 	struct device_node *node;
-	struct resource *res;
-	void __iomem *regs;
 	u32 ctrl;
 	int ret;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(regs))
-		return PTR_ERR(regs);
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -465,8 +452,9 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	priv->dev = &pdev->dev;
 	priv->espi_ctrl = espi_ctrl;
 	espi_ctrl->model = of_device_get_match_data(&pdev->dev);
-	priv->map = devm_regmap_init_mmio(&pdev->dev, regs,
-					  &aspeed_espi_regmap_cfg);
+
+	priv->map = device_node_to_regmap(pdev->dev.of_node);
+
 	if (IS_ERR(priv->map))
 		return PTR_ERR(priv->map);
 	espi_ctrl->map = priv->map;
