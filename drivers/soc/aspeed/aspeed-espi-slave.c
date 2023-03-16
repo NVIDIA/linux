@@ -442,6 +442,7 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 {
 	struct aspeed_espi_ctrl *espi_ctrl;
 	struct aspeed_espi *priv;
+	struct device_node *node;
 	struct resource *res;
 	void __iomem *regs;
 	u32 ctrl;
@@ -565,6 +566,10 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "eSPI registered, irq %d\n", priv->irq);
 
+	for_each_child_of_node(priv->dev->of_node, node) {
+		if (!of_platform_device_create(node, NULL, priv->dev))
+			dev_warn(&pdev->dev, "Unable to create espi child instance\n");
+	}
 	return 0;
 
 err_clk_disable_out:
