@@ -477,11 +477,16 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	priv->pltrstn = 'U'; /* means it's not reported yet from master */
 	priv->smi = 'U';
 
+	for_each_child_of_node(priv->dev->of_node, node) {
+		if (!of_platform_device_create(node, NULL, priv->dev))
+			dev_warn(&pdev->dev, "Unable to create espi child instance\n");
+	}
+
 	priv->irq = platform_get_irq(pdev, 0);
 	if (priv->irq < 0)
 		return priv->irq;
 
-	ret = devm_request_irq(&pdev->dev, priv->irq, aspeed_espi_irq, 0,
+	ret = devm_request_irq(&pdev->dev, priv->irq, aspeed_espi_irq, IRQF_SHARED,
 			       "aspeed-espi-irq", priv);
 	if (ret)
 		return ret;
@@ -553,11 +558,6 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	aspeed_espi_boot_ack(priv);
 
 	dev_info(&pdev->dev, "eSPI registered, irq %d\n", priv->irq);
-
-	for_each_child_of_node(priv->dev->of_node, node) {
-		if (!of_platform_device_create(node, NULL, priv->dev))
-			dev_warn(&pdev->dev, "Unable to create espi child instance\n");
-	}
 	return 0;
 
 err_clk_disable_out:
