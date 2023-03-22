@@ -166,6 +166,11 @@
 		ethernet-gpios = <&gpio0 ASPEED_GPIO(A, 6) GPIO_ACTIVE_LOW>;
                 reg = <0x5c>;
         };
+
+	eeprom@50 {
+		compatible = "at,24c128";
+		reg = <0x50>;
+	};
 };
 
 &i2c10 {
@@ -173,6 +178,11 @@
     lm75@48 {
         compatible = "ti,tmp75";
         reg = <0x48>;
+    };
+
+    eeprom@50 {
+	    compatible = "at,24c02";
+	    reg = <0x50>;
     };
 };
 
