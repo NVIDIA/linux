@@ -33,7 +33,7 @@
         /*E0-E7*/       "","","","bmc_gpio_e3","","","tlf_aurix_reset_gpio","",
         /*F0-F7*/       "","","","","","","","",
         /*G0-G7*/       "","","","","","","","",
-        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
+        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","shifter_enable_gpio","",
         /*I0-I7*/       "","","","","","","global_wp","",
         /*J0-J7*/       "carrier_pwr_on","","","pwr_irq","ephy_irq","ephy_rst","soc_temp_alert","shifter_enable_uart",
         /*K0-K7*/       "","aurix_int","","","","","bmc_rst_btn_n","",
