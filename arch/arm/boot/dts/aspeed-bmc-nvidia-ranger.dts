@@ -242,21 +242,29 @@
 &i2c5 {
     status = "okay";
     bus-frequency = <400000>;
+    i2c-switch@70 {
+        compatible = "nxp,pca9546";
+        reg = <0x70>;
+    };
 };
 
 // I2C7, I2C_BMC_IOM_EXP
 &i2c6 {
     status = "okay";
     bus-frequency = <400000>;
+    i2c-switch@70 {
+        compatible = "nxp,pca9546";
+        reg = <0x70>;
+    };
 };
 
 // I2C8, BMC_I2C_PCI
 &i2c7 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@70 {
+    i2c-switch@71 {
         compatible = "nxp,pca9546";
-        reg = <0x70>;
+        reg = <0x71>;
     };
 };
 
@@ -300,6 +308,10 @@
 &i2c12 {
     status = "okay";
     bus-frequency = <400000>;
+    i2c-switch@70 {
+        compatible = "nxp,pca9546";
+        reg = <0x70>;
+    };
 };
 
 // I2C14, BMC_I2C_HDR1
@@ -318,6 +330,17 @@
 &i2c15 {
     status = "okay";
     bus-frequency = <400000>;
+    max31790_1 {
+        compatible = "maxim,max31790";
+        reg = <0x20>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+    // GB1 Fan
+    max31790_2 {
+        compatible = "maxim,max31790";
+        reg = <0x2f>;
+    };
 };
 
 // PCIe RC
