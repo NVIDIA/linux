@@ -228,6 +228,7 @@ int seq_buf_putmem_hex(struct seq_buf *s, const void *mem,
 	int i, j;
 
 	WARN_ON(s->size == 0);
+	BUILD_BUG_ON(MAX_MEMHEX_BYTES * 2 >= HEX_CHARS);
 
 	BUILD_BUG_ON(MAX_MEMHEX_BYTES * 2 >= HEX_CHARS);
 
