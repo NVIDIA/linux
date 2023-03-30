@@ -119,8 +119,8 @@
 	PAGE_ALIGN(RX_PACKET_COUNT * sizeof(struct mctp_pcie_packet_data))
 
 /* Per client packet cache sizes */
-#define RX_RING_COUNT		64
-#define TX_RING_COUNT		64
+#define RX_RING_COUNT		512
+#define TX_RING_COUNT		512
 
 /* PCIe Host Controller registers */
 #define ASPEED_PCIE_MISC_STS_1	0x0c4
