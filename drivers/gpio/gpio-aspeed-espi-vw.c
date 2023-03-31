@@ -6,6 +6,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
+#include <linux/mfd/syscon.h>
+
 #define ASPEED_ESPI_CTRL 0x000
 #define ASPEED_ESPI_CTRL_VW_SW_RDY BIT(3)
 
@@ -195,7 +197,7 @@ static int aspeed_espi_gpio_probe(struct platform_device *pdev)
 	if (!gpio)
 		return -ENOMEM;
 
-	gpio->map = dev_get_regmap(pdev->dev.parent, NULL);
+	gpio->map = device_node_to_regmap(pdev->dev.parent->of_node);
 	if (!gpio->map) {
 		dev_err(&pdev->dev, "Couldn't get regmap\n");
 		return -ENODEV;
