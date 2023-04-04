@@ -299,8 +299,7 @@ static int ipmb_slave_cb(struct i2c_client *client,
 	return 0;
 }
 
-static int ipmb_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static int ipmb_probe(struct i2c_client *client)
 {
 	struct ipmb_dev *ipmb_dev;
 	u32 inst_slave_addr;
@@ -344,14 +343,12 @@ static int ipmb_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int ipmb_remove(struct i2c_client *client)
+static void ipmb_remove(struct i2c_client *client)
 {
 	struct ipmb_dev *ipmb_dev = i2c_get_clientdata(client);
 
 	i2c_slave_unregister(client);
 	misc_deregister(&ipmb_dev->miscdev);
-
-	return 0;
 }
 
 static const struct i2c_device_id ipmb_id[] = {
@@ -371,7 +368,7 @@ static struct i2c_driver ipmb_driver = {
 		.name = "ipmb-dev",
 		.acpi_match_table = ACPI_PTR(acpi_ipmb_id),
 	},
-	.probe = ipmb_probe,
+	.probe_new = ipmb_probe,
 	.remove = ipmb_remove,
 	.id_table = ipmb_id,
 };

@@ -14,8 +14,19 @@
 
 #ifdef CONFIG_EFI
 extern void efi_init(void);
+<<<<<<< HEAD
+=======
+
+bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg);
+>>>>>>> origin/linux_6.1.15_upstream
 #else
 #define efi_init()
+
+static inline
+bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg)
+{
+	return false;
+}
 #endif
 
 int efi_create_mapping(struct mm_struct *mm, efi_memory_desc_t *md);
@@ -25,22 +36,31 @@ int efi_set_mapping_permissions(struct mm_struct *mm, efi_memory_desc_t *md);
 ({									\
 	efi_virtmap_load();						\
 	__efi_fpsimd_begin();						\
+	spin_lock(&efi_rt_lock);					\
 })
 
+#undef arch_efi_call_virt
 #define arch_efi_call_virt(p, f, args...)				\
-({									\
-	efi_##f##_t *__f;						\
-	__f = p->f;							\
-	__efi_rt_asm_wrapper(__f, #f, args);				\
-})
+	__efi_rt_asm_wrapper((p)->f, #f, args)
 
 #define arch_efi_call_virt_teardown()					\
 ({									\
+	spin_unlock(&efi_rt_lock);					\
 	__efi_fpsimd_end();						\
 	efi_virtmap_unload();						\
 })
 
+extern spinlock_t efi_rt_lock;
+extern u64 *efi_rt_stack_top;
 efi_status_t __efi_rt_asm_wrapper(void *, const char *, ...);
+
+/*
+ * efi_rt_stack_top[-1] contains the value the stack pointer had before
+ * switching to the EFI runtime stack.
+ */
+#define current_in_efi()						\
+	(!preemptible() && efi_rt_stack_top != NULL &&			\
+	 on_task_stack(current, READ_ONCE(efi_rt_stack_top[-1]), 1))
 
 #define ARCH_EFI_IRQ_FLAGS_MASK (PSR_D_BIT | PSR_A_BIT | PSR_I_BIT | PSR_F_BIT)
 

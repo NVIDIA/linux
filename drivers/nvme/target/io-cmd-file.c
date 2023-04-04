@@ -11,19 +11,11 @@
 #include <linux/fs.h>
 #include "nvmet.h"
 
-#define NVMET_MAX_MPOOL_BVEC		16
 #define NVMET_MIN_MPOOL_OBJ		16
 
-int nvmet_file_ns_revalidate(struct nvmet_ns *ns)
+void nvmet_file_ns_revalidate(struct nvmet_ns *ns)
 {
-	struct kstat stat;
-	int ret;
-
-	ret = vfs_getattr(&ns->file->f_path, &stat, STATX_SIZE,
-			  AT_STATX_FORCE_SYNC);
-	if (!ret)
-		ns->size = stat.size;
-	return ret;
+	ns->size = i_size_read(ns->file->f_mapping->host);
 }
 
 void nvmet_file_ns_disable(struct nvmet_ns *ns)
@@ -33,8 +25,6 @@ void nvmet_file_ns_disable(struct nvmet_ns *ns)
 			flush_workqueue(buffered_io_wq);
 		mempool_destroy(ns->bvec_pool);
 		ns->bvec_pool = NULL;
-		kmem_cache_destroy(ns->bvec_cache);
-		ns->bvec_cache = NULL;
 		fput(ns->file);
 		ns->file = NULL;
 	}
@@ -43,7 +33,7 @@ void nvmet_file_ns_disable(struct nvmet_ns *ns)
 int nvmet_file_ns_enable(struct nvmet_ns *ns)
 {
 	int flags = O_RDWR | O_LARGEFILE;
-	int ret;
+	int ret = 0;
 
 	if (!ns->buffered_io)
 		flags |= O_DIRECT;
@@ -57,9 +47,7 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
 		return ret;
 	}
 
-	ret = nvmet_file_ns_revalidate(ns);
-	if (ret)
-		goto err;
+	nvmet_file_ns_revalidate(ns);
 
 	/*
 	 * i_blkbits can be greater than the universally accepted upper bound,
@@ -68,16 +56,8 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
 	ns->blksize_shift = min_t(u8,
 			file_inode(ns->file)->i_blkbits, 12);
 
-	ns->bvec_cache = kmem_cache_create("nvmet-bvec",
-			NVMET_MAX_MPOOL_BVEC * sizeof(struct bio_vec),
-			0, SLAB_HWCACHE_ALIGN, NULL);
-	if (!ns->bvec_cache) {
-		ret = -ENOMEM;
-		goto err;
-	}
-
 	ns->bvec_pool = mempool_create(NVMET_MIN_MPOOL_OBJ, mempool_alloc_slab,
-			mempool_free_slab, ns->bvec_cache);
+			mempool_free_slab, nvmet_bvec_cache);
 
 	if (!ns->bvec_pool) {
 		ret = -ENOMEM;
@@ -86,9 +66,10 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
 
 	return ret;
 err:
+	fput(ns->file);
+	ns->file = NULL;
 	ns->size = 0;
 	ns->blksize_shift = 0;
-	nvmet_file_ns_disable(ns);
 	return ret;
 }
 
@@ -111,22 +92,22 @@ static ssize_t nvmet_file_submit_bvec(struct nvmet_req *req, loff_t pos,
 		if (req->cmd->rw.control & cpu_to_le16(NVME_RW_FUA))
 			ki_flags |= IOCB_DSYNC;
 		call_iter = req->ns->file->f_op->write_iter;
-		rw = WRITE;
+		rw = ITER_SOURCE;
 	} else {
 		call_iter = req->ns->file->f_op->read_iter;
-		rw = READ;
+		rw = ITER_DEST;
 	}
 
 	iov_iter_bvec(&iter, rw, req->f.bvec, nr_segs, count);
 
 	iocb->ki_pos = pos;
 	iocb->ki_filp = req->ns->file;
-	iocb->ki_flags = ki_flags | iocb_flags(req->ns->file);
+	iocb->ki_flags = ki_flags | iocb->ki_filp->f_iocb_flags;
 
 	return call_iter(iocb, &iter);
 }
 
-static void nvmet_file_io_done(struct kiocb *iocb, long ret, long ret2)
+static void nvmet_file_io_done(struct kiocb *iocb, long ret)
 {
 	struct nvmet_req *req = container_of(iocb, struct nvmet_req, f.iocb);
 	u16 status = NVME_SC_SUCCESS;
@@ -223,7 +204,7 @@ static bool nvmet_file_execute_io(struct nvmet_req *req, int ki_flags)
 	}
 
 complete:
-	nvmet_file_io_done(&req->f.iocb, ret, 0);
+	nvmet_file_io_done(&req->f.iocb, ret);
 	return true;
 }
 

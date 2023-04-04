@@ -6,49 +6,13 @@
  * Author: Sean O'Brien <seobrien@chromium.org>
  */
 
+#include <linux/device.h>
 #include <linux/hid.h>
+#include <linux/input/vivaldi-fmap.h>
+#include <linux/kernel.h>
 #include <linux/module.h>
 
-#define MIN_FN_ROW_KEY	1
-#define MAX_FN_ROW_KEY	24
-#define HID_VD_FN_ROW_PHYSMAP 0x00000001
-#define HID_USAGE_FN_ROW_PHYSMAP (HID_UP_GOOGLEVENDOR | HID_VD_FN_ROW_PHYSMAP)
-
-static struct hid_driver hid_vivaldi;
-
-struct vivaldi_data {
-	u32 function_row_physmap[MAX_FN_ROW_KEY - MIN_FN_ROW_KEY + 1];
-	int max_function_row_key;
-};
-
-static ssize_t function_row_physmap_show(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	struct hid_device *hdev = to_hid_device(dev);
-	struct vivaldi_data *drvdata = hid_get_drvdata(hdev);
-	ssize_t size = 0;
-	int i;
-
-	if (!drvdata->max_function_row_key)
-		return 0;
-
-	for (i = 0; i < drvdata->max_function_row_key; i++)
-		size += sprintf(buf + size, "%02X ",
-				drvdata->function_row_physmap[i]);
-	size += sprintf(buf + size, "\n");
-	return size;
-}
-
-DEVICE_ATTR_RO(function_row_physmap);
-static struct attribute *sysfs_attrs[] = {
-	&dev_attr_function_row_physmap.attr,
-	NULL
-};
-
-static const struct attribute_group input_attribute_group = {
-	.attrs = sysfs_attrs
-};
+#include "hid-vivaldi-common.h"
 
 static int vivaldi_probe(struct hid_device *hdev,
 			 const struct hid_device_id *id)
@@ -69,6 +33,7 @@ static int vivaldi_probe(struct hid_device *hdev,
 	return hid_hw_start(hdev, HID_CONNECT_DEFAULT);
 }
 
+<<<<<<< HEAD
 static void vivaldi_feature_mapping(struct hid_device *hdev,
 				    struct hid_field *field,
 				    struct hid_usage *usage)
@@ -146,9 +111,10 @@ static int vivaldi_input_configured(struct hid_device *hdev,
 	return devm_device_add_group(&hdev->dev, &input_attribute_group);
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 static const struct hid_device_id vivaldi_table[] = {
-	{ HID_DEVICE(HID_BUS_ANY, HID_GROUP_VIVALDI, HID_ANY_ID,
-		     HID_ANY_ID) },
+	{ HID_DEVICE(HID_BUS_ANY, HID_GROUP_VIVALDI, HID_ANY_ID, HID_ANY_ID) },
 	{ }
 };
 
@@ -159,7 +125,9 @@ static struct hid_driver hid_vivaldi = {
 	.id_table = vivaldi_table,
 	.probe = vivaldi_probe,
 	.feature_mapping = vivaldi_feature_mapping,
-	.input_configured = vivaldi_input_configured,
+	.driver = {
+		.dev_groups = vivaldi_attribute_groups,
+	},
 };
 
 module_hid_driver(hid_vivaldi);

@@ -4,7 +4,7 @@
  * Copyright (C) 2020 Red Hat, Inc. All Rights Reserved.
  * Written by David Howells (dhowells@redhat.com)
  *
- * See Documentation/watch_queue.rst
+ * See Documentation/core-api/watch_queue.rst
  */
 
 #define pr_fmt(fmt) "watchq: " fmt
@@ -227,7 +227,11 @@ void __post_watch_notification(struct watch_list *wlist,
 
 		if (lock_wqueue(wqueue)) {
 			post_one_notification(wqueue, n);
+<<<<<<< HEAD
 			unlock_wqueue(wqueue);;
+=======
+			unlock_wqueue(wqueue);
+>>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 
@@ -245,7 +249,6 @@ long watch_queue_set_size(struct pipe_inode_info *pipe, unsigned int nr_notes)
 	struct page **pages;
 	unsigned long *bitmap;
 	unsigned long user_bufs;
-	unsigned int bmsize;
 	int ret, i, nr_pages;
 
 	if (!wqueue)
@@ -285,13 +288,11 @@ long watch_queue_set_size(struct pipe_inode_info *pipe, unsigned int nr_notes)
 		pages[i]->index = i * WATCH_QUEUE_NOTES_PER_PAGE;
 	}
 
-	bmsize = (nr_notes + BITS_PER_LONG - 1) / BITS_PER_LONG;
-	bmsize *= sizeof(unsigned long);
-	bitmap = kmalloc(bmsize, GFP_KERNEL);
+	bitmap = bitmap_alloc(nr_notes, GFP_KERNEL);
 	if (!bitmap)
 		goto error_p;
 
-	memset(bitmap, 0xff, bmsize);
+	bitmap_fill(bitmap, nr_notes);
 	wqueue->notes = pages;
 	wqueue->notes_bitmap = bitmap;
 	wqueue->nr_pages = nr_pages;
@@ -457,6 +458,33 @@ void init_watch(struct watch *watch, struct watch_queue *wqueue)
 	rcu_assign_pointer(watch->queue, wqueue);
 }
 
+static int add_one_watch(struct watch *watch, struct watch_list *wlist, struct watch_queue *wqueue)
+{
+	const struct cred *cred;
+	struct watch *w;
+
+	hlist_for_each_entry(w, &wlist->watchers, list_node) {
+		struct watch_queue *wq = rcu_access_pointer(w->queue);
+		if (wqueue == wq && watch->id == w->id)
+			return -EBUSY;
+	}
+
+	cred = current_cred();
+	if (atomic_inc_return(&cred->user->nr_watches) > task_rlimit(current, RLIMIT_NOFILE)) {
+		atomic_dec(&cred->user->nr_watches);
+		return -EAGAIN;
+	}
+
+	watch->cred = get_cred(cred);
+	rcu_assign_pointer(watch->watch_list, wlist);
+
+	kref_get(&wqueue->usage);
+	kref_get(&watch->usage);
+	hlist_add_head(&watch->queue_node, &wqueue->watches);
+	hlist_add_head_rcu(&watch->list_node, &wlist->watchers);
+	return 0;
+}
+
 /**
  * add_watch_to_object - Add a watch on an object to a watch list
  * @watch: The watch to add
@@ -471,25 +499,20 @@ void init_watch(struct watch *watch, struct watch_queue *wqueue)
  */
 int add_watch_to_object(struct watch *watch, struct watch_list *wlist)
 {
-	struct watch_queue *wqueue = rcu_access_pointer(watch->queue);
-	struct watch *w;
+	struct watch_queue *wqueue;
+	int ret = -ENOENT;
 
-	hlist_for_each_entry(w, &wlist->watchers, list_node) {
-		struct watch_queue *wq = rcu_access_pointer(w->queue);
-		if (wqueue == wq && watch->id == w->id)
-			return -EBUSY;
+	rcu_read_lock();
+
+	wqueue = rcu_access_pointer(watch->queue);
+	if (lock_wqueue(wqueue)) {
+		spin_lock(&wlist->lock);
+		ret = add_one_watch(watch, wlist, wqueue);
+		spin_unlock(&wlist->lock);
+		unlock_wqueue(wqueue);
 	}
 
-	watch->cred = get_current_cred();
-	rcu_assign_pointer(watch->watch_list, wlist);
-
-	if (atomic_inc_return(&watch->cred->user->nr_watches) >
-	    task_rlimit(current, RLIMIT_NOFILE)) {
-		atomic_dec(&watch->cred->user->nr_watches);
-		put_cred(watch->cred);
-		return -EAGAIN;
-	}
-
+<<<<<<< HEAD
 	if (lock_wqueue(wqueue)) {
 		kref_get(&wqueue->usage);
 		kref_get(&watch->usage);
@@ -499,6 +522,10 @@ int add_watch_to_object(struct watch *watch, struct watch_list *wlist)
 
 	hlist_add_head(&watch->list_node, &wlist->watchers);
 	return 0;
+=======
+	rcu_read_unlock();
+	return ret;
+>>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(add_watch_to_object);
 

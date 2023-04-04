@@ -15,6 +15,7 @@
 #include <linux/pgtable.h>
 #include <asm/extable.h>
 #include <linux/string.h>
+<<<<<<< HEAD
 
 /*
  * On Microblaze the fs value is actually the top of the corresponding
@@ -46,6 +47,9 @@ static inline int __access_ok(unsigned long addr, unsigned long size)
 	return (size <= limit) && (addr <= (limit - size));
 }
 #define access_ok(addr, size) __access_ok((unsigned long)addr, size)
+=======
+#include <asm-generic/access_ok.h>
+>>>>>>> origin/linux_6.1.15_upstream
 
 # define __FIXUP_SECTION	".section .fixup,\"ax\"\n"
 # define __EX_TABLE_SECTION	".section __ex_table,\"a\"\n"

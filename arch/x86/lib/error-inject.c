@@ -3,6 +3,7 @@
 #include <linux/linkage.h>
 #include <linux/error-injection.h>
 #include <linux/kprobes.h>
+#include <linux/objtool.h>
 
 asmlinkage void just_return_func(void);
 
@@ -11,6 +12,10 @@ asm(
 	".type just_return_func, @function\n"
 	".globl just_return_func\n"
 	"just_return_func:\n"
+<<<<<<< HEAD
+=======
+		ANNOTATE_NOENDBR
+>>>>>>> origin/linux_6.1.15_upstream
 		ASM_RET
 	".size just_return_func, .-just_return_func\n"
 );

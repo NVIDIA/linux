@@ -109,12 +109,12 @@ static int tracefs_syscall_rmdir(struct inode *inode, struct dentry *dentry)
 	 * also the directory that is being deleted.
 	 */
 	inode_unlock(inode);
-	inode_unlock(dentry->d_inode);
+	inode_unlock(d_inode(dentry));
 
 	ret = tracefs_ops.rmdir(name);
 
 	inode_lock_nested(inode, I_MUTEX_PARENT);
-	inode_lock(dentry->d_inode);
+	inode_lock(d_inode(dentry));
 
 	kfree(name);
 
@@ -141,6 +141,8 @@ struct tracefs_mount_opts {
 	kuid_t uid;
 	kgid_t gid;
 	umode_t mode;
+	/* Opt_* bitfield. */
+	unsigned int opts;
 };
 
 enum {
@@ -241,6 +243,7 @@ static int tracefs_parse_options(char *data, struct tracefs_mount_opts *opts)
 	kgid_t gid;
 	char *p;
 
+	opts->opts = 0;
 	opts->mode = TRACEFS_DEFAULT_MODE;
 
 	while ((p = strsep(&data, ",")) != NULL) {
@@ -275,24 +278,43 @@ static int tracefs_parse_options(char *data, struct tracefs_mount_opts *opts)
 		 * but traditionally tracefs has ignored all mount options
 		 */
 		}
+
+		opts->opts |= BIT(token);
 	}
 
 	return 0;
 }
 
-static int tracefs_apply_options(struct super_block *sb)
+static int tracefs_apply_options(struct super_block *sb, bool remount)
 {
 	struct tracefs_fs_info *fsi = sb->s_fs_info;
-	struct inode *inode = sb->s_root->d_inode;
+	struct inode *inode = d_inode(sb->s_root);
 	struct tracefs_mount_opts *opts = &fsi->mount_opts;
 
-	inode->i_mode &= ~S_IALLUGO;
-	inode->i_mode |= opts->mode;
+	/*
+	 * On remount, only reset mode/uid/gid if they were provided as mount
+	 * options.
+	 */
 
+	if (!remount || opts->opts & BIT(Opt_mode)) {
+		inode->i_mode &= ~S_IALLUGO;
+		inode->i_mode |= opts->mode;
+	}
+
+<<<<<<< HEAD
 	inode->i_uid = opts->uid;
 
 	/* Set all the group ids to the mount option */
 	set_gid(sb->s_root, opts->gid);
+=======
+	if (!remount || opts->opts & BIT(Opt_uid))
+		inode->i_uid = opts->uid;
+
+	if (!remount || opts->opts & BIT(Opt_gid)) {
+		/* Set all the group ids to the mount option */
+		set_gid(sb->s_root, opts->gid);
+	}
+>>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -307,7 +329,7 @@ static int tracefs_remount(struct super_block *sb, int *flags, char *data)
 	if (err)
 		goto fail;
 
-	tracefs_apply_options(sb);
+	tracefs_apply_options(sb, true);
 
 fail:
 	return err;
@@ -359,7 +381,7 @@ static int trace_fill_super(struct super_block *sb, void *data, int silent)
 
 	sb->s_op = &tracefs_super_operations;
 
-	tracefs_apply_options(sb);
+	tracefs_apply_options(sb, false);
 
 	return 0;
 
@@ -404,18 +426,18 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
 	if (!parent)
 		parent = tracefs_mount->mnt_root;
 
-	inode_lock(parent->d_inode);
-	if (unlikely(IS_DEADDIR(parent->d_inode)))
+	inode_lock(d_inode(parent));
+	if (unlikely(IS_DEADDIR(d_inode(parent))))
 		dentry = ERR_PTR(-ENOENT);
 	else
 		dentry = lookup_one_len(name, parent, strlen(name));
-	if (!IS_ERR(dentry) && dentry->d_inode) {
+	if (!IS_ERR(dentry) && d_inode(dentry)) {
 		dput(dentry);
 		dentry = ERR_PTR(-EEXIST);
 	}
 
 	if (IS_ERR(dentry)) {
-		inode_unlock(parent->d_inode);
+		inode_unlock(d_inode(parent));
 		simple_release_fs(&tracefs_mount, &tracefs_mount_count);
 	}
 
@@ -424,7 +446,7 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
 
 static struct dentry *failed_creating(struct dentry *dentry)
 {
-	inode_unlock(dentry->d_parent->d_inode);
+	inode_unlock(d_inode(dentry->d_parent));
 	dput(dentry);
 	simple_release_fs(&tracefs_mount, &tracefs_mount_count);
 	return NULL;
@@ -432,7 +454,7 @@ static struct dentry *failed_creating(struct dentry *dentry)
 
 static struct dentry *end_creating(struct dentry *dentry)
 {
-	inode_unlock(dentry->d_parent->d_inode);
+	inode_unlock(d_inode(dentry->d_parent));
 	return dentry;
 }
 
@@ -490,7 +512,7 @@ struct dentry *tracefs_create_file(const char *name, umode_t mode,
 	inode->i_uid = d_inode(dentry->d_parent)->i_uid;
 	inode->i_gid = d_inode(dentry->d_parent)->i_gid;
 	d_instantiate(dentry, inode);
-	fsnotify_create(dentry->d_parent->d_inode, dentry);
+	fsnotify_create(d_inode(dentry->d_parent), dentry);
 	return end_creating(dentry);
 }
 
@@ -517,8 +539,8 @@ static struct dentry *__create_dir(const char *name, struct dentry *parent,
 	/* directory inodes start off with i_nlink == 2 (for "." entry) */
 	inc_nlink(inode);
 	d_instantiate(dentry, inode);
-	inc_nlink(dentry->d_parent->d_inode);
-	fsnotify_mkdir(dentry->d_parent->d_inode, dentry);
+	inc_nlink(d_inode(dentry->d_parent));
+	fsnotify_mkdir(d_inode(dentry->d_parent), dentry);
 	return end_creating(dentry);
 }
 
@@ -553,7 +575,7 @@ struct dentry *tracefs_create_dir(const char *name, struct dentry *parent)
  *
  * Only one instances directory is allowed.
  *
- * The instances directory is special as it allows for mkdir and rmdir to
+ * The instances directory is special as it allows for mkdir and rmdir
  * to be done by userspace. When a mkdir or rmdir is performed, the inode
  * locks are released and the methods passed in (@mkdir and @rmdir) are
  * called without locks and with the name of the directory being created

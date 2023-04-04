@@ -5,3 +5,7 @@ sigfuz
 sigreturn_vdso
 sig_sc_double_restart
 sigreturn_kernel
+<<<<<<< HEAD
+=======
+sigreturn_unaligned
+>>>>>>> origin/linux_6.1.15_upstream

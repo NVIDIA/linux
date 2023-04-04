@@ -10,7 +10,6 @@
 
 int		init_socket_xprt(void);
 void		cleanup_socket_xprt(void);
-unsigned short	get_srcport(struct rpc_xprt *);
 
 #define RPC_MIN_RESVPORT	(1U)
 #define RPC_MAX_RESVPORT	(65535U)
@@ -90,5 +89,9 @@ struct sock_xprt {
 #define XPRT_SOCK_WAKE_PENDING	(6)
 #define XPRT_SOCK_WAKE_DISCONNECT	(7)
 #define XPRT_SOCK_CONNECT_SENT	(8)
+<<<<<<< HEAD
+=======
+#define XPRT_SOCK_NOSPACE	(9)
+>>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* _LINUX_SUNRPC_XPRTSOCK_H */

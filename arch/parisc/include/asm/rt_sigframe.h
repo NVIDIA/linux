@@ -2,16 +2,15 @@
 #ifndef _ASM_PARISC_RT_SIGFRAME_H
 #define _ASM_PARISC_RT_SIGFRAME_H
 
+<<<<<<< HEAD
 #define SIGRETURN_TRAMP 4
 #define SIGRESTARTBLOCK_TRAMP 5 
 #define TRAMP_SIZE (SIGRETURN_TRAMP + SIGRESTARTBLOCK_TRAMP)
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 struct rt_sigframe {
-	/* XXX: Must match trampoline size in arch/parisc/kernel/signal.c 
-	        Secondary to that it must protect the ERESTART_RESTARTBLOCK
-		trampoline we left on the stack (we were bad and didn't 
-		change sp so we could run really fast.) */
-	unsigned int tramp[TRAMP_SIZE];
+	unsigned int tramp[2]; /* holds original return address */
 	struct siginfo info;
 	struct ucontext uc;
 };

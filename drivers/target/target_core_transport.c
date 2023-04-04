@@ -1527,10 +1527,10 @@ target_cmd_parse_cdb(struct se_cmd *cmd)
 
 	ret = dev->transport->parse_cdb(cmd);
 	if (ret == TCM_UNSUPPORTED_SCSI_OPCODE)
-		pr_warn_ratelimited("%s/%s: Unsupported SCSI Opcode 0x%02x, sending CHECK_CONDITION.\n",
-				    cmd->se_tfo->fabric_name,
-				    cmd->se_sess->se_node_acl->initiatorname,
-				    cmd->t_task_cdb[0]);
+		pr_debug_ratelimited("%s/%s: Unsupported SCSI Opcode 0x%02x, sending CHECK_CONDITION.\n",
+				     cmd->se_tfo->fabric_name,
+				     cmd->se_sess->se_node_acl->initiatorname,
+				     cmd->t_task_cdb[0]);
 	if (ret)
 		return ret;
 
@@ -2218,6 +2218,13 @@ static bool target_handle_task_attr(struct se_cmd *cmd)
 		 */
 		atomic_dec_mb(&dev->non_ordered);
 	}
+<<<<<<< HEAD
+=======
+
+	spin_lock_irq(&cmd->t_state_lock);
+	cmd->transport_state &= ~CMD_T_SENT;
+	spin_unlock_irq(&cmd->t_state_lock);
+>>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock(&dev->delayed_cmd_lock);
 	list_add_tail(&cmd->se_delayed_node, &dev->delayed_cmd_list);
@@ -2253,12 +2260,8 @@ void target_execute_cmd(struct se_cmd *cmd)
 	if (target_write_prot_action(cmd))
 		return;
 
-	if (target_handle_task_attr(cmd)) {
-		spin_lock_irq(&cmd->t_state_lock);
-		cmd->transport_state &= ~CMD_T_SENT;
-		spin_unlock_irq(&cmd->t_state_lock);
+	if (target_handle_task_attr(cmd))
 		return;
-	}
 
 	__target_execute_cmd(cmd, true);
 }
@@ -3531,8 +3534,7 @@ static void target_tmr_work(struct work_struct *work)
 		tmr->response = (!ret) ? TMR_FUNCTION_COMPLETE :
 					 TMR_FUNCTION_REJECTED;
 		if (tmr->response == TMR_FUNCTION_COMPLETE) {
-			target_ua_allocate_lun(cmd->se_sess->se_node_acl,
-					       cmd->orig_fe_lun, 0x29,
+			target_dev_ua_allocate(dev, 0x29,
 					       ASCQ_29H_BUS_DEVICE_RESET_FUNCTION_OCCURRED);
 		}
 		break;

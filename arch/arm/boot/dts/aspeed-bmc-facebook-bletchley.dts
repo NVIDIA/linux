@@ -7,6 +7,10 @@
 #include <dt-bindings/usb/pd.h>
 #include <dt-bindings/leds/leds-pca955x.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+<<<<<<< HEAD
+=======
+#include <dt-bindings/i2c/i2c.h>
+>>>>>>> origin/linux_6.1.15_upstream
 
 / {
 	model = "Facebook Bletchley BMC";
@@ -59,7 +63,11 @@
 		compatible = "gpio-leds";
 		sys_log_id {
 			default-state = "off";
+<<<<<<< HEAD
 			gpios = <&front_leds 0 GPIO_ACTIVE_LOW>;
+=======
+			gpios = <&front_leds 0 GPIO_ACTIVE_HIGH>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -190,6 +198,7 @@
 			gpios = <&sled6_leds 1 GPIO_ACTIVE_LOW>;
 		};
 	};
+<<<<<<< HEAD
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -279,6 +288,8 @@
 		gpio = <&sled6_ioexp 1 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 	};
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 };
 
 &mac2 {
@@ -390,6 +401,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(B, 0) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled1>;
@@ -401,6 +413,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -476,6 +501,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(B, 1) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled2>;
@@ -487,6 +513,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -562,6 +601,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(B, 7) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled3>;
@@ -573,6 +613,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -648,6 +701,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(S, 7) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled4>;
@@ -659,6 +713,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -734,6 +801,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(Y, 3) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled5>;
@@ -745,6 +813,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -820,6 +901,7 @@
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
 
+<<<<<<< HEAD
 		interrupt-parent = <&gpio0>;
 		interrupts = <ASPEED_GPIO(I, 7) IRQ_TYPE_LEVEL_LOW>;
 		vbus-supply = <&vbus_sled6>;
@@ -831,6 +913,19 @@
 			data-role = "host";
 			pd-disable;
 			typec-power-opmode = "default";
+=======
+		connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "dual";
+			try-power-role = "sink";
+			data-role = "dual";
+			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+					PDO_VAR(3000, 12000, 3000)
+					PDO_PPS_APDO(3000, 11000, 3000)>;
+			op-sink-microwatt = <10000000>;
+>>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 
@@ -881,11 +976,14 @@
 		reg = <0x4f>;
 	};
 
+<<<<<<< HEAD
 	hdc1080@40 {
 		compatible = "ti,hdc1080";
 		reg = <0x40>;
 	};
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	front_leds: pca9552@67 {
 		compatible = "nxp,pca9552";
 		reg = <0x67>;
@@ -946,12 +1044,25 @@
 	multi-master;
 	aspeed,hw-timeout-ms = <1000>;
 	status = "okay";
+<<<<<<< HEAD
 };
 
 &gpio0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpiov2_unbiased_default>;
 
+=======
+
+	//USB Debug Connector
+	ipmb13@10 {
+		compatible = "ipmb-dev";
+		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
+		i2c-protocol;
+	};
+};
+
+&gpio0 {
+>>>>>>> origin/linux_6.1.15_upstream
 	gpio-line-names =
 	/*A0-A7*/	"","","","","","","","",
 	/*B0-B7*/	"FUSB302_SLED1_INT_N","FUSB302_SLED2_INT_N",
@@ -1042,6 +1153,7 @@
 &ehci0 {
 	status = "okay";
 };
+<<<<<<< HEAD
 
 &pinctrl {
 	pinctrl_gpiov2_unbiased_default: gpiov2 {
@@ -1049,3 +1161,5 @@
 		bias-disable;
 	};
 };
+=======
+>>>>>>> origin/linux_6.1.15_upstream

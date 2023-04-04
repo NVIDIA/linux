@@ -58,6 +58,7 @@ static void tsx_enable(void)
 	wrmsrl(MSR_IA32_TSX_CTRL, tsx);
 }
 
+<<<<<<< HEAD
 static bool tsx_ctrl_is_supported(void)
 {
 	u64 ia32_cap = x86_read_arch_cap_msr();
@@ -76,6 +77,8 @@ static bool tsx_ctrl_is_supported(void)
 	return !!(ia32_cap & ARCH_CAP_TSX_CTRL_MSR);
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 static enum tsx_ctrl_states x86_get_tsx_auto_mode(void)
 {
 	if (boot_cpu_has_bug(X86_BUG_TAA))
@@ -135,7 +138,11 @@ static void tsx_clear_cpuid(void)
 		rdmsrl(MSR_TSX_FORCE_ABORT, msr);
 		msr |= MSR_TFA_TSX_CPUID_CLEAR;
 		wrmsrl(MSR_TSX_FORCE_ABORT, msr);
+<<<<<<< HEAD
 	} else if (tsx_ctrl_is_supported()) {
+=======
+	} else if (cpu_feature_enabled(X86_FEATURE_MSR_TSX_CTRL)) {
+>>>>>>> origin/linux_6.1.15_upstream
 		rdmsrl(MSR_IA32_TSX_CTRL, msr);
 		msr |= TSX_CTRL_CPUID_CLEAR;
 		wrmsrl(MSR_IA32_TSX_CTRL, msr);
@@ -158,7 +165,12 @@ static void tsx_dev_mode_disable(void)
 	u64 mcu_opt_ctrl;
 
 	/* Check if RTM_ALLOW exists */
+<<<<<<< HEAD
 	if (!boot_cpu_has_bug(X86_BUG_TAA) || !tsx_ctrl_is_supported() ||
+=======
+	if (!boot_cpu_has_bug(X86_BUG_TAA) ||
+	    !cpu_feature_enabled(X86_FEATURE_MSR_TSX_CTRL) ||
+>>>>>>> origin/linux_6.1.15_upstream
 	    !cpu_feature_enabled(X86_FEATURE_SRBDS_CTRL))
 		return;
 
@@ -191,7 +203,20 @@ void __init tsx_init(void)
 		return;
 	}
 
-	if (!tsx_ctrl_is_supported()) {
+	/*
+	 * TSX is controlled via MSR_IA32_TSX_CTRL.  However, support for this
+	 * MSR is enumerated by ARCH_CAP_TSX_MSR bit in MSR_IA32_ARCH_CAPABILITIES.
+	 *
+	 * TSX control (aka MSR_IA32_TSX_CTRL) is only available after a
+	 * microcode update on CPUs that have their MSR_IA32_ARCH_CAPABILITIES
+	 * bit MDS_NO=1. CPUs with MDS_NO=0 are not planned to get
+	 * MSR_IA32_TSX_CTRL support even after a microcode update. Thus,
+	 * tsx= cmdline requests will do nothing on CPUs without
+	 * MSR_IA32_TSX_CTRL support.
+	 */
+	if (x86_read_arch_cap_msr() & ARCH_CAP_TSX_CTRL_MSR) {
+		setup_force_cpu_cap(X86_FEATURE_MSR_TSX_CTRL);
+	} else {
 		tsx_ctrl_state = TSX_CTRL_NOT_SUPPORTED;
 		return;
 	}

@@ -62,6 +62,7 @@ properties:
     description:
       Inform the driver that last channel will be used to sensor battery.
 
+<<<<<<< HEAD
   aspeed,trim-data-valid:
     type: boolean
     description: |
@@ -69,6 +70,8 @@ properties:
       data which will be stored in otp. This property informs the driver that
       the data store in the otp is valid.
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 required:
   - compatible
   - reg

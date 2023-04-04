@@ -80,6 +80,10 @@ static __always_inline __sum16 csum16_sub(__sum16 csum, __be16 addend)
 	return csum16_add(csum, ~addend);
 }
 
+<<<<<<< HEAD
+=======
+#ifndef HAVE_ARCH_CSUM_SHIFT
+>>>>>>> origin/linux_6.1.15_upstream
 static __always_inline __wsum csum_shift(__wsum sum, int offset)
 {
 	/* rotate sum to align it with a 16b boundary */
@@ -87,6 +91,7 @@ static __always_inline __wsum csum_shift(__wsum sum, int offset)
 		return (__force __wsum)ror32((__force u32)sum, 8);
 	return sum;
 }
+#endif
 
 static __always_inline __wsum
 csum_block_add(__wsum csum, __wsum csum2, int offset)
@@ -186,4 +191,8 @@ static __always_inline void remcsum_unadjust(__sum16 *psum, __wsum delta)
 	*psum = csum_fold(csum_sub(delta, (__force __wsum)*psum));
 }
 
+static __always_inline __wsum wsum_negate(__wsum val)
+{
+	return (__force __wsum)-((__force u32)val);
+}
 #endif

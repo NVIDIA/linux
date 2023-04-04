@@ -7,6 +7,7 @@
 #ifndef SELFTEST_KVM_UTIL_H
 #define SELFTEST_KVM_UTIL_H
 
+<<<<<<< HEAD
 #include "test_util.h"
 
 #include "asm/kvm.h"
@@ -400,5 +401,9 @@ uint64_t get_ucall(struct kvm_vm *vm, uint32_t vcpu_id, struct ucall *uc);
 
 int vm_get_stats_fd(struct kvm_vm *vm);
 int vcpu_get_stats_fd(struct kvm_vm *vm, uint32_t vcpuid);
+=======
+#include "kvm_util_base.h"
+#include "ucall_common.h"
+>>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* SELFTEST_KVM_UTIL_H */

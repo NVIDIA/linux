@@ -89,6 +89,7 @@ struct dps310_data {
 	s32 c00, c10, c20, c30, c01, c11, c21;
 	s32 pressure_raw;
 	s32 temp_raw;
+	bool timeout_recovery_failed;
 };
 
 static const struct iio_chan_spec dps310_channels[] = {
@@ -160,8 +161,13 @@ static int dps310_get_coefs(struct dps310_data *data)
 }
 
 /*
+<<<<<<< HEAD
  * Some verions of chip will read temperatures in the ~60C range when
  * its actually ~20C. This is the manufacturer recommended workaround
+=======
+ * Some versions of the chip will read temperatures in the ~60C range when
+ * it's actually ~20C. This is the manufacturer recommended workaround
+>>>>>>> origin/linux_6.1.15_upstream
  * to correct the issue. The registers used below are undocumented.
  */
 static int dps310_temp_workaround(struct dps310_data *data)
@@ -170,7 +176,11 @@ static int dps310_temp_workaround(struct dps310_data *data)
 	int reg;
 
 	rc = regmap_read(data->regmap, 0x32, &reg);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/*
@@ -181,6 +191,7 @@ static int dps310_temp_workaround(struct dps310_data *data)
 		return 0;
 
 	rc = regmap_write(data->regmap, 0x0e, 0xA5);
+<<<<<<< HEAD
 	if (rc < 0)
 		return rc;
 
@@ -194,6 +205,21 @@ static int dps310_temp_workaround(struct dps310_data *data)
 
 	rc = regmap_write(data->regmap, 0x0e, 0x00);
 	if (rc < 0)
+=======
+	if (rc)
+		return rc;
+
+	rc = regmap_write(data->regmap, 0x0f, 0x96);
+	if (rc)
+		return rc;
+
+	rc = regmap_write(data->regmap, 0x62, 0x02);
+	if (rc)
+		return rc;
+
+	rc = regmap_write(data->regmap, 0x0e, 0x00);
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	return regmap_write(data->regmap, 0x0f, 0x00);
@@ -209,7 +235,11 @@ static int dps310_startup(struct dps310_data *data)
 	 * mode
 	 */
 	rc = regmap_write(data->regmap, DPS310_PRS_CFG, 0);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/*
@@ -217,26 +247,42 @@ static int dps310_startup(struct dps310_data *data)
 	 * measurement per second mode
 	 */
 	rc = regmap_write(data->regmap, DPS310_TMP_CFG, DPS310_TMP_EXT);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/* Temp and pressure shifts are disabled when PRC <= 8 */
 	rc = regmap_write_bits(data->regmap, DPS310_CFG_REG,
 			       DPS310_PRS_SHIFT_EN | DPS310_TMP_SHIFT_EN, 0);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/* MEAS_CFG doesn't update correctly unless first written with 0 */
 	rc = regmap_write_bits(data->regmap, DPS310_MEAS_CFG,
 			       DPS310_MEAS_CTRL_BITS, 0);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/* Turn on temperature and pressure measurement in the background */
 	rc = regmap_write_bits(data->regmap, DPS310_MEAS_CFG,
 			       DPS310_MEAS_CTRL_BITS, DPS310_PRS_EN |
 			       DPS310_TEMP_EN | DPS310_BACKGROUND);
+<<<<<<< HEAD
 	if (rc < 0)
+=======
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/*
@@ -245,6 +291,7 @@ static int dps310_startup(struct dps310_data *data)
 	 */
 	rc = regmap_read_poll_timeout(data->regmap, DPS310_MEAS_CFG, ready,
 				      ready & DPS310_COEF_RDY, 10000, 40000);
+<<<<<<< HEAD
 	if (rc < 0)
 		return rc;
 
@@ -257,6 +304,16 @@ static int dps310_startup(struct dps310_data *data)
 		return rc;
 
 	return 0;
+=======
+	if (rc)
+		return rc;
+
+	rc = dps310_get_coefs(data);
+	if (rc)
+		return rc;
+
+	return dps310_temp_workaround(data);
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int dps310_get_pres_precision(struct dps310_data *data)
@@ -397,6 +454,7 @@ static int dps310_get_temp_k(struct dps310_data *data)
 	return scale_factors[ilog2(rc)];
 }
 
+<<<<<<< HEAD
 /*
  * Called with lock held. Returns a negative value on error, a positive value
  * when the device is not ready, and zero when the device is ready.
@@ -420,10 +478,19 @@ static int dps310_check_reset_meas_cfg(struct dps310_data *data, int ready_bit)
 	/* DPS310 register state corrupt, better start from scratch */
 	rc = regmap_write(data->regmap, DPS310_RESET, DPS310_RESET_MAGIC);
 	if (rc < 0)
+=======
+static int dps310_reset_wait(struct dps310_data *data)
+{
+	int rc;
+
+	rc = regmap_write(data->regmap, DPS310_RESET, DPS310_RESET_MAGIC);
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		return rc;
 
 	/* Wait for device chip access: 2.5ms in specification */
 	usleep_range(2500, 12000);
+<<<<<<< HEAD
 
 	/* Reinitialize the chip */
 	rc = dps310_startup(data);
@@ -433,13 +500,61 @@ static int dps310_check_reset_meas_cfg(struct dps310_data *data, int ready_bit)
 	dev_info(&data->client->dev,
 		 "recovered from corrupted MEAS_CFG=%02x\n", meas_cfg);
 	return 1;
+=======
+	return 0;
+}
+
+static int dps310_reset_reinit(struct dps310_data *data)
+{
+	int rc;
+
+	rc = dps310_reset_wait(data);
+	if (rc)
+		return rc;
+
+	return dps310_startup(data);
+}
+
+static int dps310_ready_status(struct dps310_data *data, int ready_bit, int timeout)
+{
+	int sleep = DPS310_POLL_SLEEP_US(timeout);
+	int ready;
+
+	return regmap_read_poll_timeout(data->regmap, DPS310_MEAS_CFG, ready, ready & ready_bit,
+					sleep, timeout);
+}
+
+static int dps310_ready(struct dps310_data *data, int ready_bit, int timeout)
+{
+	int rc;
+
+	rc = dps310_ready_status(data, ready_bit, timeout);
+	if (rc) {
+		if (rc == -ETIMEDOUT && !data->timeout_recovery_failed) {
+			/* Reset and reinitialize the chip. */
+			if (dps310_reset_reinit(data)) {
+				data->timeout_recovery_failed = true;
+			} else {
+				/* Try again to get sensor ready status. */
+				if (dps310_ready_status(data, ready_bit, timeout))
+					data->timeout_recovery_failed = true;
+				else
+					return 0;
+			}
+		}
+
+		return rc;
+	}
+
+	data->timeout_recovery_failed = false;
+	return 0;
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int dps310_read_pres_raw(struct dps310_data *data)
 {
 	int rc;
 	int rate;
-	int ready;
 	int timeout;
 	s32 raw;
 	u8 val[3];
@@ -447,8 +562,17 @@ static int dps310_read_pres_raw(struct dps310_data *data)
 	if (mutex_lock_interruptible(&data->lock))
 		return -EINTR;
 
+<<<<<<< HEAD
 	rc = dps310_check_reset_meas_cfg(data, DPS310_PRS_RDY);
 	if (rc < 0)
+=======
+	rate = dps310_get_pres_samp_freq(data);
+	timeout = DPS310_POLL_TIMEOUT_US(rate);
+
+	/* Poll for sensor readiness; base the timeout upon the sample rate. */
+	rc = dps310_ready(data, DPS310_PRS_RDY, timeout);
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		goto done;
 
 	if (rc > 0) {
@@ -500,14 +624,22 @@ static int dps310_read_temp_raw(struct dps310_data *data)
 {
 	int rc;
 	int rate;
-	int ready;
 	int timeout;
 
 	if (mutex_lock_interruptible(&data->lock))
 		return -EINTR;
 
+<<<<<<< HEAD
 	rc = dps310_check_reset_meas_cfg(data, DPS310_TMP_RDY);
 	if (rc < 0)
+=======
+	rate = dps310_get_temp_samp_freq(data);
+	timeout = DPS310_POLL_TIMEOUT_US(rate);
+
+	/* Poll for sensor readiness; base the timeout upon the sample rate. */
+	rc = dps310_ready(data, DPS310_TMP_RDY, timeout);
+	if (rc)
+>>>>>>> origin/linux_6.1.15_upstream
 		goto done;
 
 	if (rc > 0) {
@@ -818,7 +950,7 @@ static void dps310_reset(void *action_data)
 {
 	struct dps310_data *data = action_data;
 
-	regmap_write(data->regmap, DPS310_RESET, DPS310_RESET_MAGIC);
+	dps310_reset_wait(data);
 }
 
 static const struct regmap_config dps310_regmap_config = {
@@ -884,9 +1016,16 @@ static const struct i2c_device_id dps310_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, dps310_id);
 
+static const struct acpi_device_id dps310_acpi_match[] = {
+	{ "IFX3100" },
+	{}
+};
+MODULE_DEVICE_TABLE(acpi, dps310_acpi_match);
+
 static struct i2c_driver dps310_driver = {
 	.driver = {
 		.name = DPS310_DEV_NAME,
+		.acpi_match_table = dps310_acpi_match,
 	},
 	.probe = dps310_probe,
 	.id_table = dps310_id,

@@ -6,6 +6,10 @@
 #define __ASM_MTE_KASAN_H
 
 #include <asm/compiler.h>
+<<<<<<< HEAD
+=======
+#include <asm/cputype.h>
+>>>>>>> origin/linux_6.1.15_upstream
 #include <asm/mte-def.h>
 
 #ifndef __ASSEMBLY__
@@ -133,6 +137,7 @@ static inline void mte_set_mem_tag_range(void *addr, size_t size, u8 tag,
 
 void mte_enable_kernel_sync(void);
 void mte_enable_kernel_async(void);
+void mte_enable_kernel_asymm(void);
 
 #else /* CONFIG_ARM64_MTE */
 
@@ -161,6 +166,10 @@ static inline void mte_enable_kernel_sync(void)
 }
 
 static inline void mte_enable_kernel_async(void)
+{
+}
+
+static inline void mte_enable_kernel_asymm(void)
 {
 }
 

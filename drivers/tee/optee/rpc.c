@@ -1,35 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2016, Linaro Limited
+ * Copyright (c) 2015-2021, Linaro Limited
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/delay.h>
-#include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
 #include "optee_private.h"
-#include "optee_smc.h"
 #include "optee_rpc_cmd.h"
-
-struct wq_entry {
-	struct list_head link;
-	struct completion c;
-	u32 key;
-};
-
-void optee_wait_queue_init(struct optee_wait_queue *priv)
-{
-	mutex_init(&priv->mu);
-	INIT_LIST_HEAD(&priv->db);
-}
-
-void optee_wait_queue_exit(struct optee_wait_queue *priv)
-{
-	mutex_destroy(&priv->mu);
-}
 
 static void handle_rpc_func_cmd_get_time(struct optee_msg_arg *arg)
 {
@@ -55,6 +36,7 @@ bad:
 static void handle_rpc_func_cmd_i2c_transfer(struct tee_context *ctx,
 					     struct optee_msg_arg *arg)
 {
+	struct optee *optee = tee_get_drvdata(ctx->teedev);
 	struct tee_param *params;
 	struct i2c_adapter *adapter;
 	struct i2c_msg msg = { };
@@ -79,7 +61,8 @@ static void handle_rpc_func_cmd_i2c_transfer(struct tee_context *ctx,
 		return;
 	}
 
-	if (optee_from_msg_param(params, arg->num_params, arg->params))
+	if (optee->ops->from_msg_param(optee, params, arg->num_params,
+				       arg->params))
 		goto bad;
 
 	for (i = 0; i < arg->num_params; i++) {
@@ -122,7 +105,8 @@ static void handle_rpc_func_cmd_i2c_transfer(struct tee_context *ctx,
 		arg->ret = TEEC_ERROR_COMMUNICATION;
 	} else {
 		params[3].u.value.a = msg.len;
-		if (optee_to_msg_param(arg->params, arg->num_params, params))
+		if (optee->ops->to_msg_param(optee, arg->params,
+					     arg->num_params, params))
 			arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 		else
 			arg->ret = TEEC_SUCCESS;
@@ -143,48 +127,6 @@ static void handle_rpc_func_cmd_i2c_transfer(struct tee_context *ctx,
 }
 #endif
 
-static struct wq_entry *wq_entry_get(struct optee_wait_queue *wq, u32 key)
-{
-	struct wq_entry *w;
-
-	mutex_lock(&wq->mu);
-
-	list_for_each_entry(w, &wq->db, link)
-		if (w->key == key)
-			goto out;
-
-	w = kmalloc(sizeof(*w), GFP_KERNEL);
-	if (w) {
-		init_completion(&w->c);
-		w->key = key;
-		list_add_tail(&w->link, &wq->db);
-	}
-out:
-	mutex_unlock(&wq->mu);
-	return w;
-}
-
-static void wq_sleep(struct optee_wait_queue *wq, u32 key)
-{
-	struct wq_entry *w = wq_entry_get(wq, key);
-
-	if (w) {
-		wait_for_completion(&w->c);
-		mutex_lock(&wq->mu);
-		list_del(&w->link);
-		mutex_unlock(&wq->mu);
-		kfree(w);
-	}
-}
-
-static void wq_wakeup(struct optee_wait_queue *wq, u32 key)
-{
-	struct wq_entry *w = wq_entry_get(wq, key);
-
-	if (w)
-		complete(&w->c);
-}
-
 static void handle_rpc_func_cmd_wq(struct optee *optee,
 				   struct optee_msg_arg *arg)
 {
@@ -196,11 +138,13 @@ static void handle_rpc_func_cmd_wq(struct optee *optee,
 		goto bad;
 
 	switch (arg->params[0].u.value.a) {
-	case OPTEE_RPC_WAIT_QUEUE_SLEEP:
-		wq_sleep(&optee->wait_queue, arg->params[0].u.value.b);
+	case OPTEE_RPC_NOTIFICATION_WAIT:
+		if (optee_notif_wait(optee, arg->params[0].u.value.b))
+			goto bad;
 		break;
-	case OPTEE_RPC_WAIT_QUEUE_WAKEUP:
-		wq_wakeup(&optee->wait_queue, arg->params[0].u.value.b);
+	case OPTEE_RPC_NOTIFICATION_SEND:
+		if (optee_notif_send(optee, arg->params[0].u.value.b))
+			goto bad;
 		break;
 	default:
 		goto bad;
@@ -234,7 +178,7 @@ bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 }
 
-static void handle_rpc_supp_cmd(struct tee_context *ctx,
+static void handle_rpc_supp_cmd(struct tee_context *ctx, struct optee *optee,
 				struct optee_msg_arg *arg)
 {
 	struct tee_param *params;
@@ -248,20 +192,22 @@ static void handle_rpc_supp_cmd(struct tee_context *ctx,
 		return;
 	}
 
-	if (optee_from_msg_param(params, arg->num_params, arg->params)) {
+	if (optee->ops->from_msg_param(optee, params, arg->num_params,
+				       arg->params)) {
 		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 		goto out;
 	}
 
 	arg->ret = optee_supp_thrd_req(ctx, arg->cmd, arg->num_params, params);
 
-	if (optee_to_msg_param(arg->params, arg->num_params, params))
+	if (optee->ops->to_msg_param(optee, arg->params, arg->num_params,
+				     params))
 		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 out:
 	kfree(params);
 }
 
-static struct tee_shm *cmd_alloc_suppl(struct tee_context *ctx, size_t sz)
+struct tee_shm *optee_rpc_cmd_alloc_suppl(struct tee_context *ctx, size_t sz)
 {
 	u32 ret;
 	struct tee_param param;
@@ -284,6 +230,7 @@ static struct tee_shm *cmd_alloc_suppl(struct tee_context *ctx, size_t sz)
 	return shm;
 }
 
+<<<<<<< HEAD
 static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 					  struct optee *optee,
 					  struct optee_msg_arg *arg,
@@ -383,6 +330,9 @@ bad:
 }
 
 static void cmd_free_suppl(struct tee_context *ctx, struct tee_shm *shm)
+=======
+void optee_rpc_cmd_free_suppl(struct tee_context *ctx, struct tee_shm *shm)
+>>>>>>> origin/linux_6.1.15_upstream
 {
 	struct tee_param param;
 
@@ -407,70 +357,20 @@ static void cmd_free_suppl(struct tee_context *ctx, struct tee_shm *shm)
 	optee_supp_thrd_req(ctx, OPTEE_RPC_CMD_SHM_FREE, 1, &param);
 }
 
-static void handle_rpc_func_cmd_shm_free(struct tee_context *ctx,
-					 struct optee_msg_arg *arg)
+void optee_rpc_cmd(struct tee_context *ctx, struct optee *optee,
+		   struct optee_msg_arg *arg)
 {
-	struct tee_shm *shm;
-
-	arg->ret_origin = TEEC_ORIGIN_COMMS;
-
-	if (arg->num_params != 1 ||
-	    arg->params[0].attr != OPTEE_MSG_ATTR_TYPE_VALUE_INPUT) {
-		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-		return;
-	}
-
-	shm = (struct tee_shm *)(unsigned long)arg->params[0].u.value.b;
-	switch (arg->params[0].u.value.a) {
-	case OPTEE_RPC_SHM_TYPE_APPL:
-		cmd_free_suppl(ctx, shm);
-		break;
-	case OPTEE_RPC_SHM_TYPE_KERNEL:
-		tee_shm_free(shm);
-		break;
-	default:
-		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-	}
-	arg->ret = TEEC_SUCCESS;
-}
-
-static void free_pages_list(struct optee_call_ctx *call_ctx)
-{
-	if (call_ctx->pages_list) {
-		optee_free_pages_list(call_ctx->pages_list,
-				      call_ctx->num_entries);
-		call_ctx->pages_list = NULL;
-		call_ctx->num_entries = 0;
-	}
-}
-
-void optee_rpc_finalize_call(struct optee_call_ctx *call_ctx)
-{
-	free_pages_list(call_ctx);
-}
-
-static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
-				struct tee_shm *shm,
-				struct optee_call_ctx *call_ctx)
-{
-	struct optee_msg_arg *arg;
-
-	arg = tee_shm_get_va(shm, 0);
-	if (IS_ERR(arg)) {
-		pr_err("%s: tee_shm_get_va %p failed\n", __func__, shm);
-		return;
-	}
-
 	switch (arg->cmd) {
 	case OPTEE_RPC_CMD_GET_TIME:
 		handle_rpc_func_cmd_get_time(arg);
 		break;
-	case OPTEE_RPC_CMD_WAIT_QUEUE:
+	case OPTEE_RPC_CMD_NOTIFICATION:
 		handle_rpc_func_cmd_wq(optee, arg);
 		break;
 	case OPTEE_RPC_CMD_SUSPEND:
 		handle_rpc_func_cmd_wait(arg);
 		break;
+<<<<<<< HEAD
 	case OPTEE_RPC_CMD_SHM_ALLOC:
 		free_pages_list(call_ctx);
 		handle_rpc_func_cmd_shm_alloc(ctx, optee, arg, call_ctx);
@@ -478,14 +378,17 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 	case OPTEE_RPC_CMD_SHM_FREE:
 		handle_rpc_func_cmd_shm_free(ctx, arg);
 		break;
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	case OPTEE_RPC_CMD_I2C_TRANSFER:
 		handle_rpc_func_cmd_i2c_transfer(ctx, arg);
 		break;
 	default:
-		handle_rpc_supp_cmd(ctx, arg);
+		handle_rpc_supp_cmd(ctx, optee, arg);
 	}
 }
 
+<<<<<<< HEAD
 /**
  * optee_handle_rpc() - handle RPC from secure world
  * @ctx:	context doing the RPC
@@ -538,6 +441,6 @@ void optee_handle_rpc(struct tee_context *ctx, struct optee_rpc_param *param,
 			(u32)OPTEE_SMC_RETURN_GET_RPC_FUNC(param->a0));
 		break;
 	}
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
-	param->a0 = OPTEE_SMC_CALL_RETURN_FROM_RPC;
-}

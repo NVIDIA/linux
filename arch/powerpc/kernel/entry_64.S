@@ -180,7 +180,7 @@ _GLOBAL(_switch)
 #endif
 
 	ld	r8,KSP(r4)	/* new stack pointer */
-#ifdef CONFIG_PPC_BOOK3S_64
+#ifdef CONFIG_PPC_64S_HASH_MMU
 BEGIN_MMU_FTR_SECTION
 	b	2f
 END_MMU_FTR_SECTION_IFSET(MMU_FTR_TYPE_RADIX)
@@ -232,7 +232,7 @@ END_FTR_SECTION_IFCLR(CPU_FTR_ARCH_207S)
 	slbmte	r7,r0
 	isync
 2:
-#endif /* CONFIG_PPC_BOOK3S_64 */
+#endif /* CONFIG_PPC_64S_HASH_MMU */
 
 	clrrdi	r7, r8, THREAD_SHIFT	/* base of new stack */
 	/* Note: this uses SWITCH_FRAME_SIZE rather than INT_FRAME_SIZE
@@ -264,6 +264,7 @@ END_FTR_SECTION_IFCLR(CPU_FTR_ARCH_207S)
 	addi	r1,r1,SWITCH_FRAME_SIZE
 	blr
 
+<<<<<<< HEAD
 #ifdef CONFIG_PPC_RTAS
 /*
  * On CHRP, the Run-Time Abstraction Services (RTAS) have to be
@@ -414,6 +415,8 @@ rtas_restore_regs:
 
 #endif /* CONFIG_PPC_RTAS */
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 _GLOBAL(enter_prom)
 	mflr	r0
 	std	r0,16(r1)
@@ -442,16 +445,16 @@ _GLOBAL(enter_prom)
 
 	/* Prepare a 32-bit mode big endian MSR
 	 */
-#ifdef CONFIG_PPC_BOOK3E
+#ifdef CONFIG_PPC_BOOK3E_64
 	rlwinm	r11,r11,0,1,31
 	mtsrr1	r11
 	rfi
-#else /* CONFIG_PPC_BOOK3E */
+#else /* CONFIG_PPC_BOOK3E_64 */
 	LOAD_REG_IMMEDIATE(r12, MSR_SF | MSR_LE)
 	andc	r11,r11,r12
 	mtsrr1	r11
 	RFI_TO_KERNEL
-#endif /* CONFIG_PPC_BOOK3E */
+#endif /* CONFIG_PPC_BOOK3E_64 */
 
 1:	/* Return from OF */
 	FIXUP_ENDIAN

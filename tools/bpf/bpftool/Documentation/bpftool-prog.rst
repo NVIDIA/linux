@@ -1,3 +1,5 @@
+.. SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+
 ================
 bpftool-prog
 ================
@@ -7,12 +9,18 @@ tool for inspection and simple manipulation of eBPF progs
 
 :Manual section: 8
 
+.. include:: substitutions.rst
+
 SYNOPSIS
 ========
 
 	**bpftool** [*OPTIONS*] **prog** *COMMAND*
 
+<<<<<<< HEAD
 	*OPTIONS* := { { **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } |
+=======
+	*OPTIONS* := { |COMMON_OPTIONS| |
+>>>>>>> origin/linux_6.1.15_upstream
 	{ **-f** | **--bpffs** } | { **-m** | **--mapcompat** } | { **-n** | **--nomount** } |
 	{ **-L** | **--use-loader** } }
 
@@ -49,8 +57,9 @@ PROG COMMANDS
 |		**cgroup/getsockopt** | **cgroup/setsockopt** | **cgroup/sock_release** |
 |		**struct_ops** | **fentry** | **fexit** | **freplace** | **sk_lookup**
 |	}
-|       *ATTACH_TYPE* := {
-|		**msg_verdict** | **skb_verdict** | **stream_verdict** | **stream_parser** | **flow_dissector**
+|	*ATTACH_TYPE* := {
+|		**sk_msg_verdict** | **sk_skb_verdict** | **sk_skb_stream_verdict** |
+|		**sk_skb_stream_parser** | **flow_dissector**
 |	}
 |	*METRICs* := {
 |		**cycles** | **instructions** | **l1d_loads** | **llc_misses** |

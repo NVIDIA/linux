@@ -25,6 +25,12 @@
 #define IONIC_DEV_INFO_REG_COUNT	32
 #define IONIC_DEV_CMD_REG_COUNT		32
 
+#define IONIC_NAPI_DEADLINE		(HZ / 200)	/* 5ms */
+#define IONIC_ADMIN_DOORBELL_DEADLINE	(HZ / 2)	/* 500ms */
+#define IONIC_TX_DOORBELL_DEADLINE	(HZ / 100)	/* 10ms */
+#define IONIC_RX_MIN_DOORBELL_DEADLINE	(HZ / 100)	/* 10ms */
+#define IONIC_RX_MAX_DOORBELL_DEADLINE	(HZ * 5)	/* 5s */
+
 struct ionic_dev_bar {
 	void __iomem *vaddr;
 	phys_addr_t bus_addr;
@@ -214,15 +220,14 @@ struct ionic_queue {
 	struct ionic_lif *lif;
 	struct ionic_desc_info *info;
 	u64 dbval;
+	unsigned long dbell_deadline;
+	unsigned long dbell_jiffies;
 	u16 head_idx;
 	u16 tail_idx;
 	unsigned int index;
 	unsigned int num_descs;
 	unsigned int max_sg_elems;
 	u64 features;
-	u64 dbell_count;
-	u64 stop;
-	u64 wake;
 	u64 drop;
 	struct ionic_dev *idev;
 	unsigned int type;
@@ -269,7 +274,6 @@ struct ionic_cq {
 	bool done_color;
 	unsigned int num_descs;
 	unsigned int desc_size;
-	u64 compl_count;
 	void *base;
 	dma_addr_t base_pa;
 } ____cacheline_aligned_in_smp;
@@ -322,7 +326,10 @@ void ionic_dev_cmd_port_autoneg(struct ionic_dev *idev, u8 an_enable);
 void ionic_dev_cmd_port_fec(struct ionic_dev *idev, u8 fec_type);
 void ionic_dev_cmd_port_pause(struct ionic_dev *idev, u8 pause_type);
 
-int ionic_set_vf_config(struct ionic *ionic, int vf, u8 attr, u8 *data);
+int ionic_set_vf_config(struct ionic *ionic, int vf,
+			struct ionic_vf_setattr_cmd *vfc);
+int ionic_dev_cmd_vf_getattr(struct ionic *ionic, int vf, u8 attr,
+			     struct ionic_vf_getattr_comp *comp);
 void ionic_dev_cmd_queue_identify(struct ionic_dev *idev,
 				  u16 lif_type, u8 qtype, u8 qver);
 void ionic_dev_cmd_lif_identify(struct ionic_dev *idev, u8 type, u8 ver);
@@ -358,5 +365,12 @@ void ionic_q_service(struct ionic_queue *q, struct ionic_cq_info *cq_info,
 		     unsigned int stop_index);
 int ionic_heartbeat_check(struct ionic *ionic);
 bool ionic_is_fw_running(struct ionic_dev *idev);
+<<<<<<< HEAD
+=======
+
+bool ionic_adminq_poke_doorbell(struct ionic_queue *q);
+bool ionic_txq_poke_doorbell(struct ionic_queue *q);
+bool ionic_rxq_poke_doorbell(struct ionic_queue *q);
+>>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* _IONIC_DEV_H_ */

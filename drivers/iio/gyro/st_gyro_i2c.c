@@ -90,6 +90,7 @@ static int st_gyro_i2c_probe(struct i2c_client *client,
 	if (err)
 		return err;
 
+<<<<<<< HEAD
 	err = st_gyro_common_probe(indio_dev);
 	if (err < 0)
 		goto st_gyro_power_off;
@@ -111,6 +112,9 @@ static int st_gyro_i2c_remove(struct i2c_client *client)
 	st_sensors_power_disable(indio_dev);
 
 	return 0;
+=======
+	return st_gyro_common_probe(indio_dev);
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct i2c_device_id st_gyro_id_table[] = {
@@ -133,7 +137,6 @@ static struct i2c_driver st_gyro_driver = {
 		.of_match_table = st_gyro_of_match,
 	},
 	.probe = st_gyro_i2c_probe,
-	.remove = st_gyro_i2c_remove,
 	.id_table = st_gyro_id_table,
 };
 module_i2c_driver(st_gyro_driver);
@@ -141,3 +144,4 @@ module_i2c_driver(st_gyro_driver);
 MODULE_AUTHOR("Denis Ciocca <denis.ciocca@st.com>");
 MODULE_DESCRIPTION("STMicroelectronics gyroscopes i2c driver");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(IIO_ST_SENSORS);

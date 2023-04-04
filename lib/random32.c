@@ -40,7 +40,10 @@
 #include <linux/sched.h>
 #include <linux/bitops.h>
 #include <linux/slab.h>
+<<<<<<< HEAD
 #include <linux/notifier.h>
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 #include <asm/unaligned.h>
 
 /**
@@ -48,7 +51,7 @@
  *	@state: pointer to state structure holding seeded state.
  *
  *	This is used for pseudo-randomness with no outside seeding.
- *	For more random results, use prandom_u32().
+ *	For more random results, use get_random_u32().
  */
 u32 prandom_u32_state(struct rnd_state *state)
 {
@@ -70,7 +73,7 @@ EXPORT_SYMBOL(prandom_u32_state);
  *	@bytes: the requested number of bytes
  *
  *	This is used for pseudo-randomness with no outside seeding.
- *	For more random results, use prandom_bytes().
+ *	For more random results, use get_random_bytes().
  */
 void prandom_bytes_state(struct rnd_state *state, void *buf, size_t bytes)
 {
@@ -246,25 +249,13 @@ static struct prandom_test2 {
 	{  407983964U, 921U,  728767059U },
 };
 
-static u32 __extract_hwseed(void)
-{
-	unsigned int val = 0;
-
-	(void)(arch_get_random_seed_int(&val) ||
-	       arch_get_random_int(&val));
-
-	return val;
-}
-
-static void prandom_seed_early(struct rnd_state *state, u32 seed,
-			       bool mix_with_hwseed)
+static void prandom_state_selftest_seed(struct rnd_state *state, u32 seed)
 {
 #define LCG(x)	 ((x) * 69069U)	/* super-duper LCG */
-#define HWSEED() (mix_with_hwseed ? __extract_hwseed() : 0)
-	state->s1 = __seed(HWSEED() ^ LCG(seed),        2U);
-	state->s2 = __seed(HWSEED() ^ LCG(state->s1),   8U);
-	state->s3 = __seed(HWSEED() ^ LCG(state->s2),  16U);
-	state->s4 = __seed(HWSEED() ^ LCG(state->s3), 128U);
+	state->s1 = __seed(LCG(seed),        2U);
+	state->s2 = __seed(LCG(state->s1),   8U);
+	state->s3 = __seed(LCG(state->s2),  16U);
+	state->s4 = __seed(LCG(state->s3), 128U);
 }
 
 static int __init prandom_state_selftest(void)
@@ -275,7 +266,7 @@ static int __init prandom_state_selftest(void)
 	for (i = 0; i < ARRAY_SIZE(test1); i++) {
 		struct rnd_state state;
 
-		prandom_seed_early(&state, test1[i].seed, false);
+		prandom_state_selftest_seed(&state, test1[i].seed);
 		prandom_warmup(&state);
 
 		if (test1[i].result != prandom_u32_state(&state))
@@ -290,7 +281,7 @@ static int __init prandom_state_selftest(void)
 	for (i = 0; i < ARRAY_SIZE(test2); i++) {
 		struct rnd_state state;
 
-		prandom_seed_early(&state, test2[i].seed, false);
+		prandom_state_selftest_seed(&state, test2[i].seed);
 		prandom_warmup(&state);
 
 		for (j = 0; j < test2[i].iteration - 1; j++)
@@ -311,6 +302,7 @@ static int __init prandom_state_selftest(void)
 }
 core_initcall(prandom_state_selftest);
 #endif
+<<<<<<< HEAD
 
 /*
  * The prandom_u32() implementation is now completely separate from the
@@ -632,3 +624,5 @@ static int __init prandom_init_late(void)
 	return ret;
 }
 late_initcall(prandom_init_late);
+=======
+>>>>>>> origin/linux_6.1.15_upstream

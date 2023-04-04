@@ -133,11 +133,19 @@ int tegra_asoc_machine_init(struct snd_soc_pcm_runtime *rtd)
 		else
 			jack_name = "Headphones Jack";
 
+<<<<<<< HEAD
 		err = snd_soc_card_jack_new(card, jack_name,
 					    SND_JACK_HEADPHONE,
 					    &tegra_machine_hp_jack,
 					    tegra_machine_hp_jack_pins,
 					    ARRAY_SIZE(tegra_machine_hp_jack_pins));
+=======
+		err = snd_soc_card_jack_new_pins(card, jack_name,
+						 SND_JACK_HEADPHONE,
+						 &tegra_machine_hp_jack,
+						 tegra_machine_hp_jack_pins,
+						 ARRAY_SIZE(tegra_machine_hp_jack_pins));
+>>>>>>> origin/linux_6.1.15_upstream
 		if (err) {
 			dev_err(rtd->dev,
 				"Headphones Jack creation failed: %d\n", err);
@@ -153,11 +161,11 @@ int tegra_asoc_machine_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	if (machine->gpiod_hp_det && machine->asoc->add_headset_jack) {
-		err = snd_soc_card_jack_new(card, "Headset Jack",
-					    SND_JACK_HEADSET,
-					    &tegra_machine_headset_jack,
-					    tegra_machine_headset_jack_pins,
-					    ARRAY_SIZE(tegra_machine_headset_jack_pins));
+		err = snd_soc_card_jack_new_pins(card, "Headset Jack",
+						 SND_JACK_HEADSET,
+						 &tegra_machine_headset_jack,
+						 tegra_machine_headset_jack_pins,
+						 ARRAY_SIZE(tegra_machine_headset_jack_pins));
 		if (err) {
 			dev_err(rtd->dev,
 				"Headset Jack creation failed: %d\n", err);
@@ -173,11 +181,11 @@ int tegra_asoc_machine_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	if (machine->gpiod_mic_det && machine->asoc->add_mic_jack) {
-		err = snd_soc_card_jack_new(rtd->card, "Mic Jack",
-					    SND_JACK_MICROPHONE,
-					    &tegra_machine_mic_jack,
-					    tegra_machine_mic_jack_pins,
-					    ARRAY_SIZE(tegra_machine_mic_jack_pins));
+		err = snd_soc_card_jack_new_pins(rtd->card, "Mic Jack",
+						 SND_JACK_MICROPHONE,
+						 &tegra_machine_mic_jack,
+						 tegra_machine_mic_jack_pins,
+						 ARRAY_SIZE(tegra_machine_mic_jack_pins));
 		if (err) {
 			dev_err(rtd->dev, "Mic Jack creation failed: %d\n", err);
 			return err;
@@ -321,7 +329,7 @@ static int tegra_machine_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static struct snd_soc_ops tegra_machine_snd_ops = {
+static const struct snd_soc_ops tegra_machine_snd_ops = {
 	.hw_params = tegra_machine_hw_params,
 };
 

@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * AMD Memory Encryption Support
+ * Memory Encryption Support Common Code
  *
  * Copyright (C) 2016 Advanced Micro Devices, Inc.
  *
  * Author: Tom Lendacky <thomas.lendacky@amd.com>
  */
 
-#define DISABLE_BRANCH_PROFILING
-
-#include <linux/linkage.h>
-#include <linux/init.h>
-#include <linux/mm.h>
 #include <linux/dma-direct.h>
+#include <linux/dma-mapping.h>
 #include <linux/swiotlb.h>
+#include <linux/cc_platform.h>
 #include <linux/mem_encrypt.h>
+<<<<<<< HEAD
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/bitops.h>
@@ -389,6 +387,8 @@ bool noinstr sev_es_active(void)
 {
 	return sev_status & MSR_AMD64_SEV_ES_ENABLED;
 }
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 /* Override for DMA direct allocation check - ARCH_HAS_FORCE_DMA_UNENCRYPTED */
 bool force_dma_unencrypted(struct device *dev)
@@ -396,7 +396,7 @@ bool force_dma_unencrypted(struct device *dev)
 	/*
 	 * For SEV, all DMA must be to unencrypted addresses.
 	 */
-	if (sev_active())
+	if (cc_platform_has(CC_ATTR_GUEST_MEM_ENCRYPT))
 		return true;
 
 	/*
@@ -404,7 +404,7 @@ bool force_dma_unencrypted(struct device *dev)
 	 * device does not support DMA to addresses that include the
 	 * encryption mask.
 	 */
-	if (sme_active()) {
+	if (cc_platform_has(CC_ATTR_HOST_MEM_ENCRYPT)) {
 		u64 dma_enc_mask = DMA_BIT_MASK(__ffs64(sme_me_mask));
 		u64 dma_dev_mask = min_not_zero(dev->coherent_dma_mask,
 						dev->bus_dma_limit);
@@ -416,36 +416,19 @@ bool force_dma_unencrypted(struct device *dev)
 	return false;
 }
 
-void __init mem_encrypt_free_decrypted_mem(void)
-{
-	unsigned long vaddr, vaddr_end, npages;
-	int r;
-
-	vaddr = (unsigned long)__start_bss_decrypted_unused;
-	vaddr_end = (unsigned long)__end_bss_decrypted;
-	npages = (vaddr_end - vaddr) >> PAGE_SHIFT;
-
-	/*
-	 * The unused memory range was mapped decrypted, change the encryption
-	 * attribute from decrypted to encrypted before freeing it.
-	 */
-	if (mem_encrypt_active()) {
-		r = set_memory_encrypted(vaddr, npages);
-		if (r) {
-			pr_warn("failed to free unused decrypted pages\n");
-			return;
-		}
-	}
-
-	free_init_pages("unused decrypted", vaddr, vaddr_end);
-}
-
 static void print_mem_encrypt_feature_info(void)
 {
-	pr_info("AMD Memory Encryption Features active:");
+	pr_info("Memory Encryption Features active:");
+
+	if (cpu_feature_enabled(X86_FEATURE_TDX_GUEST)) {
+		pr_cont(" Intel TDX\n");
+		return;
+	}
+
+	pr_cont(" AMD");
 
 	/* Secure Memory Encryption */
-	if (sme_active()) {
+	if (cc_platform_has(CC_ATTR_HOST_MEM_ENCRYPT)) {
 		/*
 		 * SME is mutually exclusive with any of the SEV
 		 * features below.
@@ -455,12 +438,16 @@ static void print_mem_encrypt_feature_info(void)
 	}
 
 	/* Secure Encrypted Virtualization */
-	if (sev_active())
+	if (cc_platform_has(CC_ATTR_GUEST_MEM_ENCRYPT))
 		pr_cont(" SEV");
 
 	/* Encrypted Register State */
-	if (sev_es_active())
+	if (cc_platform_has(CC_ATTR_GUEST_STATE_ENCRYPT))
 		pr_cont(" SEV-ES");
+
+	/* Secure Nested Paging */
+	if (cc_platform_has(CC_ATTR_GUEST_SEV_SNP))
+		pr_cont(" SEV-SNP");
 
 	pr_cont("\n");
 }
@@ -468,24 +455,11 @@ static void print_mem_encrypt_feature_info(void)
 /* Architecture __weak replacement functions */
 void __init mem_encrypt_init(void)
 {
-	if (!sme_me_mask)
+	if (!cc_platform_has(CC_ATTR_MEM_ENCRYPT))
 		return;
 
 	/* Call into SWIOTLB to update the SWIOTLB DMA buffers */
 	swiotlb_update_mem_attributes();
 
-	/*
-	 * With SEV, we need to unroll the rep string I/O instructions,
-	 * but SEV-ES supports them through the #VC handler.
-	 */
-	if (sev_active() && !sev_es_active())
-		static_branch_enable(&sev_enable_key);
-
 	print_mem_encrypt_feature_info();
 }
-
-int arch_has_restricted_virtio_memory_access(void)
-{
-	return sev_active();
-}
-EXPORT_SYMBOL_GPL(arch_has_restricted_virtio_memory_access);

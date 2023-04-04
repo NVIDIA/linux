@@ -65,7 +65,18 @@ struct _strp_msg {
 struct sk_skb_cb {
 #define SK_SKB_CB_PRIV_LEN 20
 	unsigned char data[SK_SKB_CB_PRIV_LEN];
+<<<<<<< HEAD
 	struct _strp_msg strp;
+=======
+	/* align strp on cache line boundary within skb->cb[] */
+	unsigned char pad[4];
+	struct _strp_msg strp;
+
+	/* strp users' data follows */
+	struct tls_msg {
+		u8 control;
+	} tls;
+>>>>>>> origin/linux_6.1.15_upstream
 	/* temp_reg is a temporary register used for bpf_convert_data_end_access
 	 * when dst_reg == src_reg.
 	 */

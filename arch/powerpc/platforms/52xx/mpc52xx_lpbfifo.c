@@ -11,11 +11,12 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/spinlock.h>
 #include <linux/module.h>
 #include <asm/io.h>
-#include <asm/prom.h>
 #include <asm/mpc52xx.h>
 #include <asm/time.h>
 
@@ -104,7 +105,7 @@ static void mpc52xx_lpbfifo_kick(struct mpc52xx_lpbfifo_request *req)
 		 *
 		 * Configure the watermarks so DMA will always complete correctly.
 		 * It may be worth experimenting with the ALARM value to see if
-		 * there is a performance impacit.  However, if it is wrong there
+		 * there is a performance impact.  However, if it is wrong there
 		 * is a risk of DMA not transferring the last chunk of data
 		 */
 		if (write) {
@@ -530,6 +531,7 @@ static int mpc52xx_lpbfifo_probe(struct platform_device *op)
  err_bcom_rx_irq:
 	bcom_gen_bd_rx_release(lpbfifo.bcom_rx_task);
  err_bcom_rx:
+	free_irq(lpbfifo.irq, &lpbfifo);
  err_irq:
 	iounmap(lpbfifo.regs);
 	lpbfifo.regs = NULL;

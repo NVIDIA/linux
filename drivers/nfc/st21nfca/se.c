@@ -257,8 +257,11 @@ static void st21nfca_se_wt_work(struct work_struct *work)
 	struct st21nfca_hci_info *info = container_of(work,
 						struct st21nfca_hci_info,
 						se_info.timeout_work);
+<<<<<<< HEAD
 
 	pr_debug("\n");
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	info->se_info.bwi_active = false;
 
@@ -285,8 +288,6 @@ static void st21nfca_se_activation_timeout(struct timer_list *t)
 {
 	struct st21nfca_hci_info *info = from_timer(info, t,
 						    se_info.se_active_timer);
-
-	pr_debug("\n");
 
 	info->se_info.se_active = false;
 
@@ -334,12 +335,21 @@ int st21nfca_connectivity_event_received(struct nfc_hci_dev *hdev, u8 host,
 			return -EPROTO;
 
 		aid_len = skb->data[1];
+<<<<<<< HEAD
 
 		if (skb->len < aid_len + 4 || aid_len > sizeof(transaction->aid))
 			return -EPROTO;
 
 		params_len = skb->data[aid_len + 3];
 
+=======
+
+		if (skb->len < aid_len + 4 || aid_len > sizeof(transaction->aid))
+			return -EPROTO;
+
+		params_len = skb->data[aid_len + 3];
+
+>>>>>>> origin/linux_6.1.15_upstream
 		/* Verify PARAMETERS tag is (82), and final check that there is enough
 		 * space in the packet to read everything.
 		 */

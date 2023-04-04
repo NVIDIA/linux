@@ -8,7 +8,11 @@
 extern const int bpf_prog_active __ksym; /* int type global var. */
 
 SEC("raw_tp/sys_enter")
+<<<<<<< HEAD
 int handler(const void *ctx)
+=======
+int handler1(const void *ctx)
+>>>>>>> origin/linux_6.1.15_upstream
 {
 	int *active;
 	__u32 cpu;
@@ -26,4 +30,23 @@ int handler(const void *ctx)
 	return 0;
 }
 
+<<<<<<< HEAD
+=======
+__noinline int write_active(int *p)
+{
+	return p ? (*p = 42) : 0;
+}
+
+SEC("raw_tp/sys_enter")
+int handler2(const void *ctx)
+{
+	int *active;
+	__u32 cpu;
+
+	active = bpf_this_cpu_ptr(&bpf_prog_active);
+	write_active(active);
+	return 0;
+}
+
+>>>>>>> origin/linux_6.1.15_upstream
 char _license[] SEC("license") = "GPL";

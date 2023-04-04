@@ -10,6 +10,7 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <asm/extable.h>
+<<<<<<< HEAD
 
 /* We let the MMU do all checking */
 static inline int access_ok(const void __user *ptr,
@@ -24,6 +25,9 @@ static inline int access_ok(const void __user *ptr,
 
 	return (size <= limit) && (addr <= (limit - size));
 }
+=======
+#include <asm-generic/access_ok.h>
+>>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * Not all varients of the 68k family support the notion of address spaces.
@@ -392,8 +396,6 @@ raw_copy_to_user(void __user *to, const void *from, unsigned long n)
 }
 #define INLINE_COPY_FROM_USER
 #define INLINE_COPY_TO_USER
-
-#define HAVE_GET_KERNEL_NOFAULT
 
 #define __get_kernel_nofault(dst, src, type, err_label)			\
 do {									\

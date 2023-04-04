@@ -8,7 +8,6 @@
 #define _CRYPTO_INTERNAL_BLAKE2S_H
 
 #include <crypto/blake2s.h>
-#include <crypto/internal/hash.h>
 #include <linux/string.h>
 
 void blake2s_compress_generic(struct blake2s_state *state, const u8 *block,
@@ -19,6 +18,7 @@ void blake2s_compress(struct blake2s_state *state, const u8 *block,
 
 bool blake2s_selftest(void);
 
+<<<<<<< HEAD
 static inline void blake2s_set_lastblock(struct blake2s_state *state)
 {
 	state->f[0] = -1;
@@ -126,4 +126,6 @@ static inline int crypto_blake2s_final(struct shash_desc *desc, u8 *out,
 	return 0;
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 #endif /* _CRYPTO_INTERNAL_BLAKE2S_H */

@@ -25,6 +25,7 @@
 #include "state.h"
 #include "netns.h"
 #include "pnfs.h"
+#include "filecache.h"
 
 /*
  *	We have a single directory with several nodes in it.
@@ -45,6 +46,7 @@ enum {
 	NFSD_Ports,
 	NFSD_MaxBlkSize,
 	NFSD_MaxConnections,
+	NFSD_Filecache,
 	NFSD_SupportedEnctypes,
 	/*
 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
@@ -372,12 +374,12 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
 	auth_domain_put(dom);
 	if (len)
 		return len;
-	
+
 	mesg = buf;
 	len = SIMPLE_TRANSACTION_LIMIT;
-	qword_addhex(&mesg, &len, (char*)&fh.fh_base, fh.fh_size);
+	qword_addhex(&mesg, &len, fh.fh_raw, fh.fh_size);
 	mesg[-1] = '\n';
-	return mesg - buf;	
+	return mesg - buf;
 }
 
 /*
@@ -610,7 +612,6 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
 	}
 
 	/* Now write current state into reply buffer */
-	len = 0;
 	sep = "";
 	remaining = SIMPLE_TRANSACTION_LIMIT;
 	for (num=2 ; num <= 4 ; num++) {
@@ -719,13 +720,12 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred
 		return err;
 
 	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT, cred);
-	if (err < 0) {
-		nfsd_destroy(net);
-		return err;
-	}
 
-	/* Decrease the count, but don't shut down the service */
-	nn->nfsd_serv->sv_nrthreads--;
+	if (err >= 0 &&
+	    !nn->nfsd_serv->sv_nrthreads && !xchg(&nn->keep_active, 1))
+		svc_get(nn->nfsd_serv);
+
+	nfsd_put(net);
 	return err;
 }
 
@@ -750,30 +750,29 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net, const struct cr
 	if (err != 0)
 		return err;
 
-	err = svc_create_xprt(nn->nfsd_serv, transport, net,
-				PF_INET, port, SVC_SOCK_ANONYMOUS, cred);
+	err = svc_xprt_create(nn->nfsd_serv, transport, net,
+			      PF_INET, port, SVC_SOCK_ANONYMOUS, cred);
 	if (err < 0)
 		goto out_err;
 
-	err = svc_create_xprt(nn->nfsd_serv, transport, net,
-				PF_INET6, port, SVC_SOCK_ANONYMOUS, cred);
+	err = svc_xprt_create(nn->nfsd_serv, transport, net,
+			      PF_INET6, port, SVC_SOCK_ANONYMOUS, cred);
 	if (err < 0 && err != -EAFNOSUPPORT)
 		goto out_close;
 
-	/* Decrease the count, but don't shut down the service */
-	nn->nfsd_serv->sv_nrthreads--;
+	if (!nn->nfsd_serv->sv_nrthreads && !xchg(&nn->keep_active, 1))
+		svc_get(nn->nfsd_serv);
+
+	nfsd_put(net);
 	return 0;
 out_close:
 	xprt = svc_find_xprt(nn->nfsd_serv, transport, net, PF_INET, port);
 	if (xprt != NULL) {
-		svc_close_xprt(xprt);
+		svc_xprt_close(xprt);
 		svc_xprt_put(xprt);
 	}
 out_err:
-	if (!list_empty(&nn->nfsd_serv->sv_permsocks))
-		nn->nfsd_serv->sv_nrthreads--;
-	 else
-		nfsd_destroy(net);
+	nfsd_put(net);
 	return err;
 }
 
@@ -1455,16 +1454,26 @@ static __net_init int nfsd_init_net(struct net *net)
 	nn->nfsd_versions = NULL;
 	nn->nfsd4_minorversions = NULL;
 	retval = nfsd4_init_leases_net(nn);
+<<<<<<< HEAD
 	if (retval)
 		goto out_drc_error;
 	retval = nfsd_reply_cache_init(nn);
 	if (retval)
 		goto out_drc_error;
+=======
+	if (retval)
+		goto out_drc_error;
+	retval = nfsd_reply_cache_init(nn);
+	if (retval)
+		goto out_cache_error;
+>>>>>>> origin/linux_6.1.15_upstream
 	get_random_bytes(&nn->siphash_key, sizeof(nn->siphash_key));
 	seqlock_init(&nn->writeverf_lock);
 
 	return 0;
 
+out_cache_error:
+	nfsd4_leases_net_shutdown(nn);
 out_drc_error:
 	nfsd_idmap_shutdown(net);
 out_idmap_error:
@@ -1494,7 +1503,6 @@ static struct pernet_operations nfsd_net_ops = {
 static int __init init_nfsd(void)
 {
 	int retval;
-	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
 
 	retval = nfsd4_init_slabs();
 	if (retval)
@@ -1512,11 +1520,9 @@ static int __init init_nfsd(void)
 	retval = create_proc_exports_entry();
 	if (retval)
 		goto out_free_lockd;
-	retval = register_filesystem(&nfsd_fs_type);
-	if (retval)
-		goto out_free_exports;
 	retval = register_pernet_subsys(&nfsd_net_ops);
 	if (retval < 0)
+<<<<<<< HEAD
 		goto out_free_filesystem;
 	retval = register_cld_notifier();
 	if (retval)
@@ -1526,6 +1532,25 @@ out_free_all:
 	unregister_pernet_subsys(&nfsd_net_ops);
 out_free_filesystem:
 	unregister_filesystem(&nfsd_fs_type);
+=======
+		goto out_free_exports;
+	retval = register_cld_notifier();
+	if (retval)
+		goto out_free_subsys;
+	retval = nfsd4_create_laundry_wq();
+	if (retval)
+		goto out_free_cld;
+	retval = register_filesystem(&nfsd_fs_type);
+	if (retval)
+		goto out_free_all;
+	return 0;
+out_free_all:
+	nfsd4_destroy_laundry_wq();
+out_free_cld:
+	unregister_cld_notifier();
+out_free_subsys:
+	unregister_pernet_subsys(&nfsd_net_ops);
+>>>>>>> origin/linux_6.1.15_upstream
 out_free_exports:
 	remove_proc_entry("fs/nfs/exports", NULL);
 	remove_proc_entry("fs/nfs", NULL);
@@ -1543,6 +1568,11 @@ out_free_slabs:
 
 static void __exit exit_nfsd(void)
 {
+<<<<<<< HEAD
+=======
+	unregister_filesystem(&nfsd_fs_type);
+	nfsd4_destroy_laundry_wq();
+>>>>>>> origin/linux_6.1.15_upstream
 	unregister_cld_notifier();
 	unregister_pernet_subsys(&nfsd_net_ops);
 	nfsd_drc_slab_free();
@@ -1552,7 +1582,10 @@ static void __exit exit_nfsd(void)
 	nfsd_lockd_shutdown();
 	nfsd4_free_slabs();
 	nfsd4_exit_pnfs();
+<<<<<<< HEAD
 	unregister_filesystem(&nfsd_fs_type);
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");

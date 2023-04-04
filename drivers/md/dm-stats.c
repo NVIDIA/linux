@@ -400,6 +400,12 @@ static int dm_stats_create(struct dm_stats *stats, sector_t start, sector_t end,
 
 	dm_stats_recalc_precise_timestamps(stats);
 
+<<<<<<< HEAD
+=======
+	if (!static_key_enabled(&stats_enabled.key))
+		static_branch_enable(&stats_enabled);
+
+>>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&stats->mutex);
 
 	resume_callback(md);
@@ -1217,7 +1223,7 @@ int dm_stats_message(struct mapped_device *md, unsigned argc, char **argv,
 		return 2; /* this wasn't a stats message */
 
 	if (r == -EINVAL)
-		DMWARN("Invalid parameters for message %s", argv[0]);
+		DMCRIT("Invalid parameters for message %s", argv[0]);
 
 	return r;
 }

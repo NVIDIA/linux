@@ -22,6 +22,10 @@
  */
 #define LAN9303_CHIP_REV 0x14
 # define LAN9303_CHIP_ID 0x9303
+# define LAN9352_CHIP_ID 0x9352
+# define LAN9353_CHIP_ID 0x9353
+# define LAN9354_CHIP_ID 0x9354
+# define LAN9355_CHIP_ID 0x9355
 #define LAN9303_IRQ_CFG 0x15
 # define LAN9303_IRQ_CFG_IRQ_ENABLE BIT(8)
 # define LAN9303_IRQ_CFG_IRQ_POL BIT(4)
@@ -32,6 +36,7 @@
 #define LAN9303_INT_EN 0x17
 # define LAN9303_INT_EN_PHY_INT2_EN BIT(27)
 # define LAN9303_INT_EN_PHY_INT1_EN BIT(26)
+#define LAN9303_BYTE_ORDER 0x19
 #define LAN9303_HW_CFG 0x1D
 # define LAN9303_HW_CFG_READY BIT(27)
 # define LAN9303_HW_CFG_AMDX_EN_PORT2 BIT(26)
@@ -851,15 +856,12 @@ static int lan9303_check_device(struct lan9303 *chip)
 	if (ret) {
 		dev_err(chip->dev, "failed to read chip revision register: %d\n",
 			ret);
-		if (!chip->reset_gpio) {
-			dev_dbg(chip->dev,
-				"hint: maybe failed due to missing reset GPIO\n");
-		}
 		return ret;
 	}
 
-	if ((reg >> 16) != LAN9303_CHIP_ID) {
-		dev_err(chip->dev, "expecting LAN9303 chip, but found: %X\n",
+	if (((reg >> 16) != LAN9303_CHIP_ID) &&
+	    ((reg >> 16) != LAN9354_CHIP_ID)) {
+		dev_err(chip->dev, "unexpected device found: LAN%4.4X\n",
 			reg >> 16);
 		return -ENODEV;
 	}
@@ -875,7 +877,7 @@ static int lan9303_check_device(struct lan9303 *chip)
 	if (ret)
 		dev_warn(chip->dev, "failed to disable switching %d\n", ret);
 
-	dev_info(chip->dev, "Found LAN9303 rev. %u\n", reg & 0xffff);
+	dev_info(chip->dev, "Found LAN%4.4X rev. %u\n", (reg >> 16), reg & 0xffff);
 
 	ret = lan9303_detect_phy_setup(chip);
 	if (ret) {
@@ -959,7 +961,7 @@ static const struct lan9303_mib_desc lan9303_mib[] = {
 	{ .offset = LAN9303_MAC_TX_BRDCST_CNT_0, .name = "TxBroad", },
 	{ .offset = LAN9303_MAC_TX_PAUSE_CNT_0, .name = "TxPause", },
 	{ .offset = LAN9303_MAC_TX_MULCST_CNT_0, .name = "TxMulti", },
-	{ .offset = LAN9303_MAC_RX_UNDSZE_CNT_0, .name = "TxUnderRun", },
+	{ .offset = LAN9303_MAC_RX_UNDSZE_CNT_0, .name = "RxShort", },
 	{ .offset = LAN9303_MAC_TX_64_CNT_0, .name = "Tx64Byte", },
 	{ .offset = LAN9303_MAC_TX_127_CNT_0, .name = "Tx128Byte", },
 	{ .offset = LAN9303_MAC_TX_255_CNT_0, .name = "Tx256Byte", },
@@ -1003,9 +1005,11 @@ static void lan9303_get_ethtool_stats(struct dsa_switch *ds, int port,
 		ret = lan9303_read_switch_port(
 			chip, port, lan9303_mib[u].offset, &reg);
 
-		if (ret)
+		if (ret) {
 			dev_warn(chip->dev, "Reading status port %d reg %u failed\n",
 				 port, lan9303_mib[u].offset);
+			reg = 0;
+		}
 		data[u] = reg;
 	}
 }
@@ -1090,7 +1094,11 @@ static int lan9303_port_enable(struct dsa_switch *ds, int port,
 	if (!dsa_port_is_user(dp))
 		return 0;
 
+<<<<<<< HEAD
 	vlan_vid_add(dp->cpu_dp->master, htons(ETH_P_8021Q), port);
+=======
+	vlan_vid_add(dsa_port_to_master(dp), htons(ETH_P_8021Q), port);
+>>>>>>> origin/linux_6.1.15_upstream
 
 	return lan9303_enable_processing_port(chip, port);
 }
@@ -1103,19 +1111,25 @@ static void lan9303_port_disable(struct dsa_switch *ds, int port)
 	if (!dsa_port_is_user(dp))
 		return;
 
+<<<<<<< HEAD
 	vlan_vid_del(dp->cpu_dp->master, htons(ETH_P_8021Q), port);
+=======
+	vlan_vid_del(dsa_port_to_master(dp), htons(ETH_P_8021Q), port);
+>>>>>>> origin/linux_6.1.15_upstream
 
 	lan9303_disable_processing_port(chip, port);
 	lan9303_phy_write(ds, chip->phy_addr_base + port, MII_BMCR, BMCR_PDOWN);
 }
 
 static int lan9303_port_bridge_join(struct dsa_switch *ds, int port,
-				    struct net_device *br)
+				    struct dsa_bridge bridge,
+				    bool *tx_fwd_offload,
+				    struct netlink_ext_ack *extack)
 {
 	struct lan9303 *chip = ds->priv;
 
 	dev_dbg(chip->dev, "%s(port %d)\n", __func__, port);
-	if (dsa_to_port(ds, 1)->bridge_dev == dsa_to_port(ds, 2)->bridge_dev) {
+	if (dsa_port_bridge_same(dsa_to_port(ds, 1), dsa_to_port(ds, 2))) {
 		lan9303_bridge_ports(chip);
 		chip->is_bridged = true;  /* unleash stp_state_set() */
 	}
@@ -1124,7 +1138,7 @@ static int lan9303_port_bridge_join(struct dsa_switch *ds, int port,
 }
 
 static void lan9303_port_bridge_leave(struct dsa_switch *ds, int port,
-				      struct net_device *br)
+				      struct dsa_bridge bridge)
 {
 	struct lan9303 *chip = ds->priv;
 
@@ -1187,7 +1201,8 @@ static void lan9303_port_fast_age(struct dsa_switch *ds, int port)
 }
 
 static int lan9303_port_fdb_add(struct dsa_switch *ds, int port,
-				const unsigned char *addr, u16 vid)
+				const unsigned char *addr, u16 vid,
+				struct dsa_db db)
 {
 	struct lan9303 *chip = ds->priv;
 
@@ -1199,8 +1214,8 @@ static int lan9303_port_fdb_add(struct dsa_switch *ds, int port,
 }
 
 static int lan9303_port_fdb_del(struct dsa_switch *ds, int port,
-				const unsigned char *addr, u16 vid)
-
+				const unsigned char *addr, u16 vid,
+				struct dsa_db db)
 {
 	struct lan9303 *chip = ds->priv;
 
@@ -1244,7 +1259,8 @@ static int lan9303_port_mdb_prepare(struct dsa_switch *ds, int port,
 }
 
 static int lan9303_port_mdb_add(struct dsa_switch *ds, int port,
-				const struct switchdev_obj_port_mdb *mdb)
+				const struct switchdev_obj_port_mdb *mdb,
+				struct dsa_db db)
 {
 	struct lan9303 *chip = ds->priv;
 	int err;
@@ -1259,7 +1275,8 @@ static int lan9303_port_mdb_add(struct dsa_switch *ds, int port,
 }
 
 static int lan9303_port_mdb_del(struct dsa_switch *ds, int port,
-				const struct switchdev_obj_port_mdb *mdb)
+				const struct switchdev_obj_port_mdb *mdb,
+				struct dsa_db db)
 {
 	struct lan9303 *chip = ds->priv;
 
@@ -1344,6 +1361,7 @@ static int lan9303_probe_reset_gpio(struct lan9303 *chip,
 int lan9303_probe(struct lan9303 *chip, struct device_node *np)
 {
 	int ret;
+	u32 reg;
 
 	mutex_init(&chip->indirect_mutex);
 	mutex_init(&chip->alr_mutex);
@@ -1353,6 +1371,19 @@ int lan9303_probe(struct lan9303 *chip, struct device_node *np)
 		return ret;
 
 	lan9303_handle_reset(chip);
+
+	/* First read to the device.  This is a Dummy read to ensure MDIO */
+	/* access is in 32-bit sync. */
+	ret = lan9303_read(chip->regmap, LAN9303_BYTE_ORDER, &reg);
+	if (ret) {
+		dev_err(chip->dev, "failed to access the device: %d\n",
+			ret);
+		if (!chip->reset_gpio) {
+			dev_dbg(chip->dev,
+				"hint: maybe failed due to missing reset GPIO\n");
+		}
+		return ret;
+	}
 
 	ret = lan9303_check_device(chip);
 	if (ret)

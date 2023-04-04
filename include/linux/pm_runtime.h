@@ -22,6 +22,40 @@
 					    usage_count */
 #define RPM_AUTO		0x08	/* Use autosuspend_delay */
 
+/*
+ * Use this for defining a set of PM operations to be used in all situations
+ * (system suspend, hibernation or runtime PM).
+ *
+ * Note that the behaviour differs from the deprecated UNIVERSAL_DEV_PM_OPS()
+ * macro, which uses the provided callbacks for both runtime PM and system
+ * sleep, while DEFINE_RUNTIME_DEV_PM_OPS() uses pm_runtime_force_suspend()
+ * and pm_runtime_force_resume() for its system sleep callbacks.
+ *
+ * If the underlying dev_pm_ops struct symbol has to be exported, use
+ * EXPORT_RUNTIME_DEV_PM_OPS() or EXPORT_GPL_RUNTIME_DEV_PM_OPS() instead.
+ */
+#define DEFINE_RUNTIME_DEV_PM_OPS(name, suspend_fn, resume_fn, idle_fn) \
+	_DEFINE_DEV_PM_OPS(name, pm_runtime_force_suspend, \
+			   pm_runtime_force_resume, suspend_fn, \
+			   resume_fn, idle_fn)
+
+#define EXPORT_RUNTIME_DEV_PM_OPS(name, suspend_fn, resume_fn, idle_fn) \
+	EXPORT_DEV_PM_OPS(name) = { \
+		RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
+	}
+#define EXPORT_GPL_RUNTIME_DEV_PM_OPS(name, suspend_fn, resume_fn, idle_fn) \
+	EXPORT_GPL_DEV_PM_OPS(name) = { \
+		RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
+	}
+#define EXPORT_NS_RUNTIME_DEV_PM_OPS(name, suspend_fn, resume_fn, idle_fn, ns) \
+	EXPORT_NS_DEV_PM_OPS(name, ns) = { \
+		RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
+	}
+#define EXPORT_NS_GPL_RUNTIME_DEV_PM_OPS(name, suspend_fn, resume_fn, idle_fn, ns) \
+	EXPORT_NS_GPL_DEV_PM_OPS(name, ns) = { \
+		RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn) \
+	}
+
 #ifdef CONFIG_PM
 extern struct workqueue_struct *pm_wq;
 
@@ -58,7 +92,11 @@ extern void pm_runtime_get_suppliers(struct device *dev);
 extern void pm_runtime_put_suppliers(struct device *dev);
 extern void pm_runtime_new_link(struct device *dev);
 extern void pm_runtime_drop_link(struct device_link *link);
+<<<<<<< HEAD
 extern void pm_runtime_release_supplier(struct device_link *link, bool check_idle);
+=======
+extern void pm_runtime_release_supplier(struct device_link *link);
+>>>>>>> origin/linux_6.1.15_upstream
 
 extern int devm_pm_runtime_enable(struct device *dev);
 
@@ -284,8 +322,12 @@ static inline void pm_runtime_get_suppliers(struct device *dev) {}
 static inline void pm_runtime_put_suppliers(struct device *dev) {}
 static inline void pm_runtime_new_link(struct device *dev) {}
 static inline void pm_runtime_drop_link(struct device_link *link) {}
+<<<<<<< HEAD
 static inline void pm_runtime_release_supplier(struct device_link *link,
 					       bool check_idle) {}
+=======
+static inline void pm_runtime_release_supplier(struct device_link *link) {}
+>>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* !CONFIG_PM */
 
@@ -543,6 +585,10 @@ static inline void pm_runtime_disable(struct device *dev)
  * Allow the runtime PM autosuspend mechanism to be used for @dev whenever
  * requested (or "autosuspend" will be handled as direct runtime-suspend for
  * it).
+ *
+ * NOTE: It's important to undo this with pm_runtime_dont_use_autosuspend()
+ * at driver exit time unless your driver initially enabled pm_runtime
+ * with devm_pm_runtime_enable() (which handles it for you).
  */
 static inline void pm_runtime_use_autosuspend(struct device *dev)
 {

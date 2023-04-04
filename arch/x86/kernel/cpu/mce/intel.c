@@ -470,6 +470,7 @@ void intel_clear_lmce(void)
 	wrmsrl(MSR_IA32_MCG_EXT_CTL, val);
 }
 
+<<<<<<< HEAD
 static void intel_ppin_init(struct cpuinfo_x86 *c)
 {
 	unsigned long long val;
@@ -511,6 +512,8 @@ static void intel_ppin_init(struct cpuinfo_x86 *c)
 	}
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 /*
  * Enable additional error logs from the integrated
  * memory controller on processors that support this.
@@ -535,7 +538,6 @@ void mce_intel_feature_init(struct cpuinfo_x86 *c)
 {
 	intel_init_cmci();
 	intel_init_lmce();
-	intel_ppin_init(c);
 	intel_imc_init(c);
 }
 

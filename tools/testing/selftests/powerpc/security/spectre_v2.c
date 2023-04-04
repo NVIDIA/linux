@@ -125,8 +125,6 @@ static enum spectre_v2_state get_sysfs_state(void)
 #define PM_BR_PRED_PCACHE	0x048a0	// P9 only
 #define PM_BR_MPRED_PCACHE	0x048b0	// P9 only
 
-#define SPRN_PVR 287
-
 int spectre_v2_test(void)
 {
 	enum spectre_v2_state state;
@@ -184,6 +182,7 @@ int spectre_v2_test(void)
 	case COUNT_CACHE_FLUSH_HW:
 		// These should all not affect userspace branch prediction
 		if (miss_percent > 15) {
+<<<<<<< HEAD
 			printf("Branch misses > 15%% unexpected in this configuration!\n");
 			printf("Possible mis-match between reported & actual mitigation\n");
 			/*
@@ -194,7 +193,25 @@ int spectre_v2_test(void)
 			 * missing such a mismatch is safe.
 			 */
 			if (miss_percent > 95)
+=======
+			if (miss_percent > 95) {
+				/*
+				 * Such a mismatch may be caused by a system being unaware
+				 * the count cache is disabled. This may be to enable
+				 * guest migration between hosts with different settings.
+				 * Return skip code to avoid detecting this as an error.
+				 * We are not vulnerable and reporting otherwise, so
+				 * missing such a mismatch is safe.
+				 */
+				printf("Branch misses > 95%% unexpected in this configuration.\n");
+				printf("Count cache likely disabled without Linux knowing.\n");
+				if (state == COUNT_CACHE_FLUSH_SW)
+					printf("WARNING: Kernel performing unnecessary flushes.\n");
+>>>>>>> origin/linux_6.1.15_upstream
 				return 4;
+			}
+			printf("Branch misses > 15%% unexpected in this configuration!\n");
+			printf("Possible mismatch between reported & actual mitigation\n");
 
 			return 1;
 		}
@@ -203,14 +220,14 @@ int spectre_v2_test(void)
 		// This seems to affect userspace branch prediction a bit?
 		if (miss_percent > 25) {
 			printf("Branch misses > 25%% unexpected in this configuration!\n");
-			printf("Possible mis-match between reported & actual mitigation\n");
+			printf("Possible mismatch between reported & actual mitigation\n");
 			return 1;
 		}
 		break;
 	case COUNT_CACHE_DISABLED:
 		if (miss_percent < 95) {
-			printf("Branch misses < 20%% unexpected in this configuration!\n");
-			printf("Possible mis-match between reported & actual mitigation\n");
+			printf("Branch misses < 95%% unexpected in this configuration!\n");
+			printf("Possible mismatch between reported & actual mitigation\n");
 			return 1;
 		}
 		break;

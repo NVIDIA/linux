@@ -127,9 +127,13 @@ struct pca955x {
 	struct pca955x_led *leds;
 	struct pca955x_chipdef	*chipdef;
 	struct i2c_client	*client;
+<<<<<<< HEAD
 	unsigned long active_blink;
 	unsigned long active_pins;
 	unsigned long blink_period;
+=======
+	unsigned long active_pins;
+>>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_LEDS_PCA955X_GPIO
 	struct gpio_chip gpio;
 #endif
@@ -482,11 +486,19 @@ static int pca955x_gpio_request_pin(struct gpio_chip *gc, unsigned int offset)
 
 	return test_and_set_bit(offset, &pca955x->active_pins) ? -EBUSY : 0;
 }
+<<<<<<< HEAD
 
 static void pca955x_gpio_free_pin(struct gpio_chip *gc, unsigned int offset)
 {
 	struct pca955x *pca955x = gpiochip_get_data(gc);
 
+=======
+
+static void pca955x_gpio_free_pin(struct gpio_chip *gc, unsigned int offset)
+{
+	struct pca955x *pca955x = gpiochip_get_data(gc);
+
+>>>>>>> origin/linux_6.1.15_upstream
 	clear_bit(offset, &pca955x->active_pins);
 }
 
@@ -613,8 +625,11 @@ static int pca955x_probe(struct i2c_client *client)
 	u8 ls1[4];
 	u8 ls2[4];
 	struct pca955x_platform_data *pdata;
+<<<<<<< HEAD
 	u8 psc0;
 	bool keep_psc0 = false;
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	bool set_default_label = false;
 	char default_label[8];
 	enum pca955x_type chip_type;
@@ -751,6 +766,23 @@ static int pca955x_probe(struct i2c_client *client)
 				return err;
 
 			set_bit(i, &pca955x->active_pins);
+<<<<<<< HEAD
+=======
+
+			/*
+			 * For default-state == "keep", let the core update the
+			 * brightness from the hardware, then check the
+			 * brightness to see if it's using PWM1. If so, PWM1
+			 * should not be written below.
+			 */
+			if (pdata->leds[i].default_state ==
+			    LEDS_GPIO_DEFSTATE_KEEP) {
+				if (led->brightness != LED_FULL &&
+				    led->brightness != LED_OFF &&
+				    led->brightness != LED_HALF)
+					keep_pwm = true;
+			}
+>>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 

@@ -4,6 +4,8 @@
 #ifndef __MT7915_MAC_H
 #define __MT7915_MAC_H
 
+#include "../mt76_connac2_mac.h"
+
 #define MT_CT_PARSE_LEN			72
 #define MT_CT_DMA_BUF_NUM		2
 
@@ -23,8 +25,11 @@ enum rx_pkt_type {
 	PKT_TYPE_RETRIEVE,
 	PKT_TYPE_TXRX_NOTIFY,
 	PKT_TYPE_RX_EVENT,
+	PKT_TYPE_RX_FW_MONITOR = 0x0c,
+	PKT_TYPE_TXRX_NOTIFY_V0 = 0x18,
 };
 
+<<<<<<< HEAD
 /* RXD DW1 */
 #define MT_RXD1_NORMAL_WLAN_IDX		GENMASK(9, 0)
 #define MT_RXD1_NORMAL_GROUP_1		BIT(11)
@@ -295,50 +300,21 @@ struct mt7915_tx_free {
 	__le32 info[];
 } __packed __aligned(4);
 
+=======
+#define MT_TX_FREE_VER			GENMASK(18, 16)
+>>>>>>> origin/linux_6.1.15_upstream
 #define MT_TX_FREE_MSDU_CNT		GENMASK(9, 0)
+#define MT_TX_FREE_MSDU_CNT_V0	GENMASK(6, 0)
 #define MT_TX_FREE_WLAN_ID		GENMASK(23, 14)
 #define MT_TX_FREE_LATENCY		GENMASK(12, 0)
 /* 0: success, others: dropped */
-#define MT_TX_FREE_STATUS		GENMASK(14, 13)
 #define MT_TX_FREE_MSDU_ID		GENMASK(30, 16)
 #define MT_TX_FREE_PAIR			BIT(31)
+#define MT_TX_FREE_MPDU_HEADER		BIT(30)
+#define MT_TX_FREE_MSDU_ID_V3		GENMASK(14, 0)
+
 /* will support this field in further revision */
 #define MT_TX_FREE_RATE			GENMASK(13, 0)
-
-#define MT_TXS0_FIXED_RATE		BIT(31)
-#define MT_TXS0_BW			GENMASK(30, 29)
-#define MT_TXS0_TID			GENMASK(28, 26)
-#define MT_TXS0_AMPDU			BIT(25)
-#define MT_TXS0_TXS_FORMAT		GENMASK(24, 23)
-#define MT_TXS0_BA_ERROR		BIT(22)
-#define MT_TXS0_PS_FLAG			BIT(21)
-#define MT_TXS0_TXOP_TIMEOUT		BIT(20)
-#define MT_TXS0_BIP_ERROR		BIT(19)
-
-#define MT_TXS0_QUEUE_TIMEOUT		BIT(18)
-#define MT_TXS0_RTS_TIMEOUT		BIT(17)
-#define MT_TXS0_ACK_TIMEOUT		BIT(16)
-#define MT_TXS0_ACK_ERROR_MASK		GENMASK(18, 16)
-
-#define MT_TXS0_TX_STATUS_HOST		BIT(15)
-#define MT_TXS0_TX_STATUS_MCU		BIT(14)
-#define MT_TXS0_TX_RATE			GENMASK(13, 0)
-
-#define MT_TXS1_SEQNO			GENMASK(31, 20)
-#define MT_TXS1_RESP_RATE		GENMASK(19, 16)
-#define MT_TXS1_RXV_SEQNO		GENMASK(15, 8)
-#define MT_TXS1_TX_POWER_DBM		GENMASK(7, 0)
-
-#define MT_TXS2_BF_STATUS		GENMASK(31, 30)
-#define MT_TXS2_LAST_TX_RATE		GENMASK(29, 27)
-#define MT_TXS2_SHARED_ANTENNA		BIT(26)
-#define MT_TXS2_WCID			GENMASK(25, 16)
-#define MT_TXS2_TX_DELAY		GENMASK(15, 0)
-
-#define MT_TXS3_PID			GENMASK(31, 24)
-#define MT_TXS3_ANT_ID			GENMASK(23, 0)
-
-#define MT_TXS4_TIMESTAMP		GENMASK(31, 0)
 
 #define MT_TXS5_F0_FINAL_MPDU		BIT(31)
 #define MT_TXS5_F0_QOS			BIT(30)
@@ -394,18 +370,5 @@ struct mt7915_dfs_radar_spec {
 	struct mt7915_dfs_pulse pulse_th;
 	struct mt7915_dfs_pattern radar_pattern[16];
 };
-
-static inline struct mt7915_txp *
-mt7915_txwi_to_txp(struct mt76_dev *dev, struct mt76_txwi_cache *t)
-{
-	u8 *txwi;
-
-	if (!t)
-		return NULL;
-
-	txwi = mt76_get_txwi_ptr(dev, t);
-
-	return (struct mt7915_txp *)(txwi + MT_TXD_SIZE);
-}
 
 #endif

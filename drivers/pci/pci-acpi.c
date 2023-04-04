@@ -21,8 +21,9 @@
 #include "pci.h"
 
 /*
- * The GUID is defined in the PCI Firmware Specification available here:
- * https://www.pcisig.com/members/downloads/pcifw_r3_1_13Dec10.pdf
+ * The GUID is defined in the PCI Firmware Specification available
+ * here to PCI-SIG members:
+ * https://members.pcisig.com/wg/PCI-SIG/document/15350
  */
 const guid_t pci_acpi_dsm_guid =
 	GUID_INIT(0xe5c937d0, 0x3553, 0x4d7a,
@@ -89,9 +90,9 @@ int acpi_get_rc_resources(struct device *dev, const char *hid, u16 segment,
 		return -ENODEV;
 	}
 
-	ret = acpi_bus_get_device(handle, &adev);
-	if (ret)
-		return ret;
+	adev = acpi_fetch_acpi_dev(handle);
+	if (!adev)
+		return -ENODEV;
 
 	ret = acpi_get_rc_addr(adev, res);
 	if (ret) {
@@ -906,7 +907,7 @@ acpi_status pci_acpi_add_pm_notifier(struct acpi_device *dev,
  *	choose highest power _SxD or any lower power
  */
 
-static pci_power_t acpi_pci_choose_state(struct pci_dev *pdev)
+pci_power_t acpi_pci_choose_state(struct pci_dev *pdev)
 {
 	int acpi_state, d_max;
 
@@ -965,16 +966,14 @@ int pci_dev_acpi_reset(struct pci_dev *dev, bool probe)
 	return 0;
 }
 
-static bool acpi_pci_power_manageable(struct pci_dev *dev)
+bool acpi_pci_power_manageable(struct pci_dev *dev)
 {
 	struct acpi_device *adev = ACPI_COMPANION(&dev->dev);
 
-	if (!adev)
-		return false;
-	return acpi_device_power_manageable(adev);
+	return adev && acpi_device_power_manageable(adev);
 }
 
-static bool acpi_pci_bridge_d3(struct pci_dev *dev)
+bool acpi_pci_bridge_d3(struct pci_dev *dev)
 {
 	struct pci_dev *rpdev;
 	struct acpi_device *adev;
@@ -982,7 +981,7 @@ static bool acpi_pci_bridge_d3(struct pci_dev *dev)
 	unsigned long long state;
 	const union acpi_object *obj;
 
-	if (!dev->is_hotplug_bridge)
+	if (acpi_pci_disabled || !dev->is_hotplug_bridge)
 		return false;
 
 	/* Assume D3 support if the bridge is power-manageable by ACPI. */
@@ -1003,6 +1002,7 @@ static bool acpi_pci_bridge_d3(struct pci_dev *dev)
 	 * events from low-power states including D3hot and D3cold.
 	 */
 	if (!adev->wakeup.flags.valid)
+<<<<<<< HEAD
 		return false;
 
 	/*
@@ -1014,6 +1014,19 @@ static bool acpi_pci_bridge_d3(struct pci_dev *dev)
 		return false;
 
 	/*
+=======
+		return false;
+
+	/*
+	 * If the Root Port cannot wake itself from D3hot or D3cold, we
+	 * can't use D3.
+	 */
+	status = acpi_evaluate_integer(adev->handle, "_S0W", NULL, &state);
+	if (ACPI_SUCCESS(status) && state < ACPI_STATE_D3_HOT)
+		return false;
+
+	/*
+>>>>>>> origin/linux_6.1.15_upstream
 	 * The "HotPlugSupportInD3" property in a Root Port _DSD indicates
 	 * the Port can signal hotplug events while in D3.  We assume any
 	 * bridges *below* that Root Port can also signal hotplug events
@@ -1027,7 +1040,7 @@ static bool acpi_pci_bridge_d3(struct pci_dev *dev)
 	return false;
 }
 
-static int acpi_pci_set_power_state(struct pci_dev *dev, pci_power_t state)
+int acpi_pci_set_power_state(struct pci_dev *dev, pci_power_t state)
 {
 	struct acpi_device *adev = ACPI_COMPANION(&dev->dev);
 	static const u8 state_conv[] = {
@@ -1065,7 +1078,7 @@ static int acpi_pci_set_power_state(struct pci_dev *dev, pci_power_t state)
 	return error;
 }
 
-static pci_power_t acpi_pci_get_power_state(struct pci_dev *dev)
+pci_power_t acpi_pci_get_power_state(struct pci_dev *dev)
 {
 	struct acpi_device *adev = ACPI_COMPANION(&dev->dev);
 	static const pci_power_t state_conv[] = {
@@ -1087,7 +1100,7 @@ static pci_power_t acpi_pci_get_power_state(struct pci_dev *dev)
 	return state_conv[state];
 }
 
-static void acpi_pci_refresh_power_state(struct pci_dev *dev)
+void acpi_pci_refresh_power_state(struct pci_dev *dev)
 {
 	struct acpi_device *adev = ACPI_COMPANION(&dev->dev);
 
@@ -1112,17 +1125,23 @@ static int acpi_pci_propagate_wakeup(struct pci_bus *bus, bool enable)
 	return 0;
 }
 
-static int acpi_pci_wakeup(struct pci_dev *dev, bool enable)
+int acpi_pci_wakeup(struct pci_dev *dev, bool enable)
 {
+	if (acpi_pci_disabled)
+		return 0;
+
 	if (acpi_pm_device_can_wakeup(&dev->dev))
 		return acpi_pm_set_device_wakeup(&dev->dev, enable);
 
 	return acpi_pci_propagate_wakeup(dev->bus, enable);
 }
 
-static bool acpi_pci_need_resume(struct pci_dev *dev)
+bool acpi_pci_need_resume(struct pci_dev *dev)
 {
-	struct acpi_device *adev = ACPI_COMPANION(&dev->dev);
+	struct acpi_device *adev;
+
+	if (acpi_pci_disabled)
+		return false;
 
 	/*
 	 * In some cases (eg. Samsung 305V4A) leaving a bridge in suspend over
@@ -1134,6 +1153,7 @@ static bool acpi_pci_need_resume(struct pci_dev *dev)
 	if (pci_is_bridge(dev) && acpi_target_system_state() != ACPI_STATE_S0)
 		return true;
 
+	adev = ACPI_COMPANION(&dev->dev);
 	if (!adev || !acpi_device_power_manageable(adev))
 		return false;
 
@@ -1146,17 +1166,6 @@ static bool acpi_pci_need_resume(struct pci_dev *dev)
 
 	return !!adev->power.flags.dsw_present;
 }
-
-static const struct pci_platform_pm_ops acpi_pci_platform_pm = {
-	.bridge_d3 = acpi_pci_bridge_d3,
-	.is_manageable = acpi_pci_power_manageable,
-	.set_state = acpi_pci_set_power_state,
-	.get_state = acpi_pci_get_power_state,
-	.refresh_state = acpi_pci_refresh_power_state,
-	.choose_state = acpi_pci_choose_state,
-	.set_wakeup = acpi_pci_wakeup,
-	.need_resume = acpi_pci_need_resume,
-};
 
 void acpi_pci_add_bus(struct pci_bus *bus)
 {
@@ -1375,13 +1384,9 @@ static void pci_acpi_set_external_facing(struct pci_dev *dev)
 		dev->external_facing = 1;
 }
 
-static void pci_acpi_setup(struct device *dev)
+void pci_acpi_setup(struct device *dev, struct acpi_device *adev)
 {
 	struct pci_dev *pci_dev = to_pci_dev(dev);
-	struct acpi_device *adev = ACPI_COMPANION(dev);
-
-	if (!adev)
-		return;
 
 	pci_acpi_optimize_delay(pci_dev, adev->handle);
 	pci_acpi_set_external_facing(pci_dev);
@@ -1403,15 +1408,14 @@ static void pci_acpi_setup(struct device *dev)
 
 	acpi_pci_wakeup(pci_dev, false);
 	acpi_device_power_add_dependent(adev, dev);
+
+	if (pci_is_bridge(pci_dev))
+		acpi_dev_power_up_children_with_adr(adev);
 }
 
-static void pci_acpi_cleanup(struct device *dev)
+void pci_acpi_cleanup(struct device *dev, struct acpi_device *adev)
 {
-	struct acpi_device *adev = ACPI_COMPANION(dev);
 	struct pci_dev *pci_dev = to_pci_dev(dev);
-
-	if (!adev)
-		return;
 
 	pci_acpi_remove_edr_notifier(pci_dev);
 	pci_acpi_remove_pm_notifier(adev);
@@ -1423,20 +1427,6 @@ static void pci_acpi_cleanup(struct device *dev)
 		device_set_wakeup_capable(dev, false);
 	}
 }
-
-static bool pci_acpi_bus_match(struct device *dev)
-{
-	return dev_is_pci(dev);
-}
-
-static struct acpi_bus_type acpi_pci_bus = {
-	.name = "PCI",
-	.match = pci_acpi_bus_match,
-	.find_companion = acpi_pci_find_companion,
-	.setup = pci_acpi_setup,
-	.cleanup = pci_acpi_cleanup,
-};
-
 
 static struct fwnode_handle *(*pci_msi_get_fwnode_cb)(struct device *dev);
 
@@ -1479,8 +1469,6 @@ struct irq_domain *pci_host_bridge_acpi_msi_domain(struct pci_bus *bus)
 
 static int __init acpi_pci_init(void)
 {
-	int ret;
-
 	if (acpi_gbl_FADT.boot_flags & ACPI_FADT_NO_MSI) {
 		pr_info("ACPI FADT declares the system doesn't support MSI, so disable it\n");
 		pci_no_msi();
@@ -1491,11 +1479,9 @@ static int __init acpi_pci_init(void)
 		pcie_no_aspm();
 	}
 
-	ret = register_acpi_bus_type(&acpi_pci_bus);
-	if (ret)
+	if (acpi_pci_disabled)
 		return 0;
 
-	pci_set_platform_pm(&acpi_pci_platform_pm);
 	acpi_pci_slot_init();
 	acpiphp_init();
 

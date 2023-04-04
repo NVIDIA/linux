@@ -38,6 +38,7 @@ KBUILD_AFLAGS := $(KBUILD_AFLAGS) -D__ASSEMBLY__ \
 KCOV_INSTRUMENT		:= n
 GCOV_PROFILE := n
 UBSAN_SANITIZE := n
+KCSAN_SANITIZE			:= n
 
 # decompressor objects (linked with vmlinuz)
 vmlinuzobjs-y := $(obj)/head.o $(obj)/decompress.o $(obj)/string.o $(obj)/bswapsi.o
@@ -50,13 +51,10 @@ vmlinuzobjs-$(CONFIG_MIPS_ALCHEMY)		   += $(obj)/uart-alchemy.o
 vmlinuzobjs-$(CONFIG_ATH79)			   += $(obj)/uart-ath79.o
 endif
 
-extra-y += uart-ath79.c
-$(obj)/uart-ath79.c: $(srctree)/arch/mips/ath79/early_printk.c
-	$(call cmd,shipped)
-
 vmlinuzobjs-$(CONFIG_KERNEL_XZ) += $(obj)/ashldi3.o
 
 vmlinuzobjs-$(CONFIG_KERNEL_ZSTD) += $(obj)/bswapdi.o $(obj)/ashldi3.o $(obj)/clz_ctz.o
+<<<<<<< HEAD
 
 extra-y += ashldi3.c
 $(obj)/ashldi3.c: $(obj)/%.c: $(srctree)/lib/%.c FORCE
@@ -65,6 +63,8 @@ $(obj)/ashldi3.c: $(obj)/%.c: $(srctree)/lib/%.c FORCE
 extra-y += bswapsi.c
 $(obj)/bswapsi.c: $(obj)/%.c: $(srctree)/arch/mips/lib/%.c FORCE
 	$(call if_changed,shipped)
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 extra-y += bswapdi.c
 $(obj)/bswapdi.c: $(obj)/%.c: $(srctree)/arch/mips/lib/%.c FORCE
@@ -80,12 +80,12 @@ $(obj)/vmlinux.bin: $(KBUILD_IMAGE) FORCE
 	$(call if_changed,objcopy)
 
 tool_$(CONFIG_KERNEL_GZIP)    = gzip
-tool_$(CONFIG_KERNEL_BZIP2)   = bzip2
-tool_$(CONFIG_KERNEL_LZ4)     = lz4
-tool_$(CONFIG_KERNEL_LZMA)    = lzma
-tool_$(CONFIG_KERNEL_LZO)     = lzo
-tool_$(CONFIG_KERNEL_XZ)      = xzkern
-tool_$(CONFIG_KERNEL_ZSTD)    = zstd22
+tool_$(CONFIG_KERNEL_BZIP2)   = bzip2_with_size
+tool_$(CONFIG_KERNEL_LZ4)     = lz4_with_size
+tool_$(CONFIG_KERNEL_LZMA)    = lzma_with_size
+tool_$(CONFIG_KERNEL_LZO)     = lzo_with_size
+tool_$(CONFIG_KERNEL_XZ)      = xzkern_with_size
+tool_$(CONFIG_KERNEL_ZSTD)    = zstd22_with_size
 
 targets += vmlinux.bin.z
 
@@ -104,6 +104,10 @@ HOSTCFLAGS_calc_vmlinuz_load_addr.o += $(LINUXINCLUDE)
 
 # Calculate the load address of the compressed kernel image
 hostprogs := calc_vmlinuz_load_addr
+
+ifneq (0x0,$(CONFIG_ZBOOT_LOAD_ADDRESS))
+zload-y	= $(CONFIG_ZBOOT_LOAD_ADDRESS)
+endif
 
 ifneq ($(zload-y),)
 VMLINUZ_LOAD_ADDRESS := $(zload-y)

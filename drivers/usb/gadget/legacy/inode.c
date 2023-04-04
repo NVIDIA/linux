@@ -229,6 +229,7 @@ static void put_ep (struct ep_data *data)
  */
 
 static const char *CHIP;
+static DEFINE_MUTEX(sb_mutex);		/* Serialize superblock operations */
 
 /*----------------------------------------------------------------------*/
 
@@ -362,6 +363,7 @@ ep_io (struct ep_data *epdata, void *buf, unsigned len)
 				spin_unlock_irq (&epdata->dev->lock);
 
 				DBG (epdata->dev, "endpoint gone\n");
+				wait_for_completion(&done);
 				epdata->status = -ENODEV;
 			}
 		}
@@ -471,7 +473,7 @@ static void ep_user_copy_worker(struct work_struct *work)
 		ret = -EFAULT;
 
 	/* completing the iocb can drop the ctx and mm, don't touch mm after */
-	iocb->ki_complete(iocb, ret, ret);
+	iocb->ki_complete(iocb, ret);
 
 	kfree(priv->buf);
 	kfree(priv->to_free);
@@ -498,11 +500,8 @@ static void ep_aio_complete(struct usb_ep *ep, struct usb_request *req)
 		kfree(priv->to_free);
 		kfree(priv);
 		iocb->private = NULL;
-		/* aio_complete() reports bytes-transferred _and_ faults */
-
 		iocb->ki_complete(iocb,
-				req->actual ? req->actual : (long)req->status,
-				req->status);
+				req->actual ? req->actual : (long)req->status);
 	} else {
 		/* ep_copy_to_user() won't report both; we hide some faults */
 		if (unlikely(0 != req->status))
@@ -1245,7 +1244,7 @@ out:
 	return mask;
 }
 
-static long dev_ioctl (struct file *fd, unsigned code, unsigned long value)
+static long gadget_dev_ioctl (struct file *fd, unsigned code, unsigned long value)
 {
 	struct dev_data		*dev = fd->private_data;
 	struct usb_gadget	*gadget = dev->gadget;
@@ -1876,7 +1875,7 @@ dev_config (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
 	else
 		gadgetfs_driver.max_speed = USB_SPEED_FULL;
 
-	value = usb_gadget_probe_driver(&gadgetfs_driver);
+	value = usb_gadget_register_driver(&gadgetfs_driver);
 	if (value != 0) {
 		spin_lock_irq(&dev->lock);
 		goto fail;
@@ -1907,7 +1906,7 @@ fail:
 }
 
 static int
-dev_open (struct inode *inode, struct file *fd)
+gadget_dev_open (struct inode *inode, struct file *fd)
 {
 	struct dev_data		*dev = inode->i_private;
 	int			value = -EBUSY;
@@ -1927,12 +1926,12 @@ dev_open (struct inode *inode, struct file *fd)
 static const struct file_operations ep0_operations = {
 	.llseek =	no_llseek,
 
-	.open =		dev_open,
+	.open =		gadget_dev_open,
 	.read =		ep0_read,
 	.write =	dev_config,
 	.fasync =	ep0_fasync,
 	.poll =		ep0_poll,
-	.unlocked_ioctl = dev_ioctl,
+	.unlocked_ioctl = gadget_dev_ioctl,
 	.release =	dev_release,
 };
 
@@ -2012,13 +2011,20 @@ gadgetfs_fill_super (struct super_block *sb, struct fs_context *fc)
 {
 	struct inode	*inode;
 	struct dev_data	*dev;
+	int		rc;
 
-	if (the_device)
-		return -ESRCH;
+	mutex_lock(&sb_mutex);
+
+	if (the_device) {
+		rc = -ESRCH;
+		goto Done;
+	}
 
 	CHIP = usb_get_gadget_udc_name();
-	if (!CHIP)
-		return -ENODEV;
+	if (!CHIP) {
+		rc = -ENODEV;
+		goto Done;
+	}
 
 	/* superblock */
 	sb->s_blocksize = PAGE_SIZE;
@@ -2055,13 +2061,17 @@ gadgetfs_fill_super (struct super_block *sb, struct fs_context *fc)
 	 * from binding to a controller.
 	 */
 	the_device = dev;
-	return 0;
+	rc = 0;
+	goto Done;
 
-Enomem:
+ Enomem:
 	kfree(CHIP);
 	CHIP = NULL;
+	rc = -ENOMEM;
 
-	return -ENOMEM;
+ Done:
+	mutex_unlock(&sb_mutex);
+	return rc;
 }
 
 /* "mount -t gadgetfs path /dev/gadget" ends up here */
@@ -2083,6 +2093,7 @@ static int gadgetfs_init_fs_context(struct fs_context *fc)
 static void
 gadgetfs_kill_sb (struct super_block *sb)
 {
+	mutex_lock(&sb_mutex);
 	kill_litter_super (sb);
 	if (the_device) {
 		put_dev (the_device);
@@ -2090,6 +2101,7 @@ gadgetfs_kill_sb (struct super_block *sb)
 	}
 	kfree(CHIP);
 	CHIP = NULL;
+	mutex_unlock(&sb_mutex);
 }
 
 /*----------------------------------------------------------------------*/
@@ -2104,7 +2116,7 @@ MODULE_ALIAS_FS("gadgetfs");
 
 /*----------------------------------------------------------------------*/
 
-static int __init init (void)
+static int __init gadgetfs_init (void)
 {
 	int status;
 
@@ -2114,12 +2126,12 @@ static int __init init (void)
 			shortname, driver_desc);
 	return status;
 }
-module_init (init);
+module_init (gadgetfs_init);
 
-static void __exit cleanup (void)
+static void __exit gadgetfs_cleanup (void)
 {
 	pr_debug ("unregister %s\n", shortname);
 	unregister_filesystem (&gadgetfs_type);
 }
-module_exit (cleanup);
+module_exit (gadgetfs_cleanup);
 

@@ -501,7 +501,11 @@ struct vidtv_encoder
 	return e;
 
 out_kfree_buf:
+<<<<<<< HEAD
 	kfree(e->encoder_buf);
+=======
+	vfree(e->encoder_buf);
+>>>>>>> origin/linux_6.1.15_upstream
 
 out_kfree_e:
 	kfree(e->name);

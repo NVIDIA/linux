@@ -62,8 +62,18 @@ static void delay_until(ktime_t until)
 			return;
 
 		/* udelay more than 1ms may not work */
+<<<<<<< HEAD
 		delta = min(delta, 1000);
 		udelay(delta);
+=======
+		if (delta >= 1000) {
+			mdelay(delta / 1000);
+			continue;
+		}
+
+		udelay(delta);
+		break;
+>>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

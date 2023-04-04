@@ -1,48 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-2.0
 
-test_write_result() {
-	file=$1
-	content=$2
-	orig_content=$3
-	expect_reason=$4
-	expected=$5
-
-	echo "$content" > "$file"
-	if [ $? -ne "$expected" ]
-	then
-		echo "writing $content to $file doesn't return $expected"
-		echo "expected because: $expect_reason"
-		echo "$orig_content" > "$file"
-		exit 1
-	fi
-}
-
-test_write_succ() {
-	test_write_result "$1" "$2" "$3" "$4" 0
-}
-
-test_write_fail() {
-	test_write_result "$1" "$2" "$3" "$4" 1
-}
-
-test_content() {
-	file=$1
-	orig_content=$2
-	expected=$3
-	expect_reason=$4
-
-	content=$(cat "$file")
-	if [ "$content" != "$expected" ]
-	then
-		echo "reading $file expected $expected but $content"
-		echo "expected because: $expect_reason"
-		echo "$orig_content" > "$file"
-		exit 1
-	fi
-}
-
-source ./_chk_dependency.sh
+source _debugfs_common.sh
 
 # Test attrs file
 # ===============
@@ -56,6 +15,7 @@ test_write_fail "$file" "1 2 3 5 4" "$orig_content" \
 	"min_nr_regions > max_nr_regions"
 test_content "$file" "$orig_content" "1 2 3 4 5" "successfully written"
 echo "$orig_content" > "$file"
+<<<<<<< HEAD
 
 # Test target_ids file
 # ====================
@@ -91,3 +51,5 @@ else
 fi
 
 echo "PASS"
+=======
+>>>>>>> origin/linux_6.1.15_upstream

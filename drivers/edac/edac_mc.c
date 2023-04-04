@@ -66,14 +66,12 @@ unsigned int edac_dimm_info_location(struct dimm_info *dimm, char *buf,
 	char *p = buf;
 
 	for (i = 0; i < mci->n_layers; i++) {
-		n = snprintf(p, len, "%s %d ",
+		n = scnprintf(p, len, "%s %d ",
 			      edac_layer_name[mci->layers[i].type],
 			      dimm->location[i]);
 		p += n;
 		len -= n;
 		count += n;
-		if (!len)
-			break;
 	}
 
 	return count;
@@ -105,7 +103,6 @@ static void edac_mc_dump_dimm(struct dimm_info *dimm)
 	edac_dbg(4, "  dimm->label = '%s'\n", dimm->label);
 	edac_dbg(4, "  dimm->nr_pages = 0x%x\n", dimm->nr_pages);
 	edac_dbg(4, "  dimm->grain = %d\n", dimm->grain);
-	edac_dbg(4, "  dimm->nr_pages = 0x%x\n", dimm->nr_pages);
 }
 
 static void edac_mc_dump_csrow(struct csrow_info *csrow)
@@ -164,12 +161,15 @@ const char * const edac_mem_types[] = {
 	[MEM_LPDDR4]	= "Low-Power-DDR4-RAM",
 	[MEM_LRDDR4]	= "Load-Reduced-DDR4-RAM",
 	[MEM_DDR5]	= "Unbuffered-DDR5",
+	[MEM_RDDR5]	= "Registered-DDR5",
+	[MEM_LRDDR5]	= "Load-Reduced-DDR5-RAM",
 	[MEM_NVDIMM]	= "Non-volatile-RAM",
 	[MEM_WIO2]	= "Wide-IO-2",
 	[MEM_HBM2]	= "High-bandwidth-memory-Gen2",
 };
 EXPORT_SYMBOL_GPL(edac_mem_types);
 
+<<<<<<< HEAD
 /**
  * edac_align_ptr - Prepares the pointer offsets for a single-shot allocation
  * @p:		pointer to a pointer with the memory offset to be used. At
@@ -225,6 +225,8 @@ void *edac_align_ptr(void **p, unsigned int size, int n_elems)
 	return (void *)(((unsigned long)ptr) + align - r);
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 static void _edac_mc_free(struct mem_ctl_info *mci)
 {
 	put_device(&mci->dev);
@@ -257,6 +259,8 @@ static void mci_release(struct device *dev)
 		}
 		kfree(mci->csrows);
 	}
+	kfree(mci->pvt_info);
+	kfree(mci->layers);
 	kfree(mci);
 }
 
@@ -341,19 +345,16 @@ static int edac_mc_alloc_dimms(struct mem_ctl_info *mci)
 		 */
 		len = sizeof(dimm->label);
 		p = dimm->label;
-		n = snprintf(p, len, "mc#%u", mci->mc_idx);
+		n = scnprintf(p, len, "mc#%u", mci->mc_idx);
 		p += n;
 		len -= n;
 		for (layer = 0; layer < mci->n_layers; layer++) {
-			n = snprintf(p, len, "%s#%u",
-				     edac_layer_name[mci->layers[layer].type],
-				     pos[layer]);
+			n = scnprintf(p, len, "%s#%u",
+				      edac_layer_name[mci->layers[layer].type],
+				      pos[layer]);
 			p += n;
 			len -= n;
 			dimm->location[layer] = pos[layer];
-
-			if (len <= 0)
-				break;
 		}
 
 		/* Link it to the csrows old API data */
@@ -395,9 +396,8 @@ struct mem_ctl_info *edac_mc_alloc(unsigned int mc_num,
 {
 	struct mem_ctl_info *mci;
 	struct edac_mc_layer *layer;
-	unsigned int idx, size, tot_dimms = 1;
+	unsigned int idx, tot_dimms = 1;
 	unsigned int tot_csrows = 1, tot_channels = 1;
-	void *pvt, *ptr = NULL;
 	bool per_rank = false;
 
 	if (WARN_ON(n_layers > EDAC_MAX_LAYERS || n_layers == 0))
@@ -419,41 +419,25 @@ struct mem_ctl_info *edac_mc_alloc(unsigned int mc_num,
 			per_rank = true;
 	}
 
-	/* Figure out the offsets of the various items from the start of an mc
-	 * structure.  We want the alignment of each item to be at least as
-	 * stringent as what the compiler would provide if we could simply
-	 * hardcode everything into a single struct.
-	 */
-	mci	= edac_align_ptr(&ptr, sizeof(*mci), 1);
-	layer	= edac_align_ptr(&ptr, sizeof(*layer), n_layers);
-	pvt	= edac_align_ptr(&ptr, sz_pvt, 1);
-	size	= ((unsigned long)pvt) + sz_pvt;
-
-	edac_dbg(1, "allocating %u bytes for mci data (%d %s, %d csrows/channels)\n",
-		 size,
-		 tot_dimms,
-		 per_rank ? "ranks" : "dimms",
-		 tot_csrows * tot_channels);
-
-	mci = kzalloc(size, GFP_KERNEL);
-	if (mci == NULL)
+	mci = kzalloc(sizeof(struct mem_ctl_info), GFP_KERNEL);
+	if (!mci)
 		return NULL;
+
+	mci->layers = kcalloc(n_layers, sizeof(struct edac_mc_layer), GFP_KERNEL);
+	if (!mci->layers)
+		goto error;
+
+	mci->pvt_info = kzalloc(sz_pvt, GFP_KERNEL);
+	if (!mci->pvt_info)
+		goto error;
 
 	mci->dev.release = mci_release;
 	device_initialize(&mci->dev);
 
-	/* Adjust pointers so they point within the memory we just allocated
-	 * rather than an imaginary chunk of memory located at address 0.
-	 */
-	layer = (struct edac_mc_layer *)(((char *)mci) + ((unsigned long)layer));
-	pvt = sz_pvt ? (((char *)mci) + ((unsigned long)pvt)) : NULL;
-
 	/* setup index and various internal pointers */
 	mci->mc_idx = mc_num;
 	mci->tot_dimms = tot_dimms;
-	mci->pvt_info = pvt;
 	mci->n_layers = n_layers;
-	mci->layers = layer;
 	memcpy(mci->layers, layers, sizeof(*layer) * n_layers);
 	mci->nr_csrows = tot_csrows;
 	mci->num_cschannel = tot_channels;
@@ -1027,12 +1011,13 @@ void edac_mc_handle_error(const enum hw_event_mc_err_type type,
 			  const char *other_detail)
 {
 	struct dimm_info *dimm;
-	char *p;
+	char *p, *end;
 	int row = -1, chan = -1;
 	int pos[EDAC_MAX_LAYERS] = { top_layer, mid_layer, low_layer };
 	int i, n_labels = 0;
 	struct edac_raw_error_desc *e = &mci->error_desc;
 	bool any_memory = true;
+	const char *prefix;
 
 	edac_dbg(3, "MC%d\n", mci->mc_idx);
 
@@ -1087,6 +1072,8 @@ void edac_mc_handle_error(const enum hw_event_mc_err_type type,
 	 */
 	p = e->label;
 	*p = '\0';
+	end = p + sizeof(e->label);
+	prefix = "";
 
 	mci_for_each_dimm(mci, dimm) {
 		if (top_layer >= 0 && top_layer != dimm->location[0])
@@ -1114,12 +1101,8 @@ void edac_mc_handle_error(const enum hw_event_mc_err_type type,
 			p = e->label;
 			*p = '\0';
 		} else {
-			if (p != e->label) {
-				strcpy(p, OTHER_LABEL);
-				p += strlen(OTHER_LABEL);
-			}
-			strcpy(p, dimm->label);
-			p += strlen(p);
+			p += scnprintf(p, end - p, "%s%s", prefix, dimm->label);
+			prefix = OTHER_LABEL;
 		}
 
 		/*
@@ -1141,25 +1124,25 @@ void edac_mc_handle_error(const enum hw_event_mc_err_type type,
 	}
 
 	if (any_memory)
-		strcpy(e->label, "any memory");
+		strscpy(e->label, "any memory", sizeof(e->label));
 	else if (!*e->label)
-		strcpy(e->label, "unknown memory");
+		strscpy(e->label, "unknown memory", sizeof(e->label));
 
 	edac_inc_csrow(e, row, chan);
 
 	/* Fill the RAM location data */
 	p = e->location;
+	end = p + sizeof(e->location);
+	prefix = "";
 
 	for (i = 0; i < mci->n_layers; i++) {
 		if (pos[i] < 0)
 			continue;
 
-		p += sprintf(p, "%s:%d ",
-			     edac_layer_name[mci->layers[i].type],
-			     pos[i]);
+		p += scnprintf(p, end - p, "%s%s:%d", prefix,
+			       edac_layer_name[mci->layers[i].type], pos[i]);
+		prefix = " ";
 	}
-	if (p > e->location)
-		*(p - 1) = '\0';
 
 	edac_raw_mc_handle_error(e);
 }

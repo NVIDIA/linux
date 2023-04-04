@@ -262,6 +262,14 @@
 				quality = <100>;
 			};
 
+			hace: crypto@1e6e3000 {
+				compatible = "aspeed,ast2500-hace";
+				reg = <0x1e6e3000 0x100>;
+				interrupts = <4>;
+				clocks = <&syscon ASPEED_CLK_GATE_YCLK>;
+				resets = <&syscon ASPEED_RESET_HACE>;
+			};
+
 			gfx: display@1e6e6000 {
 				compatible = "aspeed,ast2500-gfx", "syscon";
 				reg = <0x1e6e6000 0x1000>;
@@ -520,11 +528,23 @@
 				};
 			};
 
+<<<<<<< HEAD
 			peci: bus@1e78b000 {
 				compatible = "simple-bus";
 				#address-cells = <1>;
 				#size-cells = <1>;
 				ranges = <0x0 0x1e78b000 0x60>;
+=======
+			peci0: peci-controller@1e78b000 {
+				compatible = "aspeed,ast2500-peci";
+				reg = <0x1e78b000 0x60>;
+				interrupts = <15>;
+				clocks = <&syscon ASPEED_CLK_GATE_REFCLK>;
+				resets = <&syscon ASPEED_RESET_PECI>;
+				cmd-timeout-ms = <1000>;
+				clock-frequency = <1000000>;
+				status = "disabled";
+>>>>>>> origin/linux_6.1.15_upstream
 			};
 
 			uart2: serial@1e78d000 {

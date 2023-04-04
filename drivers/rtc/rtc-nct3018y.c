@@ -42,7 +42,11 @@ struct nct3018y {
 	struct rtc_device *rtc;
 	struct i2c_client *client;
 #ifdef CONFIG_COMMON_CLK
+<<<<<<< HEAD
 	struct clk_hw		clkout_hw;
+=======
+	struct clk_hw clkout_hw;
+>>>>>>> origin/linux_6.1.15_upstream
 #endif
 };
 
@@ -54,7 +58,11 @@ static int nct3018y_set_alarm_mode(struct i2c_client *client, bool on)
 
 	flags =  i2c_smbus_read_byte_data(client, NCT3018Y_REG_CTRL);
 	if (flags < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev,
+=======
+		dev_dbg(&client->dev,
+>>>>>>> origin/linux_6.1.15_upstream
 			"Failed to read NCT3018Y_REG_CTRL\n");
 		return flags;
 	}
@@ -67,13 +75,21 @@ static int nct3018y_set_alarm_mode(struct i2c_client *client, bool on)
 	flags |= NCT3018Y_BIT_CIE;
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_CTRL, flags);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_CTRL\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_CTRL\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
 	flags =  i2c_smbus_read_byte_data(client, NCT3018Y_REG_ST);
 	if (flags < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev,
+=======
+		dev_dbg(&client->dev,
+>>>>>>> origin/linux_6.1.15_upstream
 			"Failed to read NCT3018Y_REG_ST\n");
 		return flags;
 	}
@@ -81,7 +97,11 @@ static int nct3018y_set_alarm_mode(struct i2c_client *client, bool on)
 	flags &= ~(NCT3018Y_BIT_AF);
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_ST, flags);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_ST\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_ST\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
@@ -89,10 +109,16 @@ static int nct3018y_set_alarm_mode(struct i2c_client *client, bool on)
 }
 
 static int nct3018y_get_alarm_mode(struct i2c_client *client, unsigned char *alarm_enable,
+<<<<<<< HEAD
 				  unsigned char *alarm_flag)
 {
 //	int err, flags;
         int flags;
+=======
+				   unsigned char *alarm_flag)
+{
+	int flags;
+>>>>>>> origin/linux_6.1.15_upstream
 
 	if (alarm_enable) {
 		dev_dbg(&client->dev, "%s:NCT3018Y_REG_CTRL\n", __func__);
@@ -151,6 +177,18 @@ static int nct3018y_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	unsigned char buf[10];
 	int err;
 
+<<<<<<< HEAD
+=======
+	err = i2c_smbus_read_i2c_block_data(client, NCT3018Y_REG_ST, 1, buf);
+	if (err < 0)
+		return err;
+
+	if (!buf[0]) {
+		dev_dbg(&client->dev, " voltage <=1.7, date/time is not reliable.\n");
+		return -EINVAL;
+	}
+
+>>>>>>> origin/linux_6.1.15_upstream
 	err = i2c_smbus_read_i2c_block_data(client, NCT3018Y_REG_SC, sizeof(buf), buf);
 	if (err < 0)
 		return err;
@@ -175,32 +213,52 @@ static int nct3018y_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	buf[0] = bin2bcd(tm->tm_sec);
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_SC, buf[0]);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_SC\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_SC\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
 	buf[0] = bin2bcd(tm->tm_min);
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_MN, buf[0]);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_MN\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_MN\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
 	buf[0] = bin2bcd(tm->tm_hour);
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_HR, buf[0]);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_HR\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_HR\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
 	buf[0] = tm->tm_wday & 0x07;
 	buf[1] = bin2bcd(tm->tm_mday);
+<<<<<<< HEAD
 	buf[2] = bin2bcd(tm->tm_mon+1);
+=======
+	buf[2] = bin2bcd(tm->tm_mon + 1);
+>>>>>>> origin/linux_6.1.15_upstream
 	buf[3] = bin2bcd(tm->tm_year - 100);
 	err = i2c_smbus_write_i2c_block_data(client, NCT3018Y_REG_DW,
 					     sizeof(buf), buf);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write for day and mon and year\n");
+=======
+		dev_dbg(&client->dev, "Unable to write for day and mon and year\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return -EIO;
 	}
 
@@ -216,7 +274,11 @@ static int nct3018y_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *tm)
 	err = i2c_smbus_read_i2c_block_data(client, NCT3018Y_REG_SCA,
 					    sizeof(buf), buf);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to read date\n");
+=======
+		dev_dbg(&client->dev, "Unable to read date\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return -EIO;
 	}
 
@@ -241,13 +303,17 @@ static int nct3018y_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *tm)
 static int nct3018y_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *tm)
 {
 	struct i2c_client *client = to_i2c_client(dev);
+<<<<<<< HEAD
 	unsigned char buf[3];
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	int err;
 
 	dev_dbg(dev, "%s, sec=%d, min=%d hour=%d tm->enabled:%d\n",
 		__func__, tm->time.tm_sec, tm->time.tm_min, tm->time.tm_hour,
 		tm->enabled);
 
+<<<<<<< HEAD
 	buf[0] = bin2bcd(tm->time.tm_sec);
 	buf[1] = bin2bcd(tm->time.tm_min);
 	buf[2] = bin2bcd(tm->time.tm_hour);
@@ -267,6 +333,23 @@ static int nct3018y_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *tm)
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_HRA, buf[2]);
 	if (err < 0) {
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_HRA\n");
+=======
+	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_SCA, bin2bcd(tm->time.tm_sec));
+	if (err < 0) {
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_SCA\n");
+		return err;
+	}
+
+	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_MNA, bin2bcd(tm->time.tm_min));
+	if (err < 0) {
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_MNA\n");
+		return err;
+	}
+
+	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_HRA, bin2bcd(tm->time.tm_hour));
+	if (err < 0) {
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_HRA\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
@@ -343,7 +426,11 @@ static long nct3018y_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
 }
 
 static int nct3018y_clkout_set_rate(struct clk_hw *hw, unsigned long rate,
+<<<<<<< HEAD
 				   unsigned long parent_rate)
+=======
+				    unsigned long parent_rate)
+>>>>>>> origin/linux_6.1.15_upstream
 {
 	struct nct3018y *nct3018y = clkout_hw_to_nct3018y(hw);
 	struct i2c_client *client = nct3018y->client;
@@ -373,7 +460,10 @@ static int nct3018y_clkout_control(struct clk_hw *hw, bool enable)
 	if (flags < 0)
 		return flags;
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	if (enable)
 		flags |= NCT3018Y_REG_CLKO_CKE;
 	else
@@ -420,6 +510,7 @@ static struct clk *nct3018y_clkout_register_clk(struct nct3018y *nct3018y)
 	struct device_node *node = client->dev.of_node;
 	struct clk *clk;
 	struct clk_init_data init;
+<<<<<<< HEAD
 	int flags, err;
 
 	/* disable the clkout output */
@@ -429,6 +520,8 @@ static struct clk *nct3018y_clkout_register_clk(struct nct3018y *nct3018y)
 		dev_err(&client->dev, "Unable to write oscillator status register\n");
 		return ERR_PTR(err);
 	}
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	init.name = "nct3018y-clkout";
 	init.ops = &nct3018y_clkout_ops;
@@ -465,10 +558,17 @@ static int nct3018y_probe(struct i2c_client *client,
 	struct nct3018y *nct3018y;
 	int err, flags;
 
+<<<<<<< HEAD
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "%s: ENODEV\n", __func__);
 		return -ENODEV;
 	}
+=======
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C |
+				     I2C_FUNC_SMBUS_BYTE |
+				     I2C_FUNC_SMBUS_BLOCK_DATA))
+		return -ENODEV;
+>>>>>>> origin/linux_6.1.15_upstream
 
 	nct3018y = devm_kzalloc(&client->dev, sizeof(struct nct3018y),
 				GFP_KERNEL);
@@ -481,27 +581,46 @@ static int nct3018y_probe(struct i2c_client *client,
 
 	flags = i2c_smbus_read_byte_data(client, NCT3018Y_REG_CTRL);
 	if (flags < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "%s: read error\n", __func__);
 		return flags;
 	} else if (flags & NCT3018Y_BIT_TWO)
 		dev_dbg(&client->dev, "%s: NCT3018Y_BIT_TWO is set\n", __func__);
 
+=======
+		dev_dbg(&client->dev, "%s: read error\n", __func__);
+		return flags;
+	} else if (flags & NCT3018Y_BIT_TWO) {
+		dev_dbg(&client->dev, "%s: NCT3018Y_BIT_TWO is set\n", __func__);
+	}
+>>>>>>> origin/linux_6.1.15_upstream
 
 	flags = NCT3018Y_BIT_TWO;
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_CTRL, flags);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "Unable to write NCT3018Y_REG_CTRL\n");
+=======
+		dev_dbg(&client->dev, "Unable to write NCT3018Y_REG_CTRL\n");
+>>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
 	flags = 0;
 	err = i2c_smbus_write_byte_data(client, NCT3018Y_REG_ST, flags);
 	if (err < 0) {
+<<<<<<< HEAD
 		dev_err(&client->dev, "%s: write error\n", __func__);
 		return err;
 	}
 
 
+=======
+		dev_dbg(&client->dev, "%s: write error\n", __func__);
+		return err;
+	}
+
+>>>>>>> origin/linux_6.1.15_upstream
 	nct3018y->rtc = devm_rtc_allocate_device(&client->dev);
 	if (IS_ERR(nct3018y->rtc))
 		return PTR_ERR(nct3018y->rtc);
@@ -512,6 +631,7 @@ static int nct3018y_probe(struct i2c_client *client,
 
 	if (client->irq > 0) {
 		err = devm_request_threaded_irq(&client->dev, client->irq,
+<<<<<<< HEAD
 				NULL, nct3018y_irq,
 				IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 				"nct3018y", client);
@@ -523,12 +643,30 @@ static int nct3018y_probe(struct i2c_client *client,
 
 	return devm_rtc_register_device(nct3018y->rtc);
 
+=======
+						NULL, nct3018y_irq,
+						IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+						"nct3018y", client);
+		if (err) {
+			dev_dbg(&client->dev, "unable to request IRQ %d\n", client->irq);
+			return err;
+		}
+	} else {
+		clear_bit(RTC_FEATURE_UPDATE_INTERRUPT, nct3018y->rtc->features);
+		clear_bit(RTC_FEATURE_ALARM, nct3018y->rtc->features);
+	}
+
+>>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_COMMON_CLK
 	/* register clk in common clk framework */
 	nct3018y_clkout_register_clk(nct3018y);
 #endif
 
+<<<<<<< HEAD
 	return 0;
+=======
+	return devm_rtc_register_device(nct3018y->rtc);
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct i2c_device_id nct3018y_id[] = {
@@ -537,7 +675,10 @@ static const struct i2c_device_id nct3018y_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, nct3018y_id);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 static const struct of_device_id nct3018y_of_match[] = {
 	{ .compatible = "nuvoton,nct3018y" },
 	{}
@@ -556,5 +697,11 @@ static struct i2c_driver nct3018y_driver = {
 module_i2c_driver(nct3018y_driver);
 
 MODULE_AUTHOR("Medad CChien <ctcchien@nuvoton.com>");
+<<<<<<< HEAD
 MODULE_DESCRIPTION("Nuvoton NCT3018Y RTC driver");
 MODULE_LICENSE("GPL v2");
+=======
+MODULE_AUTHOR("Mia Lin <mimi05633@gmail.com>");
+MODULE_DESCRIPTION("Nuvoton NCT3018Y RTC driver");
+MODULE_LICENSE("GPL");
+>>>>>>> origin/linux_6.1.15_upstream

@@ -16,10 +16,10 @@
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_device.h>
-#include <drm/drm_fb_cma_helper.h>
 #include <drm/drm_fb_helper.h>
-#include <drm/drm_gem_cma_helper.h>
+#include <drm/drm_gem_dma_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
+#include <drm/drm_module.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_simple_kms_helper.h>
 #include <drm/drm_vblank.h>
@@ -245,11 +245,11 @@ static void aspeed_gfx_unload(struct drm_device *drm)
 	drm_kms_helper_poll_fini(drm);
 }
 
-DEFINE_DRM_GEM_CMA_FOPS(fops);
+DEFINE_DRM_GEM_DMA_FOPS(fops);
 
 static const struct drm_driver aspeed_gfx_driver = {
 	.driver_features        = DRIVER_GEM | DRIVER_MODESET | DRIVER_ATOMIC,
-	DRM_GEM_CMA_DRIVER_OPS,
+	DRM_GEM_DMA_DRIVER_OPS,
 	.fops = &fops,
 	.name = "aspeed-gfx-drm",
 	.desc = "ASPEED GFX DRM",
@@ -372,7 +372,7 @@ static struct platform_driver aspeed_gfx_platform_driver = {
 	},
 };
 
-module_platform_driver(aspeed_gfx_platform_driver);
+drm_module_platform_driver(aspeed_gfx_platform_driver);
 
 MODULE_AUTHOR("Joel Stanley <joel@jms.id.au>");
 MODULE_DESCRIPTION("ASPEED BMC DRM/KMS driver");

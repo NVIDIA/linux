@@ -28,6 +28,16 @@ static void rtc_device_release(struct device *dev)
 	struct rtc_device *rtc = to_rtc_device(dev);
 	struct timerqueue_head *head = &rtc->timerqueue;
 	struct timerqueue_node *node;
+<<<<<<< HEAD
+
+	mutex_lock(&rtc->ops_lock);
+	while ((node = timerqueue_getnext(head)))
+		timerqueue_del(head, node);
+	mutex_unlock(&rtc->ops_lock);
+
+	cancel_work_sync(&rtc->irqwork);
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_lock(&rtc->ops_lock);
 	while ((node = timerqueue_getnext(head)))
@@ -36,7 +46,7 @@ static void rtc_device_release(struct device *dev)
 
 	cancel_work_sync(&rtc->irqwork);
 
-	ida_simple_remove(&rtc_ida, rtc->id);
+	ida_free(&rtc_ida, rtc->id);
 	mutex_destroy(&rtc->ops_lock);
 	kfree(rtc);
 }
@@ -241,6 +251,7 @@ static struct rtc_device *rtc_allocate_device(void)
 	rtc->pie_enabled = 0;
 
 	set_bit(RTC_FEATURE_ALARM, rtc->features);
+	set_bit(RTC_FEATURE_UPDATE_INTERRUPT, rtc->features);
 
 	return rtc;
 }
@@ -261,7 +272,7 @@ static int rtc_device_get_id(struct device *dev)
 	}
 
 	if (id < 0)
-		id = ida_simple_get(&rtc_ida, 0, 0, GFP_KERNEL);
+		id = ida_alloc(&rtc_ida, GFP_KERNEL);
 
 	return id;
 }
@@ -343,7 +354,8 @@ static void devm_rtc_unregister_device(void *data)
 	 * letting any rtc_class_open() users access it again
 	 */
 	rtc_proc_del_device(rtc);
-	cdev_device_del(&rtc->char_dev, &rtc->dev);
+	if (!test_bit(RTC_NO_CDEV, &rtc->flags))
+		cdev_device_del(&rtc->char_dev, &rtc->dev);
 	rtc->ops = NULL;
 	mutex_unlock(&rtc->ops_lock);
 }
@@ -366,15 +378,17 @@ struct rtc_device *devm_rtc_allocate_device(struct device *dev)
 
 	rtc = rtc_allocate_device();
 	if (!rtc) {
-		ida_simple_remove(&rtc_ida, id);
+		ida_free(&rtc_ida, id);
 		return ERR_PTR(-ENOMEM);
 	}
 
 	rtc->id = id;
 	rtc->dev.parent = dev;
-	dev_set_name(&rtc->dev, "rtc%d", id);
-
 	err = devm_add_action_or_reset(dev, devm_rtc_release_device, rtc);
+	if (err)
+		return ERR_PTR(err);
+
+	err = dev_set_name(&rtc->dev, "rtc%d", id);
 	if (err)
 		return ERR_PTR(err);
 
@@ -395,6 +409,9 @@ int __devm_rtc_register_device(struct module *owner, struct rtc_device *rtc)
 	if (!rtc->ops->set_alarm)
 		clear_bit(RTC_FEATURE_ALARM, rtc->features);
 
+	if (rtc->ops->set_offset)
+		set_bit(RTC_FEATURE_CORRECTION, rtc->features);
+
 	rtc->owner = owner;
 	rtc_device_get_offset(rtc);
 
@@ -406,12 +423,14 @@ int __devm_rtc_register_device(struct module *owner, struct rtc_device *rtc)
 	rtc_dev_prepare(rtc);
 
 	err = cdev_device_add(&rtc->char_dev, &rtc->dev);
-	if (err)
+	if (err) {
+		set_bit(RTC_NO_CDEV, &rtc->flags);
 		dev_warn(rtc->dev.parent, "failed to add char device %d:%d\n",
 			 MAJOR(rtc->dev.devt), rtc->id);
-	else
+	} else {
 		dev_dbg(rtc->dev.parent, "char device (%d:%d)\n",
 			MAJOR(rtc->dev.devt), rtc->id);
+	}
 
 	rtc_proc_add_device(rtc);
 

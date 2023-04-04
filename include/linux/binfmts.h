@@ -8,6 +8,7 @@
 #include <uapi/linux/binfmts.h>
 
 struct filename;
+struct coredump_params;
 
 #define CORENAME_MAX_SIZE 128
 
@@ -42,9 +43,6 @@ struct linux_binprm {
 		 * original userspace.
 		 */
 		point_of_no_return:1;
-#ifdef __alpha__
-	unsigned int taso:1;
-#endif
 	struct file *executable; /* Executable to pass to the interpreter */
 	struct file *interpreter;
 	struct file *file;
@@ -77,6 +75,7 @@ struct linux_binprm {
 #define BINPRM_FLAGS_PRESERVE_ARGV0_BIT 3
 #define BINPRM_FLAGS_PRESERVE_ARGV0 (1 << BINPRM_FLAGS_PRESERVE_ARGV0_BIT)
 
+<<<<<<< HEAD
 /* Function parameter for binfmt->coredump */
 struct coredump_params {
 	const kernel_siginfo_t *siginfo;
@@ -92,6 +91,8 @@ struct coredump_params {
 	struct core_vma_metadata *vma_meta;
 };
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 /*
  * This structure defines the functions that are used to load the binary formats that
  * linux accepts.
@@ -101,8 +102,10 @@ struct linux_binfmt {
 	struct module *module;
 	int (*load_binary)(struct linux_binprm *);
 	int (*load_shlib)(struct file *);
+#ifdef CONFIG_COREDUMP
 	int (*core_dump)(struct coredump_params *cprm);
 	unsigned long min_coredump;	/* minimal dump size */
+#endif
 } __randomize_layout;
 
 extern void __register_binfmt(struct linux_binfmt *fmt, int insert);

@@ -1,7 +1,5 @@
 #!/bin/sh
 #
-# arch/parisc/install.sh, derived from arch/i386/boot/install.sh
-#
 # This file is subject to the terms and conditions of the GNU General Public
 # License.  See the file "COPYING" in the main directory of this archive
 # for more details.
@@ -17,6 +15,7 @@
 #   $2 - kernel image file
 #   $3 - kernel map file
 #   $4 - default install path (blank if root directory)
+<<<<<<< HEAD
 #
 
 verify () {
@@ -43,6 +42,8 @@ if [ -n "${INSTALLKERNEL}" ]; then
 fi
 
 # Default install
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 if [ "$(basename $2)" = "vmlinuz" ]; then
 # Compressed install

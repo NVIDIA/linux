@@ -8,10 +8,6 @@
  * Author: Eugen Hristev <eugen.hristev@microchip.com>
  *
  */
-
-#include <linux/clk.h>
-#include <linux/clkdev.h>
-#include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/math64.h>
@@ -100,6 +96,7 @@ static inline void isc_reset_awb_ctrls(struct isc_device *isc)
 	}
 }
 
+<<<<<<< HEAD
 static int isc_wait_clk_stable(struct clk_hw *hw)
 {
 	struct isc_clk *isc_clk = to_isc_clk(hw);
@@ -391,6 +388,8 @@ void isc_clk_cleanup(struct isc_device *isc)
 	}
 }
 EXPORT_SYMBOL_GPL(isc_clk_cleanup);
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 static int isc_queue_setup(struct vb2_queue *vq,
 			    unsigned int *nbuffers, unsigned int *nplanes,
@@ -427,12 +426,9 @@ static int isc_buffer_prepare(struct vb2_buffer *vb)
 	return 0;
 }
 
-static void isc_start_dma(struct isc_device *isc)
+static void isc_crop_pfe(struct isc_device *isc)
 {
 	struct regmap *regmap = isc->regmap;
-	u32 sizeimage = isc->fmt.fmt.pix.sizeimage;
-	u32 dctrl_dview;
-	dma_addr_t addr0;
 	u32 h, w;
 
 	h = isc->fmt.fmt.pix.height;
@@ -467,6 +463,14 @@ static void isc_start_dma(struct isc_device *isc)
 	regmap_update_bits(regmap, ISC_PFE_CFG0,
 			   ISC_PFE_CFG0_COLEN | ISC_PFE_CFG0_ROWEN,
 			   ISC_PFE_CFG0_COLEN | ISC_PFE_CFG0_ROWEN);
+}
+
+static void isc_start_dma(struct isc_device *isc)
+{
+	struct regmap *regmap = isc->regmap;
+	u32 sizeimage = isc->fmt.fmt.pix.sizeimage;
+	u32 dctrl_dview;
+	dma_addr_t addr0;
 
 	addr0 = vb2_dma_contig_plane_dma_addr(&isc->cur_frm->vb.vb2_buf, 0);
 	regmap_write(regmap, ISC_DAD0 + isc->offsets.dma, addr0);
@@ -664,6 +668,7 @@ static int isc_start_streaming(struct vb2_queue *vq, unsigned int count)
 					struct isc_buffer, list);
 	list_del(&isc->cur_frm->list);
 
+	isc_crop_pfe(isc);
 	isc_start_dma(isc);
 
 	spin_unlock_irqrestore(&isc->dma_queue_lock, flags);
@@ -696,6 +701,7 @@ static void isc_stop_streaming(struct vb2_queue *vq)
 	struct isc_buffer *buf;
 	int ret;
 
+	mutex_lock(&isc->awb_mutex);
 	v4l2_ctrl_activate(isc->do_wb_ctrl, false);
 
 	isc->stop = true;
@@ -704,6 +710,8 @@ static void isc_stop_streaming(struct vb2_queue *vq)
 	if (isc->cur_frm && !wait_for_completion_timeout(&isc->comp, 5 * HZ))
 		v4l2_err(&isc->v4l2_dev,
 			 "Timeout waiting for end of the capture\n");
+
+	mutex_unlock(&isc->awb_mutex);
 
 	/* Disable DMA interrupt */
 	regmap_write(isc->regmap, ISC_INTDIS, ISC_INT_DDONE);
@@ -737,7 +745,7 @@ static void isc_buffer_queue(struct vb2_buffer *vb)
 
 	spin_lock_irqsave(&isc->dma_queue_lock, flags);
 	if (!isc->cur_frm && list_empty(&isc->dma_queue) &&
-		vb2_is_streaming(vb->vb2_queue)) {
+		vb2_start_streaming_called(vb->vb2_queue)) {
 		isc->cur_frm = buf;
 		isc_start_dma(isc);
 	} else
@@ -912,6 +920,7 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED8;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 8;
+		isc->try_config.bpp_v4l2 = 8;
 		break;
 	case V4L2_PIX_FMT_SBGGR10:
 	case V4L2_PIX_FMT_SGBRG10:
@@ -921,6 +930,7 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_SBGGR12:
 	case V4L2_PIX_FMT_SGBRG12:
@@ -930,24 +940,28 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_RGB565:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_RGB565;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_ARGB444:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_ARGB444;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_ARGB555:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_ARGB555;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_ABGR32:
 	case V4L2_PIX_FMT_XBGR32:
@@ -955,42 +969,49 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 32;
+		isc->try_config.bpp_v4l2 = 32;
 		break;
 	case V4L2_PIX_FMT_YUV420:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YYCC;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_YC420P;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PLANAR;
 		isc->try_config.bpp = 12;
+		isc->try_config.bpp_v4l2 = 8; /* only first plane */
 		break;
 	case V4L2_PIX_FMT_YUV422P:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YYCC;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_YC422P;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PLANAR;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 8; /* only first plane */
 		break;
 	case V4L2_PIX_FMT_YUYV:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_YUYV;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_UYVY:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_UYVY;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_VYUY:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_YCYC | ISC_RLP_CFG_YMODE_VYUY;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED32;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	case V4L2_PIX_FMT_GREY:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_DATY8;
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED8;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 8;
+		isc->try_config.bpp_v4l2 = 8;
 		break;
 	case V4L2_PIX_FMT_Y16:
 		isc->try_config.rlp_cfg_mode = ISC_RLP_CFG_MODE_DATY10 | ISC_RLP_CFG_LSH;
@@ -1000,6 +1021,7 @@ static int isc_try_configure_rlp_dma(struct isc_device *isc, bool direct_dump)
 		isc->try_config.dcfg_imode = ISC_DCFG_IMODE_PACKED16;
 		isc->try_config.dctrl_dview = ISC_DCTRL_DVIEW_PACKED;
 		isc->try_config.bpp = 16;
+		isc->try_config.bpp_v4l2 = 16;
 		break;
 	default:
 		return -EINVAL;
@@ -1248,8 +1270,9 @@ static int isc_try_fmt(struct isc_device *isc, struct v4l2_format *f,
 		pixfmt->height = isc->max_height;
 
 	pixfmt->field = V4L2_FIELD_NONE;
-	pixfmt->bytesperline = (pixfmt->width * isc->try_config.bpp) >> 3;
-	pixfmt->sizeimage = pixfmt->bytesperline * pixfmt->height;
+	pixfmt->bytesperline = (pixfmt->width * isc->try_config.bpp_v4l2) >> 3;
+	pixfmt->sizeimage = ((pixfmt->width * isc->try_config.bpp) >> 3) *
+			     pixfmt->height;
 
 	if (code)
 		*code = mbus_code;
@@ -1309,7 +1332,7 @@ static int isc_s_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct isc_device *isc = video_drvdata(file);
 
-	if (vb2_is_streaming(&isc->vb2_vidq))
+	if (vb2_is_busy(&isc->vb2_vidq))
 		return -EBUSY;
 
 	return isc_set_fmt(isc, f);
@@ -1394,6 +1417,7 @@ static int isc_enum_framesizes(struct file *file, void *fh,
 	fsize->stepwise.max_height = isc->max_height;
 	fsize->stepwise.step_width = 1;
 	fsize->stepwise.step_height = 1;
+<<<<<<< HEAD
 
 	return 0;
 }
@@ -1430,6 +1454,8 @@ static int isc_enum_frameintervals(struct file *file, void *fh,
 
 	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
 	fival->discrete = fie.interval;
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -1458,7 +1484,6 @@ static const struct v4l2_ioctl_ops isc_ioctl_ops = {
 	.vidioc_g_parm			= isc_g_parm,
 	.vidioc_s_parm			= isc_s_parm,
 	.vidioc_enum_framesizes		= isc_enum_framesizes,
-	.vidioc_enum_frameintervals	= isc_enum_frameintervals,
 
 	.vidioc_log_status		= v4l2_ctrl_log_status,
 	.vidioc_subscribe_event		= v4l2_ctrl_subscribe_event,
@@ -1606,10 +1631,15 @@ static void isc_hist_count(struct isc_device *isc, u32 *min, u32 *max)
 
 	if (!*min)
 		*min = 1;
+
+	v4l2_dbg(1, debug, &isc->v4l2_dev,
+		 "isc wb: hist_id %u, hist_count %u",
+		 ctrls->hist_id, *hist_count);
 }
 
 static void isc_wb_update(struct isc_ctrls *ctrls)
 {
+	struct isc_device *isc = container_of(ctrls, struct isc_device, ctrls);
 	u32 *hist_count = &ctrls->hist_count[0];
 	u32 c, offset[4];
 	u64 avg = 0;
@@ -1625,6 +1655,9 @@ static void isc_wb_update(struct isc_ctrls *ctrls)
 	avg = (u64)hist_count[ISC_HIS_CFG_MODE_GR] +
 		(u64)hist_count[ISC_HIS_CFG_MODE_GB];
 	avg >>= 1;
+
+	v4l2_dbg(1, debug, &isc->v4l2_dev,
+		 "isc wb: green components average %llu\n", avg);
 
 	/* Green histogram is null, nothing to do */
 	if (!avg)
@@ -1678,9 +1711,19 @@ static void isc_wb_update(struct isc_ctrls *ctrls)
 		else
 			gw_gain[c] = 1 << 9;
 
+		v4l2_dbg(1, debug, &isc->v4l2_dev,
+			 "isc wb: component %d, s_gain %u, gw_gain %u\n",
+			 c, s_gain[c], gw_gain[c]);
 		/* multiply both gains and adjust for decimals */
 		ctrls->gain[c] = s_gain[c] * gw_gain[c];
 		ctrls->gain[c] >>= 9;
+
+		/* make sure we are not out of range */
+		ctrls->gain[c] = clamp_val(ctrls->gain[c], 0, GENMASK(12, 0));
+
+		v4l2_dbg(1, debug, &isc->v4l2_dev,
+			 "isc wb: component %d, final gain %u\n",
+			 c, ctrls->gain[c]);
 	}
 }
 
@@ -1696,14 +1739,14 @@ static void isc_awb_work(struct work_struct *w)
 	u32 min, max;
 	int ret;
 
-	/* streaming is not active anymore */
-	if (isc->stop)
-		return;
-
 	if (ctrls->hist_stat != HIST_ENABLED)
 		return;
 
 	isc_hist_count(isc, &min, &max);
+
+	v4l2_dbg(1, debug, &isc->v4l2_dev,
+		 "isc wb mode %d: hist min %u , max %u\n", hist_id, min, max);
+
 	ctrls->hist_minmax[hist_id][HIST_MIN_INDEX] = min;
 	ctrls->hist_minmax[hist_id][HIST_MAX_INDEX] = max;
 
@@ -1750,7 +1793,24 @@ static void isc_awb_work(struct work_struct *w)
 	}
 	regmap_write(regmap, ISC_HIS_CFG + isc->offsets.his,
 		     hist_id | baysel | ISC_HIS_CFG_RAR);
+
+	/*
+	 * We have to make sure the streaming has not stopped meanwhile.
+	 * ISC requires a frame to clock the internal profile update.
+	 * To avoid issues, lock the sequence with a mutex
+	 */
+	mutex_lock(&isc->awb_mutex);
+
+	/* streaming is not active anymore */
+	if (isc->stop) {
+		mutex_unlock(&isc->awb_mutex);
+		return;
+	}
+
 	isc_update_profile(isc);
+
+	mutex_unlock(&isc->awb_mutex);
+
 	/* if awb has been disabled, we don't need to start another histogram */
 	if (ctrls->awb)
 		regmap_write(regmap, ISC_CTRLEN, ISC_CTRL_HISREQ);
@@ -1804,10 +1864,6 @@ static int isc_s_awb_ctrl(struct v4l2_ctrl *ctrl)
 		else
 			ctrls->awb = ISC_WB_NONE;
 
-		/* we did not configure ISC yet */
-		if (!isc->config.sd_format)
-			break;
-
 		/* configure the controls with new values from v4l2 */
 		if (ctrl->cluster[ISC_CTRL_R_GAIN]->is_new)
 			ctrls->gain[ISC_HIS_CFG_MODE_R] = isc->r_gain_ctrl->val;
@@ -1829,6 +1885,7 @@ static int isc_s_awb_ctrl(struct v4l2_ctrl *ctrl)
 
 		isc_update_awb_ctrls(isc);
 
+		mutex_lock(&isc->awb_mutex);
 		if (vb2_is_streaming(&isc->vb2_vidq)) {
 			/*
 			 * If we are streaming, we can update profile to
@@ -1843,6 +1900,7 @@ static int isc_s_awb_ctrl(struct v4l2_ctrl *ctrl)
 			 */
 			v4l2_ctrl_activate(isc->do_wb_ctrl, false);
 		}
+		mutex_unlock(&isc->awb_mutex);
 
 		/* if we have autowhitebalance on, start histogram procedure */
 		if (ctrls->awb == ISC_WB_AUTO &&
@@ -2024,6 +2082,7 @@ static void isc_async_unbind(struct v4l2_async_notifier *notifier,
 {
 	struct isc_device *isc = container_of(notifier->v4l2_dev,
 					      struct isc_device, v4l2_dev);
+	mutex_destroy(&isc->awb_mutex);
 	cancel_work_sync(&isc->awb_work);
 	video_unregister_device(&isc->video_dev);
 	v4l2_ctrl_handler_free(&isc->ctrls.handler);
@@ -2133,6 +2192,8 @@ static int isc_async_complete(struct v4l2_async_notifier *notifier)
 	isc->current_subdev = container_of(notifier,
 					   struct isc_subdev_entity, notifier);
 	mutex_init(&isc->lock);
+	mutex_init(&isc->awb_mutex);
+
 	init_completion(&isc->comp);
 
 	/* Initialize videobuf2 queue */
@@ -2179,7 +2240,7 @@ static int isc_async_complete(struct v4l2_async_notifier *notifier)
 	}
 
 	/* Register video device */
-	strscpy(vdev->name, "microchip-isc", sizeof(vdev->name));
+	strscpy(vdev->name, KBUILD_MODNAME, sizeof(vdev->name));
 	vdev->release		= video_device_release_empty;
 	vdev->fops		= &isc_fops;
 	vdev->ioctl_ops		= &isc_ioctl_ops;
@@ -2201,6 +2262,7 @@ static int isc_async_complete(struct v4l2_async_notifier *notifier)
 	return 0;
 
 isc_async_complete_err:
+	mutex_destroy(&isc->awb_mutex);
 	mutex_destroy(&isc->lock);
 	return ret;
 }
@@ -2217,8 +2279,8 @@ void isc_subdev_cleanup(struct isc_device *isc)
 	struct isc_subdev_entity *subdev_entity;
 
 	list_for_each_entry(subdev_entity, &isc->subdev_entities, list) {
-		v4l2_async_notifier_unregister(&subdev_entity->notifier);
-		v4l2_async_notifier_cleanup(&subdev_entity->notifier);
+		v4l2_async_nf_unregister(&subdev_entity->notifier);
+		v4l2_async_nf_cleanup(&subdev_entity->notifier);
 	}
 
 	INIT_LIST_HEAD(&isc->subdev_entities);

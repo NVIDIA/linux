@@ -151,22 +151,10 @@ static int __sigp_stop_and_store_status(struct kvm_vcpu *vcpu,
 static int __sigp_set_arch(struct kvm_vcpu *vcpu, u32 parameter,
 			   u64 *status_reg)
 {
-	unsigned int i;
-	struct kvm_vcpu *v;
-	bool all_stopped = true;
-
-	kvm_for_each_vcpu(i, v, vcpu->kvm) {
-		if (v == vcpu)
-			continue;
-		if (!is_vcpu_stopped(v))
-			all_stopped = false;
-	}
-
 	*status_reg &= 0xffffffff00000000UL;
 
 	/* Reject set arch order, with czam we're always in z/Arch mode. */
-	*status_reg |= (all_stopped ? SIGP_STATUS_INVALID_PARAMETER :
-					SIGP_STATUS_INCORRECT_STATE);
+	*status_reg |= SIGP_STATUS_INVALID_PARAMETER;
 	return SIGP_CC_STATUS_STORED;
 }
 
@@ -492,9 +480,9 @@ int kvm_s390_handle_sigp_pei(struct kvm_vcpu *vcpu)
 	struct kvm_vcpu *dest_vcpu;
 	u8 order_code = kvm_s390_get_base_disp_rs(vcpu, NULL);
 
-	trace_kvm_s390_handle_sigp_pei(vcpu, order_code, cpu_addr);
-
 	if (order_code == SIGP_EXTERNAL_CALL) {
+		trace_kvm_s390_handle_sigp_pei(vcpu, order_code, cpu_addr);
+
 		dest_vcpu = kvm_get_vcpu_by_id(vcpu->kvm, cpu_addr);
 		BUG_ON(dest_vcpu == NULL);
 

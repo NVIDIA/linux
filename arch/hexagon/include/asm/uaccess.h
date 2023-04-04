@@ -13,6 +13,7 @@
 #include <asm/sections.h>
 
 /*
+<<<<<<< HEAD
  * access_ok: - Checks if a user space pointer is valid
  * @addr: User space pointer to start of block to check
  * @size: Size of block to check
@@ -38,6 +39,8 @@ static inline int __access_ok(unsigned long addr, unsigned long size)
 #define __access_ok __access_ok
 
 /*
+=======
+>>>>>>> origin/linux_6.1.15_upstream
  * When a kernel-mode page fault is taken, the faulting instruction
  * address is checked against a table of exception_table_entries.
  * Each entry is a tuple of the address of an instruction that may

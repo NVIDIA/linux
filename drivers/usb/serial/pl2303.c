@@ -436,10 +436,22 @@ static int pl2303_detect_type(struct usb_serial *serial)
 		break;
 	case 0x200:
 		switch (bcdDevice) {
+<<<<<<< HEAD
 		case 0x100:
 		case 0x105:
+=======
+		case 0x100:	/* GC */
+		case 0x105:
+			return TYPE_HXN;
+		case 0x300:	/* GT / TA */
+			if (pl2303_supports_hx_status(serial))
+				return TYPE_TA;
+			fallthrough;
+>>>>>>> origin/linux_6.1.15_upstream
 		case 0x305:
+		case 0x400:	/* GL */
 		case 0x405:
+<<<<<<< HEAD
 		case 0x605:
 			/*
 			 * Assume it's an HXN-type if the device doesn't
@@ -452,6 +464,19 @@ static int pl2303_detect_type(struct usb_serial *serial)
 			return TYPE_TA;
 		case 0x500:
 			return TYPE_TB;
+=======
+			return TYPE_HXN;
+		case 0x500:	/* GE / TB */
+			if (pl2303_supports_hx_status(serial))
+				return TYPE_TB;
+			fallthrough;
+		case 0x505:
+		case 0x600:	/* GS */
+		case 0x605:
+		case 0x700:	/* GR */
+		case 0x705:
+			return TYPE_HXN;
+>>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	}
@@ -784,7 +809,8 @@ static bool pl2303_enable_xonxoff(struct tty_struct *tty, const struct pl2303_ty
 }
 
 static void pl2303_set_termios(struct tty_struct *tty,
-		struct usb_serial_port *port, struct ktermios *old_termios)
+			       struct usb_serial_port *port,
+			       const struct ktermios *old_termios)
 {
 	struct usb_serial *serial = port->serial;
 	struct pl2303_serial_private *spriv = usb_get_serial_data(serial);

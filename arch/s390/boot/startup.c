@@ -10,11 +10,15 @@
 #include <asm/sclp.h>
 #include <asm/diag.h>
 #include <asm/uv.h>
-#include "compressed/decompressor.h"
+#include <asm/abs_lowcore.h>
+#include "decompressor.h"
 #include "boot.h"
 #include "uv.h"
 
 unsigned long __bootdata_preserved(__kaslr_offset);
+unsigned long __bootdata_preserved(__abs_lowcore);
+unsigned long __bootdata_preserved(__memcpy_real_area);
+unsigned long __bootdata(__amode31_base);
 unsigned long __bootdata_preserved(VMALLOC_START);
 unsigned long __bootdata_preserved(VMALLOC_END);
 struct page *__bootdata_preserved(vmemmap);
@@ -162,10 +166,17 @@ static void setup_kernel_memory_layout(void)
 	    vmalloc_size > _REGION2_SIZE ||
 	    vmemmap_start + vmemmap_size + vmalloc_size + MODULES_LEN >
 		    _REGION2_SIZE) {
+<<<<<<< HEAD
 		MODULES_END = _REGION1_SIZE;
 		rte_size = _REGION2_SIZE;
 	} else {
 		MODULES_END = _REGION2_SIZE;
+=======
+		vmax = _REGION1_SIZE;
+		rte_size = _REGION2_SIZE;
+	} else {
+		vmax = _REGION2_SIZE;
+>>>>>>> origin/linux_6.1.15_upstream
 		rte_size = _REGION3_SIZE;
 	}
 	/*
@@ -173,11 +184,22 @@ static void setup_kernel_memory_layout(void)
 	 * secure storage limit, so that any vmalloc allocation
 	 * we do could be used to back secure guest storage.
 	 */
+<<<<<<< HEAD
 	adjust_to_uv_max(&MODULES_END);
 #ifdef CONFIG_KASAN
 	/* force vmalloc and modules below kasan shadow */
 	MODULES_END = min(MODULES_END, KASAN_SHADOW_START);
+=======
+	vmax = adjust_to_uv_max(vmax);
+#ifdef CONFIG_KASAN
+	/* force vmalloc and modules below kasan shadow */
+	vmax = min(vmax, KASAN_SHADOW_START);
+>>>>>>> origin/linux_6.1.15_upstream
 #endif
+	__memcpy_real_area = round_down(vmax - PAGE_SIZE, PAGE_SIZE);
+	__abs_lowcore = round_down(__memcpy_real_area - ABS_LOWCORE_MAP_SIZE,
+				   sizeof(struct lowcore));
+	MODULES_END = round_down(__abs_lowcore, _SEGMENT_SIZE);
 	MODULES_VADDR = MODULES_END - MODULES_LEN;
 	VMALLOC_END = MODULES_VADDR;
 
@@ -233,6 +255,12 @@ static void offset_vmlinux_info(unsigned long offset)
 	vmlinux.dynsym_start += offset;
 }
 
+static unsigned long reserve_amode31(unsigned long safe_addr)
+{
+	__amode31_base = PAGE_ALIGN(safe_addr);
+	return safe_addr + vmlinux.amode31_size;
+}
+
 void startup_kernel(void)
 {
 	unsigned long random_lma;
@@ -247,6 +275,7 @@ void startup_kernel(void)
 	setup_lpp();
 	store_ipl_parmblock();
 	safe_addr = mem_safe_offset();
+	safe_addr = reserve_amode31(safe_addr);
 	safe_addr = read_ipl_report(safe_addr);
 	uv_query_info();
 	rescue_initrd(safe_addr);
@@ -275,8 +304,7 @@ void startup_kernel(void)
 
 	clear_bss_section();
 	copy_bootdata();
-	if (IS_ENABLED(CONFIG_RELOCATABLE))
-		handle_relocs(__kaslr_offset);
+	handle_relocs(__kaslr_offset);
 
 	if (__kaslr_offset) {
 		/*

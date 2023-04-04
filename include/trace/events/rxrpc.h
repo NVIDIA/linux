@@ -14,6 +14,7 @@
 #include <linux/errqueue.h>
 
 /*
+<<<<<<< HEAD
  * Define enums for tracing information.
  *
  * These should all be kept sorted, making it easier to match the string
@@ -223,6 +224,8 @@ enum rxrpc_tx_point {
 #endif /* end __RXRPC_DECLARE_TRACE_ENUMS_ONCE_ONLY */
 
 /*
+=======
+>>>>>>> origin/linux_6.1.15_upstream
  * Declare tracing information enums and their string mappings for display.
  */
 #define rxrpc_skb_traces \
@@ -452,6 +455,36 @@ enum rxrpc_tx_point {
 	E_(rxrpc_tx_point_version_reply,	"VerReply")
 
 /*
+ * Generate enums for tracing information.
+ */
+#ifndef __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
+#define __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
+
+#undef EM
+#undef E_
+#define EM(a, b) a,
+#define E_(a, b) a
+
+enum rxrpc_call_trace		{ rxrpc_call_traces } __mode(byte);
+enum rxrpc_client_trace		{ rxrpc_client_traces } __mode(byte);
+enum rxrpc_congest_change	{ rxrpc_congest_changes } __mode(byte);
+enum rxrpc_conn_trace		{ rxrpc_conn_traces } __mode(byte);
+enum rxrpc_local_trace		{ rxrpc_local_traces } __mode(byte);
+enum rxrpc_peer_trace		{ rxrpc_peer_traces } __mode(byte);
+enum rxrpc_propose_ack_outcome	{ rxrpc_propose_ack_outcomes } __mode(byte);
+enum rxrpc_propose_ack_trace	{ rxrpc_propose_ack_traces } __mode(byte);
+enum rxrpc_receive_trace	{ rxrpc_receive_traces } __mode(byte);
+enum rxrpc_recvmsg_trace	{ rxrpc_recvmsg_traces } __mode(byte);
+enum rxrpc_rtt_rx_trace		{ rxrpc_rtt_rx_traces } __mode(byte);
+enum rxrpc_rtt_tx_trace		{ rxrpc_rtt_tx_traces } __mode(byte);
+enum rxrpc_skb_trace		{ rxrpc_skb_traces } __mode(byte);
+enum rxrpc_timer_trace		{ rxrpc_timer_traces } __mode(byte);
+enum rxrpc_transmit_trace	{ rxrpc_transmit_traces } __mode(byte);
+enum rxrpc_tx_point		{ rxrpc_tx_points } __mode(byte);
+
+#endif /* end __RXRPC_DECLARE_TRACE_ENUMS_ONCE_ONLY */
+
+/*
  * Export enum symbols via userspace.
  */
 #undef EM
@@ -459,21 +492,21 @@ enum rxrpc_tx_point {
 #define EM(a, b) TRACE_DEFINE_ENUM(a);
 #define E_(a, b) TRACE_DEFINE_ENUM(a);
 
-rxrpc_skb_traces;
-rxrpc_local_traces;
-rxrpc_conn_traces;
-rxrpc_client_traces;
 rxrpc_call_traces;
-rxrpc_transmit_traces;
+rxrpc_client_traces;
+rxrpc_congest_changes;
+rxrpc_congest_modes;
+rxrpc_conn_traces;
+rxrpc_local_traces;
+rxrpc_propose_ack_outcomes;
+rxrpc_propose_ack_traces;
 rxrpc_receive_traces;
 rxrpc_recvmsg_traces;
-rxrpc_rtt_tx_traces;
 rxrpc_rtt_rx_traces;
+rxrpc_rtt_tx_traces;
+rxrpc_skb_traces;
 rxrpc_timer_traces;
-rxrpc_propose_ack_traces;
-rxrpc_propose_ack_outcomes;
-rxrpc_congest_modes;
-rxrpc_congest_changes;
+rxrpc_transmit_traces;
 rxrpc_tx_points;
 
 /*
@@ -583,7 +616,7 @@ TRACE_EVENT(rxrpc_client,
 	    TP_fast_assign(
 		    __entry->conn = conn ? conn->debug_id : 0;
 		    __entry->channel = channel;
-		    __entry->usage = conn ? atomic_read(&conn->usage) : -2;
+		    __entry->usage = conn ? refcount_read(&conn->ref) : -2;
 		    __entry->op = op;
 		    __entry->cid = conn ? conn->proto.cid : 0;
 			   ),
@@ -1574,6 +1607,8 @@ TRACE_EVENT(rxrpc_rx_discard_ack,
 		      __entry->call_ackr_prev)
 	    );
 
+#undef EM
+#undef E_
 #endif /* _TRACE_RXRPC_H */
 
 /* This part must be outside protection */

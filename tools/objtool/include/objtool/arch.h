@@ -27,6 +27,10 @@ enum insn_type {
 	INSN_STD,
 	INSN_CLD,
 	INSN_TRAP,
+<<<<<<< HEAD
+=======
+	INSN_ENDBR,
+>>>>>>> origin/linux_6.1.15_upstream
 	INSN_OTHER,
 };
 
@@ -70,7 +74,7 @@ struct instruction;
 
 void arch_initial_func_cfi_state(struct cfi_init_state *state);
 
-int arch_decode_instruction(const struct elf *elf, const struct section *sec,
+int arch_decode_instruction(struct objtool_file *file, const struct section *sec,
 			    unsigned long offset, unsigned int maxlen,
 			    unsigned int *len, enum insn_type *type,
 			    unsigned long *immediate,
@@ -85,9 +89,10 @@ unsigned long arch_dest_reloc_offset(int addend);
 const char *arch_nop_insn(int len);
 const char *arch_ret_insn(int len);
 
-int arch_decode_hint_reg(struct instruction *insn, u8 sp_reg);
+int arch_decode_hint_reg(u8 sp_reg, int *base);
 
 bool arch_is_retpoline(struct symbol *sym);
+bool arch_is_rethunk(struct symbol *sym);
 
 int arch_rewrite_retpolines(struct objtool_file *file);
 

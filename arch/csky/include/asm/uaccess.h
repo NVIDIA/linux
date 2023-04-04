@@ -3,6 +3,7 @@
 #ifndef __ASM_CSKY_UACCESS_H
 #define __ASM_CSKY_UACCESS_H
 
+<<<<<<< HEAD
 #define user_addr_max() (current_thread_info()->addr_limit.seg)
 
 static inline int __access_ok(unsigned long addr, unsigned long size)
@@ -13,6 +14,8 @@ static inline int __access_ok(unsigned long addr, unsigned long size)
 }
 #define __access_ok __access_ok
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 /*
  * __put_user_fn
  */
@@ -208,7 +211,6 @@ unsigned long raw_copy_to_user(void *to, const void *from, unsigned long n);
 unsigned long __clear_user(void __user *to, unsigned long n);
 #define __clear_user __clear_user
 
-#include <asm/segment.h>
 #include <asm-generic/uaccess.h>
 
 #endif /* __ASM_CSKY_UACCESS_H */

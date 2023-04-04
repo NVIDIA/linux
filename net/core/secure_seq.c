@@ -19,8 +19,10 @@
 #include <linux/in6.h>
 #include <net/tcp.h>
 
-static siphash_key_t net_secret __read_mostly;
-static siphash_key_t ts_secret __read_mostly;
+static siphash_aligned_key_t net_secret;
+static siphash_aligned_key_t ts_secret;
+
+#define EPHEMERAL_PORT_SHUFFLE_PERIOD (10 * HZ)
 
 #define EPHEMERAL_PORT_SHUFFLE_PERIOD (10 * HZ)
 
@@ -66,7 +68,7 @@ u32 secure_tcpv6_ts_off(const struct net *net,
 		.daddr = *(struct in6_addr *)daddr,
 	};
 
-	if (net->ipv4.sysctl_tcp_timestamps != 1)
+	if (READ_ONCE(net->ipv4.sysctl_tcp_timestamps) != 1)
 		return 0;
 
 	ts_secret_init();
@@ -122,7 +124,7 @@ EXPORT_SYMBOL(secure_ipv6_port_ephemeral);
 #ifdef CONFIG_INET
 u32 secure_tcp_ts_off(const struct net *net, __be32 saddr, __be32 daddr)
 {
-	if (net->ipv4.sysctl_tcp_timestamps != 1)
+	if (READ_ONCE(net->ipv4.sysctl_tcp_timestamps) != 1)
 		return 0;
 
 	ts_secret_init();

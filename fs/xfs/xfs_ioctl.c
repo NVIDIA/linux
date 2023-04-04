@@ -15,6 +15,8 @@
 #include "xfs_iwalk.h"
 #include "xfs_itable.h"
 #include "xfs_error.h"
+#include "xfs_da_format.h"
+#include "xfs_da_btree.h"
 #include "xfs_attr.h"
 #include "xfs_bmap.h"
 #include "xfs_bmap_util.h"
@@ -35,8 +37,7 @@
 #include "xfs_health.h"
 #include "xfs_reflink.h"
 #include "xfs_ioctl.h"
-#include "xfs_da_format.h"
-#include "xfs_da_btree.h"
+#include "xfs_xattr.h"
 
 #include <linux/mount.h>
 #include <linux/namei.h>
@@ -372,7 +373,7 @@ int
 xfs_ioc_attr_list(
 	struct xfs_inode		*dp,
 	void __user			*ubuf,
-	int				bufsize,
+	size_t				bufsize,
 	int				flags,
 	struct xfs_attrlist_cursor __user *ucursor)
 {
@@ -524,7 +525,7 @@ xfs_attrmulti_attr_set(
 		args.valuelen = len;
 	}
 
-	error = xfs_attr_set(&args);
+	error = xfs_attr_change(&args);
 	if (!error && (flags & XFS_IOC_ATTR_ROOT))
 		xfs_forget_acl(inode, name);
 	kfree(args.value);
@@ -627,6 +628,7 @@ xfs_attrmulti_by_handle(
 	return error;
 }
 
+<<<<<<< HEAD
 int
 xfs_ioc_space(
 	struct file		*filp,
@@ -708,6 +710,8 @@ out_unlock:
 	return error;
 }
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 /* Return 0 on success or positive error */
 int
 xfs_fsbulkstat_one_fmt(
@@ -894,6 +898,9 @@ xfs_bulk_ireq_setup(
 	if (XFS_INO_TO_AGNO(mp, breq->startino) >= mp->m_sb.sb_agcount)
 		return -ECANCELED;
 
+	if (hdr->flags & XFS_BULK_IREQ_NREXT64)
+		breq->flags |= XFS_IBULK_NREXT64;
+
 	return 0;
 }
 
@@ -1032,6 +1039,7 @@ xfs_ioc_ag_geometry(
 	struct xfs_mount	*mp,
 	void			__user *arg)
 {
+	struct xfs_perag	*pag;
 	struct xfs_ag_geometry	ageo;
 	int			error;
 
@@ -1042,7 +1050,12 @@ xfs_ioc_ag_geometry(
 	if (memchr_inv(&ageo.ag_reserved, 0, sizeof(ageo.ag_reserved)))
 		return -EINVAL;
 
-	error = xfs_ag_get_geometry(mp, ageo.ag_number, &ageo);
+	pag = xfs_perag_get(mp, ageo.ag_number);
+	if (!pag)
+		return -EINVAL;
+
+	error = xfs_ag_get_geometry(pag, &ageo);
+	xfs_perag_put(pag);
 	if (error)
 		return error;
 
@@ -1062,7 +1075,7 @@ xfs_fill_fsxattr(
 	struct fileattr		*fa)
 {
 	struct xfs_mount	*mp = ip->i_mount;
-	struct xfs_ifork	*ifp = XFS_IFORK_PTR(ip, whichfork);
+	struct xfs_ifork	*ifp = xfs_ifork_ptr(ip, whichfork);
 
 	fileattr_fill_xflags(fa, xfs_ip2xflags(ip));
 
@@ -1173,7 +1186,8 @@ xfs_flags2diflags2(
 {
 	uint64_t		di_flags2 =
 		(ip->i_diflags2 & (XFS_DIFLAG2_REFLINK |
-				   XFS_DIFLAG2_BIGTIME));
+				   XFS_DIFLAG2_BIGTIME |
+				   XFS_DIFLAG2_NREXT64));
 
 	if (xflags & FS_XFLAG_DAX)
 		di_flags2 |= XFS_DIFLAG2_DAX;
@@ -1270,7 +1284,7 @@ xfs_ioctl_setattr_get_trans(
 		goto out_error;
 
 	error = xfs_trans_alloc_ichange(ip, NULL, NULL, pdqp,
-			capable(CAP_FOWNER), &tp);
+			has_capability_noaudit(current, CAP_FOWNER), &tp);
 	if (error)
 		goto out_error;
 
@@ -1545,10 +1559,10 @@ xfs_ioc_getbmap(
 
 	if (bmx.bmv_count < 2)
 		return -EINVAL;
-	if (bmx.bmv_count > ULONG_MAX / recsize)
+	if (bmx.bmv_count >= INT_MAX / recsize)
 		return -ENOMEM;
 
-	buf = kvzalloc(bmx.bmv_count * sizeof(*buf), GFP_KERNEL);
+	buf = kvcalloc(bmx.bmv_count, sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
@@ -1602,11 +1616,11 @@ xfs_ioc_getfsmap(
 	 */
 	count = min_t(unsigned int, head.fmh_count,
 			131072 / sizeof(struct fsmap));
-	recs = kvzalloc(count * sizeof(struct fsmap), GFP_KERNEL);
+	recs = kvcalloc(count, sizeof(struct fsmap), GFP_KERNEL);
 	if (!recs) {
 		count = min_t(unsigned int, head.fmh_count,
 				PAGE_SIZE / sizeof(struct fsmap));
-		recs = kvzalloc(count * sizeof(struct fsmap), GFP_KERNEL);
+		recs = kvcalloc(count, sizeof(struct fsmap), GFP_KERNEL);
 		if (!recs)
 			return -ENOMEM;
 	}
@@ -1936,6 +1950,15 @@ xfs_fs_eofblocks_from_user(
 }
 
 /*
+ * These long-unused ioctls were removed from the official ioctl API in 5.17,
+ * but retain these definitions so that we can log warnings about them.
+ */
+#define XFS_IOC_ALLOCSP		_IOW ('X', 10, struct xfs_flock64)
+#define XFS_IOC_FREESP		_IOW ('X', 11, struct xfs_flock64)
+#define XFS_IOC_ALLOCSP64	_IOW ('X', 36, struct xfs_flock64)
+#define XFS_IOC_FREESP64	_IOW ('X', 37, struct xfs_flock64)
+
+/*
  * Note: some of the ioctl's return positive numbers as a
  * byte count indicating success, such as readlink_by_handle.
  * So we don't "sign flip" like most other routines.  This means
@@ -1965,13 +1988,11 @@ xfs_file_ioctl(
 	case XFS_IOC_ALLOCSP:
 	case XFS_IOC_FREESP:
 	case XFS_IOC_ALLOCSP64:
-	case XFS_IOC_FREESP64: {
-		xfs_flock64_t		bf;
-
-		if (copy_from_user(&bf, arg, sizeof(bf)))
-			return -EFAULT;
-		return xfs_ioc_space(filp, &bf);
-	}
+	case XFS_IOC_FREESP64:
+		xfs_warn_once(mp,
+	"%s should use fallocate; XFS_IOC_{ALLOC,FREE}SP ioctl unsupported",
+				current->comm);
+		return -ENOTTY;
 	case XFS_IOC_DIOINFO: {
 		struct xfs_buftarg	*target = xfs_inode_buftarg(ip);
 		struct dioattr		da;

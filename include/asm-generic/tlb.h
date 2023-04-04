@@ -158,9 +158,24 @@
  *  Useful if your architecture doesn't use IPIs for remote TLB invalidates
  *  and therefore doesn't naturally serialize with software page-table walkers.
  *
+ *  MMU_GATHER_NO_FLUSH_CACHE
+ *
+ *  Indicates the architecture has flush_cache_range() but it needs *NOT* be called
+ *  before unmapping a VMA.
+ *
+ *  NOTE: strictly speaking we shouldn't have this knob and instead rely on
+ *	  flush_cache_range() being a NOP, except Sparc64 seems to be
+ *	  different here.
+ *
+ *  MMU_GATHER_MERGE_VMAS
+ *
+ *  Indicates the architecture wants to merge ranges over VMAs; typical when
+ *  multiple range invalidates are more expensive than a full invalidate.
+ *
  *  MMU_GATHER_NO_RANGE
  *
- *  Use this if your architecture lacks an efficient flush_tlb_range().
+ *  Use this if your architecture lacks an efficient flush_tlb_range(). This
+ *  option implies MMU_GATHER_MERGE_VMAS above.
  *
  *  MMU_GATHER_NO_GATHER
  *
@@ -180,7 +195,7 @@ struct mmu_table_batch {
 	struct rcu_head		rcu;
 #endif
 	unsigned int		nr;
-	void			*tables[0];
+	void			*tables[];
 };
 
 #define MAX_TABLE_BATCH		\
@@ -207,11 +222,15 @@ extern void tlb_remove_table(struct mmu_gather *tlb, void *table);
 #define tlb_needs_table_invalidate() (true)
 #endif
 
+void tlb_remove_table_sync_one(void);
+
 #else
 
 #ifdef tlb_needs_table_invalidate
 #error tlb_needs_table_invalidate() requires MMU_GATHER_RCU_TABLE_FREE
 #endif
+
+static inline void tlb_remove_table_sync_one(void) { }
 
 #endif /* CONFIG_MMU_GATHER_RCU_TABLE_FREE */
 
@@ -227,7 +246,7 @@ struct mmu_gather_batch {
 	struct mmu_gather_batch	*next;
 	unsigned int		nr;
 	unsigned int		max;
-	struct page		*pages[0];
+	struct page		*pages[];
 };
 
 #define MAX_GATHER_BATCH	\
@@ -335,8 +354,8 @@ static inline void __tlb_reset_range(struct mmu_gather *tlb)
 
 #ifdef CONFIG_MMU_GATHER_NO_RANGE
 
-#if defined(tlb_flush) || defined(tlb_start_vma) || defined(tlb_end_vma)
-#error MMU_GATHER_NO_RANGE relies on default tlb_flush(), tlb_start_vma() and tlb_end_vma()
+#if defined(tlb_flush)
+#error MMU_GATHER_NO_RANGE relies on default tlb_flush()
 #endif
 
 /*
@@ -353,19 +372,16 @@ static inline void tlb_flush(struct mmu_gather *tlb)
 		flush_tlb_mm(tlb->mm);
 }
 
-static inline void
-tlb_update_vma_flags(struct mmu_gather *tlb, struct vm_area_struct *vma) { }
-
-#define tlb_end_vma tlb_end_vma
-static inline void tlb_end_vma(struct mmu_gather *tlb, struct vm_area_struct *vma) { }
-
 #else /* CONFIG_MMU_GATHER_NO_RANGE */
 
+<<<<<<< HEAD
 
 #if defined(tlb_start_vma) || defined(tlb_end_vma)
 #error Default tlb_flush() relies on default tlb_start_vma() and tlb_end_vma()
 #endif
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 #ifndef tlb_flush
 /*
  * When an architecture does not provide its own tlb_flush() implementation
@@ -482,18 +498,17 @@ static inline unsigned long tlb_get_unmap_size(struct mmu_gather *tlb)
  * case where we're doing a full MM flush.  When we're doing a munmap,
  * the vmas are adjusted to only cover the region to be torn down.
  */
-#ifndef tlb_start_vma
 static inline void tlb_start_vma(struct mmu_gather *tlb, struct vm_area_struct *vma)
 {
 	if (tlb->fullmm)
 		return;
 
 	tlb_update_vma_flags(tlb, vma);
+#ifndef CONFIG_MMU_GATHER_NO_FLUSH_CACHE
 	flush_cache_range(vma, vma->vm_start, vma->vm_end);
-}
 #endif
+}
 
-#ifndef tlb_end_vma
 static inline void tlb_end_vma(struct mmu_gather *tlb, struct vm_area_struct *vma)
 {
 	if (tlb->fullmm)
@@ -513,7 +528,6 @@ static inline void tlb_end_vma(struct mmu_gather *tlb, struct vm_area_struct *vm
 		tlb_flush_mmu_tlbonly(tlb);
 	}
 }
-#endif
 
 /*
  * tlb_flush_{pte|pmd|pud|p4d}_range() adjust the tlb->start and tlb->end,
@@ -658,6 +672,20 @@ static inline void tlb_flush_p4d_range(struct mmu_gather *tlb,
 		tlb->freed_tables = 1;				\
 		__p4d_free_tlb(tlb, pudp, address);		\
 	} while (0)
+#endif
+
+#ifndef pte_needs_flush
+static inline bool pte_needs_flush(pte_t oldpte, pte_t newpte)
+{
+	return true;
+}
+#endif
+
+#ifndef huge_pmd_needs_flush
+static inline bool huge_pmd_needs_flush(pmd_t oldpmd, pmd_t newpmd)
+{
+	return true;
+}
 #endif
 
 #endif /* CONFIG_MMU */

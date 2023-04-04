@@ -224,7 +224,6 @@ nouveau_fence_emit(struct nouveau_fence *fence, struct nouveau_channel *chan)
 			       &fctx->lock, fctx->context, ++fctx->sequence);
 	kref_get(&fctx->fence_ref);
 
-	trace_dma_fence_emit(&fence->base);
 	ret = fctx->emit(fence);
 	if (!ret) {
 		dma_fence_get(&fence->base);
@@ -339,15 +338,14 @@ nouveau_fence_wait(struct nouveau_fence *fence, bool lazy, bool intr)
 }
 
 int
-nouveau_fence_sync(struct nouveau_bo *nvbo, struct nouveau_channel *chan, bool exclusive, bool intr)
+nouveau_fence_sync(struct nouveau_bo *nvbo, struct nouveau_channel *chan,
+		   bool exclusive, bool intr)
 {
 	struct nouveau_fence_chan *fctx = chan->fence;
-	struct dma_fence *fence;
 	struct dma_resv *resv = nvbo->bo.base.resv;
-	struct dma_resv_list *fobj;
-	struct nouveau_fence *f;
-	int ret = 0, i;
+	int i, ret;
 
+<<<<<<< HEAD
 	if (!exclusive) {
 		ret = dma_resv_reserve_shared(resv, 1);
 
@@ -395,14 +393,56 @@ nouveau_fence_sync(struct nouveau_bo *nvbo, struct nouveau_channel *chan, bool e
 				must_wait = false;
 			rcu_read_unlock();
 		}
+=======
+	ret = dma_resv_reserve_fences(resv, 1);
+	if (ret)
+		return ret;
 
-		if (must_wait)
+	/* Waiting for the writes first causes performance regressions
+	 * under some circumstances. So manually wait for the reads first.
+	 */
+	for (i = 0; i < 2; ++i) {
+		struct dma_resv_iter cursor;
+		struct dma_fence *fence;
+
+		dma_resv_for_each_fence(&cursor, resv,
+					dma_resv_usage_rw(exclusive),
+					fence) {
+			enum dma_resv_usage usage;
+			struct nouveau_fence *f;
+
+			usage = dma_resv_iter_usage(&cursor);
+			if (i == 0 && usage == DMA_RESV_USAGE_WRITE)
+				continue;
+
+			f = nouveau_local_fence(fence, chan->drm);
+			if (f) {
+				struct nouveau_channel *prev;
+				bool must_wait = true;
+
+				rcu_read_lock();
+				prev = rcu_dereference(f->channel);
+				if (prev && (prev == chan ||
+					     fctx->sync(f, prev, chan) == 0))
+					must_wait = false;
+				rcu_read_unlock();
+				if (!must_wait)
+					continue;
+			}
+>>>>>>> origin/linux_6.1.15_upstream
+
 			ret = dma_fence_wait(fence, intr);
+<<<<<<< HEAD
 
 		return ret;
+=======
+			if (ret)
+				return ret;
+		}
+>>>>>>> origin/linux_6.1.15_upstream
 	}
 
-	return ret;
+	return 0;
 }
 
 void

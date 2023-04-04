@@ -106,11 +106,19 @@ static struct mctp_sk_key *mctp_lookup_key(struct net *net, struct sk_buff *skb,
 
 	ret = NULL;
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+<<<<<<< HEAD
 
 	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
 		if (!mctp_key_match(key, mh->dest, peer, tag))
 			continue;
 
+=======
+
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		if (!mctp_key_match(key, mh->dest, peer, tag))
+			continue;
+
+>>>>>>> origin/linux_6.1.15_upstream
 		spin_lock(&key->lock);
 		if (key->valid) {
 			refcount_inc(&key->refs);
@@ -147,6 +155,10 @@ static struct mctp_sk_key *mctp_key_alloc(struct mctp_sock *msk,
 	key->valid = true;
 	spin_lock_init(&key->lock);
 	refcount_set(&key->refs, 1);
+<<<<<<< HEAD
+=======
+	sock_hold(key->sk);
+>>>>>>> origin/linux_6.1.15_upstream
 
 	return key;
 }
@@ -165,6 +177,10 @@ void mctp_key_unref(struct mctp_sk_key *key)
 	mctp_dev_release_key(key->dev, key);
 	spin_unlock_irqrestore(&key->lock, flags);
 
+<<<<<<< HEAD
+=======
+	sock_put(key->sk);
+>>>>>>> origin/linux_6.1.15_upstream
 	kfree(key);
 }
 
@@ -176,6 +192,11 @@ static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk)
 	int rc = 0;
 
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+
+	if (sock_flag(&msk->sk, SOCK_DEAD)) {
+		rc = -EINVAL;
+		goto out_unlock;
+	}
 
 	hlist_for_each_entry(tmp, &net->mctp.keys, hlist) {
 		if (mctp_key_match(tmp, key->local_addr, key->peer_addr,
@@ -198,6 +219,7 @@ static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk)
 		hlist_add_head(&key->sklist, &msk->keys);
 	}
 
+out_unlock:
 	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
 
 	return rc;
@@ -225,6 +247,7 @@ __releases(&key->lock)
 		mctp_dev_release_key(key->dev, key);
 	}
 	spin_unlock_irqrestore(&key->lock, flags);
+<<<<<<< HEAD
 
 	if (!key->manual_alloc) {
 		spin_lock_irqsave(&net->mctp.keys_lock, flags);
@@ -236,6 +259,19 @@ __releases(&key->lock)
 		mctp_key_unref(key);
 	}
 
+=======
+
+	if (!key->manual_alloc) {
+		spin_lock_irqsave(&net->mctp.keys_lock, flags);
+		if (!hlist_unhashed(&key->hlist)) {
+			hlist_del_init(&key->hlist);
+			hlist_del_init(&key->sklist);
+			mctp_key_unref(key);
+		}
+		spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+	}
+
+>>>>>>> origin/linux_6.1.15_upstream
 	/* and one for the local reference */
 	mctp_key_unref(key);
 
@@ -253,7 +289,31 @@ static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key)
 
 	refcount_inc(&key->refs);
 	flow->key = key;
+<<<<<<< HEAD
 }
+
+static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev)
+{
+	struct mctp_sk_key *key;
+	struct mctp_flow *flow;
+
+	flow = skb_ext_find(skb, SKB_EXT_MCTP);
+	if (!flow)
+		return;
+
+	key = flow->key;
+
+	if (WARN_ON(key->dev && key->dev != dev))
+		return;
+
+	mctp_dev_set_key(dev, key);
+=======
+>>>>>>> origin/linux_6.1.15_upstream
+}
+#else
+static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key) {}
+static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev) {}
+#endif
 
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev)
 {
@@ -315,8 +375,8 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 
 static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 {
+	struct mctp_sk_key *key, *any_key = NULL;
 	struct net *net = dev_net(skb->dev);
-	struct mctp_sk_key *key;
 	struct mctp_sock *msk;
 	struct mctp_hdr *mh;
 	unsigned long f;
@@ -361,6 +421,7 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * key for reassembly - we'll create a more specific
 			 * one for future packets if required (ie, !EOM).
 			 */
+<<<<<<< HEAD
 			key = mctp_lookup_key(net, skb, MCTP_ADDR_ANY, &f);
 			if (key) {
 				msk = container_of(key->sk,
@@ -368,6 +429,13 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				spin_unlock_irqrestore(&key->lock, f);
 				mctp_key_unref(key);
 				key = NULL;
+=======
+			any_key = mctp_lookup_key(net, skb, MCTP_ADDR_ANY, &f);
+			if (any_key) {
+				msk = container_of(any_key->sk,
+						   struct mctp_sock, sk);
+				spin_unlock_irqrestore(&any_key->lock, f);
+>>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 
@@ -419,6 +487,7 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * this function.
 			 */
 			rc = mctp_key_add(key, msk);
+<<<<<<< HEAD
 			if (rc) {
 				kfree(key);
 			} else {
@@ -427,6 +496,16 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				/* we don't need to release key->lock on exit */
 				mctp_key_unref(key);
 			}
+=======
+			if (!rc)
+				trace_mctp_key_acquire(key);
+
+			/* we don't need to release key->lock on exit, so
+			 * clean up here and suppress the unlock via
+			 * setting to NULL
+			 */
+			mctp_key_unref(key);
+>>>>>>> origin/linux_6.1.15_upstream
 			key = NULL;
 
 		} else {
@@ -473,6 +552,11 @@ out_unlock:
 		spin_unlock_irqrestore(&key->lock, f);
 		mctp_key_unref(key);
 	}
+<<<<<<< HEAD
+=======
+	if (any_key)
+		mctp_key_unref(any_key);
+>>>>>>> origin/linux_6.1.15_upstream
 out:
 	if (rc)
 		kfree_skb(skb);
@@ -503,6 +587,14 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 
 	if (cb->ifindex) {
 		/* direct route; use the hwaddr we stashed in sendmsg */
+<<<<<<< HEAD
+=======
+		if (cb->halen != skb->dev->addr_len) {
+			/* sanity check, sendmsg should have already caught this */
+			kfree_skb(skb);
+			return -EMSGSIZE;
+		}
+>>>>>>> origin/linux_6.1.15_upstream
 		daddr = cb->haddr;
 	} else {
 		/* If lookup fails let the device handle daddr==NULL */
@@ -756,7 +848,7 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 {
 	const unsigned int hlen = sizeof(struct mctp_hdr);
 	struct mctp_hdr *hdr, *hdr2;
-	unsigned int pos, size;
+	unsigned int pos, size, headroom;
 	struct sk_buff *skb2;
 	int rc;
 	u8 seq;
@@ -770,6 +862,9 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 		return -EMSGSIZE;
 	}
 
+	/* keep same headroom as the original skb */
+	headroom = skb_headroom(skb);
+
 	/* we've got the header */
 	skb_pull(skb, hlen);
 
@@ -777,7 +872,7 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 		/* size of message payload */
 		size = min(mtu - hlen, skb->len - pos);
 
-		skb2 = alloc_skb(MCTP_HEADER_MAXLEN + hlen + size, GFP_KERNEL);
+		skb2 = alloc_skb(headroom + hlen + size, GFP_KERNEL);
 		if (!skb2) {
 			rc = -ENOMEM;
 			break;
@@ -793,7 +888,7 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 			skb_set_owner_w(skb2, skb->sk);
 
 		/* establish packet */
-		skb_reserve(skb2, MCTP_HEADER_MAXLEN);
+		skb_reserve(skb2, headroom);
 		skb_reset_network_header(skb2);
 		skb_put(skb2, hlen + size);
 		skb2->transport_header = skb2->network_header + hlen;
@@ -1392,7 +1487,7 @@ int __init mctp_routes_init(void)
 	return register_pernet_subsys(&mctp_net_ops);
 }
 
-void __exit mctp_routes_exit(void)
+void mctp_routes_exit(void)
 {
 	unregister_pernet_subsys(&mctp_net_ops);
 	rtnl_unregister(PF_MCTP, RTM_DELROUTE);

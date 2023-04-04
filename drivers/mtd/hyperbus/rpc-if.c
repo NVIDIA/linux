@@ -132,7 +132,9 @@ static int rpcif_hb_probe(struct platform_device *pdev)
 
 	rpcif_enable_rpm(&hyperbus->rpc);
 
-	rpcif_hw_init(&hyperbus->rpc, true);
+	error = rpcif_hw_init(&hyperbus->rpc, true);
+	if (error)
+		goto out_disable_rpm;
 
 	hyperbus->hbdev.map.size = hyperbus->rpc.size;
 	hyperbus->hbdev.map.virt = hyperbus->rpc.dirmap;
@@ -143,19 +145,32 @@ static int rpcif_hb_probe(struct platform_device *pdev)
 	hyperbus->hbdev.np = of_get_next_child(pdev->dev.parent->of_node, NULL);
 	error = hyperbus_register_device(&hyperbus->hbdev);
 	if (error)
-		rpcif_disable_rpm(&hyperbus->rpc);
+		goto out_disable_rpm;
 
+	return 0;
+
+out_disable_rpm:
+	rpcif_disable_rpm(&hyperbus->rpc);
 	return error;
 }
 
 static int rpcif_hb_remove(struct platform_device *pdev)
 {
 	struct rpcif_hyperbus *hyperbus = platform_get_drvdata(pdev);
+<<<<<<< HEAD
 	int error = hyperbus_unregister_device(&hyperbus->hbdev);
 
 	rpcif_disable_rpm(&hyperbus->rpc);
 
 	return error;
+=======
+
+	hyperbus_unregister_device(&hyperbus->hbdev);
+
+	rpcif_disable_rpm(&hyperbus->rpc);
+
+	return 0;
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct platform_driver rpcif_platform_driver = {

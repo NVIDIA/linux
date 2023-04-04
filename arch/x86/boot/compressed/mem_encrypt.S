@@ -187,6 +187,7 @@ SYM_CODE_END(startup32_vc_handler)
 	.code64
 
 #include "../../kernel/sev_verify_cbit.S"
+<<<<<<< HEAD
 SYM_FUNC_START(set_sev_encryption_mask)
 #ifdef CONFIG_AMD_MEM_ENCRYPT
 	push	%rbp
@@ -223,6 +224,8 @@ SYM_FUNC_START(set_sev_encryption_mask)
 	xor	%rax, %rax
 	RET
 SYM_FUNC_END(set_sev_encryption_mask)
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	.data
 

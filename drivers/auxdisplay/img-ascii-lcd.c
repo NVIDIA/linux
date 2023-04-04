@@ -4,7 +4,6 @@
  * Author: Paul Burton <paul.burton@mips.com>
  */
 
-#include <generated/utsrelease.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/mfd/syscon.h>
@@ -14,7 +13,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
-#include <linux/sysfs.h>
+
+#include "line-display.h"
 
 struct img_ascii_lcd_ctx;
 
@@ -27,36 +27,26 @@ struct img_ascii_lcd_ctx;
 struct img_ascii_lcd_config {
 	unsigned int num_chars;
 	bool external_regmap;
-	void (*update)(struct img_ascii_lcd_ctx *ctx);
+	void (*update)(struct linedisp *linedisp);
 };
 
 /**
  * struct img_ascii_lcd_ctx - Private data structure
- * @pdev: the ASCII LCD platform device
  * @base: the base address of the LCD registers
  * @regmap: the regmap through which LCD registers are accessed
  * @offset: the offset within regmap to the start of the LCD registers
  * @cfg: pointer to the LCD model configuration
- * @message: the full message to display or scroll on the LCD
- * @message_len: the length of the @message string
- * @scroll_pos: index of the first character of @message currently displayed
- * @scroll_rate: scroll interval in jiffies
- * @timer: timer used to implement scrolling
+ * @linedisp: line display structure
  * @curr: the string currently displayed on the LCD
  */
 struct img_ascii_lcd_ctx {
-	struct platform_device *pdev;
 	union {
 		void __iomem *base;
 		struct regmap *regmap;
 	};
 	u32 offset;
 	const struct img_ascii_lcd_config *cfg;
-	char *message;
-	unsigned int message_len;
-	unsigned int scroll_pos;
-	unsigned int scroll_rate;
-	struct timer_list timer;
+	struct linedisp linedisp;
 	char curr[] __aligned(8);
 };
 
@@ -64,8 +54,10 @@ struct img_ascii_lcd_ctx {
  * MIPS Boston development board
  */
 
-static void boston_update(struct img_ascii_lcd_ctx *ctx)
+static void boston_update(struct linedisp *linedisp)
 {
+	struct img_ascii_lcd_ctx *ctx =
+		container_of(linedisp, struct img_ascii_lcd_ctx, linedisp);
 	ulong val;
 
 #if BITS_PER_LONG == 64
@@ -90,12 +82,14 @@ static struct img_ascii_lcd_config boston_config = {
  * MIPS Malta development board
  */
 
-static void malta_update(struct img_ascii_lcd_ctx *ctx)
+static void malta_update(struct linedisp *linedisp)
 {
+	struct img_ascii_lcd_ctx *ctx =
+		container_of(linedisp, struct img_ascii_lcd_ctx, linedisp);
 	unsigned int i;
 	int err = 0;
 
-	for (i = 0; i < ctx->cfg->num_chars; i++) {
+	for (i = 0; i < linedisp->num_chars; i++) {
 		err = regmap_write(ctx->regmap,
 				   ctx->offset + (i * 8), ctx->curr[i]);
 		if (err)
@@ -173,12 +167,14 @@ static int sead3_wait_lcd_idle(struct img_ascii_lcd_ctx *ctx)
 	return 0;
 }
 
-static void sead3_update(struct img_ascii_lcd_ctx *ctx)
+static void sead3_update(struct linedisp *linedisp)
 {
+	struct img_ascii_lcd_ctx *ctx =
+		container_of(linedisp, struct img_ascii_lcd_ctx, linedisp);
 	unsigned int i;
 	int err = 0;
 
-	for (i = 0; i < ctx->cfg->num_chars; i++) {
+	for (i = 0; i < linedisp->num_chars; i++) {
 		err = sead3_wait_lcd_idle(ctx);
 		if (err)
 			break;
@@ -219,6 +215,7 @@ static const struct of_device_id img_ascii_lcd_matches[] = {
 MODULE_DEVICE_TABLE(of, img_ascii_lcd_matches);
 
 /**
+<<<<<<< HEAD
  * img_ascii_lcd_scroll() - scroll the display by a character
  * @t: really a pointer to the private data structure
  *
@@ -353,6 +350,8 @@ static ssize_t message_store(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR_RW(message);
 
 /**
+=======
+>>>>>>> origin/linux_6.1.15_upstream
  * img_ascii_lcd_probe() - probe an LCD display device
  * @pdev: the LCD platform device
  *
@@ -365,26 +364,25 @@ static int img_ascii_lcd_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	const struct img_ascii_lcd_config *cfg;
+	struct device *dev = &pdev->dev;
 	struct img_ascii_lcd_ctx *ctx;
 	int err;
 
-	match = of_match_device(img_ascii_lcd_matches, &pdev->dev);
+	match = of_match_device(img_ascii_lcd_matches, dev);
 	if (!match)
 		return -ENODEV;
 
 	cfg = match->data;
-	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx) + cfg->num_chars,
-			   GFP_KERNEL);
+	ctx = devm_kzalloc(dev, sizeof(*ctx) + cfg->num_chars, GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
 
 	if (cfg->external_regmap) {
-		ctx->regmap = syscon_node_to_regmap(pdev->dev.parent->of_node);
+		ctx->regmap = syscon_node_to_regmap(dev->parent->of_node);
 		if (IS_ERR(ctx->regmap))
 			return PTR_ERR(ctx->regmap);
 
-		if (of_property_read_u32(pdev->dev.of_node, "offset",
-					 &ctx->offset))
+		if (of_property_read_u32(dev->of_node, "offset", &ctx->offset))
 			return -EINVAL;
 	} else {
 		ctx->base = devm_platform_ioremap_resource(pdev, 0);
@@ -392,29 +390,23 @@ static int img_ascii_lcd_probe(struct platform_device *pdev)
 			return PTR_ERR(ctx->base);
 	}
 
-	ctx->pdev = pdev;
-	ctx->cfg = cfg;
-	ctx->message = NULL;
-	ctx->scroll_pos = 0;
-	ctx->scroll_rate = HZ / 2;
+	err = linedisp_register(&ctx->linedisp, dev, cfg->num_chars, ctx->curr,
+				cfg->update);
+	if (err)
+		return err;
 
-	/* initialise a timer for scrolling the message */
-	timer_setup(&ctx->timer, img_ascii_lcd_scroll, 0);
+	/* for backwards compatibility */
+	err = compat_only_sysfs_link_entry_to_kobj(&dev->kobj,
+						   &ctx->linedisp.dev.kobj,
+						   "message", NULL);
+	if (err)
+		goto err_unregister;
 
 	platform_set_drvdata(pdev, ctx);
-
-	/* display a default message */
-	err = img_ascii_lcd_display(ctx, "Linux " UTS_RELEASE "       ", -1);
-	if (err)
-		goto out_del_timer;
-
-	err = device_create_file(&pdev->dev, &dev_attr_message);
-	if (err)
-		goto out_del_timer;
-
 	return 0;
-out_del_timer:
-	del_timer_sync(&ctx->timer);
+
+err_unregister:
+	linedisp_unregister(&ctx->linedisp);
 	return err;
 }
 
@@ -431,8 +423,8 @@ static int img_ascii_lcd_remove(struct platform_device *pdev)
 {
 	struct img_ascii_lcd_ctx *ctx = platform_get_drvdata(pdev);
 
-	device_remove_file(&pdev->dev, &dev_attr_message);
-	del_timer_sync(&ctx->timer);
+	sysfs_remove_link(&pdev->dev.kobj, "message");
+	linedisp_unregister(&ctx->linedisp);
 	return 0;
 }
 

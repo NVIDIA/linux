@@ -53,7 +53,7 @@ static unsigned long int get_module_load_offset(void)
 		 */
 		if (module_load_offset == 0)
 			module_load_offset =
-				(get_random_int() % 1024 + 1) * PAGE_SIZE;
+				(prandom_u32_max(1024) + 1) * PAGE_SIZE;
 		mutex_unlock(&module_kaslr_mutex);
 	}
 	return module_load_offset;
@@ -78,7 +78,11 @@ void *module_alloc(unsigned long size)
 				    MODULES_END, gfp_mask,
 				    PAGE_KERNEL, VM_DEFER_KMEMLEAK, NUMA_NO_NODE,
 				    __builtin_return_address(0));
+<<<<<<< HEAD
 	if (p && (kasan_module_alloc(p, size, gfp_mask) < 0)) {
+=======
+	if (p && (kasan_alloc_module_shadow(p, size, gfp_mask) < 0)) {
+>>>>>>> origin/linux_6.1.15_upstream
 		vfree(p);
 		return NULL;
 	}
@@ -252,7 +256,8 @@ int module_finalize(const Elf_Ehdr *hdr,
 		    struct module *me)
 {
 	const Elf_Shdr *s, *text = NULL, *alt = NULL, *locks = NULL,
-		*para = NULL, *orc = NULL, *orc_ip = NULL;
+		*para = NULL, *orc = NULL, *orc_ip = NULL,
+		*retpolines = NULL, *returns = NULL, *ibt_endbr = NULL;
 	char *secstrings = (void *)hdr + sechdrs[hdr->e_shstrndx].sh_offset;
 
 	for (s = sechdrs; s < sechdrs + hdr->e_shnum; s++) {
@@ -268,6 +273,12 @@ int module_finalize(const Elf_Ehdr *hdr,
 			orc = s;
 		if (!strcmp(".orc_unwind_ip", secstrings + s->sh_name))
 			orc_ip = s;
+		if (!strcmp(".retpoline_sites", secstrings + s->sh_name))
+			retpolines = s;
+		if (!strcmp(".return_sites", secstrings + s->sh_name))
+			returns = s;
+		if (!strcmp(".ibt_endbr_seal", secstrings + s->sh_name))
+			ibt_endbr = s;
 	}
 
 	/*
@@ -278,10 +289,25 @@ int module_finalize(const Elf_Ehdr *hdr,
 		void *pseg = (void *)para->sh_addr;
 		apply_paravirt(pseg, pseg + para->sh_size);
 	}
+<<<<<<< HEAD
+=======
+	if (retpolines) {
+		void *rseg = (void *)retpolines->sh_addr;
+		apply_retpolines(rseg, rseg + retpolines->sh_size);
+	}
+	if (returns) {
+		void *rseg = (void *)returns->sh_addr;
+		apply_returns(rseg, rseg + returns->sh_size);
+	}
+>>>>>>> origin/linux_6.1.15_upstream
 	if (alt) {
 		/* patch .altinstructions */
 		void *aseg = (void *)alt->sh_addr;
 		apply_alternatives(aseg, aseg + alt->sh_size);
+	}
+	if (ibt_endbr) {
+		void *iseg = (void *)ibt_endbr->sh_addr;
+		apply_ibt_endbr(iseg, iseg + ibt_endbr->sh_size);
 	}
 	if (locks && text) {
 		void *lseg = (void *)locks->sh_addr;
@@ -291,9 +317,12 @@ int module_finalize(const Elf_Ehdr *hdr,
 					    tseg, tseg + text->sh_size);
 	}
 
+<<<<<<< HEAD
 	/* make jump label nops */
 	jump_label_apply_nops(me);
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	if (orc && orc_ip)
 		unwind_module_init(me, (void *)orc_ip->sh_addr, orc_ip->sh_size,
 				   (void *)orc->sh_addr, orc->sh_size);

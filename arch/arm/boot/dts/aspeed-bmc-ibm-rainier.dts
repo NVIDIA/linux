@@ -95,14 +95,13 @@
 		#size-cells = <1>;
 		ranges;
 
-		flash_memory: region@b8000000 {
-			no-map;
-			reg = <0xb8000000 0x04000000>; /* 64M */
-		};
-
-		ramoops@bc000000 {
+		ramoops@b3e00000 {
 			compatible = "ramoops";
+<<<<<<< HEAD
 			reg = <0xbc000000 0x200000>; /* 16 * (4 * 0x8000) */
+=======
+			reg = <0xb3e00000 0x200000>; /* 16 * (4 * 0x8000) */
+>>>>>>> origin/linux_6.1.15_upstream
 			record-size = <0x8000>;
 			console-size = <0x8000>;
 			ftrace-size = <0x8000>;
@@ -110,6 +109,13 @@
 			max-reason = <3>; /* KMSG_DUMP_EMERG */
 		};
 
+		/* LPC FW cycle bridge region requires natural alignment */
+		flash_memory: region@b4000000 {
+			no-map;
+			reg = <0xb4000000 0x04000000>; /* 64M */
+		};
+
+		/* VGA region is dictated by hardware strapping */
 		vga_memory: region@bf000000 {
 			no-map;
 			compatible = "shared-dma-pool";
@@ -179,41 +185,39 @@
 
 	gpio-keys-polled {
 		compatible = "gpio-keys-polled";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		poll-interval = <1000>;
 
-		fan0-presence {
+		event-fan0-presence {
 			label = "fan0-presence";
 			gpios = <&pca0 6 GPIO_ACTIVE_LOW>;
 			linux,code = <6>;
 		};
 
-		fan1-presence {
+		event-fan1-presence {
 			label = "fan1-presence";
 			gpios = <&pca0 7 GPIO_ACTIVE_LOW>;
 			linux,code = <7>;
 		};
 
-		fan2-presence {
+		event-fan2-presence {
 			label = "fan2-presence";
 			gpios = <&pca0 8 GPIO_ACTIVE_LOW>;
 			linux,code = <8>;
 		};
 
-		fan3-presence {
+		event-fan3-presence {
 			label = "fan3-presence";
 			gpios = <&pca0 9 GPIO_ACTIVE_LOW>;
 			linux,code = <9>;
 		};
 
-		fan4-presence {
+		event-fan4-presence {
 			label = "fan4-presence";
 			gpios = <&pca0 10 GPIO_ACTIVE_LOW>;
 			linux,code = <10>;
 		};
 
-		fan5-presence {
+		event-fan5-presence {
 			label = "fan5-presence";
 			gpios = <&pca0 11 GPIO_ACTIVE_LOW>;
 			linux,code = <11>;
@@ -264,7 +268,12 @@
 	/*P0-P7*/	"","","","","pcieslot-power","","","",
 	/*Q0-Q7*/	"cfam-reset","","regulator-standby-faulted","","","","","",
 	/*R0-R7*/	"bmc-tpm-reset","power-chassis-control","power-chassis-good","","","","","",
+<<<<<<< HEAD
 	/*S0-S7*/	"presence-ps0","presence-ps1","presence-ps2","presence-ps3","power-ffs-sync-history","","","",
+=======
+	/*S0-S7*/	"presence-ps0","presence-ps1","presence-ps2","presence-ps3",
+	"power-ffs-sync-history","","","",
+>>>>>>> origin/linux_6.1.15_upstream
 	/*T0-T7*/	"","","","","","","","",
 	/*U0-U7*/	"","","","","","","","",
 	/*V0-V7*/	"","","","","","","","",

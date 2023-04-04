@@ -80,6 +80,7 @@ static int st_magn_spi_probe(struct spi_device *spi)
 	if (err)
 		return err;
 
+<<<<<<< HEAD
 	err = st_magn_common_probe(indio_dev);
 	if (err < 0)
 		goto st_magn_power_off;
@@ -101,6 +102,9 @@ static int st_magn_spi_remove(struct spi_device *spi)
 	st_sensors_power_disable(indio_dev);
 
 	return 0;
+=======
+	return st_magn_common_probe(indio_dev);
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct spi_device_id st_magn_id_table[] = {
@@ -119,7 +123,6 @@ static struct spi_driver st_magn_driver = {
 		.of_match_table = st_magn_of_match,
 	},
 	.probe = st_magn_spi_probe,
-	.remove = st_magn_spi_remove,
 	.id_table = st_magn_id_table,
 };
 module_spi_driver(st_magn_driver);
@@ -127,3 +130,4 @@ module_spi_driver(st_magn_driver);
 MODULE_AUTHOR("Denis Ciocca <denis.ciocca@st.com>");
 MODULE_DESCRIPTION("STMicroelectronics magnetometers spi driver");
 MODULE_LICENSE("GPL v2");
+MODULE_IMPORT_NS(IIO_ST_SENSORS);

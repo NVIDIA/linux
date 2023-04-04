@@ -13,8 +13,11 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-mem.h>
+<<<<<<< HEAD
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 #define DEVICE_NAME "spi-aspeed-smc"
 
@@ -103,8 +106,11 @@ struct aspeed_spi {
 	u32			 clk_freq;
 
 	struct aspeed_spi_chip	 chips[ASPEED_SPI_MAX_NUM_CS];
+<<<<<<< HEAD
 
 	struct gpio_desc *mux_gpio;
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 };
 
 static u32 aspeed_spi_get_io_mode(const struct spi_mem_op *op)
@@ -369,6 +375,7 @@ static int do_aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 static int aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 {
 	int ret;
+<<<<<<< HEAD
 	struct aspeed_spi *aspi = spi_controller_get_devdata(mem->spi->master);
 
 	if (!IS_ERR(aspi->mux_gpio)) {
@@ -378,16 +385,21 @@ static int aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		//communication failures
 		udelay(50);
 	}
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	ret = do_aspeed_spi_exec_op(mem, op);
 	if (ret)
 		dev_err(&mem->spi->dev, "operation failed: %d\n", ret);
+<<<<<<< HEAD
 
 	if (!IS_ERR(aspi->mux_gpio)) {
 		gpiod_set_value(aspi->mux_gpio, 0);
 	}
 
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -590,10 +602,14 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	/* Only for reads */
 	if (op->data.dir != SPI_MEM_DATA_IN)
 		return -EOPNOTSUPP;
+<<<<<<< HEAD
 	if (!IS_ERR(aspi->mux_gpio)) {
 		gpiod_set_value(aspi->mux_gpio, 1);
 		udelay(50);
 	}
+=======
+
+>>>>>>> origin/linux_6.1.15_upstream
 	aspeed_spi_chip_adjust_window(chip, desc->info.offset, desc->info.length);
 
 	if (desc->info.length > chip->ahb_window_size)
@@ -631,9 +647,13 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	writel(chip->ctl_val[ASPEED_SPI_READ], chip->ctl);
 
 	ret = aspeed_spi_do_calibration(chip);
+<<<<<<< HEAD
 	if (!IS_ERR(aspi->mux_gpio)) {
 		gpiod_set_value(aspi->mux_gpio, 0);
 	}
+=======
+
+>>>>>>> origin/linux_6.1.15_upstream
 	dev_info(aspi->dev, "CE%d read buswidth:%d [0x%08x]\n",
 		 chip->cs, op->data.buswidth, chip->ctl_val[ASPEED_SPI_READ]);
 
@@ -645,18 +665,22 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 {
 	struct aspeed_spi *aspi = spi_controller_get_devdata(desc->mem->spi->master);
 	struct aspeed_spi_chip *chip = &aspi->chips[desc->mem->spi->chip_select];
+<<<<<<< HEAD
 	int rlen = len;
 
 	if (!IS_ERR(aspi->mux_gpio)) {
 		gpiod_set_value(aspi->mux_gpio, 1);
 		udelay(50);
 	}
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 
 	/* Switch to USER command mode if mapping window is too small */
 	if (chip->ahb_window_size < offset + len) {
 		int ret;
 
 		ret = aspeed_spi_read_user(chip, &desc->info.op_tmpl, offset, len, buf);
+<<<<<<< HEAD
 		if (ret < 0) {
 			rlen = ret;
 			goto out;
@@ -669,6 +693,15 @@ out:
 		gpiod_set_value(aspi->mux_gpio, 0);
 	}
 	return rlen;
+=======
+		if (ret < 0)
+			return ret;
+	} else {
+		memcpy_fromio(buf, chip->ahb_base + offset, len);
+	}
+
+	return len;
+>>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct spi_controller_mem_ops aspeed_spi_mem_ops = {
@@ -771,10 +804,15 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	aspi->regs = devm_ioremap_resource(dev, res);
+<<<<<<< HEAD
 	if (IS_ERR(aspi->regs)) {
 		dev_err(dev, "missing AHB register window\n");
 		return PTR_ERR(aspi->regs);
 	}
+=======
+	if (IS_ERR(aspi->regs))
+		return PTR_ERR(aspi->regs);
+>>>>>>> origin/linux_6.1.15_upstream
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	aspi->ahb_base = devm_ioremap_resource(dev, res);
@@ -783,8 +821,11 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 		return PTR_ERR(aspi->ahb_base);
 	}
 
+<<<<<<< HEAD
 	aspi->mux_gpio = devm_gpiod_get(dev, "mux", GPIOD_OUT_LOW);
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	aspi->ahb_window_size = resource_size(res);
 	aspi->ahb_base_phy = res->start;
 

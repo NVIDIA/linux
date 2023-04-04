@@ -59,10 +59,13 @@ void perf_callchain_user(struct perf_callchain_entry_ctx *entry,
 	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
 	unsigned long fp = 0;
 
+<<<<<<< HEAD
 	/* RISC-V does not support perf in guest mode. */
 	if (guest_cbs && guest_cbs->is_in_guest())
 		return;
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	fp = regs->s0;
 	perf_callchain_store(entry, regs->epc);
 
@@ -79,6 +82,7 @@ static bool fill_callchain(void *entry, unsigned long pc)
 void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
 			   struct pt_regs *regs)
 {
+<<<<<<< HEAD
 	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
 
 	/* RISC-V does not support perf in guest mode. */
@@ -87,5 +91,7 @@ void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
 		return;
 	}
 
+=======
+>>>>>>> origin/linux_6.1.15_upstream
 	walk_stackframe(NULL, regs, fill_callchain, entry);
 }
