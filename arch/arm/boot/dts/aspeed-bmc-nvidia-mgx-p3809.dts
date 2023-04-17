@@ -99,6 +99,13 @@
         /*X0-X7*/       "","","","","","","","",
         /*Y0-Y7*/       "","","","","","","","",
         /*Z0-Z7*/       "","","","","","","","";
+
+	/* Keep GPIOM1 output direction to feed in FRU */
+	fru_wp_gpiom1 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(M, 1) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
 };
 
 &gpio1 {
