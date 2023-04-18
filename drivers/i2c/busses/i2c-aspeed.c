@@ -553,7 +553,13 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 		    (readl(bus->base + ASPEED_I2C_CMD_REG) &
 		     ASPEED_I2CD_BUS_BUSY_STS))
 			aspeed_i2c_recover_bus(bus);
-
+		spin_lock_irqsave(&bus->lock, flags);
+		/*
+		 * All the buffers may be freed after returning to caller, so
+		 * set msgs to NULL to avoid memory reference after freeing.
+		 */
+		bus->msgs = NULL;
+		spin_unlock_irqrestore(&bus->lock, flags);
 		return -ETIMEDOUT;
 	}
 
