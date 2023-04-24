@@ -110,11 +110,8 @@ static int init_crq_queue(struct ibmvnic_adapter *adapter);
 static int send_query_phys_parms(struct ibmvnic_adapter *adapter);
 static void ibmvnic_tx_scrq_clean_buffer(struct ibmvnic_adapter *adapter,
 					 struct ibmvnic_sub_crq_queue *tx_scrq);
-<<<<<<< HEAD
-=======
 static void free_long_term_buff(struct ibmvnic_adapter *adapter,
 				struct ibmvnic_long_term_buff *ltb);
->>>>>>> origin/linux_6.1.15_upstream
 static void ibmvnic_disable_irqs(struct ibmvnic_adapter *adapter);
 
 struct ibmvnic_stat {
@@ -1712,11 +1709,8 @@ out:
 
 	if (rc) {
 		release_resources(adapter);
-<<<<<<< HEAD
-=======
 		release_rx_pools(adapter);
 		release_tx_pools(adapter);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return rc;
@@ -3091,16 +3085,6 @@ static int ibmvnic_reset(struct ibmvnic_adapter *adapter,
 		goto err;
 	}
 
-<<<<<<< HEAD
-	if (adapter->state == VNIC_PROBING) {
-		netdev_warn(netdev, "Adapter reset during probe\n");
-		adapter->init_done_rc = -EAGAIN;
-		ret = EAGAIN;
-		goto err;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	list_for_each_entry(tmp, &adapter->rwi_list, list) {
 		if (tmp->reset_reason == reason) {
 			netdev_dbg(netdev, "Skipping matching reset, reason=%s\n",
@@ -5791,20 +5775,6 @@ static void ibmvnic_tasklet(struct tasklet_struct *t)
 	unsigned long flags;
 
 	spin_lock_irqsave(&queue->lock, flags);
-<<<<<<< HEAD
-	while (!done) {
-		/* Pull all the valid messages off the CRQ */
-		while ((crq = ibmvnic_next_crq(adapter)) != NULL) {
-			/* This barrier makes sure ibmvnic_next_crq()'s
-			 * crq->generic.first & IBMVNIC_CRQ_CMD_RSP is loaded
-			 * before ibmvnic_handle_crq()'s
-			 * switch(gen_crq->first) and switch(gen_crq->cmd).
-			 */
-			dma_rmb();
-			ibmvnic_handle_crq(crq, adapter);
-			crq->generic.first = 0;
-		}
-=======
 
 	/* Pull all the valid messages off the CRQ */
 	while ((crq = ibmvnic_next_crq(adapter)) != NULL) {
@@ -5816,7 +5786,6 @@ static void ibmvnic_tasklet(struct tasklet_struct *t)
 		dma_rmb();
 		ibmvnic_handle_crq(crq, adapter);
 		crq->generic.first = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	spin_unlock_irqrestore(&queue->lock, flags);
@@ -6184,11 +6153,8 @@ static int ibmvnic_probe(struct vio_dev *dev, const struct vio_device_id *id)
 	}
 	dev_info(&dev->dev, "ibmvnic registered\n");
 
-<<<<<<< HEAD
-=======
 	complete(&adapter->probe_done);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 
 ibmvnic_register_fail:

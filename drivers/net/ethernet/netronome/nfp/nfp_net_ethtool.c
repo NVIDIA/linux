@@ -499,10 +499,6 @@ nfp_net_get_link_ksettings(struct net_device *netdev,
 	if (eth_port) {
 		ethtool_link_ksettings_add_link_mode(cmd, supported, Pause);
 		ethtool_link_ksettings_add_link_mode(cmd, advertising, Pause);
-<<<<<<< HEAD
-		cmd->base.autoneg = eth_port->aneg != NFP_ANEG_DISABLED ?
-			AUTONEG_ENABLE : AUTONEG_DISABLE;
-=======
 		nfp_add_media_link_mode(port, eth_port, cmd);
 		if (eth_port->supp_aneg) {
 			ethtool_link_ksettings_add_link_mode(cmd, supported, Autoneg);
@@ -511,7 +507,6 @@ nfp_net_get_link_ksettings(struct net_device *netdev,
 				cmd->base.autoneg = AUTONEG_ENABLE;
 			}
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		nfp_net_set_fec_link_mode(eth_port, cmd);
 	}
 

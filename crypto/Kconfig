@@ -15,11 +15,7 @@ source "crypto/async_tx/Kconfig"
 #
 menuconfig CRYPTO
 	tristate "Cryptographic API"
-<<<<<<< HEAD
-	select LIB_MEMNEQ
-=======
 	select CRYPTO_LIB_UTILS
->>>>>>> origin/linux_6.1.15_upstream
 	help
 	  This option provides the core Cryptographic API.
 
@@ -1395,8 +1391,6 @@ endmenu
 config CRYPTO_HASH_INFO
 	bool
 
-<<<<<<< HEAD
-=======
 if !KMSAN # avoid false positives from assembly
 if ARM
 source "arch/arm/crypto/Kconfig"
@@ -1421,7 +1415,6 @@ source "arch/x86/crypto/Kconfig"
 endif
 endif
 
->>>>>>> origin/linux_6.1.15_upstream
 source "drivers/crypto/Kconfig"
 source "crypto/asymmetric_keys/Kconfig"
 source "certs/Kconfig"

@@ -447,49 +447,18 @@ failure:
 static u16 ice_fill_rx_descs(struct xsk_buff_pool *pool, struct xdp_buff **xdp,
 			     union ice_32b_rx_flex_desc *rx_desc, u16 count)
 {
-<<<<<<< HEAD
-	union ice_32b_rx_flex_desc *rx_desc;
-	u16 ntu = rx_ring->next_to_use;
-	struct xdp_buff **xdp;
-	bool ok = true;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	dma_addr_t dma;
 	u16 buffs;
 	int i;
 
-<<<<<<< HEAD
-	if (!count)
-		return true;
-
-	rx_desc = ICE_RX_DESC(rx_ring, ntu);
-	xdp = &rx_ring->xdp_buf[ntu];
-
-	do {
-		*xdp = xsk_buff_alloc(rx_ring->xsk_pool);
-		if (!*xdp) {
-			ok = false;
-			break;
-		}
-
-=======
 	buffs = xsk_buff_alloc_batch(pool, xdp, count);
 	for (i = 0; i < buffs; i++) {
->>>>>>> origin/linux_6.1.15_upstream
 		dma = xsk_buff_xdp_get_dma(*xdp);
 		rx_desc->read.pkt_addr = cpu_to_le64(dma);
 		rx_desc->wb.status_error0 = 0;
 
 		rx_desc++;
 		xdp++;
-<<<<<<< HEAD
-		ntu++;
-
-		if (unlikely(ntu == rx_ring->count)) {
-			rx_desc = ICE_RX_DESC(rx_ring, 0);
-			xdp = rx_ring->xdp_buf;
-			ntu = 0;
-=======
 	}
 
 	return buffs;
@@ -524,7 +493,6 @@ static bool __ice_alloc_rx_bufs_zc(struct ice_rx_ring *rx_ring, u16 count)
 		if (nb_buffs_extra != rx_ring->count - ntu) {
 			ntu += nb_buffs_extra;
 			goto exit;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		rx_desc = ICE_RX_DESC(rx_ring, 0);
 		xdp = ice_xdp_buf(rx_ring, 0);
@@ -586,30 +554,17 @@ static void ice_bump_ntc(struct ice_rx_ring *rx_ring)
 /**
  * ice_construct_skb_zc - Create an sk_buff from zero-copy buffer
  * @rx_ring: Rx ring
-<<<<<<< HEAD
- * @xdp_arr: Pointer to the SW ring of xdp_buff pointers
-=======
  * @xdp: Pointer to XDP buffer
->>>>>>> origin/linux_6.1.15_upstream
  *
  * This function allocates a new skb from a zero-copy Rx buffer.
  *
  * Returns the skb on success, NULL on failure.
  */
 static struct sk_buff *
-<<<<<<< HEAD
-ice_construct_skb_zc(struct ice_ring *rx_ring, struct xdp_buff **xdp_arr)
-{
-	struct xdp_buff *xdp = *xdp_arr;
-	unsigned int metasize = xdp->data - xdp->data_meta;
-	unsigned int datasize = xdp->data_end - xdp->data;
-	unsigned int datasize_hard = xdp->data_end - xdp->data_hard_start;
-=======
 ice_construct_skb_zc(struct ice_rx_ring *rx_ring, struct xdp_buff *xdp)
 {
 	unsigned int totalsize = xdp->data_end - xdp->data_meta;
 	unsigned int metasize = xdp->data - xdp->data_meta;
->>>>>>> origin/linux_6.1.15_upstream
 	struct sk_buff *skb;
 
 	net_prefetch(xdp->data_meta);
@@ -619,25 +574,15 @@ ice_construct_skb_zc(struct ice_rx_ring *rx_ring, struct xdp_buff *xdp)
 	if (unlikely(!skb))
 		return NULL;
 
-<<<<<<< HEAD
-	skb_reserve(skb, xdp->data - xdp->data_hard_start);
-	memcpy(__skb_put(skb, datasize), xdp->data, datasize);
-	if (metasize)
-=======
 	memcpy(__skb_put(skb, totalsize), xdp->data_meta,
 	       ALIGN(totalsize, sizeof(long)));
 
 	if (metasize) {
->>>>>>> origin/linux_6.1.15_upstream
 		skb_metadata_set(skb, metasize);
 		__skb_pull(skb, metasize);
 	}
 
 	xsk_buff_free(xdp);
-<<<<<<< HEAD
-	*xdp_arr = NULL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return skb;
 }
 
@@ -719,11 +664,7 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring, int budget)
 	while (likely(total_rx_packets < (unsigned int)budget)) {
 		union ice_32b_rx_flex_desc *rx_desc;
 		unsigned int size, xdp_res = 0;
-<<<<<<< HEAD
-		struct xdp_buff **xdp;
-=======
 		struct xdp_buff *xdp;
->>>>>>> origin/linux_6.1.15_upstream
 		struct sk_buff *skb;
 		u16 stat_err_bits;
 		u16 vlan_tag = 0;
@@ -744,23 +685,6 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring, int budget)
 		if (unlikely(rx_ring->next_to_clean == rx_ring->next_to_use))
 			break;
 
-<<<<<<< HEAD
-		xdp = &rx_ring->xdp_buf[rx_ring->next_to_clean];
-		(*xdp)->data_end = (*xdp)->data + size;
-		xsk_buff_dma_sync_for_cpu(*xdp, rx_ring->xsk_pool);
-
-		xdp_res = ice_run_xdp_zc(rx_ring, *xdp);
-		if (xdp_res) {
-			if (xdp_res & (ICE_XDP_TX | ICE_XDP_REDIR))
-				xdp_xmit |= xdp_res;
-			else
-				xsk_buff_free(*xdp);
-
-			*xdp = NULL;
-			total_rx_bytes += size;
-			total_rx_packets++;
-			cleaned_count++;
-=======
 		xdp = *ice_xdp_buf(rx_ring, rx_ring->next_to_clean);
 
 		size = le16_to_cpu(rx_desc->wb.pkt_len) &
@@ -775,7 +699,6 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring, int budget)
 
 		xsk_buff_set_size(xdp, size);
 		xsk_buff_dma_sync_for_cpu(xdp, rx_ring->xsk_pool);
->>>>>>> origin/linux_6.1.15_upstream
 
 		xdp_res = ice_run_xdp_zc(rx_ring, xdp, xdp_prog, xdp_ring);
 		if (likely(xdp_res & (ICE_XDP_TX | ICE_XDP_REDIR))) {
@@ -1109,17 +1032,6 @@ bool ice_xsk_any_rx_ring_ena(struct ice_vsi *vsi)
  */
 void ice_xsk_clean_rx_ring(struct ice_rx_ring *rx_ring)
 {
-<<<<<<< HEAD
-	u16 count_mask = rx_ring->count - 1;
-	u16 ntc = rx_ring->next_to_clean;
-	u16 ntu = rx_ring->next_to_use;
-
-	for ( ; ntc != ntu; ntc = (ntc + 1) & count_mask) {
-		struct xdp_buff **xdp = &rx_ring->xdp_buf[ntc];
-
-		xsk_buff_free(*xdp);
-		*xdp = NULL;
-=======
 	u16 ntc = rx_ring->next_to_clean;
 	u16 ntu = rx_ring->next_to_use;
 
@@ -1130,7 +1042,6 @@ void ice_xsk_clean_rx_ring(struct ice_rx_ring *rx_ring)
 		ntc++;
 		if (ntc >= rx_ring->count)
 			ntc = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

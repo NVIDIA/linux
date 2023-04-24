@@ -84,12 +84,8 @@ SYM_DATA_START(__efi64_thunk_ret_tramp)
 1:	movq	0x20(%rsp), %rsp
 	pop	%rbx
 	pop	%rbp
-<<<<<<< HEAD
-	RET
-=======
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 
 	.code32
 2:	pushl	$__KERNEL_CS

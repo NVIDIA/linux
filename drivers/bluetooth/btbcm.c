@@ -9,10 +9,7 @@
 #include <linux/module.h>
 #include <linux/firmware.h>
 #include <linux/dmi.h>
-<<<<<<< HEAD
-=======
 #include <linux/of.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <asm/unaligned.h>
 
 #include <net/bluetooth/bluetooth.h>

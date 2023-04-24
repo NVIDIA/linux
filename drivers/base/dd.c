@@ -672,22 +672,7 @@ re_probe:
 	if (test_remove) {
 		test_remove = false;
 
-<<<<<<< HEAD
-		device_remove_file(dev, &dev_attr_state_synced);
-		device_remove_groups(dev, drv->dev_groups);
-
-		if (dev->bus->remove)
-			dev->bus->remove(dev);
-		else if (drv->remove)
-			drv->remove(dev);
-
-		devres_release_all(dev);
-		arch_teardown_dma_ops(dev);
-		kfree(dev->dma_range_map);
-		dev->dma_range_map = NULL;
-=======
 		device_remove(dev);
->>>>>>> origin/linux_6.1.15_upstream
 		driver_sysfs_remove(dev);
 		device_unbind_cleanup(dev);
 
@@ -851,13 +836,9 @@ static int __init save_async_options(char *buf)
 	if (strlen(buf) >= ASYNC_DRV_NAMES_MAX_LEN)
 		pr_warn("Too long list of driver names for 'driver_async_probe'!\n");
 
-<<<<<<< HEAD
-	strlcpy(async_probe_drv_names, buf, ASYNC_DRV_NAMES_MAX_LEN);
-=======
 	strscpy(async_probe_drv_names, buf, ASYNC_DRV_NAMES_MAX_LEN);
 	async_probe_default = parse_option_str(async_probe_drv_names, "*");
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 1;
 }
 __setup("driver_async_probe=", save_async_options);
@@ -1275,21 +1256,7 @@ static void __device_release_driver(struct device *dev, struct device *parent)
 			dev->bus->dma_cleanup(dev);
 
 		device_links_driver_cleanup(dev);
-<<<<<<< HEAD
-
-		devres_release_all(dev);
-		arch_teardown_dma_ops(dev);
-		kfree(dev->dma_range_map);
-		dev->dma_range_map = NULL;
-		dev->driver = NULL;
-		dev_set_drvdata(dev, NULL);
-		if (dev->pm_domain && dev->pm_domain->dismiss)
-			dev->pm_domain->dismiss(dev);
-		pm_runtime_reinit(dev);
-		dev_pm_set_driver_flags(dev, 0);
-=======
 		device_unbind_cleanup(dev);
->>>>>>> origin/linux_6.1.15_upstream
 
 		klist_remove(&dev->p->knode_driver);
 		device_pm_check_callbacks(dev);

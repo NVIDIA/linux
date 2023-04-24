@@ -764,41 +764,6 @@ static void fill_ptr_key_workfn(struct work_struct *work)
 
 	get_random_bytes(&ptr_key, sizeof(ptr_key));
 
-<<<<<<< HEAD
-static int fill_random_ptr_key(struct notifier_block *nb,
-			       unsigned long action, void *data)
-{
-	/* This may be in an interrupt handler. */
-	queue_work(system_unbound_wq, &enable_ptr_key_work);
-	return 0;
-}
-
-static struct notifier_block random_ready = {
-	.notifier_call = fill_random_ptr_key
-};
-
-static int __init initialize_ptr_random(void)
-{
-	int key_size = sizeof(ptr_key);
-	int ret;
-
-	/* Use hw RNG if available. */
-	if (get_random_bytes_arch(&ptr_key, key_size) == key_size) {
-		static_branch_disable(&not_filled_random_ptr_key);
-		return 0;
-	}
-
-	ret = register_random_ready_notifier(&random_ready);
-	if (!ret) {
-		return 0;
-	} else if (ret == -EALREADY) {
-		/* This is in preemptible context */
-		enable_ptr_key_workfn(&enable_ptr_key_work);
-		return 0;
-	}
-
-	return ret;
-=======
 	/* Pairs with smp_rmb() before reading ptr_key. */
 	smp_wmb();
 	WRITE_ONCE(filled_random_ptr_key, true);
@@ -808,7 +773,6 @@ static int __init vsprintf_init_hashval(void)
 {
 	fill_ptr_key_workfn(NULL);
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 subsys_initcall(vsprintf_init_hashval)
 
@@ -1816,12 +1780,8 @@ char *fourcc_string(char *buf, char *end, const u32 *fourcc,
 		*p++ = isascii(c) && isprint(c) ? c : '.';
 	}
 
-<<<<<<< HEAD
-	strcpy(p, orig & BIT(31) ? " big-endian" : " little-endian");
-=======
 	*p++ = ' ';
 	strcpy(p, orig & BIT(31) ? "big-endian" : "little-endian");
->>>>>>> origin/linux_6.1.15_upstream
 	p += strlen(p);
 
 	*p++ = ' ';

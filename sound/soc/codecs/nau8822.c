@@ -772,12 +772,9 @@ static int nau8822_set_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		NAU8822_REG_CLOCKING, NAU8822_CLKM_MASK, NAU8822_CLKM_PLL);
 	snd_soc_component_update_bits(component,
 		NAU8822_REG_POWER_MANAGEMENT_1, NAU8822_PLL_EN_MASK, NAU8822_PLL_ON);
-<<<<<<< HEAD
-=======
 
 	pll_param->freq_in = freq_in;
 	pll_param->freq_out = freq_out;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

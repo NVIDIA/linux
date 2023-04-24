@@ -85,30 +85,6 @@ struct mt7921_txpwr_event {
 	struct mt7921_txpwr txpwr;
 } __packed;
 
-<<<<<<< HEAD
-struct mt7921_mcu_tx_done_event {
-	u8 pid;
-	u8 status;
-	__le16 seq;
-
-	u8 wlan_idx;
-	u8 tx_cnt;
-	__le16 tx_rate;
-
-	u8 flag;
-	u8 tid;
-	u8 rsp_rate;
-	u8 mcs;
-
-	u8 bw;
-	u8 tx_pwr;
-	u8 reason;
-	u8 rsv0[1];
-
-	__le32 delay;
-	__le32 timestamp;
-	__le32 applied_flag;
-=======
 enum {
 	TM_SWITCH_MODE,
 	TM_SET_AT_CMD,
@@ -122,7 +98,6 @@ enum {
 	MT7921_TM_ICAP_OVERLAP,
 	MT7921_TM_WIFISPECTRUM,
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 struct mt7921_rftest_cmd {
 	u8 action;

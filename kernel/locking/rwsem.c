@@ -343,11 +343,6 @@ struct rwsem_waiter {
 	struct task_struct *task;
 	enum rwsem_waiter_type type;
 	unsigned long timeout;
-<<<<<<< HEAD
-
-	/* Writer only, not initialized in reader */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	bool handoff_set;
 };
 #define rwsem_first_waiter(sem) \
@@ -387,30 +382,19 @@ rwsem_add_waiter(struct rw_semaphore *sem, struct rwsem_waiter *waiter)
  *
  * Both rwsem_mark_wake() and rwsem_try_write_lock() contain a full 'copy' of
  * this function. Modify with care.
-<<<<<<< HEAD
- */
-static inline void
-=======
  *
  * Return: true if wait_list isn't empty and false otherwise
  */
 static inline bool
->>>>>>> origin/linux_6.1.15_upstream
 rwsem_del_waiter(struct rw_semaphore *sem, struct rwsem_waiter *waiter)
 {
 	lockdep_assert_held(&sem->wait_lock);
 	list_del(&waiter->list);
 	if (likely(!list_empty(&sem->wait_list)))
-<<<<<<< HEAD
-		return;
-
-	atomic_long_andnot(RWSEM_FLAG_HANDOFF | RWSEM_FLAG_WAITERS, &sem->count);
-=======
 		return true;
 
 	atomic_long_andnot(RWSEM_FLAG_HANDOFF | RWSEM_FLAG_WAITERS, &sem->count);
 	return false;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -623,11 +607,7 @@ rwsem_del_wake_waiter(struct rw_semaphore *sem, struct rwsem_waiter *waiter,
 static inline bool rwsem_try_write_lock(struct rw_semaphore *sem,
 					struct rwsem_waiter *waiter)
 {
-<<<<<<< HEAD
-	bool first = rwsem_first_waiter(sem) == waiter;
-=======
 	struct rwsem_waiter *first = rwsem_first_waiter(sem);
->>>>>>> origin/linux_6.1.15_upstream
 	long count, new;
 
 	lockdep_assert_held(&sem->wait_lock);
@@ -637,13 +617,6 @@ static inline bool rwsem_try_write_lock(struct rw_semaphore *sem,
 		bool has_handoff = !!(count & RWSEM_FLAG_HANDOFF);
 
 		if (has_handoff) {
-<<<<<<< HEAD
-			if (!first)
-				return false;
-
-			/* First waiter inherits a previously set handoff bit */
-			waiter->handoff_set = true;
-=======
 			/*
 			 * Honor handoff bit and yield only when the first
 			 * waiter is the one that set it. Otherwisee, we
@@ -658,7 +631,6 @@ static inline bool rwsem_try_write_lock(struct rw_semaphore *sem,
 			 */
 			if (waiter == first)
 				waiter->handoff_set = true;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		new = count;
@@ -1130,12 +1102,7 @@ queue:
 	return sem;
 
 out_nolock:
-<<<<<<< HEAD
-	rwsem_del_waiter(sem, &waiter);
-	raw_spin_unlock_irq(&sem->wait_lock);
-=======
 	rwsem_del_wake_waiter(sem, &waiter, &wake_q);
->>>>>>> origin/linux_6.1.15_upstream
 	__set_current_state(TASK_RUNNING);
 	lockevent_inc(rwsem_rlock_fail);
 	trace_contention_end(sem, -EINTR);
@@ -1148,10 +1115,6 @@ out_nolock:
 static struct rw_semaphore __sched *
 rwsem_down_write_slowpath(struct rw_semaphore *sem, int state)
 {
-<<<<<<< HEAD
-	long count;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct rwsem_waiter waiter;
 	DEFINE_WAKE_Q(wake_q);
 
@@ -1175,28 +1138,8 @@ rwsem_down_write_slowpath(struct rw_semaphore *sem, int state)
 
 	/* we're now waiting on the lock */
 	if (rwsem_first_waiter(sem) != &waiter) {
-<<<<<<< HEAD
-		count = atomic_long_read(&sem->count);
-
-		/*
-		 * If there were already threads queued before us and:
-		 *  1) there are no active locks, wake the front
-		 *     queued process(es) as the handoff bit might be set.
-		 *  2) there are no active writers and some readers, the lock
-		 *     must be read owned; so we try to wake any read lock
-		 *     waiters that were queued ahead of us.
-		 */
-		if (count & RWSEM_WRITER_MASK)
-			goto wait;
-
-		rwsem_mark_wake(sem, (count & RWSEM_READER_MASK)
-					? RWSEM_WAKE_READERS
-					: RWSEM_WAKE_ANY, &wake_q);
-
-=======
 		rwsem_cond_wake_waiter(sem, atomic_long_read(&sem->count),
 				       &wake_q);
->>>>>>> origin/linux_6.1.15_upstream
 		if (!wake_q_empty(&wake_q)) {
 			/*
 			 * We want to minimize wait_lock hold time especially
@@ -1253,27 +1196,15 @@ trylock_again:
 	__set_current_state(TASK_RUNNING);
 	raw_spin_unlock_irq(&sem->wait_lock);
 	lockevent_inc(rwsem_wlock);
-<<<<<<< HEAD
-=======
 	trace_contention_end(sem, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	return sem;
 
 out_nolock:
 	__set_current_state(TASK_RUNNING);
 	raw_spin_lock_irq(&sem->wait_lock);
-<<<<<<< HEAD
-	rwsem_del_waiter(sem, &waiter);
-	if (!list_empty(&sem->wait_list))
-		rwsem_mark_wake(sem, RWSEM_WAKE_ANY, &wake_q);
-	raw_spin_unlock_irq(&sem->wait_lock);
-	wake_up_q(&wake_q);
-	lockevent_inc(rwsem_wlock_fail);
-=======
 	rwsem_del_wake_waiter(sem, &waiter, &wake_q);
 	lockevent_inc(rwsem_wlock_fail);
 	trace_contention_end(sem, -EINTR);
->>>>>>> origin/linux_6.1.15_upstream
 	return ERR_PTR(-EINTR);
 }
 

@@ -70,11 +70,7 @@ static int sdmmc_idma_validate_data(struct mmci_host *host,
 	for_each_sg(data->sg, sg, data->sg_len - 1, i) {
 		if (!IS_ALIGNED(sg->offset, sizeof(u32)) ||
 		    !IS_ALIGNED(sg->length, SDMMC_IDMA_BURST)) {
-<<<<<<< HEAD
-			dev_err(mmc_dev(host->mmc),
-=======
 			dev_dbg(mmc_dev(host->mmc),
->>>>>>> origin/linux_6.1.15_upstream
 				"unaligned scatterlist: ofst:%x length:%d\n",
 				data->sg->offset, data->sg->length);
 			goto use_bounce_buffer;
@@ -82,11 +78,7 @@ static int sdmmc_idma_validate_data(struct mmci_host *host,
 	}
 
 	if (!IS_ALIGNED(sg->offset, sizeof(u32))) {
-<<<<<<< HEAD
-		dev_err(mmc_dev(host->mmc),
-=======
 		dev_dbg(mmc_dev(host->mmc),
->>>>>>> origin/linux_6.1.15_upstream
 			"unaligned last scatterlist: ofst:%x length:%d\n",
 			data->sg->offset, data->sg->length);
 		goto use_bounce_buffer;

@@ -158,16 +158,10 @@ static int hda_codec_driver_remove(struct device *dev)
 		return codec->bus->core.ext_ops->hdev_detach(&codec->core);
 	}
 
-<<<<<<< HEAD
-	refcount_dec(&codec->pcm_ref);
-	snd_hda_codec_disconnect_pcms(codec);
-	wait_event(codec->remove_sleep, !refcount_read(&codec->pcm_ref));
-=======
 	snd_hda_codec_disconnect_pcms(codec);
 	snd_hda_jack_tbl_disconnect(codec);
 	if (!refcount_dec_and_test(&codec->pcm_ref))
 		wait_event(codec->remove_sleep, !refcount_read(&codec->pcm_ref));
->>>>>>> origin/linux_6.1.15_upstream
 	snd_power_sync_ref(codec->bus->card);
 
 	if (codec->patch_ops.free)

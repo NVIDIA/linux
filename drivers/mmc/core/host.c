@@ -590,13 +590,6 @@ EXPORT_SYMBOL(mmc_alloc_host);
 
 static int mmc_validate_host_caps(struct mmc_host *host)
 {
-<<<<<<< HEAD
-	if (host->caps & MMC_CAP_SDIO_IRQ && !host->ops->enable_sdio_irq) {
-		dev_warn(host->parent, "missing ->enable_sdio_irq() ops\n");
-		return -EINVAL;
-	}
-
-=======
 	struct device *dev = host->parent;
 	u32 caps = host->caps, caps2 = host->caps2;
 
@@ -611,7 +604,6 @@ static int mmc_validate_host_caps(struct mmc_host *host)
 		host->caps2 = caps2 & ~MMC_CAP2_HS400_ES & ~MMC_CAP2_HS400;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

@@ -927,11 +927,8 @@ int tcp_send_mss(struct sock *sk, int *size_goal, int flags)
  */
 void tcp_remove_empty_skb(struct sock *sk)
 {
-<<<<<<< HEAD
-=======
 	struct sk_buff *skb = tcp_write_queue_tail(sk);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (skb && TCP_SKB_CB(skb)->seq == TCP_SKB_CB(skb)->end_seq) {
 		tcp_unlink_write_queue(skb, sk);
 		if (tcp_write_queue_empty(sk))
@@ -2844,12 +2841,8 @@ static void tcp_orphan_update(struct timer_list *unused)
 
 static bool tcp_too_many_orphans(int shift)
 {
-<<<<<<< HEAD
-	return READ_ONCE(tcp_orphan_cache) << shift > sysctl_tcp_max_orphans;
-=======
 	return READ_ONCE(tcp_orphan_cache) << shift >
 		READ_ONCE(sysctl_tcp_max_orphans);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 bool tcp_check_oom(struct sock *sk, int shift)
@@ -4409,13 +4402,8 @@ int tcp_getsockopt(struct sock *sk, int level, int optname, char __user *optval,
 		/* Paired with WRITE_ONCE() in do_ipv6_setsockopt() and tcp_v6_connect() */
 		return READ_ONCE(icsk->icsk_af_ops)->getsockopt(sk, level, optname,
 								optval, optlen);
-<<<<<<< HEAD
-								
-	return do_tcp_getsockopt(sk, level, optname, optval, optlen);
-=======
 	return do_tcp_getsockopt(sk, level, optname, USER_SOCKPTR(optval),
 				 USER_SOCKPTR(optlen));
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(tcp_getsockopt);
 
@@ -4761,10 +4749,6 @@ void __init tcp_init(void)
 	timer_setup(&tcp_orphan_timer, tcp_orphan_update, TIMER_DEFERRABLE);
 	mod_timer(&tcp_orphan_timer, jiffies + TCP_ORPHAN_TIMER_PERIOD);
 
-<<<<<<< HEAD
-	inet_hashinfo_init(&tcp_hashinfo);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	inet_hashinfo2_init(&tcp_hashinfo, "tcp_listen_portaddr_hash",
 			    thash_entries, 21,  /* one slot per 2 MB*/
 			    0, 64 * 1024);

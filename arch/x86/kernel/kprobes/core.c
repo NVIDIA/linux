@@ -995,64 +995,6 @@ int kprobe_int3_handler(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(kprobe_int3_handler);
 
-<<<<<<< HEAD
-/*
- * When a retprobed function returns, this code saves registers and
- * calls trampoline_handler() runs, which calls the kretprobe's handler.
- */
-asm(
-	".text\n"
-	".global kretprobe_trampoline\n"
-	".type kretprobe_trampoline, @function\n"
-	"kretprobe_trampoline:\n"
-	/* We don't bother saving the ss register */
-#ifdef CONFIG_X86_64
-	"	pushq %rsp\n"
-	"	pushfq\n"
-	SAVE_REGS_STRING
-	"	movq %rsp, %rdi\n"
-	"	call trampoline_handler\n"
-	/* Replace saved sp with true return address. */
-	"	movq %rax, 19*8(%rsp)\n"
-	RESTORE_REGS_STRING
-	"	popfq\n"
-#else
-	"	pushl %esp\n"
-	"	pushfl\n"
-	SAVE_REGS_STRING
-	"	movl %esp, %eax\n"
-	"	call trampoline_handler\n"
-	/* Replace saved sp with true return address. */
-	"	movl %eax, 15*4(%esp)\n"
-	RESTORE_REGS_STRING
-	"	popfl\n"
-#endif
-	ASM_RET
-	".size kretprobe_trampoline, .-kretprobe_trampoline\n"
-);
-NOKPROBE_SYMBOL(kretprobe_trampoline);
-STACK_FRAME_NON_STANDARD(kretprobe_trampoline);
-
-
-/*
- * Called from kretprobe_trampoline
- */
-__used __visible void *trampoline_handler(struct pt_regs *regs)
-{
-	/* fixup registers */
-	regs->cs = __KERNEL_CS;
-#ifdef CONFIG_X86_32
-	regs->gs = 0;
-#endif
-	regs->ip = (unsigned long)&kretprobe_trampoline;
-	regs->orig_ax = ~0UL;
-
-	return (void *)kretprobe_trampoline_handler(regs, &kretprobe_trampoline, &regs->sp);
-}
-NOKPROBE_SYMBOL(trampoline_handler);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 int kprobe_fault_handler(struct pt_regs *regs, int trapnr)
 {
 	struct kprobe *cur = kprobe_running();

@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 TEST_GEN_PROGS := signal signal_tm sigfuz sigreturn_vdso sig_sc_double_restart
 TEST_GEN_PROGS += sigreturn_kernel
-<<<<<<< HEAD
-=======
 TEST_GEN_PROGS += sigreturn_unaligned
->>>>>>> origin/linux_6.1.15_upstream
 
 CFLAGS += -maltivec
 $(OUTPUT)/signal_tm: CFLAGS += -mhtm

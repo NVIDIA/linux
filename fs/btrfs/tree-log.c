@@ -1466,57 +1466,6 @@ static noinline int add_inode_ref(struct btrfs_trans_handle *trans,
 			 * overwrite any existing back reference, and we don't
 			 * want to create dangling pointers in the directory.
 			 */
-<<<<<<< HEAD
-
-			if (!search_done) {
-				ret = __add_inode_ref(trans, root, path, log,
-						      BTRFS_I(dir),
-						      BTRFS_I(inode),
-						      inode_objectid,
-						      parent_objectid,
-						      ref_index, name, namelen,
-						      &search_done);
-				if (ret) {
-					if (ret == 1)
-						ret = 0;
-					goto out;
-				}
-			}
-
-			/*
-			 * If a reference item already exists for this inode
-			 * with the same parent and name, but different index,
-			 * drop it and the corresponding directory index entries
-			 * from the parent before adding the new reference item
-			 * and dir index entries, otherwise we would fail with
-			 * -EEXIST returned from btrfs_add_link() below.
-			 */
-			ret = btrfs_inode_ref_exists(inode, dir, key->type,
-						     name, namelen);
-			if (ret > 0) {
-				ret = btrfs_unlink_inode(trans, root,
-							 BTRFS_I(dir),
-							 BTRFS_I(inode),
-							 name, namelen);
-				/*
-				 * If we dropped the link count to 0, bump it so
-				 * that later the iput() on the inode will not
-				 * free it. We will fixup the link count later.
-				 */
-				if (!ret && inode->i_nlink == 0)
-					inc_nlink(inode);
-				/*
-				 * Whenever we need to check if a name exists or
-				 * not, we check the subvolume tree. So after an
-				 * unlink we must run delayed items, so that future
-				 * checks for a name during log replay see that the
-				 * name does not exists anymore.
-				 */
-				if (!ret)
-					ret = btrfs_run_delayed_items(trans);
-			}
-			if (ret < 0)
-=======
 			ret = __add_inode_ref(trans, root, path, log,
 					      BTRFS_I(dir), BTRFS_I(inode),
 					      inode_objectid, parent_objectid,
@@ -1524,7 +1473,6 @@ static noinline int add_inode_ref(struct btrfs_trans_handle *trans,
 			if (ret) {
 				if (ret == 1)
 					ret = 0;
->>>>>>> origin/linux_6.1.15_upstream
 				goto out;
 			}
 
@@ -5943,13 +5891,8 @@ again:
 			break;
 		} else if ((min_key->type == BTRFS_INODE_REF_KEY ||
 			    min_key->type == BTRFS_INODE_EXTREF_KEY) &&
-<<<<<<< HEAD
-			   inode->generation == trans->transid &&
-			   !recursive_logging) {
-=======
 			   (inode->generation == trans->transid ||
 			    ctx->logging_conflict_inodes)) {
->>>>>>> origin/linux_6.1.15_upstream
 			u64 other_ino = 0;
 			u64 other_parent = 0;
 
@@ -6057,8 +6000,6 @@ next_key:
 		btrfs_release_path(path);
 		ret = btrfs_log_prealloc_extents(trans, inode, dst_path);
 	}
-<<<<<<< HEAD
-=======
 
 	return ret;
 }
@@ -6424,7 +6365,6 @@ static int log_new_delayed_dentries(struct btrfs_trans_handle *trans,
 
 	ctx->log_new_dentries = orig_log_new_dentries;
 	ctx->logging_new_delayed_dentries = false;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -6783,48 +6723,8 @@ out:
 			ret = log_new_delayed_dentries(trans, inode,
 						       &delayed_ins_list, ctx);
 
-<<<<<<< HEAD
-			ctx->log_new_dentries = false;
-			if (type == BTRFS_FT_DIR)
-				log_mode = LOG_INODE_ALL;
-			ret = btrfs_log_inode(trans, root, BTRFS_I(di_inode),
-					      log_mode, ctx);
-			btrfs_add_delayed_iput(di_inode);
-			if (ret)
-				goto next_dir_inode;
-			if (ctx->log_new_dentries) {
-				new_dir_elem = kmalloc(sizeof(*new_dir_elem),
-						       GFP_NOFS);
-				if (!new_dir_elem) {
-					ret = -ENOMEM;
-					goto next_dir_inode;
-				}
-				new_dir_elem->ino = di_key.objectid;
-				list_add_tail(&new_dir_elem->list, &dir_list);
-			}
-			break;
-		}
-		if (i == nritems) {
-			ret = btrfs_next_leaf(log, path);
-			if (ret < 0) {
-				goto next_dir_inode;
-			} else if (ret > 0) {
-				ret = 0;
-				goto next_dir_inode;
-			}
-			goto process_leaf;
-		}
-		if (min_key.offset < (u64)-1) {
-			min_key.offset++;
-			goto again;
-		}
-next_dir_inode:
-		list_del(&dir_elem->list);
-		kfree(dir_elem);
-=======
 		btrfs_log_put_delayed_items(inode, &delayed_ins_list,
 					    &delayed_del_list);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return ret;

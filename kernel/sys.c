@@ -497,11 +497,7 @@ static void flag_nproc_exceeded(struct cred *new)
 	 * for programs doing set*uid()+execve() by harmlessly deferring the
 	 * failure to the execve() stage.
 	 */
-<<<<<<< HEAD
-	if (is_ucounts_overlimit(new->ucounts, UCOUNT_RLIMIT_NPROC, rlimit(RLIMIT_NPROC)) &&
-=======
 	if (is_rlimit_overlimit(new->ucounts, UCOUNT_RLIMIT_NPROC, rlimit(RLIMIT_NPROC)) &&
->>>>>>> origin/linux_6.1.15_upstream
 			new->user != INIT_USER)
 		current->flags |= PF_NPROC_EXCEEDED;
 	else

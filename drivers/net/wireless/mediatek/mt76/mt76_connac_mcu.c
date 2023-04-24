@@ -861,18 +861,6 @@ void mt76_connac_mcu_sta_tlv(struct mt76_phy *mphy, struct sk_buff *skb,
 
 	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_RA, sizeof(*ra_info));
 	ra_info = (struct sta_rec_ra_info *)tlv;
-<<<<<<< HEAD
-
-	supp_rates = sta->supp_rates[band];
-	if (band == NL80211_BAND_2GHZ)
-		supp_rates = FIELD_PREP(RA_LEGACY_OFDM, supp_rates >> 4) |
-			     FIELD_PREP(RA_LEGACY_CCK, supp_rates & 0xf);
-	else
-		supp_rates = FIELD_PREP(RA_LEGACY_OFDM, supp_rates);
-
-	ra_info->legacy = cpu_to_le16(supp_rates);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	supp_rates = sta->deflink.supp_rates[band];
 	if (band == NL80211_BAND_2GHZ)

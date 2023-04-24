@@ -532,28 +532,8 @@ static void intel_pstate_hybrid_hwp_adjust(struct cpudata *cpu)
 	pr_debug("CPU%d: HWP_CAP highest = %d\n", cpu->cpu, cpu->pstate.turbo_pstate);
 	pr_debug("CPU%d: HWP-to-frequency scaling factor: %d\n", cpu->cpu, scaling);
 
-<<<<<<< HEAD
-	/*
-	 * If the product of the HWP performance scaling factor and the HWP_CAP
-	 * highest performance is greater than the maximum turbo frequency
-	 * corresponding to the pstate_funcs.get_turbo() return value, the
-	 * scaling factor is too high, so recompute it to make the HWP_CAP
-	 * highest performance correspond to the maximum turbo frequency.
-	 */
-	cpu->pstate.turbo_freq = cpu->pstate.turbo_pstate * scaling;
-	if (turbo_freq < cpu->pstate.turbo_freq) {
-		cpu->pstate.turbo_freq = turbo_freq;
-		scaling = DIV_ROUND_UP(turbo_freq, cpu->pstate.turbo_pstate);
-		cpu->pstate.scaling = scaling;
-
-		pr_debug("CPU%d: refined HWP-to-frequency scaling factor: %d\n",
-			 cpu->cpu, scaling);
-	}
-
-=======
 	cpu->pstate.turbo_freq = rounddown(cpu->pstate.turbo_pstate * scaling,
 					   perf_ctl_scaling);
->>>>>>> origin/linux_6.1.15_upstream
 	cpu->pstate.max_freq = rounddown(cpu->pstate.max_pstate * scaling,
 					 perf_ctl_scaling);
 
@@ -2407,10 +2387,7 @@ static const struct x86_cpu_id intel_pstate_cpu_oob_ids[] __initconst = {
 	X86_MATCH(BROADWELL_X,		core_funcs),
 	X86_MATCH(SKYLAKE_X,		core_funcs),
 	X86_MATCH(ICELAKE_X,		core_funcs),
-<<<<<<< HEAD
-=======
 	X86_MATCH(SAPPHIRERAPIDS_X,	core_funcs),
->>>>>>> origin/linux_6.1.15_upstream
 	{}
 };
 

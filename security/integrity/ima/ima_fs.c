@@ -517,10 +517,6 @@ out:
 	securityfs_remove(binary_runtime_measurements);
 	securityfs_remove(ima_symlink);
 	securityfs_remove(ima_dir);
-<<<<<<< HEAD
-	return -1;
-=======
 
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }

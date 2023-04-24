@@ -1009,11 +1009,7 @@ static struct npc_kpu_profile_action ikpu_action_entries[] = {
 		NPC_S_KPU1_CPT_HDR, 40, 0,
 		NPC_LID_LA, NPC_LT_NA,
 		0,
-<<<<<<< HEAD
-		7, 7, 0, 0,
-=======
 		0, 7, 0, 0,
->>>>>>> origin/linux_6.1.15_upstream
 
 	},
 	{
@@ -1830,13 +1826,8 @@ static struct npc_kpu_profile_cam kpu1_cam_entries[] = {
 		NPC_S_KPU1_CPT_HDR, 0xff,
 		NPC_ETYPE_IP6,
 		0xffff,
-<<<<<<< HEAD
 		0x0000,
 		0x0000,
-=======
-		0x0000,
-		0x0000,
->>>>>>> origin/linux_6.1.15_upstream
 		0x0000,
 		0x0000,
 	},
@@ -8999,7 +8990,6 @@ static struct npc_kpu_profile_action kpu1_action_entries[] = {
 		8, 12, 0, 0, 0,
 		NPC_S_KPU2_CTAG2, 12, 0,
 		NPC_LID_LA, NPC_LT_NA,
-<<<<<<< HEAD
 		0,
 		0, 0, 0, 0,
 	},
@@ -9064,86 +9054,6 @@ static struct npc_kpu_profile_action kpu1_action_entries[] = {
 		0, 0, 0, 0, 1,
 		NPC_S_NA, 0, 0,
 		NPC_LID_LA, NPC_LT_NA,
-=======
->>>>>>> origin/linux_6.1.15_upstream
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-<<<<<<< HEAD
-		8, 0, 6, 3, 0,
-		NPC_S_KPU5_CPT_IP, 14, 1,
-		NPC_LID_LA, NPC_LT_LA_CPT_HDR,
-=======
-		4, 8, 0, 0, 0,
-		NPC_S_KPU2_CTAG, 12, 0,
-		NPC_LID_LA, NPC_LT_NA,
->>>>>>> origin/linux_6.1.15_upstream
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-<<<<<<< HEAD
-		6, 0, 0, 3, 0,
-		NPC_S_KPU5_CPT_IP6, 14, 1,
-		NPC_LID_LA, NPC_LT_LA_CPT_HDR,
-=======
-		4, 8, 22, 0, 0,
-		NPC_S_KPU2_SBTAG, 12, 0,
-		NPC_LID_LA, NPC_LT_NA,
->>>>>>> origin/linux_6.1.15_upstream
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		4, 8, 0, 0, 0,
-<<<<<<< HEAD
-=======
-		NPC_S_KPU2_QINQ, 12, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		8, 12, 26, 0, 0,
-		NPC_S_KPU2_ETAG, 12, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		2, 6, 10, 2, 0,
-		NPC_S_KPU4_MPLS, 14, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		2, 6, 10, 2, 0,
-		NPC_S_KPU4_MPLS, 14, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		2, 0, 0, 2, 0,
-		NPC_S_KPU4_NSH, 14, 0,
-		NPC_LID_LA, NPC_LT_NA,
-		0,
-		0, 0, 0, 0,
-	},
-	{
-		NPC_ERRLEV_RE, NPC_EC_NOERR,
-		0, 0, 0, 0, 1,
-		NPC_S_NA, 0, 0,
-		NPC_LID_LA, NPC_LT_NA,
 		0,
 		0, 0, 0, 0,
 	},
@@ -9166,7 +9076,6 @@ static struct npc_kpu_profile_action kpu1_action_entries[] = {
 	{
 		NPC_ERRLEV_RE, NPC_EC_NOERR,
 		4, 8, 0, 0, 0,
->>>>>>> origin/linux_6.1.15_upstream
 		NPC_S_KPU2_CPT_CTAG, 12, 1,
 		NPC_LID_LA, NPC_LT_LA_CPT_HDR,
 		NPC_F_LA_U_HAS_TAG | NPC_F_LA_L_WITH_VLAN,

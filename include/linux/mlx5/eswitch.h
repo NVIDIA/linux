@@ -135,8 +135,6 @@ u32 mlx5_eswitch_get_vport_metadata_for_set(struct mlx5_eswitch *esw,
 #define ESW_TUN_SLOW_TABLE_GOTO_VPORT ((ESW_TUN_ID_SLOW_TABLE_GOTO_VPORT << ESW_TUN_OPTS_BITS) | \
 				       ESW_TUN_OPTS_SLOW_TABLE_GOTO_VPORT)
 #define ESW_TUN_SLOW_TABLE_GOTO_VPORT_MARK ESW_TUN_OPTS_MASK
-<<<<<<< HEAD
-=======
 /* 0x7FE is a reserved mapping for bridge ingress push vlan mark */
 #define ESW_TUN_OPTS_BRIDGE_INGRESS_PUSH_VLAN (ESW_TUN_OPTS_SLOW_TABLE_GOTO_VPORT - 1)
 #define ESW_TUN_BRIDGE_INGRESS_PUSH_VLAN ((ESW_TUN_ID_BRIDGE_INGRESS_PUSH_VLAN << \
@@ -145,7 +143,6 @@ u32 mlx5_eswitch_get_vport_metadata_for_set(struct mlx5_eswitch *esw,
 #define ESW_TUN_BRIDGE_INGRESS_PUSH_VLAN_MARK \
 	GENMASK(31 - ESW_TUN_ID_BITS - ESW_RESERVED_BITS, \
 		ESW_TUN_OPTS_OFFSET + 1)
->>>>>>> origin/linux_6.1.15_upstream
 
 u8 mlx5_eswitch_mode(const struct mlx5_core_dev *dev);
 u16 mlx5_eswitch_get_total_vports(const struct mlx5_core_dev *dev);

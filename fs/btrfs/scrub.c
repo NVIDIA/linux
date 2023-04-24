@@ -70,10 +70,6 @@ struct scrub_sector {
 	/* Offset in bytes to @sblock. */
 	u32			offset;
 	atomic_t		refs;
-<<<<<<< HEAD
-	u8			mirror_num;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned int		have_csum:1;
 	unsigned int		io_error:1;
 	u8			csum[BTRFS_CSUM_SIZE];

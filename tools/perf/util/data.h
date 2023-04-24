@@ -4,10 +4,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-<<<<<<< HEAD
-=======
 #include <unistd.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/types.h>
 
 enum perf_data_mode {

@@ -816,10 +816,7 @@ static void sc16is7xx_tx_proc(struct kthread_work *ws)
 {
 	struct uart_port *port = &(to_sc16is7xx_one(ws, tx_work)->port);
 	struct sc16is7xx_port *s = dev_get_drvdata(port->dev);
-<<<<<<< HEAD
-=======
 	unsigned long flags;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if ((port->rs485.flags & SER_RS485_ENABLED) &&
 	    (port->rs485.delay_rts_before_send > 0))
@@ -828,13 +825,10 @@ static void sc16is7xx_tx_proc(struct kthread_work *ws)
 	mutex_lock(&s->efr_lock);
 	sc16is7xx_handle_tx(port);
 	mutex_unlock(&s->efr_lock);
-<<<<<<< HEAD
-=======
 
 	spin_lock_irqsave(&port->lock, flags);
 	sc16is7xx_ier_set(port, SC16IS7XX_IER_THRI_BIT);
 	spin_unlock_irqrestore(&port->lock, flags);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void sc16is7xx_reconf_rs485(struct uart_port *port)

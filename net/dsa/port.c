@@ -1985,13 +1985,8 @@ int dsa_shared_port_link_register_of(struct dsa_port *dp)
 			if (ds->ops->phylink_mac_link_down)
 				ds->ops->phylink_mac_link_down(ds, port,
 					MLO_AN_FIXED, PHY_INTERFACE_MODE_NA);
-<<<<<<< HEAD
-			of_node_put(phy_np);
-			return dsa_port_phylink_register(dp);
-=======
 
 			return dsa_shared_port_phylink_register(dp);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		of_node_put(phy_np);
 		return 0;

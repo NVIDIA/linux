@@ -106,11 +106,7 @@ void snd_hdac_ext_stream_free_all(struct hdac_bus *bus)
 EXPORT_SYMBOL_GPL(snd_hdac_ext_stream_free_all);
 
 void snd_hdac_ext_stream_decouple_locked(struct hdac_bus *bus,
-<<<<<<< HEAD
-					 struct hdac_ext_stream *stream,
-=======
 					 struct hdac_ext_stream *hext_stream,
->>>>>>> origin/linux_6.1.15_upstream
 					 bool decouple)
 {
 	struct hdac_stream *hstream = &hext_stream->hstream;
@@ -124,27 +120,13 @@ void snd_hdac_ext_stream_decouple_locked(struct hdac_bus *bus,
 	else if (!decouple && val)
 		snd_hdac_updatel(bus->ppcap, AZX_REG_PP_PPCTL, mask, 0);
 
-<<<<<<< HEAD
-	stream->decoupled = decouple;
-=======
 	hext_stream->decoupled = decouple;
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(snd_hdac_ext_stream_decouple_locked);
 
 /**
  * snd_hdac_ext_stream_decouple - decouple the hdac stream
  * @bus: HD-audio core bus
-<<<<<<< HEAD
- * @stream: HD-audio ext core stream object to initialize
- * @decouple: flag to decouple
- */
-void snd_hdac_ext_stream_decouple(struct hdac_bus *bus,
-				  struct hdac_ext_stream *stream, bool decouple)
-{
-	spin_lock_irq(&bus->reg_lock);
-	snd_hdac_ext_stream_decouple_locked(bus, stream, decouple);
-=======
  * @hext_stream: HD-audio ext core stream object to initialize
  * @decouple: flag to decouple
  */
@@ -153,7 +135,6 @@ void snd_hdac_ext_stream_decouple(struct hdac_bus *bus,
 {
 	spin_lock_irq(&bus->reg_lock);
 	snd_hdac_ext_stream_decouple_locked(bus, hext_stream, decouple);
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock_irq(&bus->reg_lock);
 }
 EXPORT_SYMBOL_GPL(snd_hdac_ext_stream_decouple);
@@ -279,19 +260,11 @@ hdac_ext_link_stream_assign(struct hdac_bus *bus,
 	}
 
 	spin_lock_irq(&bus->reg_lock);
-<<<<<<< HEAD
-	list_for_each_entry(stream, &bus->stream_list, list) {
-		struct hdac_ext_stream *hstream = container_of(stream,
-						struct hdac_ext_stream,
-						hstream);
-		if (stream->direction != substream->stream)
-=======
 	list_for_each_entry(hstream, &bus->stream_list, list) {
 		struct hdac_ext_stream *hext_stream = container_of(hstream,
 								 struct hdac_ext_stream,
 								 hstream);
 		if (hstream->direction != substream->stream)
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 
 		/* check if link stream is available */
@@ -300,19 +273,9 @@ hdac_ext_link_stream_assign(struct hdac_bus *bus,
 			break;
 		}
 
-<<<<<<< HEAD
-		if (!hstream->link_locked) {
-			snd_hdac_ext_stream_decouple_locked(bus, hstream, true);
-			res = hstream;
-			break;
-		}
-	}
-	if (res) {
-=======
 	}
 	if (res) {
 		snd_hdac_ext_stream_decouple_locked(bus, res, true);
->>>>>>> origin/linux_6.1.15_upstream
 		res->link_locked = 1;
 		res->link_substream = substream;
 	}
@@ -333,19 +296,6 @@ hdac_ext_host_stream_assign(struct hdac_bus *bus,
 	}
 
 	spin_lock_irq(&bus->reg_lock);
-<<<<<<< HEAD
-	list_for_each_entry(stream, &bus->stream_list, list) {
-		struct hdac_ext_stream *hstream = container_of(stream,
-						struct hdac_ext_stream,
-						hstream);
-		if (stream->direction != substream->stream)
-			continue;
-
-		if (!stream->opened) {
-			if (!hstream->decoupled)
-				snd_hdac_ext_stream_decouple_locked(bus, hstream, true);
-			res = hstream;
-=======
 	list_for_each_entry(hstream, &bus->stream_list, list) {
 		struct hdac_ext_stream *hext_stream = container_of(hstream,
 								 struct hdac_ext_stream,
@@ -355,15 +305,11 @@ hdac_ext_host_stream_assign(struct hdac_bus *bus,
 
 		if (!hstream->opened) {
 			res = hext_stream;
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		}
 	}
 	if (res) {
-<<<<<<< HEAD
-=======
 		snd_hdac_ext_stream_decouple_locked(bus, res, true);
->>>>>>> origin/linux_6.1.15_upstream
 		res->hstream.opened = 1;
 		res->hstream.running = 0;
 		res->hstream.substream = substream;
@@ -436,34 +382,20 @@ void snd_hdac_ext_stream_release(struct hdac_ext_stream *hext_stream, int type)
 
 	case HDAC_EXT_STREAM_TYPE_HOST:
 		spin_lock_irq(&bus->reg_lock);
-<<<<<<< HEAD
-		if (stream->decoupled && !stream->link_locked)
-			snd_hdac_ext_stream_decouple_locked(bus, stream, false);
-		spin_unlock_irq(&bus->reg_lock);
-		snd_hdac_stream_release(&stream->hstream);
-=======
 		/* couple link only if not in use */
 		if (!hext_stream->link_locked)
 			snd_hdac_ext_stream_decouple_locked(bus, hext_stream, false);
 		snd_hdac_stream_release_locked(&hext_stream->hstream);
 		spin_unlock_irq(&bus->reg_lock);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 
 	case HDAC_EXT_STREAM_TYPE_LINK:
 		spin_lock_irq(&bus->reg_lock);
-<<<<<<< HEAD
-		if (stream->decoupled && !stream->hstream.opened)
-			snd_hdac_ext_stream_decouple_locked(bus, stream, false);
-		stream->link_locked = 0;
-		stream->link_substream = NULL;
-=======
 		/* couple host only if not in use */
 		if (!hext_stream->hstream.opened)
 			snd_hdac_ext_stream_decouple_locked(bus, hext_stream, false);
 		hext_stream->link_locked = 0;
 		hext_stream->link_substream = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 		spin_unlock_irq(&bus->reg_lock);
 		break;
 

@@ -793,11 +793,6 @@ SYM_FUNC_START(asm_load_gs_index)
 	swapgs
 	FRAME_END
 	RET
-<<<<<<< HEAD
-SYM_FUNC_END(asm_load_gs_index)
-EXPORT_SYMBOL(asm_load_gs_index)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* running with kernelgs */
 .Lbad_gs:
@@ -950,11 +945,7 @@ SYM_CODE_START_LOCAL(paranoid_entry)
 	 * is needed here.
 	 */
 	SAVE_AND_SET_GSBASE scratch_reg=%rax save_reg=%rbx
-<<<<<<< HEAD
-	RET
-=======
 	jmp .Lparanoid_gsbase_done
->>>>>>> origin/linux_6.1.15_upstream
 
 .Lparanoid_entry_checkgs:
 	/* EBX = 1 -> kernel GSBASE active, no restore required */
@@ -973,10 +964,6 @@ SYM_CODE_START_LOCAL(paranoid_entry)
 	xorl	%ebx, %ebx
 	swapgs
 .Lparanoid_kernel_gsbase:
-<<<<<<< HEAD
-
-	FENCE_SWAPGS_KERNEL_ENTRY
-=======
 	FENCE_SWAPGS_KERNEL_ENTRY
 .Lparanoid_gsbase_done:
 
@@ -987,7 +974,6 @@ SYM_CODE_START_LOCAL(paranoid_entry)
 	IBRS_ENTER save_reg=%r15
 	UNTRAIN_RET
 
->>>>>>> origin/linux_6.1.15_upstream
 	RET
 SYM_CODE_END(paranoid_entry)
 
@@ -1077,12 +1063,6 @@ SYM_CODE_START_LOCAL(error_entry)
 
 	/* Put us onto the real thread stack. */
 	call	sync_regs
-<<<<<<< HEAD
-	movq	%rax, %rsp			/* switch stack */
-	ENCODE_FRAME_POINTER
-	pushq	%r12
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	RET
 
 	/*
@@ -1106,11 +1086,7 @@ SYM_CODE_START_LOCAL(error_entry)
 	 * gsbase and proceed.  We'll fix up the exception and land in
 	 * .Lgs_change's error handler with kernel gsbase.
 	 */
-<<<<<<< HEAD
-	SWAPGS
-=======
 	swapgs
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Issue an LFENCE to prevent GS speculation, regardless of whether it is a
@@ -1118,11 +1094,8 @@ SYM_CODE_START_LOCAL(error_entry)
 	 */
 .Lerror_entry_done_lfence:
 	FENCE_SWAPGS_KERNEL_ENTRY
-<<<<<<< HEAD
-=======
 	leaq	8(%rsp), %rax			/* return pt_regs pointer */
 	ANNOTATE_UNRET_END
->>>>>>> origin/linux_6.1.15_upstream
 	RET
 
 .Lbstep_iret:

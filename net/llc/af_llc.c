@@ -307,10 +307,7 @@ static int llc_ui_autobind(struct socket *sock, struct sockaddr_llc *addr)
 
 	/* Note: We do not expect errors from this point. */
 	llc->dev = dev;
-<<<<<<< HEAD
-=======
 	netdev_tracker_alloc(llc->dev, &llc->dev_tracker, GFP_KERNEL);
->>>>>>> origin/linux_6.1.15_upstream
 	dev = NULL;
 
 	memcpy(llc->laddr.mac, llc->dev->dev_addr, IFHWADDRLEN);
@@ -414,10 +411,7 @@ static int llc_ui_bind(struct socket *sock, struct sockaddr *uaddr, int addrlen)
 
 	/* Note: We do not expect errors from this point. */
 	llc->dev = dev;
-<<<<<<< HEAD
-=======
 	netdev_tracker_alloc(llc->dev, &llc->dev_tracker, GFP_KERNEL);
->>>>>>> origin/linux_6.1.15_upstream
 	dev = NULL;
 
 	llc->laddr.lsap = addr->sllc_sap;

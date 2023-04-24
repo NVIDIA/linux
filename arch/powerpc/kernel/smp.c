@@ -1708,18 +1708,7 @@ void start_secondary(void *unused)
 	BUG();
 }
 
-<<<<<<< HEAD
-#ifdef CONFIG_PROFILING
-int setup_profiling_timer(unsigned int multiplier)
-{
-	return 0;
-}
-#endif
-
-static void fixup_topology(void)
-=======
 static void __init fixup_topology(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int i;
 

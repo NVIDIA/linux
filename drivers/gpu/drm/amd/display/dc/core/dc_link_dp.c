@@ -3504,15 +3504,11 @@ static bool decide_fallback_link_setting_max_bw_policy(
 		else
 			break;
 
-<<<<<<< HEAD
-	channel_count = min(dpcd_test_mode.bits.channel_count + 1, AUDIO_CHANNELS_COUNT);
-=======
 	if (next_idx < ARRAY_SIZE(dp_lt_fallbacks)) {
 		cur->lane_count = dp_lt_fallbacks[next_idx].lane_count;
 		cur->link_rate = dp_lt_fallbacks[next_idx].link_rate;
 		found = true;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return found;
 }
@@ -4097,106 +4093,9 @@ static void dp_test_send_phy_test_pattern(struct dc_link *link)
 	unsigned int lane;
 	struct link_training_settings link_training_settings;
 
-<<<<<<< HEAD
-	/*
-	 * Logic to determine LTTPR mode
-	 */
-	link->lttpr_mode = LTTPR_MODE_NON_LTTPR;
-	if (vbios_lttpr_enable && vbios_lttpr_interop)
-		link->lttpr_mode = LTTPR_MODE_NON_TRANSPARENT;
-	else if (!vbios_lttpr_enable && vbios_lttpr_interop) {
-		if (link->dc->config.allow_lttpr_non_transparent_mode)
-			link->lttpr_mode = LTTPR_MODE_NON_TRANSPARENT;
-		else
-			link->lttpr_mode = LTTPR_MODE_TRANSPARENT;
-	} else if (!vbios_lttpr_enable && !vbios_lttpr_interop) {
-		if (!link->dc->config.allow_lttpr_non_transparent_mode
-			|| !link->dc->caps.extended_aux_timeout_support)
-			link->lttpr_mode = LTTPR_MODE_NON_LTTPR;
-		else
-			link->lttpr_mode = LTTPR_MODE_NON_TRANSPARENT;
-	}
-
-	if (link->lttpr_mode == LTTPR_MODE_NON_TRANSPARENT || link->lttpr_mode == LTTPR_MODE_TRANSPARENT) {
-		/* By reading LTTPR capability, RX assumes that we will enable
-		 * LTTPR extended aux timeout if LTTPR is present.
-		 */
-		status = core_link_read_dpcd(
-				link,
-				DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV,
-				lttpr_dpcd_data,
-				sizeof(lttpr_dpcd_data));
-		if (status != DC_OK) {
-#if defined(CONFIG_DRM_AMD_DC_DCN)
-			DC_LOG_DP2("%s: Read LTTPR caps data failed.\n", __func__);
-#endif
-			return false;
-		}
-
-		link->dpcd_caps.lttpr_caps.revision.raw =
-				lttpr_dpcd_data[DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		link->dpcd_caps.lttpr_caps.max_link_rate =
-				lttpr_dpcd_data[DP_MAX_LINK_RATE_PHY_REPEATER -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		link->dpcd_caps.lttpr_caps.phy_repeater_cnt =
-				lttpr_dpcd_data[DP_PHY_REPEATER_CNT -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		link->dpcd_caps.lttpr_caps.max_lane_count =
-				lttpr_dpcd_data[DP_MAX_LANE_COUNT_PHY_REPEATER -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		link->dpcd_caps.lttpr_caps.mode =
-				lttpr_dpcd_data[DP_PHY_REPEATER_MODE -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		link->dpcd_caps.lttpr_caps.max_ext_timeout =
-				lttpr_dpcd_data[DP_PHY_REPEATER_EXTENDED_WAIT_TIMEOUT -
-								DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV];
-
-		/* Attempt to train in LTTPR transparent mode if repeater count exceeds 8. */
-		is_lttpr_present = (dp_convert_to_count(link->dpcd_caps.lttpr_caps.phy_repeater_cnt) != 0 &&
-				link->dpcd_caps.lttpr_caps.max_lane_count > 0 &&
-				link->dpcd_caps.lttpr_caps.max_lane_count <= 4 &&
-				link->dpcd_caps.lttpr_caps.revision.raw >= 0x14);
-		if (is_lttpr_present) {
-			CONN_DATA_DETECT(link, lttpr_dpcd_data, sizeof(lttpr_dpcd_data), "LTTPR Caps: ");
-			configure_lttpr_mode_transparent(link);
-		} else
-			link->lttpr_mode = LTTPR_MODE_NON_LTTPR;
-	}
-	return is_lttpr_present;
-}
-
-static bool retrieve_link_cap(struct dc_link *link)
-{
-	/* DP_ADAPTER_CAP - DP_DPCD_REV + 1 == 16 and also DP_DSC_BITS_PER_PIXEL_INC - DP_DSC_SUPPORT + 1 == 16,
-	 * which means size 16 will be good for both of those DPCD register block reads
-	 */
-	uint8_t dpcd_data[16];
-	/*Only need to read 1 byte starting from DP_DPRX_FEATURE_ENUMERATION_LIST.
-	 */
-	uint8_t dpcd_dprx_data = '\0';
-	uint8_t dpcd_power_state = '\0';
-
-	struct dp_device_vendor_id sink_id;
-	union down_stream_port_count down_strm_port_count;
-	union edp_configuration_cap edp_config_cap;
-	union dp_downstream_port_present ds_port = { 0 };
-	enum dc_status status = DC_ERROR_UNEXPECTED;
-	uint32_t read_dpcd_retry_cnt = 3;
-	int i;
-	struct dp_sink_hw_fw_revision dp_hw_fw_revision;
-	const uint32_t post_oui_delay = 30; // 30ms
-	bool is_lttpr_present = false;
-=======
 	dpcd_test_pattern.raw = 0;
 	memset(dpcd_lane_adjustment, 0, sizeof(dpcd_lane_adjustment));
 	memset(&link_training_settings, 0, sizeof(link_training_settings));
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* get phy test pattern and pattern parameters from DP receiver */
 	core_link_read_dpcd(
@@ -4516,48 +4415,6 @@ static void dp_test_get_audio_test_data(struct dc_link *link, bool disable_video
 	if (dpcd_pattern_type.value == AUDIO_TEST_PATTERN_SAWTOOTH ||
 			dpcd_pattern_type.value == AUDIO_TEST_PATTERN_OPERATOR_DEFINED) {
 
-<<<<<<< HEAD
-	/* Quirk for Apple MBP 2018 15" Retina panels: wrong DP_MAX_LINK_RATE */
-	{
-		uint8_t str_mbp_2018[] = { 101, 68, 21, 103, 98, 97 };
-		uint8_t fwrev_mbp_2018[] = { 7, 4 };
-		uint8_t fwrev_mbp_2018_vega[] = { 8, 4 };
-
-		/* We also check for the firmware revision as 16,1 models have an
-		 * identical device id and are incorrectly quirked otherwise.
-		 */
-		if ((link->dpcd_caps.sink_dev_id == 0x0010fa) &&
-		    !memcmp(link->dpcd_caps.sink_dev_id_str, str_mbp_2018,
-			     sizeof(str_mbp_2018)) &&
-		    (!memcmp(link->dpcd_caps.sink_fw_revision, fwrev_mbp_2018,
-			     sizeof(fwrev_mbp_2018)) ||
-		    !memcmp(link->dpcd_caps.sink_fw_revision, fwrev_mbp_2018_vega,
-			     sizeof(fwrev_mbp_2018_vega)))) {
-			link->reported_link_cap.link_rate = LINK_RATE_RBR2;
-		}
-	}
-
-	memset(&link->dpcd_caps.dsc_caps, '\0',
-			sizeof(link->dpcd_caps.dsc_caps));
-	memset(&link->dpcd_caps.fec_cap, '\0', sizeof(link->dpcd_caps.fec_cap));
-	/* Read DSC and FEC sink capabilities if DP revision is 1.4 and up */
-	if (link->dpcd_caps.dpcd_rev.raw >= DPCD_REV_14) {
-		status = core_link_read_dpcd(
-				link,
-				DP_FEC_CAPABILITY,
-				&link->dpcd_caps.fec_cap.raw,
-				sizeof(link->dpcd_caps.fec_cap.raw));
-		status = core_link_read_dpcd(
-				link,
-				DP_DSC_SUPPORT,
-				link->dpcd_caps.dsc_caps.dsc_basic_caps.raw,
-				sizeof(link->dpcd_caps.dsc_caps.dsc_basic_caps.raw));
-		status = core_link_read_dpcd(
-				link,
-				DP_DSC_BRANCH_OVERALL_THROUGHPUT_0,
-				link->dpcd_caps.dsc_caps.dsc_branch_decoder_caps.raw,
-				sizeof(link->dpcd_caps.dsc_caps.dsc_branch_decoder_caps.raw));
-=======
 		test_pattern = (dpcd_pattern_type.value == AUDIO_TEST_PATTERN_SAWTOOTH) ?
 				DP_TEST_PATTERN_AUDIO_SAWTOOTH : DP_TEST_PATTERN_AUDIO_OPERATOR_DEFINED;
 		// read period for each channel
@@ -4568,7 +4425,6 @@ static void dp_test_get_audio_test_data(struct dc_link *link, bool disable_video
 							&dpcd_pattern_period[channel].raw,
 							sizeof(dpcd_pattern_period[channel]));
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	// translate sampling rate
@@ -7183,41 +7039,12 @@ void edp_panel_backlight_power_on(struct dc_link *link, bool wait_for_hpd)
 	if (link->connector_signal != SIGNAL_TYPE_EDP)
 		return;
 
-<<<<<<< HEAD
-	if (link_enc->funcs->fec_set_ready &&
-			link->dpcd_caps.fec_cap.bits.FEC_CAPABLE) {
-		if (ready) {
-			fec_config = 1;
-			status = core_link_write_dpcd(link,
-					DP_FEC_CONFIGURATION,
-					&fec_config,
-					sizeof(fec_config));
-			if (status == DC_OK) {
-				link_enc->funcs->fec_set_ready(link_enc, true);
-				link->fec_state = dc_link_fec_ready;
-			} else {
-				link_enc->funcs->fec_set_ready(link_enc, false);
-				link->fec_state = dc_link_fec_not_ready;
-				dm_error("dpcd write failed to set fec_ready");
-			}
-		} else if (link->fec_state == dc_link_fec_ready) {
-			fec_config = 0;
-			status = core_link_write_dpcd(link,
-					DP_FEC_CONFIGURATION,
-					&fec_config,
-					sizeof(fec_config));
-			link_enc->funcs->fec_set_ready(link_enc, false);
-			link->fec_state = dc_link_fec_not_ready;
-		}
-	}
-=======
 	link->dc->hwss.edp_power_control(link, true);
 	if (wait_for_hpd)
 		link->dc->hwss.edp_wait_for_hpd_ready(link, true);
 	if (link->dc->hwss.edp_backlight_control)
 		link->dc->hwss.edp_backlight_control(link, true);
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 void dc_link_clear_dprx_states(struct dc_link *link)
 {

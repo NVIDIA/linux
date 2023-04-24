@@ -175,27 +175,19 @@ struct stmmac_flow_entry {
 /* Rx Frame Steering */
 enum stmmac_rfs_type {
 	STMMAC_RFS_T_VLAN,
-<<<<<<< HEAD
-=======
 	STMMAC_RFS_T_LLDP,
 	STMMAC_RFS_T_1588,
->>>>>>> origin/linux_6.1.15_upstream
 	STMMAC_RFS_T_MAX,
 };
 
 struct stmmac_rfs_entry {
 	unsigned long cookie;
-<<<<<<< HEAD
-=======
 	u16 etype;
->>>>>>> origin/linux_6.1.15_upstream
 	int in_use;
 	int type;
 	int tc;
 };
 
-<<<<<<< HEAD
-=======
 struct stmmac_dma_conf {
 	unsigned int dma_buf_sz;
 
@@ -208,7 +200,6 @@ struct stmmac_dma_conf {
 	unsigned int dma_tx_size;
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 struct stmmac_priv {
 	/* Frequently used values are kept adjacent for cache effect */
 	u32 tx_coal_frames[MTL_MAX_TX_QUEUES];

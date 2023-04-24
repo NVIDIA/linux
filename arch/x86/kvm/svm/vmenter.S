@@ -376,12 +376,9 @@ SYM_FUNC_START(__svm_sev_es_vcpu_run)
 #endif
 	pop %_ASM_BP
 	RET
-<<<<<<< HEAD
-=======
 
 	RESTORE_GUEST_SPEC_CTRL_BODY
 	RESTORE_HOST_SPEC_CTRL_BODY
->>>>>>> origin/linux_6.1.15_upstream
 
 3:	cmpb $0, kvm_rebooting
 	jne 2b

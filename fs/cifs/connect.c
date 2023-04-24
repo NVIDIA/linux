@@ -1027,13 +1027,10 @@ static void clean_demultiplex_info(struct TCP_Server_Info *server)
 		 */
 	}
 
-<<<<<<< HEAD
-=======
 #ifdef CONFIG_CIFS_DFS_UPCALL
 	kfree(server->origin_fullpath);
 	kfree(server->leaf_fullpath);
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 	kfree(server);
 
 	length = atomic_dec_return(&tcpSesAllocCount);
@@ -1589,10 +1586,7 @@ cifs_put_tcp_session(struct TCP_Server_Info *server, int from_reconnect)
 	server->session_key.response = NULL;
 	server->session_key.len = 0;
 	kfree(server->hostname);
-<<<<<<< HEAD
-=======
 	server->hostname = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	task = xchg(&server->tsk, NULL);
 	if (task)
@@ -1770,11 +1764,8 @@ out_err_crypto_release:
 
 out_err:
 	if (tcp_ses) {
-<<<<<<< HEAD
-=======
 		if (CIFS_SERVER_IS_CHAN(tcp_ses))
 			cifs_put_tcp_session(tcp_ses->primary_server, false);
->>>>>>> origin/linux_6.1.15_upstream
 		kfree(tcp_ses->hostname);
 		if (tcp_ses->ssocket)
 			sock_release(tcp_ses->ssocket);
@@ -1986,32 +1977,17 @@ void cifs_put_smb_ses(struct cifs_ses *ses)
 	list_del_init(&ses->smb_ses_list);
 	spin_unlock(&cifs_tcp_ses_lock);
 
-<<<<<<< HEAD
-	spin_lock(&ses->chan_lock);
 	chan_count = ses->chan_count;
-	spin_unlock(&ses->chan_lock);
-=======
-	chan_count = ses->chan_count;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* close any extra channels */
 	if (chan_count > 1) {
 		int i;
 
 		for (i = 1; i < chan_count; i++) {
-<<<<<<< HEAD
-			/*
-			 * note: for now, we're okay accessing ses->chans
-			 * without chan_lock. But when chans can go away, we'll
-			 * need to introduce ref counting to make sure that chan
-			 * is not freed from under us.
-			 */
-=======
 			if (ses->chans[i].iface) {
 				kref_put(&ses->chans[i].iface->refcount, release_iface);
 				ses->chans[i].iface = NULL;
 			}
->>>>>>> origin/linux_6.1.15_upstream
 			cifs_put_tcp_session(ses->chans[i].server, 0);
 			ses->chans[i].server = NULL;
 		}
@@ -2282,10 +2258,7 @@ cifs_get_smb_ses(struct TCP_Server_Info *server, struct smb3_fs_context *ctx)
 	ses->chans[0].server = server;
 	ses->chan_count = 1;
 	ses->chan_max = ctx->multichannel ? ctx->max_channels:1;
-<<<<<<< HEAD
-=======
 	ses->chans_need_reconnect = 1;
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock(&ses->chan_lock);
 
 	mutex_lock(&ses->session_mutex);

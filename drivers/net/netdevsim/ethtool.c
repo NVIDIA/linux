@@ -85,8 +85,6 @@ static int nsim_set_ringparam(struct net_device *dev,
 	ns->ethtool.ring.rx_jumbo_pending = ring->rx_jumbo_pending;
 	ns->ethtool.ring.rx_mini_pending = ring->rx_mini_pending;
 	ns->ethtool.ring.tx_pending = ring->tx_pending;
-<<<<<<< HEAD
-=======
 	return 0;
 }
 
@@ -111,7 +109,6 @@ nsim_set_channels(struct net_device *dev, struct ethtool_channels *ch)
 		return err;
 
 	ns->ethtool.channels = ch->combined_count;
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

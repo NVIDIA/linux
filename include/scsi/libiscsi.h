@@ -210,11 +210,8 @@ struct iscsi_conn {
 	struct list_head	cmdqueue;	/* data-path cmd queue */
 	struct list_head	requeue;	/* tasks needing another run */
 	struct work_struct	xmitwork;	/* per-conn. xmit workqueue */
-<<<<<<< HEAD
-=======
 	/* recv */
 	struct work_struct	recvwork;
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long		flags;		/* ISCSI_CONN_FLAGs */
 
 	/* negotiated params */

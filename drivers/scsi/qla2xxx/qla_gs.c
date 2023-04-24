@@ -3325,11 +3325,6 @@ void qla24xx_async_gffid_sp_done(srb_t *sp, int res)
 			sp->u.iocb_cmd.u.ctarg.req = NULL;
 		}
 
-<<<<<<< HEAD
-	qla24xx_handle_gffid_event(vha, &ea);
-	/* ref: INIT */
-	kref_put(&sp->cmd_kref, qla2x00_sp_release);
-=======
 		if (sp->u.iocb_cmd.u.ctarg.rsp) {
 			dma_free_coherent(&vha->hw->pdev->dev,
 				sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
@@ -3343,7 +3338,6 @@ void qla24xx_async_gffid_sp_done(srb_t *sp, int res)
 		/* we should not be here */
 		dump_stack();
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* Get FC4 Feature with Nport ID. */
@@ -3369,8 +3363,6 @@ int qla24xx_async_gffid(scsi_qla_host_t *vha, fc_port_t *fcport, bool wait)
 	sp->gen2 = fcport->login_gen;
 	qla2x00_init_async_sp(sp, qla2x00_get_async_timeout(vha) + 2,
 			      qla24xx_async_gffid_sp_done);
-<<<<<<< HEAD
-=======
 	sp->comp = &comp;
 	sp->u.iocb_cmd.timeout = qla2x00_els_dcmd2_iocb_timeout;
 
@@ -3400,7 +3392,6 @@ int qla24xx_async_gffid(scsi_qla_host_t *vha, fc_port_t *fcport, bool wait)
 		       __func__);
 		goto done_free_sp;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* CT_IU preamble  */
 	ct_req = qla2x00_prep_ct_req(sp->u.iocb_cmd.u.ctarg.req, GFF_ID_CMD, GFF_ID_RSP_SIZE);
@@ -3413,13 +3404,6 @@ int qla24xx_async_gffid(scsi_qla_host_t *vha, fc_port_t *fcport, bool wait)
 	sp->u.iocb_cmd.u.ctarg.rsp_size = GFF_ID_RSP_SIZE;
 	sp->u.iocb_cmd.u.ctarg.nport_handle = NPH_SNS;
 
-<<<<<<< HEAD
-	ql_dbg(ql_dbg_disc, vha, 0x2132,
-	    "Async-%s hdl=%x  %8phC.\n", sp->name,
-	    sp->handle, fcport->port_name);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	rval = qla2x00_start_sp(sp);
 
 	if (rval != QLA_SUCCESS) {
@@ -3435,11 +3419,6 @@ int qla24xx_async_gffid(scsi_qla_host_t *vha, fc_port_t *fcport, bool wait)
 	rval = sp->rc;
 
 done_free_sp:
-<<<<<<< HEAD
-	/* ref: INIT */
-	kref_put(&sp->cmd_kref, qla2x00_sp_release);
-	fcport->flags &= ~FCF_ASYNC_SENT;
-=======
 	if (sp->u.iocb_cmd.u.ctarg.req) {
 		dma_free_coherent(&vha->hw->pdev->dev,
 				  sp->u.iocb_cmd.u.ctarg.req_allocated_size,
@@ -3458,7 +3437,6 @@ done_free_sp:
 
 	/* ref: INIT */
 	kref_put(&sp->cmd_kref, qla2x00_sp_release);
->>>>>>> origin/linux_6.1.15_upstream
 	return rval;
 }
 

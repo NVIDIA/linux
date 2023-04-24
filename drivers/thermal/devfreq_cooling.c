@@ -365,22 +365,14 @@ of_devfreq_cooling_register_power(struct device_node *np, struct devfreq *df,
 	struct thermal_cooling_device *cdev;
 	struct device *dev = df->dev.parent;
 	struct devfreq_cooling_device *dfc;
-<<<<<<< HEAD
-=======
 	struct em_perf_domain *em;
->>>>>>> origin/linux_6.1.15_upstream
 	struct thermal_cooling_device_ops *ops;
 	char *name;
 	int err, num_opps;
 
-<<<<<<< HEAD
-	ops = kmemdup(&devfreq_cooling_ops, sizeof(*ops), GFP_KERNEL);
-	if (!ops)
-=======
 
 	dfc = kzalloc(sizeof(*dfc), GFP_KERNEL);
 	if (!dfc)
->>>>>>> origin/linux_6.1.15_upstream
 		return ERR_PTR(-ENOMEM);
 
 	dfc = kzalloc(sizeof(*dfc), GFP_KERNEL);
@@ -391,10 +383,6 @@ of_devfreq_cooling_register_power(struct device_node *np, struct devfreq *df,
 
 	dfc->devfreq = df;
 
-<<<<<<< HEAD
-	dfc->em_pd = em_pd_get(dev);
-	if (dfc->em_pd) {
-=======
 	ops = &dfc->cooling_ops;
 	ops->get_max_state = devfreq_cooling_get_max_state;
 	ops->get_cur_state = devfreq_cooling_get_cur_state;
@@ -403,7 +391,6 @@ of_devfreq_cooling_register_power(struct device_node *np, struct devfreq *df,
 	em = em_pd_get(dev);
 	if (em && !em_is_artificial(em)) {
 		dfc->em_pd = em;
->>>>>>> origin/linux_6.1.15_upstream
 		ops->get_requested_power =
 			devfreq_cooling_get_requested_power;
 		ops->state2power = devfreq_cooling_state2power;

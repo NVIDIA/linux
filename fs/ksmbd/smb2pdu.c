@@ -925,11 +925,7 @@ static void decode_encrypt_ctxt(struct ksmbd_conn *conn,
  *
  * Return:	true if connection should be encrypted, else false
  */
-<<<<<<< HEAD
-static bool smb3_encryption_negotiated(struct ksmbd_conn *conn)
-=======
 bool smb3_encryption_negotiated(struct ksmbd_conn *conn)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (!conn->ops->generate_encryptionkey)
 		return false;
@@ -1463,9 +1459,6 @@ static int ntlm_authenticate(struct ksmbd_work *work)
 			return 0;
 		}
 
-<<<<<<< HEAD
-	sess->user = user;
-=======
 		if (!ksmbd_compare_user(sess->user, user)) {
 			ksmbd_free_user(user);
 			return -EPERM;
@@ -1475,7 +1468,6 @@ static int ntlm_authenticate(struct ksmbd_work *work)
 		sess->user = user;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (user_guest(sess->user)) {
 		rsp->SessionFlags = SMB2_SESSION_FLAG_IS_GUEST_LE;
 	} else {
@@ -1509,11 +1501,7 @@ static int ntlm_authenticate(struct ksmbd_work *work)
 
 	if (smb3_encryption_negotiated(conn) &&
 			!(req->Flags & SMB2_SESSION_REQ_FLAG_BINDING)) {
-<<<<<<< HEAD
-		rc = conn->ops->generate_encryptionkey(sess);
-=======
 		rc = conn->ops->generate_encryptionkey(conn, sess);
->>>>>>> origin/linux_6.1.15_upstream
 		if (rc) {
 			ksmbd_debug(SMB,
 					"SMB3 encryption key generation failed\n");
@@ -1604,11 +1592,7 @@ static int krb5_authenticate(struct ksmbd_work *work)
 		sess->sign = true;
 
 	if (smb3_encryption_negotiated(conn)) {
-<<<<<<< HEAD
-		retval = conn->ops->generate_encryptionkey(sess);
-=======
 		retval = conn->ops->generate_encryptionkey(conn, sess);
->>>>>>> origin/linux_6.1.15_upstream
 		if (retval) {
 			ksmbd_debug(SMB,
 				    "SMB3 encryption key generation failed\n");
@@ -1749,11 +1733,7 @@ int smb2_sess_setup(struct ksmbd_work *work)
 
 	negblob_off = le16_to_cpu(req->SecurityBufferOffset);
 	negblob_len = le16_to_cpu(req->SecurityBufferLength);
-<<<<<<< HEAD
-	if (negblob_off < (offsetof(struct smb2_sess_setup_req, Buffer) - 4) ||
-=======
 	if (negblob_off < offsetof(struct smb2_sess_setup_req, Buffer) ||
->>>>>>> origin/linux_6.1.15_upstream
 	    negblob_len < offsetof(struct negotiate_message, NegotiateFlags)) {
 		rc = -EINVAL;
 		goto out_err;
@@ -4019,12 +3999,8 @@ no_buf_len:
 		((struct file_directory_info *)
 		((char *)rsp->Buffer + d_info.last_entry_offset))
 		->NextEntryOffset = 0;
-<<<<<<< HEAD
-		d_info.data_count -= d_info.last_entry_off_align;
-=======
 		if (d_info.data_count >= d_info.last_entry_off_align)
 			d_info.data_count -= d_info.last_entry_off_align;
->>>>>>> origin/linux_6.1.15_upstream
 
 		rsp->StructureSize = cpu_to_le16(9);
 		rsp->OutputBufferOffset = cpu_to_le16(72);

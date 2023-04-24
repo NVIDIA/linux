@@ -3269,17 +3269,6 @@ int skb_checksum_help(struct sk_buff *skb)
 
 	offset = skb_checksum_start_offset(skb);
 	ret = -EINVAL;
-<<<<<<< HEAD
-	if (WARN_ON_ONCE(offset >= skb_headlen(skb)))
-		goto out;
-
-	csum = skb_checksum(skb, offset, skb->len - offset, 0);
-
-	offset += skb->csum_offset;
-	if (WARN_ON_ONCE(offset + sizeof(__sum16) > skb_headlen(skb)))
-		goto out;
-
-=======
 	if (WARN_ON_ONCE(offset >= skb_headlen(skb))) {
 		DO_ONCE_LITE(skb_dump, KERN_ERR, skb, false);
 		goto out;
@@ -3291,7 +3280,6 @@ int skb_checksum_help(struct sk_buff *skb)
 		DO_ONCE_LITE(skb_dump, KERN_ERR, skb, false);
 		goto out;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	ret = skb_ensure_writable(skb, offset + sizeof(__sum16));
 	if (ret)
 		goto out;

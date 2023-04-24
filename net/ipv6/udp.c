@@ -1470,11 +1470,7 @@ do_udp_sendmsg:
 	if (!fl6->flowi6_oif)
 		fl6->flowi6_oif = np->sticky_pktinfo.ipi6_ifindex;
 
-<<<<<<< HEAD
-	fl6.flowi6_uid = sk->sk_uid;
-=======
 	fl6->flowi6_uid = sk->sk_uid;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (msg->msg_controllen) {
 		opt = &opt_space;
@@ -1508,21 +1504,12 @@ do_udp_sendmsg:
 	opt = ipv6_fixup_options(&opt_space, opt);
 	ipc6.opt = opt;
 
-<<<<<<< HEAD
-	fl6.flowi6_proto = sk->sk_protocol;
-	fl6.flowi6_mark = ipc6.sockc.mark;
-	fl6.daddr = *daddr;
-	if (ipv6_addr_any(&fl6.saddr) && !ipv6_addr_any(&np->saddr))
-		fl6.saddr = np->saddr;
-	fl6.fl6_sport = inet->inet_sport;
-=======
 	fl6->flowi6_proto = sk->sk_protocol;
 	fl6->flowi6_mark = ipc6.sockc.mark;
 	fl6->daddr = *daddr;
 	if (ipv6_addr_any(&fl6->saddr) && !ipv6_addr_any(&np->saddr))
 		fl6->saddr = np->saddr;
 	fl6->fl6_sport = inet->inet_sport;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (cgroup_bpf_enabled(CGROUP_UDP6_SENDMSG) && !connected) {
 		err = BPF_CGROUP_RUN_PROG_UDP6_SENDMSG_LOCK(sk,

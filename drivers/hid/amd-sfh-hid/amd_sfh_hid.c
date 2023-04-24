@@ -148,11 +148,8 @@ int amdtp_hid_probe(u32 cur_hid_dev, struct amdtp_cl_data *cli_data)
 
 	hid->driver_data = hid_data;
 	cli_data->hid_sensor_hubs[cur_hid_dev] = hid;
-<<<<<<< HEAD
-=======
 	strscpy(hid->phys, dev->driver ? dev->driver->name : dev_name(dev),
 		sizeof(hid->phys));
->>>>>>> origin/linux_6.1.15_upstream
 	hid->bus = BUS_AMD_SFH;
 	hid->vendor = AMD_SFH_HID_VENDOR;
 	hid->product = AMD_SFH_HID_PRODUCT;

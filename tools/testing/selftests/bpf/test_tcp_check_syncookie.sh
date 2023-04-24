@@ -76,13 +76,8 @@ main()
 DIR=$(dirname $0)
 TEST_IF=lo
 MAX_PING_TRIES=5
-<<<<<<< HEAD
-BPF_PROG_OBJ="${DIR}/test_tcp_check_syncookie_kern.o"
-CLSACT_SECTION="clsact/check_syncookie"
-=======
 BPF_PROG_OBJ="${DIR}/test_tcp_check_syncookie_kern.bpf.o"
 CLSACT_SECTION="tc"
->>>>>>> origin/linux_6.1.15_upstream
 XDP_SECTION="xdp"
 BPF_PROG_ID=0
 PROG="${DIR}/test_tcp_check_syncookie_user"

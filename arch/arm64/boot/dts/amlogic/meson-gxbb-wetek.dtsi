@@ -7,10 +7,7 @@
 
 #include "meson-gxbb.dtsi"
 #include <dt-bindings/gpio/gpio.h>
-<<<<<<< HEAD
-=======
 #include <dt-bindings/leds/common.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 / {
 	aliases {

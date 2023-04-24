@@ -333,42 +333,26 @@ int snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 	if (sign_bit)
 		mask = BIT(sign_bit + 1) - 1;
 
-<<<<<<< HEAD
-=======
 	if (ucontrol->value.integer.value[0] < 0)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 	val = ucontrol->value.integer.value[0];
 	if (mc->platform_max && ((int)val + min) > mc->platform_max)
 		return -EINVAL;
 	if (val > max - min)
 		return -EINVAL;
-<<<<<<< HEAD
-	if (val < 0)
-		return -EINVAL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	val = (val + min) & mask;
 	if (invert)
 		val = max - val;
 	val_mask = mask << shift;
 	val = val << shift;
 	if (snd_soc_volsw_is_stereo(mc)) {
-<<<<<<< HEAD
-=======
 		if (ucontrol->value.integer.value[1] < 0)
 			return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 		val2 = ucontrol->value.integer.value[1];
 		if (mc->platform_max && ((int)val2 + min) > mc->platform_max)
 			return -EINVAL;
 		if (val2 > max - min)
 			return -EINVAL;
-<<<<<<< HEAD
-		if (val2 < 0)
-			return -EINVAL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		val2 = (val2 + min) & mask;
 		if (invert)
 			val2 = max - val2;
@@ -463,21 +447,12 @@ int snd_soc_put_volsw_sx(struct snd_kcontrol *kcontrol,
 	int ret;
 	unsigned int val, val_mask;
 
-<<<<<<< HEAD
-	val = ucontrol->value.integer.value[0];
-	if (mc->platform_max && val > mc->platform_max)
-		return -EINVAL;
-	if (val > max - min)
-		return -EINVAL;
-	if (val < 0)
-=======
 	if (ucontrol->value.integer.value[0] < 0)
 		return -EINVAL;
 	val = ucontrol->value.integer.value[0];
 	if (mc->platform_max && val > mc->platform_max)
 		return -EINVAL;
 	if (val > max)
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 	val_mask = mask << shift;
 	val = (val + min) & mask;
@@ -573,11 +548,7 @@ int snd_soc_put_volsw_range(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	if (mc->platform_max && tmp > mc->platform_max)
 		return -EINVAL;
-<<<<<<< HEAD
-	if (tmp > mc->max - mc->min + 1)
-=======
 	if (tmp > mc->max - mc->min)
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 
 	if (invert)
@@ -598,11 +569,7 @@ int snd_soc_put_volsw_range(struct snd_kcontrol *kcontrol,
 			return -EINVAL;
 		if (mc->platform_max && tmp > mc->platform_max)
 			return -EINVAL;
-<<<<<<< HEAD
-		if (tmp > mc->max - mc->min + 1)
-=======
 		if (tmp > mc->max - mc->min)
->>>>>>> origin/linux_6.1.15_upstream
 			return -EINVAL;
 
 		if (invert)

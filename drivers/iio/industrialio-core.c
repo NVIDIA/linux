@@ -1687,11 +1687,7 @@ struct iio_dev *iio_device_alloc(struct device *parent, int sizeof_priv)
 	}
 
 	if (dev_set_name(&indio_dev->dev, "iio:device%d", iio_dev_opaque->id)) {
-<<<<<<< HEAD
-		ida_simple_remove(&iio_ida, iio_dev_opaque->id);
-=======
 		ida_free(&iio_ida, iio_dev_opaque->id);
->>>>>>> origin/linux_6.1.15_upstream
 		kfree(iio_dev_opaque);
 		return NULL;
 	}

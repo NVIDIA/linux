@@ -31,10 +31,7 @@ static int change_page_attr(pte_t *ptep, unsigned long addr, void *data)
 {
 	long action = (long)data;
 
-<<<<<<< HEAD
-=======
 	addr &= PAGE_MASK;
->>>>>>> origin/linux_6.1.15_upstream
 	/* modify the PTE bits as desired */
 	switch (action) {
 	case SET_MEMORY_RO:

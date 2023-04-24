@@ -877,13 +877,6 @@ __thermal_cooling_device_register(struct device_node *np,
 		goto out_kfree_cdev;
 	cdev->id = ret;
 	id = ret;
-<<<<<<< HEAD
-
-	ret = dev_set_name(&cdev->device, "cooling_device%d", cdev->id);
-	if (ret)
-		goto out_ida_remove;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	cdev->type = kstrdup(type ? type : "", GFP_KERNEL);
 	if (!cdev->type) {
@@ -906,8 +899,6 @@ __thermal_cooling_device_register(struct device_node *np,
 	}
 
 	thermal_cooling_device_setup_sysfs(cdev);
-<<<<<<< HEAD
-=======
 
 	ret = dev_set_name(&cdev->device, "cooling_device%d", cdev->id);
 	if (ret) {
@@ -916,7 +907,6 @@ __thermal_cooling_device_register(struct device_node *np,
 		goto out_ida_remove;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = device_register(&cdev->device);
 	if (ret)
 		goto out_kfree_type;
@@ -942,17 +932,11 @@ out_kfree_type:
 	thermal_cooling_device_destroy_sysfs(cdev);
 	kfree(cdev->type);
 	put_device(&cdev->device);
-<<<<<<< HEAD
-	cdev = NULL;
-out_ida_remove:
-	ida_simple_remove(&thermal_cdev_ida, id);
-=======
 
 	/* thermal_release() takes care of the rest */
 	cdev = NULL;
 out_ida_remove:
 	ida_free(&thermal_cdev_ida, id);
->>>>>>> origin/linux_6.1.15_upstream
 out_kfree_cdev:
 	kfree(cdev);
 	return ERR_PTR(ret);
@@ -1284,14 +1268,11 @@ thermal_zone_device_register_with_trips(const char *type, struct thermal_trip *t
 	/* A new thermal zone needs to be updated anyway. */
 	atomic_set(&tz->need_update, 1);
 
-<<<<<<< HEAD
-=======
 	result = dev_set_name(&tz->device, "thermal_zone%d", tz->id);
 	if (result) {
 		thermal_zone_destroy_device_groups(tz);
 		goto remove_id;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	result = device_register(&tz->device);
 	if (result)
 		goto release_device;

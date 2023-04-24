@@ -211,15 +211,6 @@ void exfat_truncate(struct inode *inode, loff_t size)
 	if (err)
 		goto write_size;
 
-<<<<<<< HEAD
-	inode->i_ctime = inode->i_mtime = current_time(inode);
-	if (IS_DIRSYNC(inode))
-		exfat_sync_inode(inode);
-	else
-		mark_inode_dirty(inode);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	inode->i_blocks = round_up(i_size_read(inode), sbi->cluster_size) >>
 				inode->i_blkbits;
 write_size:

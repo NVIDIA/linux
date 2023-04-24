@@ -158,12 +158,7 @@
 #define STM32_MDMA_CTBR_DBUS		BIT(17)
 #define STM32_MDMA_CTBR_SBUS		BIT(16)
 #define STM32_MDMA_CTBR_TSEL_MASK	GENMASK(5, 0)
-<<<<<<< HEAD
-#define STM32_MDMA_CTBR_TSEL(n)		STM32_MDMA_SET(n, \
-						      STM32_MDMA_CTBR_TSEL_MASK)
-=======
 #define STM32_MDMA_CTBR_TSEL(n)		FIELD_PREP(STM32_MDMA_CTBR_TSEL_MASK, (n))
->>>>>>> origin/linux_6.1.15_upstream
 
 /* MDMA Channel x mask address register */
 #define STM32_MDMA_CMAR(x)		(0x70 + 0x40 * (x))
@@ -1398,16 +1393,6 @@ static irqreturn_t stm32_mdma_irq_handler(int irq, void *devid)
 	status = readl_relaxed(dmadev->base + STM32_MDMA_GISR0);
 	if (!status) {
 		dev_dbg(mdma2dev(dmadev), "spurious it\n");
-<<<<<<< HEAD
-		return IRQ_NONE;
-	}
-	id = __ffs(status);
-
-	chan = &dmadev->chan[id];
-	if (!chan) {
-		dev_warn(mdma2dev(dmadev), "MDMA channel not initialized\n");
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		return IRQ_NONE;
 	}
 	id = __ffs(status);

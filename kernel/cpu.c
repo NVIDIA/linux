@@ -35,10 +35,7 @@
 #include <linux/percpu-rwsem.h>
 #include <linux/cpuset.h>
 #include <linux/random.h>
-<<<<<<< HEAD
-=======
 #include <linux/cc_platform.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <trace/events/power.h>
 #define CREATE_TRACE_POINTS
@@ -750,17 +747,6 @@ static int cpuhp_up_callbacks(unsigned int cpu, struct cpuhp_cpu_state *st,
 /*
  * The cpu hotplug threads manage the bringup and teardown of the cpus
  */
-<<<<<<< HEAD
-static void cpuhp_create(unsigned int cpu)
-{
-	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
-
-	init_completion(&st->done_up);
-	init_completion(&st->done_down);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int cpuhp_should_run(unsigned int cpu)
 {
 	struct cpuhp_cpu_state *st = this_cpu_ptr(&cpuhp_state);

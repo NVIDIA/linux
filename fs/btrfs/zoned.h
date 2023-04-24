@@ -25,10 +25,7 @@ struct btrfs_zoned_device_info {
 	atomic_t active_zones_left;
 	unsigned long *seq_zones;
 	unsigned long *empty_zones;
-<<<<<<< HEAD
-=======
 	unsigned long *active_zones;
->>>>>>> origin/linux_6.1.15_upstream
 	struct blk_zone *zone_cache;
 	struct blk_zone sb_zones[2 * BTRFS_SUPER_MIRROR_MAX];
 };
@@ -72,10 +69,6 @@ int btrfs_sync_zone_write_pointer(struct btrfs_device *tgt_dev, u64 logical,
 				  u64 physical_start, u64 physical_pos);
 struct btrfs_device *btrfs_zoned_get_device(struct btrfs_fs_info *fs_info,
 					    u64 logical, u64 length);
-<<<<<<< HEAD
-void btrfs_clear_data_reloc_bg(struct btrfs_block_group *bg);
-void btrfs_free_zone_cache(struct btrfs_fs_info *fs_info);
-=======
 bool btrfs_zone_activate(struct btrfs_block_group *block_group);
 int btrfs_zone_finish(struct btrfs_block_group *block_group);
 bool btrfs_can_activate_zone(struct btrfs_fs_devices *fs_devices, u64 flags);
@@ -91,7 +84,6 @@ void btrfs_zoned_release_data_reloc_bg(struct btrfs_fs_info *fs_info, u64 logica
 int btrfs_zone_finish_one_bg(struct btrfs_fs_info *fs_info);
 int btrfs_zoned_activate_one_bg(struct btrfs_fs_info *fs_info,
 				struct btrfs_space_info *space_info, bool do_finish);
->>>>>>> origin/linux_6.1.15_upstream
 #else /* CONFIG_BLK_DEV_ZONED */
 static inline int btrfs_get_dev_zone(struct btrfs_device *device, u64 pos,
 				     struct blk_zone *zone)
@@ -238,11 +230,6 @@ static inline struct btrfs_device *btrfs_zoned_get_device(
 	return ERR_PTR(-EOPNOTSUPP);
 }
 
-<<<<<<< HEAD
-static inline void btrfs_clear_data_reloc_bg(struct btrfs_block_group *bg) { }
-
-static inline void btrfs_free_zone_cache(struct btrfs_fs_info *fs_info) { }
-=======
 static inline bool btrfs_zone_activate(struct btrfs_block_group *block_group)
 {
 	return true;
@@ -290,7 +277,6 @@ static inline int btrfs_zoned_activate_one_bg(struct btrfs_fs_info *fs_info,
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 
 static inline bool btrfs_dev_is_sequential(struct btrfs_device *device, u64 pos)

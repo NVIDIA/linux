@@ -1483,20 +1483,6 @@ static int vangogh_set_performance_level(struct smu_context *smu,
 	case AMD_DPM_FORCED_LEVEL_PROFILE_EXIT:
 	default:
 		return 0;
-<<<<<<< HEAD
-	}
-
-	ret = smu_cmn_send_smc_msg_with_param(smu, SMU_MSG_SetHardMinGfxClk,
-					      smu->gfx_actual_hard_min_freq, NULL);
-	if (ret)
-		return ret;
-
-	ret = smu_cmn_send_smc_msg_with_param(smu, SMU_MSG_SetSoftMaxGfxClk,
-					      smu->gfx_actual_soft_max_freq, NULL);
-	if (ret)
-		return ret;
-
-=======
 	}
 
 	ret = smu_cmn_send_smc_msg_with_param(smu, SMU_MSG_SetHardMinGfxClk,
@@ -1527,7 +1513,6 @@ static int vangogh_set_performance_level(struct smu_context *smu,
 		}
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

@@ -75,11 +75,7 @@ TEST(abi_version)
 	const struct landlock_ruleset_attr ruleset_attr = {
 		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,
 	};
-<<<<<<< HEAD
-	ASSERT_EQ(1, landlock_create_ruleset(NULL, 0,
-=======
 	ASSERT_EQ(2, landlock_create_ruleset(NULL, 0,
->>>>>>> origin/linux_6.1.15_upstream
 					     LANDLOCK_CREATE_RULESET_VERSION));
 
 	ASSERT_EQ(-1, landlock_create_ruleset(&ruleset_attr, 0,

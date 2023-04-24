@@ -2152,11 +2152,8 @@ sysctl_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 		return &bpf_sysctl_set_new_value_proto;
 	case BPF_FUNC_ktime_get_coarse_ns:
 		return &bpf_ktime_get_coarse_ns_proto;
-<<<<<<< HEAD
-=======
 	case BPF_FUNC_perf_event_output:
 		return &bpf_event_output_data_proto;
->>>>>>> origin/linux_6.1.15_upstream
 	default:
 		return bpf_base_func_proto(func_id);
 	}

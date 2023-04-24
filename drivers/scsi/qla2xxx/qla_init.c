@@ -55,15 +55,12 @@ qla2x00_sp_timeout(struct timer_list *t)
 
 	/* ref: TMR */
 	kref_put(&sp->cmd_kref, qla2x00_sp_release);
-<<<<<<< HEAD
-=======
 
 	if (vha && qla2x00_isp_reg_stat(vha->hw)) {
 		ql_log(ql_log_info, vha, 0x9008,
 		    "PCI/Register disconnect.\n");
 		qla_pci_set_eeh_busy(vha);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void qla2x00_sp_free(srb_t *sp)
@@ -142,11 +139,7 @@ static void qla24xx_abort_iocb_timeout(void *data)
 	}
 	spin_unlock_irqrestore(qpair->qp_lock_ptr, flags);
 
-<<<<<<< HEAD
-	if (sp->cmd_sp) {
-=======
 	if (cmdsp_found && sp->cmd_sp) {
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * This done function should take care of
 		 * original command ref: INIT
@@ -1846,21 +1839,13 @@ void qla2x00_handle_rscn(scsi_qla_host_t *vha, struct event_arg *ea)
 	case RSCN_PORT_ADDR:
 		fcport = qla2x00_find_fcport_by_nportid(vha, &ea->id, 1);
 		if (fcport) {
-<<<<<<< HEAD
-			if (fcport->flags & FCF_FCP2_DEVICE) {
-=======
 			if (fcport->flags & FCF_FCP2_DEVICE &&
 			    atomic_read(&fcport->state) == FCS_ONLINE) {
->>>>>>> origin/linux_6.1.15_upstream
 				ql_dbg(ql_dbg_disc, vha, 0x2115,
 				       "Delaying session delete for FCP2 portid=%06x %8phC ",
 					fcport->d_id.b24, fcport->port_name);
 				return;
 			}
-<<<<<<< HEAD
-			fcport->scan_needed = 1;
-			fcport->rscn_gen++;
-=======
 
 			if (vha->hw->flags.edif_enabled && DBELL_ACTIVE(vha)) {
 				/*
@@ -1883,17 +1868,12 @@ void qla2x00_handle_rscn(scsi_qla_host_t *vha, struct event_arg *ea)
 				fcport->scan_needed = 1;
 				fcport->rscn_gen++;
 			}
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	case RSCN_AREA_ADDR:
 		list_for_each_entry(fcport, &vha->vp_fcports, list) {
-<<<<<<< HEAD
-			if (fcport->flags & FCF_FCP2_DEVICE)
-=======
 			if (fcport->flags & FCF_FCP2_DEVICE &&
 			    atomic_read(&fcport->state) == FCS_ONLINE)
->>>>>>> origin/linux_6.1.15_upstream
 				continue;
 
 			if ((ea->id.b24 & 0xffff00) == (fcport->d_id.b24 & 0xffff00)) {
@@ -1904,12 +1884,8 @@ void qla2x00_handle_rscn(scsi_qla_host_t *vha, struct event_arg *ea)
 		break;
 	case RSCN_DOM_ADDR:
 		list_for_each_entry(fcport, &vha->vp_fcports, list) {
-<<<<<<< HEAD
-			if (fcport->flags & FCF_FCP2_DEVICE)
-=======
 			if (fcport->flags & FCF_FCP2_DEVICE &&
 			    atomic_read(&fcport->state) == FCS_ONLINE)
->>>>>>> origin/linux_6.1.15_upstream
 				continue;
 
 			if ((ea->id.b24 & 0xff0000) == (fcport->d_id.b24 & 0xff0000)) {
@@ -1921,12 +1897,8 @@ void qla2x00_handle_rscn(scsi_qla_host_t *vha, struct event_arg *ea)
 	case RSCN_FAB_ADDR:
 	default:
 		list_for_each_entry(fcport, &vha->vp_fcports, list) {
-<<<<<<< HEAD
-			if (fcport->flags & FCF_FCP2_DEVICE)
-=======
 			if (fcport->flags & FCF_FCP2_DEVICE &&
 			    atomic_read(&fcport->state) == FCS_ONLINE)
->>>>>>> origin/linux_6.1.15_upstream
 				continue;
 
 			fcport->scan_needed = 1;
@@ -2059,10 +2031,7 @@ qla2x00_async_tm_cmd(fc_port_t *fcport, uint32_t flags, uint32_t lun,
 	if (!sp)
 		goto done;
 
-<<<<<<< HEAD
-=======
 	qla_vha_mark_busy(vha);
->>>>>>> origin/linux_6.1.15_upstream
 	sp->type = SRB_TM_CMD;
 	sp->name = "tmf";
 	qla2x00_init_async_sp(sp, qla2x00_get_async_timeout(vha),
@@ -5484,12 +5453,7 @@ qla2x00_configure_loop(scsi_qla_host_t *vha)
 			 * use link up to wake up app to get ready for
 			 * authentication.
 			 */
-<<<<<<< HEAD
-			if (ha->flags.edif_enabled &&
-			    !(vha->e_dbell.db_flags & EDB_ACTIVE))
-=======
 			if (ha->flags.edif_enabled && DBELL_INACTIVE(vha))
->>>>>>> origin/linux_6.1.15_upstream
 				qla2x00_post_aen_work(vha, FCH_EVT_LINKUP,
 						      ha->link_data_rate);
 
@@ -5981,14 +5945,11 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 		break;
 	}
 
-<<<<<<< HEAD
-=======
 	if (NVME_TARGET(vha->hw, fcport))
 		qla_nvme_register_remote(vha, fcport);
 
 	qla2x00_set_fcport_state(fcport, FCS_ONLINE);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_IIDMA_CAPABLE(vha->hw) && vha->hw->flags.gpsc_supported) {
 		if (fcport->id_changed) {
 			fcport->id_changed = 0;

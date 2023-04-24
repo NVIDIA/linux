@@ -611,14 +611,9 @@ static int svc_normal_to_secure_thread(void *data)
 			pr_err("%s: STATUS_ERROR\n", __func__);
 			cbdata->status = BIT(SVC_STATUS_ERROR);
 			cbdata->kaddr1 = &res.a1;
-<<<<<<< HEAD
-			cbdata->kaddr2 = NULL;
-			cbdata->kaddr3 = NULL;
-=======
 			cbdata->kaddr2 = (res.a2) ?
 				svc_pa_to_va(res.a2) : NULL;
 			cbdata->kaddr3 = (res.a3) ? &res.a3 : NULL;
->>>>>>> origin/linux_6.1.15_upstream
 			pdata->chan->scl->receive_cb(pdata->chan->scl, cbdata);
 			break;
 		default:

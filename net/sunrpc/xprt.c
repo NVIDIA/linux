@@ -1698,13 +1698,7 @@ static struct rpc_rqst *xprt_dynamic_alloc_slot(struct rpc_xprt *xprt)
 		goto out;
 	++xprt->num_reqs;
 	spin_unlock(&xprt->reserve_lock);
-<<<<<<< HEAD
-	if (current->flags & PF_WQ_WORKER)
-		gfp_mask |= __GFP_NORETRY | __GFP_NOWARN;
-	req = kzalloc(sizeof(*req), gfp_mask);
-=======
 	req = kzalloc(sizeof(*req), rpc_task_gfp_mask());
->>>>>>> origin/linux_6.1.15_upstream
 	spin_lock(&xprt->reserve_lock);
 	if (req != NULL)
 		goto out;

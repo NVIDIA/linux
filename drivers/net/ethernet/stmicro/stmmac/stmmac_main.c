@@ -563,11 +563,7 @@ static void stmmac_get_tx_hwtstamp(struct stmmac_priv *priv,
 	}
 
 	if (found) {
-<<<<<<< HEAD
-		ns -= stmmac_cdc_adjust(priv);
-=======
 		ns -= priv->plat->cdc_error_adj;
->>>>>>> origin/linux_6.1.15_upstream
 
 		memset(&shhwtstamp, 0, sizeof(struct skb_shared_hwtstamps));
 		shhwtstamp.hwtstamp = ns_to_ktime(ns);
@@ -604,11 +600,7 @@ static void stmmac_get_rx_hwtstamp(struct stmmac_priv *priv, struct dma_desc *p,
 	if (stmmac_get_rx_timestamp_status(priv, p, np, priv->adv_ts)) {
 		stmmac_get_timestamp(priv, desc, priv->adv_ts, &ns);
 
-<<<<<<< HEAD
-		ns -= stmmac_cdc_adjust(priv);
-=======
 		ns -= priv->plat->cdc_error_adj;
->>>>>>> origin/linux_6.1.15_upstream
 
 		netdev_dbg(priv->dev, "get valid RX hw timestamp %llu\n", ns);
 		shhwtstamp = skb_hwtstamps(skb);
@@ -853,25 +845,10 @@ int stmmac_init_tstamp_counter(struct stmmac_priv *priv, u32 systime_flags)
 	struct timespec64 now;
 	u32 sec_inc = 0;
 	u64 temp = 0;
-<<<<<<< HEAD
-	int ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!(priv->dma_cap.time_stamp || priv->dma_cap.atime_stamp))
 		return -EOPNOTSUPP;
 
-<<<<<<< HEAD
-	ret = clk_prepare_enable(priv->plat->clk_ptp_ref);
-	if (ret < 0) {
-		netdev_warn(priv->dev,
-			    "failed to enable PTP reference clock: %pe\n",
-			    ERR_PTR(ret));
-		return ret;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	stmmac_config_hw_tstamping(priv, priv->ptpaddr, systime_flags);
 	priv->systime_flags = systime_flags;
 
@@ -3364,15 +3341,6 @@ static int stmmac_hw_setup(struct net_device *dev, bool ptp_register)
 
 	stmmac_mmc_setup(priv);
 
-<<<<<<< HEAD
-	ret = stmmac_init_ptp(priv);
-	if (ret == -EOPNOTSUPP)
-		netdev_warn(priv->dev, "PTP not supported by HW\n");
-	else if (ret)
-		netdev_warn(priv->dev, "PTP init failed\n");
-	else if (ptp_register)
-		stmmac_ptp_register(priv);
-=======
 	if (ptp_register) {
 		ret = clk_prepare_enable(priv->plat->clk_ptp_ref);
 		if (ret < 0)
@@ -3380,7 +3348,6 @@ static int stmmac_hw_setup(struct net_device *dev, bool ptp_register)
 				    "failed to enable PTP reference clock: %pe\n",
 				    ERR_PTR(ret));
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = stmmac_init_ptp(priv);
 	if (ret == -EOPNOTSUPP)
@@ -3821,12 +3788,8 @@ alloc_error:
  *  0 on success and an appropriate (-)ve integer as defined in errno.h
  *  file on failure.
  */
-<<<<<<< HEAD
-static int stmmac_open(struct net_device *dev)
-=======
 static int __stmmac_open(struct net_device *dev,
 			 struct stmmac_dma_conf *dma_conf)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int mode = priv->plat->phy_interface;
@@ -6609,21 +6572,14 @@ void stmmac_xdp_release(struct net_device *dev)
 	struct stmmac_priv *priv = netdev_priv(dev);
 	u32 chan;
 
-<<<<<<< HEAD
-=======
 	/* Ensure tx function is not running */
 	netif_tx_disable(dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Disable NAPI process */
 	stmmac_disable_all_queues(priv);
 
 	for (chan = 0; chan < priv->plat->tx_queues_to_use; chan++)
-<<<<<<< HEAD
-		hrtimer_cancel(&priv->tx_queue[chan].txtimer);
-=======
 		hrtimer_cancel(&priv->dma_conf.tx_queue[chan].txtimer);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Free the IRQ lines */
 	stmmac_free_irq(dev, REQ_IRQ_ERR_ALL, 0);
@@ -6632,11 +6588,7 @@ void stmmac_xdp_release(struct net_device *dev)
 	stmmac_stop_all_dma(priv);
 
 	/* Release and free the Rx/Tx resources */
-<<<<<<< HEAD
-	free_dma_desc_resources(priv);
-=======
 	free_dma_desc_resources(priv, &priv->dma_conf);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Disable the MAC Rx/Tx */
 	stmmac_mac_set(priv, priv->ioaddr, false);
@@ -6661,22 +6613,14 @@ int stmmac_xdp_open(struct net_device *dev)
 	u32 chan;
 	int ret;
 
-<<<<<<< HEAD
-	ret = alloc_dma_desc_resources(priv);
-=======
 	ret = alloc_dma_desc_resources(priv, &priv->dma_conf);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret < 0) {
 		netdev_err(dev, "%s: DMA descriptors allocation failed\n",
 			   __func__);
 		goto dma_desc_error;
 	}
 
-<<<<<<< HEAD
-	ret = init_dma_desc_rings(dev, GFP_KERNEL);
-=======
 	ret = init_dma_desc_rings(dev, &priv->dma_conf, GFP_KERNEL);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret < 0) {
 		netdev_err(dev, "%s: DMA descriptors initialization failed\n",
 			   __func__);
@@ -6694,11 +6638,7 @@ int stmmac_xdp_open(struct net_device *dev)
 
 	/* DMA RX Channel Configuration */
 	for (chan = 0; chan < rx_cnt; chan++) {
-<<<<<<< HEAD
-		rx_q = &priv->rx_queue[chan];
-=======
 		rx_q = &priv->dma_conf.rx_queue[chan];
->>>>>>> origin/linux_6.1.15_upstream
 
 		stmmac_init_rx_chan(priv, priv->ioaddr, priv->plat->dma_cfg,
 				    rx_q->dma_rx_phy, chan);
@@ -6716,11 +6656,7 @@ int stmmac_xdp_open(struct net_device *dev)
 					      rx_q->queue_index);
 		} else {
 			stmmac_set_dma_bfsize(priv, priv->ioaddr,
-<<<<<<< HEAD
-					      priv->dma_buf_sz,
-=======
 					      priv->dma_conf.dma_buf_sz,
->>>>>>> origin/linux_6.1.15_upstream
 					      rx_q->queue_index);
 		}
 
@@ -6729,11 +6665,7 @@ int stmmac_xdp_open(struct net_device *dev)
 
 	/* DMA TX Channel Configuration */
 	for (chan = 0; chan < tx_cnt; chan++) {
-<<<<<<< HEAD
-		tx_q = &priv->tx_queue[chan];
-=======
 		tx_q = &priv->dma_conf.tx_queue[chan];
->>>>>>> origin/linux_6.1.15_upstream
 
 		stmmac_init_tx_chan(priv, priv->ioaddr, priv->plat->dma_cfg,
 				    tx_q->dma_tx_phy, chan);
@@ -6766,19 +6698,11 @@ int stmmac_xdp_open(struct net_device *dev)
 
 irq_error:
 	for (chan = 0; chan < priv->plat->tx_queues_to_use; chan++)
-<<<<<<< HEAD
-		hrtimer_cancel(&priv->tx_queue[chan].txtimer);
-
-	stmmac_hw_teardown(dev);
-init_error:
-	free_dma_desc_resources(priv);
-=======
 		hrtimer_cancel(&priv->dma_conf.tx_queue[chan].txtimer);
 
 	stmmac_hw_teardown(dev);
 init_error:
 	free_dma_desc_resources(priv, &priv->dma_conf);
->>>>>>> origin/linux_6.1.15_upstream
 dma_desc_error:
 	return ret;
 }
@@ -7439,11 +7363,6 @@ int stmmac_dvr_remove(struct device *dev)
 	netdev_info(priv->dev, "%s: removing driver", __func__);
 
 	pm_runtime_get_sync(dev);
-<<<<<<< HEAD
-	pm_runtime_disable(dev);
-	pm_runtime_put_noidle(dev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	stmmac_stop_all_dma(priv);
 	stmmac_mac_set(priv, priv->ioaddr, false);

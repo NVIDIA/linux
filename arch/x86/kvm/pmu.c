@@ -178,8 +178,6 @@ static void pmc_reprogram_counter(struct kvm_pmc *pmc, u32 type,
 		 * allocating the counter doesn't fail.
 		 */
 		attr.sample_period = 0;
-<<<<<<< HEAD
-=======
 	}
 	if (pebs) {
 		/*
@@ -199,7 +197,6 @@ static void pmc_reprogram_counter(struct kvm_pmc *pmc, u32 type,
 		attr.precise_ip = 1;
 		if (x86_match_cpu(vmx_icl_pebs_cpu) && pmc->idx == 32)
 			attr.precise_ip = 3;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	event = perf_event_create_kernel_counter(&attr, -1, current,
@@ -254,21 +251,8 @@ static bool pmc_resume_counter(struct kvm_pmc *pmc)
 
 static int cmp_u64(const void *pa, const void *pb)
 {
-<<<<<<< HEAD
-	u64 config;
-	u32 type = PERF_TYPE_RAW;
-	struct kvm *kvm = pmc->vcpu->kvm;
-	struct kvm_pmu_event_filter *filter;
-	int i;
-	struct kvm_pmu *pmu = vcpu_to_pmu(pmc->vcpu);
-	bool allow_event = true;
-
-	if (eventsel & ARCH_PERFMON_EVENTSEL_PIN_CONTROL)
-		printk_once("kvm pmu: pin control bit is ignored\n");
-=======
 	u64 a = *(u64 *)pa;
 	u64 b = *(u64 *)pb;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return (a > b) - (a < b);
 }
@@ -304,38 +288,9 @@ static bool check_pmu_event_filter(struct kvm_pmc *pmc)
 		    !test_bit(idx, (ulong *)&filter->fixed_counter_bitmap))
 			allow_event = false;
 	}
-<<<<<<< HEAD
-	if (!allow_event)
-		return;
-
-	if (!(eventsel & (ARCH_PERFMON_EVENTSEL_EDGE |
-			  ARCH_PERFMON_EVENTSEL_INV |
-			  ARCH_PERFMON_EVENTSEL_CMASK |
-			  HSW_IN_TX |
-			  HSW_IN_TX_CHECKPOINTED))) {
-		config = kvm_x86_ops.pmu_ops->pmc_perf_hw_id(pmc);
-		if (config != PERF_COUNT_HW_MAX)
-			type = PERF_TYPE_HARDWARE;
-	}
-
-	if (type == PERF_TYPE_RAW)
-		config = eventsel & pmu->raw_event_mask;
-
-	if (pmc->current_config == eventsel && pmc_resume_counter(pmc))
-		return;
-
-	pmc_release_perf_event(pmc);
-
-	pmc->current_config = eventsel;
-	pmc_reprogram_counter(pmc, type, config,
-			      !(eventsel & ARCH_PERFMON_EVENTSEL_USR),
-			      !(eventsel & ARCH_PERFMON_EVENTSEL_OS),
-			      eventsel & ARCH_PERFMON_EVENTSEL_INT);
-=======
 
 out:
 	return allow_event;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void reprogram_counter(struct kvm_pmc *pmc)
@@ -353,21 +308,8 @@ void reprogram_counter(struct kvm_pmc *pmc)
 	if (!check_pmu_event_filter(pmc))
 		return;
 
-<<<<<<< HEAD
-	pmc_release_perf_event(pmc);
-
-	pmc->current_config = (u64)ctrl;
-	pmc_reprogram_counter(pmc, PERF_TYPE_HARDWARE,
-			      kvm_x86_ops.pmu_ops->find_fixed_event(idx),
-			      !(en_field & 0x2), /* exclude user */
-			      !(en_field & 0x1), /* exclude kernel */
-			      pmi);
-}
-EXPORT_SYMBOL_GPL(reprogram_fixed_counter);
-=======
 	if (eventsel & ARCH_PERFMON_EVENTSEL_PIN_CONTROL)
 		printk_once("kvm pmu: pin control bit is ignored\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (pmc_is_fixed(pmc)) {
 		fixed_ctr_ctrl = fixed_ctrl_field(pmu->fixed_ctr_ctrl,

@@ -2494,11 +2494,6 @@ ql_dbg(uint level, scsi_qla_host_t *vha, uint id, const char *fmt, ...)
 	struct va_format vaf;
 	char pbuf[64];
 
-<<<<<<< HEAD
-	if (!ql_mask_match(level) && !trace_ql_dbg_log_enabled())
-		return;
-
-=======
 	ql_ktrace(1, level, pbuf, NULL, vha, id, fmt);
 
 	if (!ql_mask_match(level))
@@ -2507,7 +2502,6 @@ ql_dbg(uint level, scsi_qla_host_t *vha, uint id, const char *fmt, ...)
 	if (!pbuf[0]) /* set by ql_ktrace */
 		ql_dbg_prefix(pbuf, ARRAY_SIZE(pbuf), NULL, vha, id);
 
->>>>>>> origin/linux_6.1.15_upstream
 	va_start(va, fmt);
 
 	vaf.fmt = fmt;

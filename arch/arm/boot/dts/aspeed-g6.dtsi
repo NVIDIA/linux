@@ -126,30 +126,6 @@
 				compatible = "jedec,spi-nor";
 				spi-max-frequency = <50000000>;
 				spi-rx-bus-width = <2>;
-<<<<<<< HEAD
-				status = "disabled";
-			};
-		};
-
-		fmcraw: spiraw@1e620000 {
-			/* reg : cs0 : cs1 : cs2 */
-			reg = <0x1e620000 0x100
-				0x20000000 0x200000
-				0x24000000 0x200000
-				0x28000000 0x200000>;
-			compatible = "aspeed,ast2600-fmc-spi";
-			number_of_chip_select = /bits/ 16 <3>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			clocks = <&syscon ASPEED_CLK_AHB>;
-			status = "disabled";
-			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
-			num-cs = <3>;
-			spidev@0 {
-				reg = < 2 >;
-				spi-max-frequency = <50000000>;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 				status = "disabled";
 			};
 		};
@@ -336,11 +312,7 @@
 			status = "disabled";
 		};
 
-<<<<<<< HEAD
-		udc: udc@1e6a2000 {
-=======
 		udc: usb@1e6a2000 {
->>>>>>> origin/linux_6.1.15_upstream
 			compatible = "aspeed,ast2600-udc";
 			reg = <0x1e6a2000 0x300>;
 			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
@@ -567,22 +539,6 @@
 				status = "disabled";
 			};
 
-<<<<<<< HEAD
-/*
-			gfx: display@1e6e6000 {
-				compatible = "aspeed,ast2600-gfx", "syscon";
-				reg = <0x1e6e6000 0x1000>;
-				reg-io-width = <4>;
-				clocks = <&syscon ASPEED_CLK_GATE_D1CLK>;
-				resets = <&syscon ASPEED_RESET_CRT>, <&syscon ASPEED_RESET_GRAPHICS>;
-				reset-names = "crt", "engine";
-				interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
-				status = "disabled";
-			};
-*/
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			sbc: secure-boot-controller@1e6f2000 {
 				compatible = "aspeed,ast2600-sbc";
 				reg = <0x1e6f2000 0x1000>;

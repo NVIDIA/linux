@@ -126,11 +126,7 @@ static int guc_action_slpc_set_param(struct intel_guc *guc, u8 id, u32 value)
 {
 	u32 request[] = {
 		GUC_ACTION_HOST2GUC_PC_SLPC_REQUEST,
-<<<<<<< HEAD
-		SLPC_EVENT(SLPC_EVENT_PARAMETER_UNSET, 1),
-=======
 		SLPC_EVENT(SLPC_EVENT_PARAMETER_SET, 2),
->>>>>>> origin/linux_6.1.15_upstream
 		id,
 		value,
 	};

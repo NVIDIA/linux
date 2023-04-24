@@ -1315,16 +1315,11 @@ static void intel_pt_clear_fup_event(struct intel_pt_decoder *decoder)
 static bool intel_pt_fup_event(struct intel_pt_decoder *decoder, bool no_tip)
 {
 	enum intel_pt_sample_type type = decoder->state.type;
-<<<<<<< HEAD
-=======
 	bool sample_fup_insn = false;
->>>>>>> origin/linux_6.1.15_upstream
 	bool ret = false;
 
 	decoder->state.type &= ~INTEL_PT_BRANCH;
 
-<<<<<<< HEAD
-=======
 	if (decoder->set_fup_cfe_ip || decoder->set_fup_cfe) {
 		bool ip = decoder->set_fup_cfe_ip;
 
@@ -1348,7 +1343,6 @@ static bool intel_pt_fup_event(struct intel_pt_decoder *decoder, bool no_tip)
 		sample_fup_insn = no_tip;
 		ret = true;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (decoder->set_fup_tx_flags) {
 		decoder->set_fup_tx_flags = false;
 		decoder->tx_flags = decoder->fup_tx_flags;
@@ -1405,11 +1399,8 @@ static bool intel_pt_fup_event(struct intel_pt_decoder *decoder, bool no_tip)
 	if (ret) {
 		decoder->state.from_ip = decoder->ip;
 		decoder->state.to_ip = 0;
-<<<<<<< HEAD
-=======
 		if (sample_fup_insn)
 			intel_pt_sample_fup_insn(decoder);
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		decoder->state.type = type;
 	}
@@ -1870,16 +1861,7 @@ static int intel_pt_overflow(struct intel_pt_decoder *decoder)
 	decoder->state.from_ip = decoder->ip;
 	decoder->ip = 0;
 	decoder->pge = false;
-<<<<<<< HEAD
-	decoder->set_fup_tx_flags = false;
-	decoder->set_fup_ptw = false;
-	decoder->set_fup_mwait = false;
-	decoder->set_fup_pwre = false;
-	decoder->set_fup_exstop = false;
-	decoder->set_fup_bep = false;
-=======
 	intel_pt_clear_fup_event(decoder);
->>>>>>> origin/linux_6.1.15_upstream
 	decoder->overflow = true;
 	return -EOVERFLOW;
 }
@@ -3001,17 +2983,10 @@ static int intel_pt_hop_trace(struct intel_pt_decoder *decoder, bool *no_tip, in
 			decoder->state.type = INTEL_PT_INSTRUCTION;
 			decoder->state.from_ip = decoder->ip;
 			decoder->state.to_ip = 0;
-<<<<<<< HEAD
-			intel_pt_fup_event(decoder);
-			return HOP_RETURN;
-		}
-		intel_pt_fup_event(decoder);
-=======
 			intel_pt_fup_event(decoder, *no_tip);
 			return HOP_RETURN;
 		}
 		intel_pt_fup_event(decoder, *no_tip);
->>>>>>> origin/linux_6.1.15_upstream
 		decoder->state.type |= INTEL_PT_INSTRUCTION | INTEL_PT_BRANCH;
 		*err = intel_pt_walk_fup_tip(decoder);
 		if (!*err && decoder->state.to_ip)
@@ -3810,16 +3785,7 @@ static int intel_pt_sync_ip(struct intel_pt_decoder *decoder)
 {
 	int err;
 
-<<<<<<< HEAD
-	decoder->set_fup_tx_flags = false;
-	decoder->set_fup_ptw = false;
-	decoder->set_fup_mwait = false;
-	decoder->set_fup_pwre = false;
-	decoder->set_fup_exstop = false;
-	decoder->set_fup_bep = false;
-=======
 	intel_pt_clear_fup_event(decoder);
->>>>>>> origin/linux_6.1.15_upstream
 	decoder->overflow = false;
 
 	if (!decoder->branch_enable) {

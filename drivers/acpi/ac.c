@@ -48,10 +48,6 @@ static int acpi_ac_resume(struct device *dev);
 static SIMPLE_DEV_PM_OPS(acpi_ac_pm, NULL, acpi_ac_resume);
 
 static int ac_sleep_before_get_state_ms;
-<<<<<<< HEAD
-static int ac_check_pmic = 1;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int ac_only;
 
 static struct acpi_driver acpi_ac_driver = {
@@ -207,27 +203,8 @@ static int __init ac_only_quirk(const struct dmi_system_id *d)
 /* Please keep this list alphabetically sorted */
 static const struct dmi_system_id ac_dmi_table[]  __initconst = {
 	{
-<<<<<<< HEAD
-		/* ECS EF20EA, AXP288 PMIC but uses separate fuel-gauge */
-		.callback = ac_do_not_check_pmic_quirk,
-		.matches = {
-			DMI_MATCH(DMI_PRODUCT_NAME, "EF20EA"),
-		},
-	},
-	{
 		/* Kodlix GK45 returning incorrect state */
 		.callback = ac_only_quirk,
-		.matches = {
-			DMI_MATCH(DMI_PRODUCT_NAME, "GK45"),
-		},
-	},
-	{
-		/* Lenovo Ideapad Miix 320, AXP288 PMIC, separate fuel-gauge */
-		.callback = ac_do_not_check_pmic_quirk,
-=======
-		/* Kodlix GK45 returning incorrect state */
-		.callback = ac_only_quirk,
->>>>>>> origin/linux_6.1.15_upstream
 		.matches = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "GK45"),
 		},

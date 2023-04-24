@@ -125,20 +125,6 @@ static void llist_abort_desc(struct idxd_wq *wq, struct idxd_irq_entry *ie,
 	spin_unlock(&ie->list_lock);
 
 	if (found)
-<<<<<<< HEAD
-		complete_desc(found, IDXD_COMPLETE_ABORT);
-
-	/*
-	 * complete_desc() will return desc to allocator and the desc can be
-	 * acquired by a different process and the desc->list can be modified.
-	 * Delete desc from list so the list trasversing does not get corrupted
-	 * by the other process.
-	 */
-	list_for_each_entry_safe(d, t, &flist, list) {
-		list_del_init(&d->list);
-		complete_desc(d, IDXD_COMPLETE_NORMAL);
-	}
-=======
 		idxd_dma_complete_txd(found, IDXD_COMPLETE_ABORT, false);
 
 	/*
@@ -175,7 +161,6 @@ int idxd_enqcmds(struct idxd_wq *wq, void __iomem *portal, const void *desc)
 	} while (retries--);
 
 	return rc;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int idxd_submit_desc(struct idxd_wq *wq, struct idxd_desc *desc)

@@ -65,8 +65,6 @@ struct dml_funcs {
 		struct display_mode_lib *mode_lib,
 		display_rq_regs_st *rq_regs,
 		const display_pipe_params_st *pipe_param);
-<<<<<<< HEAD
-=======
 	// DLG interfaces have different function parameters in DCN32.
 	// Create new function pointers to address the changes
 	void (*rq_dlg_get_dlg_reg_v2)(
@@ -81,7 +79,6 @@ struct dml_funcs {
 			const display_e2e_pipe_params_st *e2e_pipe_param,
 			const unsigned int num_pipes,
 			const unsigned int pipe_idx);
->>>>>>> origin/linux_6.1.15_upstream
 	void (*recalculate)(struct display_mode_lib *mode_lib);
 	void (*validate)(struct display_mode_lib *mode_lib);
 };

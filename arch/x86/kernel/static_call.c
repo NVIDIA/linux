@@ -13,19 +13,11 @@ enum insn_type {
 };
 
 /*
-<<<<<<< HEAD
- * cs cs cs xorl %eax, %eax - a single 5 byte instruction that clears %[er]ax
- */
-static const u8 xor5rax[] = { 0x2e, 0x2e, 0x2e, 0x31, 0xc0 };
-
-static const u8 retinsn[] = { RET_INSN_OPCODE, 0xcc, 0xcc, 0xcc, 0xcc };
-=======
  * ud1 %esp, %ecx - a 3 byte #UD that is unique to trampolines, chosen such
  * that there is no false-positive trampoline identification while also being a
  * speculation stop.
  */
 static const u8 tramp_ud[] = { 0x0f, 0xb9, 0xcc };
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * cs cs cs xorl %eax, %eax - a single 5 byte instruction that clears %[er]ax
@@ -87,9 +79,6 @@ static void __ref __static_call_transform(void *insn, enum insn_type type,
 		break;
 
 	case RET:
-<<<<<<< HEAD
-		code = &retinsn;
-=======
 		if (cpu_feature_enabled(X86_FEATURE_RETHUNK))
 			code = text_gen_insn(JMP32_INSN_OPCODE, insn, &__x86_return_thunk);
 		else
@@ -108,7 +97,6 @@ static void __ref __static_call_transform(void *insn, enum insn_type type,
 		code = buf;
 		size = 6;
 
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	}
 

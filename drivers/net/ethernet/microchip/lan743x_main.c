@@ -1467,13 +1467,10 @@ static void lan743x_phy_link_status_change(struct net_device *netdev)
 		lan743x_phy_update_flowcontrol(adapter, local_advertisement,
 					       remote_advertisement);
 		lan743x_ptp_update_latency(adapter, phydev->speed);
-<<<<<<< HEAD
-=======
 		if (phydev->interface == PHY_INTERFACE_MODE_SGMII ||
 		    phydev->interface == PHY_INTERFACE_MODE_1000BASEX ||
 		    phydev->interface == PHY_INTERFACE_MODE_2500BASEX)
 			lan743x_sgmii_config(adapter);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

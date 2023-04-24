@@ -792,8 +792,6 @@ static u8 *hdmi_audio_get_eld(struct dw_hdmi *hdmi)
 	return hdmi->curr_conn->eld;
 }
 
-<<<<<<< HEAD
-=======
 static void dw_hdmi_gp_audio_enable(struct dw_hdmi *hdmi)
 {
 	const struct dw_hdmi_plat_data *pdata = hdmi->plat_data;
@@ -877,7 +875,6 @@ static void dw_hdmi_gp_audio_disable(struct dw_hdmi *hdmi)
 	hdmi_enable_audio_clk(hdmi, false);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)
 {
 	hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);

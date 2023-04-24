@@ -1035,12 +1035,7 @@ static void print_key_value(struct bpf_map_info *info, void *key,
 	json_writer_t *btf_wtr;
 	struct btf *btf;
 
-<<<<<<< HEAD
-	btf = get_map_kv_btf(info);
-	if (libbpf_get_error(btf))
-=======
 	if (get_map_kv_btf(info, &btf))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	if (json_output) {

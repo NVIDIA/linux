@@ -65,22 +65,11 @@ depot_stack_handle_t stack_depot_save(unsigned long *entries,
 unsigned int stack_depot_fetch(depot_stack_handle_t handle,
 			       unsigned long **entries);
 
-<<<<<<< HEAD
-#ifdef CONFIG_STACKDEPOT
-int stack_depot_init(void);
-#else
-static inline int stack_depot_init(void)
-{
-	return 0;
-}
-#endif	/* CONFIG_STACKDEPOT */
-=======
 unsigned int stack_depot_get_extra_bits(depot_stack_handle_t handle);
 
 int stack_depot_snprint(depot_stack_handle_t handle, char *buf, size_t size,
 		       int spaces);
 
 void stack_depot_print(depot_stack_handle_t stack);
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif

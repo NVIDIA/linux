@@ -857,9 +857,6 @@ struct kmem_obj_info {
 	void *kp_stack[KS_ADDRS_COUNT];
 	void *kp_free_stack[KS_ADDRS_COUNT];
 };
-<<<<<<< HEAD
-void __kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct page *page);
-=======
 void __kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct slab *slab);
 #endif
 
@@ -872,7 +869,6 @@ void __check_heap_object(const void *ptr, unsigned long n,
 			 const struct slab *slab, bool to_user)
 {
 }
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 
 #endif /* MM_SLAB_H */

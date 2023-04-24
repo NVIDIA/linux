@@ -113,13 +113,6 @@ bool amdgpu_dm_link_setup_psr(struct dc_stream_state *stream)
 	dc = link->ctx->dc;
 
 	if (link->psr_settings.psr_version != DC_PSR_VERSION_UNSUPPORTED) {
-<<<<<<< HEAD
-		psr_config.psr_version = link->psr_settings.psr_version;
-		psr_config.psr_frame_capture_indication_req = 0;
-		psr_config.psr_rfb_setup_time = 0x37;
-		psr_config.psr_sdp_transmit_line_num_deadline = 0x20;
-		psr_config.allow_smu_optimizations = 0x0;
-=======
 		mod_power_calc_psr_configs(&psr_config, link, stream);
 
 		/* linux DM specific updating for psr config fields */
@@ -128,7 +121,6 @@ bool amdgpu_dm_link_setup_psr(struct dc_stream_state *stream)
 			mod_power_only_edp(dc->current_state, stream);
 		psr_config.allow_multi_disp_optimizations =
 			(amdgpu_dc_feature_mask & DC_PSR_ALLOW_MULTI_DISP_OPT);
->>>>>>> origin/linux_6.1.15_upstream
 
 		ret = dc_link_setup_psr(link, stream, &psr_config, &psr_context);
 

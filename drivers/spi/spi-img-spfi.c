@@ -730,14 +730,8 @@ static int img_spfi_resume(struct device *dev)
 	struct img_spfi *spfi = spi_master_get_devdata(master);
 	int ret;
 
-<<<<<<< HEAD
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
-=======
 	ret = pm_runtime_resume_and_get(dev);
 	if (ret < 0)
->>>>>>> origin/linux_6.1.15_upstream
 		return ret;
 	spfi_reset(spfi);
 	pm_runtime_put(dev);

@@ -281,19 +281,11 @@ static inline int mlx5e_page_alloc_pool(struct mlx5e_rq *rq, union mlx5e_alloc_u
 	if (unlikely(!au->page))
 		return -ENOMEM;
 
-<<<<<<< HEAD
-	dma_info->addr = dma_map_page_attrs(rq->pdev, dma_info->page, 0, PAGE_SIZE,
-					    rq->buff.map_dir, DMA_ATTR_SKIP_CPU_SYNC);
-	if (unlikely(dma_mapping_error(rq->pdev, dma_info->addr))) {
-		page_pool_recycle_direct(rq->page_pool, dma_info->page);
-		dma_info->page = NULL;
-=======
 	/* Non-XSK always uses PAGE_SIZE. */
 	addr = dma_map_page(rq->pdev, au->page, 0, PAGE_SIZE, rq->buff.map_dir);
 	if (unlikely(dma_mapping_error(rq->pdev, addr))) {
 		page_pool_recycle_direct(rq->page_pool, au->page);
 		au->page = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENOMEM;
 	}
 	page_pool_set_dma_addr(au->page, addr);
@@ -305,16 +297,9 @@ void mlx5e_page_dma_unmap(struct mlx5e_rq *rq, struct page *page)
 {
 	dma_addr_t dma_addr = page_pool_get_dma_addr(page);
 
-<<<<<<< HEAD
-void mlx5e_page_dma_unmap(struct mlx5e_rq *rq, struct mlx5e_dma_info *dma_info)
-{
-	dma_unmap_page_attrs(rq->pdev, dma_info->addr, PAGE_SIZE, rq->buff.map_dir,
-			     DMA_ATTR_SKIP_CPU_SYNC);
-=======
 	dma_unmap_page_attrs(rq->pdev, dma_addr, PAGE_SIZE, rq->buff.map_dir,
 			     DMA_ATTR_SKIP_CPU_SYNC);
 	page_pool_set_dma_addr(page, 0);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void mlx5e_page_release_dynamic(struct mlx5e_rq *rq, struct page *page, bool recycle)

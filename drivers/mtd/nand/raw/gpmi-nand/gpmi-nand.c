@@ -872,10 +872,6 @@ static int gpmi_nfc_compute_timings(struct gpmi_nand_data *this,
 		wrn_dly_sel = BV_GPMI_CTRL1_WRN_DLY_SEL_NO_DELAY;
 	}
 
-<<<<<<< HEAD
-	hw->clk_rate = clk_round_rate(r->clock[0], hw->clk_rate);
-
-=======
 	clk_rate = clk_round_rate(r->clock[0], hw->clk_rate);
 	if (clk_rate <= min_rate) {
 		dev_err(this->dev, "clock setting: expected %ld, got %ld\n",
@@ -884,7 +880,6 @@ static int gpmi_nfc_compute_timings(struct gpmi_nand_data *this,
 	}
 
 	hw->clk_rate = clk_rate;
->>>>>>> origin/linux_6.1.15_upstream
 	/* SDR core timings are given in picoseconds */
 	period_ps = div_u64((u64)NSEC_PER_SEC * 1000, hw->clk_rate);
 
@@ -936,7 +931,6 @@ static int gpmi_nfc_apply_timings(struct gpmi_nand_data *this)
 	void __iomem *gpmi_regs = r->gpmi_regs;
 	unsigned int dll_wait_time_us;
 	int ret;
-<<<<<<< HEAD
 
 	/* Clock dividers do NOT guarantee a clean clock signal on its output
 	 * during the change of the divide factor on i.MX6Q/UL/SX. On i.MX7/8,
@@ -945,16 +939,6 @@ static int gpmi_nfc_apply_timings(struct gpmi_nand_data *this)
 	if (GPMI_IS_MX6Q(this) || GPMI_IS_MX6SX(this))
 		clk_disable_unprepare(r->clock[0]);
 
-=======
-
-	/* Clock dividers do NOT guarantee a clean clock signal on its output
-	 * during the change of the divide factor on i.MX6Q/UL/SX. On i.MX7/8,
-	 * all clock dividers provide these guarantee.
-	 */
-	if (GPMI_IS_MX6Q(this) || GPMI_IS_MX6SX(this))
-		clk_disable_unprepare(r->clock[0]);
-
->>>>>>> origin/linux_6.1.15_upstream
 	ret = clk_set_rate(r->clock[0], hw->clk_rate);
 	if (ret) {
 		dev_err(this->dev, "cannot set clock rate to %lu Hz: %d\n", hw->clk_rate, ret);

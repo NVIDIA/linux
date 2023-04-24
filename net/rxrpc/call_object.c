@@ -56,7 +56,6 @@ static void rxrpc_call_timer_expired(struct timer_list *t)
 		__rxrpc_queue_call(call);
 	} else {
 		rxrpc_put_call(call, rxrpc_call_put);
-<<<<<<< HEAD
 	}
 }
 
@@ -72,23 +71,6 @@ void rxrpc_reduce_call_timer(struct rxrpc_call *call,
 	}
 }
 
-=======
-	}
-}
-
-void rxrpc_reduce_call_timer(struct rxrpc_call *call,
-			     unsigned long expire_at,
-			     unsigned long now,
-			     enum rxrpc_timer_trace why)
-{
-	if (rxrpc_try_get_call(call, rxrpc_call_got_timer)) {
-		trace_rxrpc_timer(call, why, now);
-		if (timer_reduce(&call->timer, expire_at))
-			rxrpc_put_call(call, rxrpc_call_put_notimer);
-	}
-}
-
->>>>>>> origin/linux_6.1.15_upstream
 void rxrpc_delete_call_timer(struct rxrpc_call *call)
 {
 	if (del_timer_sync(&call->timer))
@@ -507,19 +489,11 @@ void rxrpc_see_call(struct rxrpc_call *call)
 bool rxrpc_try_get_call(struct rxrpc_call *call, enum rxrpc_call_trace op)
 {
 	const void *here = __builtin_return_address(0);
-<<<<<<< HEAD
-	int n = atomic_fetch_add_unless(&call->usage, 1, 0);
-
-	if (n == 0)
-		return false;
-	trace_rxrpc_call(call->debug_id, op, n, here, NULL);
-=======
 	int n;
 
 	if (!__refcount_inc_not_zero(&call->ref, &n))
 		return false;
 	trace_rxrpc_call(call->debug_id, op, n + 1, here, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 	return true;
 }
 

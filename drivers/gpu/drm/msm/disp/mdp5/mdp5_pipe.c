@@ -123,20 +123,13 @@ int mdp5_pipe_release(struct drm_atomic_state *s, struct mdp5_hw_pipe *hwpipe)
 {
 	struct msm_drm_private *priv = s->dev->dev_private;
 	struct mdp5_kms *mdp5_kms = to_mdp5_kms(to_mdp_kms(priv->kms));
-<<<<<<< HEAD
-	struct mdp5_global_state *state = mdp5_get_global_state(s);
-=======
 	struct mdp5_global_state *state;
->>>>>>> origin/linux_6.1.15_upstream
 	struct mdp5_hw_pipe_state *new_state;
 
 	if (!hwpipe)
 		return 0;
 
-<<<<<<< HEAD
-=======
 	state = mdp5_get_global_state(s);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(state))
 		return PTR_ERR(state);
 

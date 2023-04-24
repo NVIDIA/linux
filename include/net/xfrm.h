@@ -1581,11 +1581,7 @@ int xfrm_dev_state_flush(struct net *net, struct net_device *dev, bool task_vali
 void xfrm_sad_getinfo(struct net *net, struct xfrmk_sadinfo *si);
 void xfrm_spd_getinfo(struct net *net, struct xfrmk_spdinfo *si);
 u32 xfrm_replay_seqhi(struct xfrm_state *x, __be32 net_seq);
-<<<<<<< HEAD
-int xfrm_init_replay(struct xfrm_state *x);
-=======
 int xfrm_init_replay(struct xfrm_state *x, struct netlink_ext_ack *extack);
->>>>>>> origin/linux_6.1.15_upstream
 u32 xfrm_state_mtu(struct xfrm_state *x, int mtu);
 int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload,
 		      struct netlink_ext_ack *extack);

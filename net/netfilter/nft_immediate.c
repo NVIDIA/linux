@@ -239,8 +239,6 @@ static bool nft_immediate_offload_action(const struct nft_expr *expr)
 	return false;
 }
 
-<<<<<<< HEAD
-=======
 static bool nft_immediate_reduce(struct nft_regs_track *track,
 				 const struct nft_expr *expr)
 {
@@ -252,7 +250,6 @@ static bool nft_immediate_reduce(struct nft_regs_track *track,
 	return false;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct nft_expr_ops nft_imm_ops = {
 	.type		= &nft_imm_type,
 	.size		= NFT_EXPR_SIZE(sizeof(struct nft_immediate_expr)),

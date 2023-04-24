@@ -385,13 +385,7 @@ static inline int exfat_sector_to_cluster(struct exfat_sb_info *sbi,
 static inline bool is_valid_cluster(struct exfat_sb_info *sbi,
 		unsigned int clus)
 {
-<<<<<<< HEAD
-	if (clus < EXFAT_FIRST_CLUSTER || sbi->num_clusters <= clus)
-		return false;
-	return true;
-=======
 	return clus >= EXFAT_FIRST_CLUSTER && clus < sbi->num_clusters;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* super.c */

@@ -530,57 +530,8 @@ error:
 	return ret;
 }
 
-<<<<<<< HEAD
-/*
- * Check if the device in the path matches the device in the given struct device.
- *
- * Returns:
- *   true  If it is the same device.
- *   false If it is not the same device or on error.
- */
-static bool device_matched(const struct btrfs_device *device, const char *path)
-{
-	char *device_name;
-	dev_t dev_old;
-	dev_t dev_new;
-	int ret;
-
-	/*
-	 * If we are looking for a device with the matching dev_t, then skip
-	 * device without a name (a missing device).
-	 */
-	if (!device->name)
-		return false;
-
-	device_name = kzalloc(BTRFS_PATH_NAME_MAX, GFP_KERNEL);
-	if (!device_name)
-		return false;
-
-	rcu_read_lock();
-	scnprintf(device_name, BTRFS_PATH_NAME_MAX, "%s", rcu_str_deref(device->name));
-	rcu_read_unlock();
-
-	ret = lookup_bdev(device_name, &dev_old);
-	kfree(device_name);
-	if (ret)
-		return false;
-
-	ret = lookup_bdev(path, &dev_new);
-	if (ret)
-		return false;
-
-	if (dev_old == dev_new)
-		return true;
-
-	return false;
-}
-
-/*
- *  Search and remove all stale (devices which are not mounted) devices.
-=======
 /**
  *  Search and remove all stale devices (which are not mounted).
->>>>>>> origin/linux_6.1.15_upstream
  *  When both inputs are NULL, it will search and release all stale devices.
  *
  *  @devt:	Optional. When provided will it release all unmounted devices
@@ -610,11 +561,7 @@ static int btrfs_free_stale_devices(dev_t devt, struct btrfs_device *skip_device
 					 &fs_devices->devices, dev_list) {
 			if (skip_device && skip_device == device)
 				continue;
-<<<<<<< HEAD
-			if (path && !device_matched(device, path))
-=======
 			if (devt && devt != device->devt)
->>>>>>> origin/linux_6.1.15_upstream
 				continue;
 			if (fs_devices->opened) {
 				/* for an already deleted device return 0 */
@@ -2153,14 +2100,11 @@ int btrfs_rm_device(struct btrfs_fs_info *fs_info,
 	u64 num_devices;
 	int ret = 0;
 
-<<<<<<< HEAD
-=======
 	if (btrfs_fs_incompat(fs_info, EXTENT_TREE_V2)) {
 		btrfs_err(fs_info, "device remove not supported on extent tree v2 yet");
 		return -EINVAL;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * The device list in fs_devices is accessed without locks (neither
 	 * uuid_mutex nor device_list_mutex) as it won't change on a mounted
@@ -2203,11 +2147,6 @@ int btrfs_rm_device(struct btrfs_fs_info *fs_info,
 	}
 
 	ret = btrfs_shrink_device(device, 0);
-<<<<<<< HEAD
-	if (!ret)
-		btrfs_reada_remove_dev(device);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		goto error_undo;
 
@@ -2309,12 +2248,8 @@ int btrfs_rm_device(struct btrfs_fs_info *fs_info,
 		free_fs_devices(cur_devices);
 	}
 
-<<<<<<< HEAD
-out:
-=======
 	ret = btrfs_commit_transaction(trans);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 
 error_undo:
@@ -7784,19 +7719,7 @@ int btrfs_read_chunk_tree(struct btrfs_fs_info *fs_info)
 
 		leaf = path->nodes[0];
 		slot = path->slots[0];
-<<<<<<< HEAD
-		if (slot >= btrfs_header_nritems(leaf)) {
-			ret = btrfs_next_leaf(root, path);
-			if (ret == 0)
-				continue;
-			if (ret < 0)
-				goto error;
-			break;
-		}
-		node = path->nodes[1];
-=======
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (node) {
 			if (last_ra_node != node->start) {
 				readahead_tree_node_children(node);

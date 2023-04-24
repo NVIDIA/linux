@@ -310,23 +310,6 @@ static const struct rpmhpd_desc sm8250_desc = {
 };
 
 /* SM8350 Power domains */
-<<<<<<< HEAD
-static struct rpmhpd sm8350_mxc_ao;
-static struct rpmhpd sm8350_mxc = {
-	.pd = { .name = "mxc", },
-	.peer = &sm8350_mxc_ao,
-	.res_name = "mxc.lvl",
-};
-
-static struct rpmhpd sm8350_mxc_ao = {
-	.pd = { .name = "mxc_ao", },
-	.active_only = true,
-	.peer = &sm8350_mxc,
-	.res_name = "mxc.lvl",
-};
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static struct rpmhpd *sm8350_rpmhpds[] = {
 	[SM8350_CX] = &cx_w_mx_parent,
 	[SM8350_CX_AO] = &cx_ao_w_mx_parent,

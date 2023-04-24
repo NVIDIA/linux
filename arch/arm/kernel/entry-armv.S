@@ -1094,12 +1094,8 @@ vector_\name:
 	stmia	sp, {r0, lr}		@ save r0, lr
 
 	@ Save spsr_<exception> (parent CPSR)
-<<<<<<< HEAD
-2:	mrs	lr, spsr
-=======
 .Lvec_\name:
 	mrs	lr, spsr
->>>>>>> origin/linux_6.1.15_upstream
 	str	lr, [sp, #8]		@ save spsr
 
 	@
@@ -1136,33 +1132,11 @@ vector_bhb_loop8_\name:
 3:	W(b)	. + 4
 	subs	r0, r0, #1
 	bne	3b
-<<<<<<< HEAD
-	dsb
-	isb
-	b	2b
-ENDPROC(vector_bhb_loop8_\name)
-
-vector_bhb_bpiall_\name:
-	.if \correction
-	sub	lr, lr, #\correction
-	.endif
-
-	@ Save r0, lr_<exception> (parent PC)
-	stmia	sp, {r0, lr}
-
-	@ bhb workaround
-	mcr	p15, 0, r0, c7, c5, 6	@ BPIALL
-	@ isb not needed due to "movs pc, lr" in the vector stub
-	@ which gives a "context synchronisation".
-	b	2b
-ENDPROC(vector_bhb_bpiall_\name)
-=======
 	dsb	nsh
 	@ isb not needed due to "movs pc, lr" in the vector stub
 	@ which gives a "context synchronisation".
 	b	.Lvec_\name
 ENDPROC(vector_bhb_loop8_\name)
->>>>>>> origin/linux_6.1.15_upstream
 	.previous
 #endif
 
@@ -1178,13 +1152,9 @@ ENDPROC(vector_bhb_loop8_\name)
 .L__vector_swi:
 	.word	vector_swi
 #ifdef CONFIG_HARDEN_BRANCH_HISTORY
-<<<<<<< HEAD
-	.word	vector_bhb_loop8_swi
-=======
 .L__vector_bhb_loop8_swi:
 	.word	vector_bhb_loop8_swi
 .L__vector_bhb_bpiall_swi:
->>>>>>> origin/linux_6.1.15_upstream
 	.word	vector_bhb_bpiall_swi
 #endif
 
@@ -1340,18 +1310,11 @@ THUMB(	.reloc	., R_ARM_THM_PC12, .L__vector_swi		)
 
 #ifdef CONFIG_HARDEN_BRANCH_HISTORY
 	.section .vectors.bhb.loop8, "ax", %progbits
-<<<<<<< HEAD
-.L__vectors_bhb_loop8_start:
-	W(b)	vector_rst
-	W(b)	vector_bhb_loop8_und
-	W(ldr)	pc, .L__vectors_bhb_loop8_start + 0x1004
-=======
 	W(b)	vector_rst
 	W(b)	vector_bhb_loop8_und
 ARM(	.reloc	., R_ARM_LDR_PC_G0, .L__vector_bhb_loop8_swi	)
 THUMB(	.reloc	., R_ARM_THM_PC12, .L__vector_bhb_loop8_swi	)
 	W(ldr)	pc, .
->>>>>>> origin/linux_6.1.15_upstream
 	W(b)	vector_bhb_loop8_pabt
 	W(b)	vector_bhb_loop8_dabt
 	W(b)	vector_addrexcptn
@@ -1359,18 +1322,11 @@ THUMB(	.reloc	., R_ARM_THM_PC12, .L__vector_bhb_loop8_swi	)
 	W(b)	vector_bhb_loop8_fiq
 
 	.section .vectors.bhb.bpiall, "ax", %progbits
-<<<<<<< HEAD
-.L__vectors_bhb_bpiall_start:
-	W(b)	vector_rst
-	W(b)	vector_bhb_bpiall_und
-	W(ldr)	pc, .L__vectors_bhb_bpiall_start + 0x1008
-=======
 	W(b)	vector_rst
 	W(b)	vector_bhb_bpiall_und
 ARM(	.reloc	., R_ARM_LDR_PC_G0, .L__vector_bhb_bpiall_swi	)
 THUMB(	.reloc	., R_ARM_THM_PC12, .L__vector_bhb_bpiall_swi	)
 	W(ldr)	pc, .
->>>>>>> origin/linux_6.1.15_upstream
 	W(b)	vector_bhb_bpiall_pabt
 	W(b)	vector_bhb_bpiall_dabt
 	W(b)	vector_addrexcptn

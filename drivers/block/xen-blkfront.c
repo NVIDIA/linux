@@ -1289,20 +1289,8 @@ free_shadow:
 	flush_work(&rinfo->work);
 
 	/* Free resources associated with old device channel. */
-<<<<<<< HEAD
-	for (i = 0; i < info->nr_ring_pages; i++) {
-		if (rinfo->ring_ref[i] != GRANT_INVALID_REF) {
-			gnttab_end_foreign_access(rinfo->ring_ref[i], 0, 0);
-			rinfo->ring_ref[i] = GRANT_INVALID_REF;
-		}
-	}
-	free_pages_exact(rinfo->ring.sring,
-			 info->nr_ring_pages * XEN_PAGE_SIZE);
-	rinfo->ring.sring = NULL;
-=======
 	xenbus_teardown_ring((void **)&rinfo->ring.sring, info->nr_ring_pages,
 			     rinfo->ring_ref);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (rinfo->irq)
 		unbind_from_irqhandler(rinfo->irq, rinfo);
@@ -1487,11 +1475,7 @@ static int blkif_completion(unsigned long *id,
 			 * to the tail of the list, so it will not be picked
 			 * again unless we run out of persistent grants.
 			 */
-<<<<<<< HEAD
-			s->grants_used[i]->gref = GRANT_INVALID_REF;
-=======
 			s->grants_used[i]->gref = INVALID_GRANT_REF;
->>>>>>> origin/linux_6.1.15_upstream
 			list_add_tail(&s->grants_used[i]->node, &rinfo->grants);
 		}
 	}
@@ -1701,27 +1685,9 @@ static int setup_blkring(struct xenbus_device *dev,
 	struct blkfront_info *info = rinfo->dev_info;
 	unsigned long ring_size = info->nr_ring_pages * XEN_PAGE_SIZE;
 
-<<<<<<< HEAD
-	for (i = 0; i < info->nr_ring_pages; i++)
-		rinfo->ring_ref[i] = GRANT_INVALID_REF;
-
-	sring = alloc_pages_exact(ring_size, GFP_NOIO);
-	if (!sring) {
-		xenbus_dev_fatal(dev, -ENOMEM, "allocating shared ring");
-		return -ENOMEM;
-	}
-	SHARED_RING_INIT(sring);
-	FRONT_RING_INIT(&rinfo->ring, sring, ring_size);
-
-	err = xenbus_grant_ring(dev, rinfo->ring.sring, info->nr_ring_pages, gref);
-	if (err < 0) {
-		free_pages_exact(sring, ring_size);
-		rinfo->ring.sring = NULL;
-=======
 	err = xenbus_setup_ring(dev, GFP_NOIO, (void **)&sring,
 				info->nr_ring_pages, rinfo->ring_ref);
 	if (err)
->>>>>>> origin/linux_6.1.15_upstream
 		goto fail;
 
 	XEN_FRONT_RING_INIT(&rinfo->ring, sring, ring_size);
@@ -2160,17 +2126,11 @@ static void blkfront_closing(struct blkfront_info *info)
 		return;
 
 	/* No more blkif_request(). */
-<<<<<<< HEAD
-	blk_mq_stop_hw_queues(info->rq);
-	blk_mark_disk_dead(info->gd);
-	set_capacity(info->gd, 0);
-=======
 	if (info->rq && info->gd) {
 		blk_mq_stop_hw_queues(info->rq);
 		blk_mark_disk_dead(info->gd);
 		set_capacity(info->gd, 0);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	for_each_rinfo(info, rinfo, i) {
 		/* No more gnttab callback work. */
@@ -2581,11 +2541,7 @@ static void purge_persistent_grants(struct blkfront_info *info)
 
 		list_for_each_entry_safe(gnt_list_entry, tmp, &rinfo->grants,
 					 node) {
-<<<<<<< HEAD
-			if (gnt_list_entry->gref == GRANT_INVALID_REF ||
-=======
 			if (gnt_list_entry->gref == INVALID_GRANT_REF ||
->>>>>>> origin/linux_6.1.15_upstream
 			    !gnttab_try_end_foreign_access(gnt_list_entry->gref))
 				continue;
 

@@ -442,111 +442,6 @@ static int simpledrm_device_init_regulators(struct simpledrm_device *sdev)
 #endif
 
 /*
-<<<<<<< HEAD
- *  Simplefb settings
- */
-
-static struct drm_display_mode simpledrm_mode(unsigned int width,
-					      unsigned int height)
-{
-	struct drm_display_mode mode = { SIMPLEDRM_MODE(width, height) };
-
-	mode.clock = mode.hdisplay * mode.vdisplay * 60 / 1000 /* kHz */;
-	drm_mode_set_name(&mode);
-
-	return mode;
-}
-
-static int simpledrm_device_init_fb(struct simpledrm_device *sdev)
-{
-	int width, height, stride;
-	const struct drm_format_info *format;
-	struct drm_device *dev = &sdev->dev;
-	struct platform_device *pdev = sdev->pdev;
-	const struct simplefb_platform_data *pd = dev_get_platdata(&pdev->dev);
-	struct device_node *of_node = pdev->dev.of_node;
-
-	if (pd) {
-		width = simplefb_get_width_pd(dev, pd);
-		if (width < 0)
-			return width;
-		height = simplefb_get_height_pd(dev, pd);
-		if (height < 0)
-			return height;
-		stride = simplefb_get_stride_pd(dev, pd);
-		if (stride < 0)
-			return stride;
-		format = simplefb_get_format_pd(dev, pd);
-		if (IS_ERR(format))
-			return PTR_ERR(format);
-	} else if (of_node) {
-		width = simplefb_get_width_of(dev, of_node);
-		if (width < 0)
-			return width;
-		height = simplefb_get_height_of(dev, of_node);
-		if (height < 0)
-			return height;
-		stride = simplefb_get_stride_of(dev, of_node);
-		if (stride < 0)
-			return stride;
-		format = simplefb_get_format_of(dev, of_node);
-		if (IS_ERR(format))
-			return PTR_ERR(format);
-	} else {
-		drm_err(dev, "no simplefb configuration found\n");
-		return -ENODEV;
-	}
-
-	sdev->mode = simpledrm_mode(width, height);
-	sdev->format = format;
-	sdev->pitch = stride;
-
-	drm_dbg_kms(dev, "display mode={" DRM_MODE_FMT "}\n",
-		    DRM_MODE_ARG(&sdev->mode));
-	drm_dbg_kms(dev,
-		    "framebuffer format=%p4cc, size=%dx%d, stride=%d byte\n",
-		    &format->format, width, height, stride);
-
-	return 0;
-}
-
-/*
- * Memory management
- */
-
-static int simpledrm_device_init_mm(struct simpledrm_device *sdev)
-{
-	struct drm_device *dev = &sdev->dev;
-	struct platform_device *pdev = sdev->pdev;
-	struct resource *mem;
-	void __iomem *screen_base;
-	int ret;
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!mem)
-		return -EINVAL;
-
-	ret = devm_aperture_acquire_from_firmware(dev, mem->start, resource_size(mem));
-	if (ret) {
-		drm_err(dev, "could not acquire memory range %pr: error %d\n",
-			mem, ret);
-		return ret;
-	}
-
-	screen_base = devm_ioremap_wc(&pdev->dev, mem->start,
-				      resource_size(mem));
-	if (!screen_base)
-		return -ENOMEM;
-
-	sdev->mem = mem;
-	sdev->screen_base = screen_base;
-
-	return 0;
-}
-
-/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * Modesetting
  */
 
@@ -762,18 +657,10 @@ static struct simpledrm_device *simpledrm_device_create(struct drm_driver *drv,
 
 	ret = simpledrm_device_init_clocks(sdev);
 	if (ret)
-<<<<<<< HEAD
-		return ret;
-	drm_connector_helper_add(connector, &simpledrm_connector_helper_funcs);
-	drm_connector_set_panel_orientation_with_quirk(connector,
-						       DRM_MODE_PANEL_ORIENTATION_UNKNOWN,
-						       mode->hdisplay, mode->vdisplay);
-=======
 		return ERR_PTR(ret);
 	ret = simpledrm_device_init_regulators(sdev);
 	if (ret)
 		return ERR_PTR(ret);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (pd) {
 		width = simplefb_get_width_pd(dev, pd);

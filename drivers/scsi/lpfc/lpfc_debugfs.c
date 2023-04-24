@@ -2954,13 +2954,8 @@ lpfc_debugfs_nvmeio_trc_write(struct file *file, const char __user *buf,
 	char mybuf[64];
 	char *pbuf;
 
-<<<<<<< HEAD
-	if (nbytes > 63)
-		nbytes = 63;
-=======
 	if (nbytes > sizeof(mybuf) - 1)
 		nbytes = sizeof(mybuf) - 1;
->>>>>>> origin/linux_6.1.15_upstream
 
 	memset(mybuf, 0, sizeof(mybuf));
 

@@ -110,11 +110,8 @@
 #define MEI_DEV_ID_ADP_N      0x54E0  /* Alder Lake Point N */
 
 #define MEI_DEV_ID_RPL_S      0x7A68  /* Raptor Lake Point S */
-<<<<<<< HEAD
-=======
 
 #define MEI_DEV_ID_MTL_M      0x7E70  /* Meteor Lake Point M */
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * MEI HW Section

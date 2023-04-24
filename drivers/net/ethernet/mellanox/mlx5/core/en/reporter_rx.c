@@ -117,28 +117,6 @@ static int mlx5e_rx_reporter_err_icosq_cqe_recover(void *ctx)
 
 	mlx5e_activate_rq(rq);
 	rq->stats->recover++;
-<<<<<<< HEAD
-
-	if (xskrq) {
-		mlx5e_activate_rq(xskrq);
-		xskrq->stats->recover++;
-	}
-
-	mutex_unlock(&icosq->channel->icosq_recovery_lock);
-
-	return 0;
-out:
-	clear_bit(MLX5E_SQ_STATE_RECOVERING, &icosq->state);
-	mutex_unlock(&icosq->channel->icosq_recovery_lock);
-	return err;
-}
-
-static int mlx5e_rq_to_ready(struct mlx5e_rq *rq, int curr_state)
-{
-	struct net_device *dev = rq->netdev;
-	int err;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (xskrq) {
 		mlx5e_activate_rq(xskrq);

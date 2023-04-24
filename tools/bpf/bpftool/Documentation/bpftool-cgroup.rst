@@ -16,12 +16,7 @@ SYNOPSIS
 
 	**bpftool** [*OPTIONS*] **cgroup** *COMMAND*
 
-<<<<<<< HEAD
-	*OPTIONS* := { { **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } |
-	{ **-f** | **--bpffs** } }
-=======
 	*OPTIONS* := { |COMMON_OPTIONS| | { **-f** | **--bpffs** } }
->>>>>>> origin/linux_6.1.15_upstream
 
 	*COMMANDS* :=
 	{ **show** | **list** | **tree** | **attach** | **detach** | **help** }

@@ -355,19 +355,11 @@ static void nct6791_enable_io_mapping(struct nct6775_sio_data *sio_data)
 	}
 }
 
-<<<<<<< HEAD
-static int __maybe_unused nct6775_suspend(struct device *dev)
-{
-	int err;
-	u16 tmp;
-	struct nct6775_data *data = dev_get_drvdata(dev);
-=======
 static int nct6775_suspend(struct device *dev)
 {
 	int err;
 	u16 tmp;
 	struct nct6775_data *data = nct6775_update_device(dev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (IS_ERR(data))
 		return PTR_ERR(data);
@@ -394,11 +386,7 @@ out:
 	return err;
 }
 
-<<<<<<< HEAD
-static int __maybe_unused nct6775_resume(struct device *dev)
-=======
 static int nct6775_resume(struct device *dev)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct nct6775_data *data = dev_get_drvdata(dev);
 	struct nct6775_sio_data *sio_data = dev_get_platdata(dev);
@@ -479,11 +467,7 @@ abort:
 	return err;
 }
 
-<<<<<<< HEAD
-static SIMPLE_DEV_PM_OPS(nct6775_dev_pm_ops, nct6775_suspend, nct6775_resume);
-=======
 static DEFINE_SIMPLE_DEV_PM_OPS(nct6775_dev_pm_ops, nct6775_suspend, nct6775_resume);
->>>>>>> origin/linux_6.1.15_upstream
 
 static void
 nct6775_check_fan_inputs(struct nct6775_data *data, struct nct6775_sio_data *sio_data)
@@ -950,11 +934,7 @@ static int nct6775_platform_probe(struct platform_device *pdev)
 static struct platform_driver nct6775_driver = {
 	.driver = {
 		.name	= DRVNAME,
-<<<<<<< HEAD
-		.pm	= &nct6775_dev_pm_ops,
-=======
 		.pm	= pm_sleep_ptr(&nct6775_dev_pm_ops),
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	.probe		= nct6775_platform_probe,
 };
@@ -1062,14 +1042,10 @@ static int __init nct6775_find(int sioaddr, struct nct6775_sio_data *sio_data)
 static struct platform_device *pdev[2];
 
 static const char * const asus_wmi_boards[] = {
-<<<<<<< HEAD
-	"ProArt X570-CREATOR WIFI",
-=======
 	"PRO H410T",
 	"ProArt B550-CREATOR",
 	"ProArt X570-CREATOR WIFI",
 	"ProArt Z490-CREATOR 10G",
->>>>>>> origin/linux_6.1.15_upstream
 	"Pro B550M-C",
 	"Pro WS X570-ACE",
 	"PRIME B360-PLUS",
@@ -1077,13 +1053,6 @@ static const char * const asus_wmi_boards[] = {
 	"PRIME B550-PLUS",
 	"PRIME B550M-A",
 	"PRIME B550M-A (WI-FI)",
-<<<<<<< HEAD
-	"PRIME X570-P",
-	"PRIME X570-PRO",
-	"ROG CROSSHAIR VIII DARK HERO",
-	"ROG CROSSHAIR VIII FORMULA",
-	"ROG CROSSHAIR VIII HERO",
-=======
 	"PRIME H410M-R",
 	"PRIME X570-P",
 	"PRIME X570-PRO",
@@ -1092,7 +1061,6 @@ static const char * const asus_wmi_boards[] = {
 	"ROG CROSSHAIR VIII FORMULA",
 	"ROG CROSSHAIR VIII HERO",
 	"ROG CROSSHAIR VIII HERO (WI-FI)",
->>>>>>> origin/linux_6.1.15_upstream
 	"ROG CROSSHAIR VIII IMPACT",
 	"ROG STRIX B550-A GAMING",
 	"ROG STRIX B550-E GAMING",
@@ -1102,10 +1070,7 @@ static const char * const asus_wmi_boards[] = {
 	"ROG STRIX B550-I GAMING",
 	"ROG STRIX B550-XE GAMING (WI-FI)",
 	"ROG STRIX X570-E GAMING",
-<<<<<<< HEAD
-=======
 	"ROG STRIX X570-E GAMING WIFI II",
->>>>>>> origin/linux_6.1.15_upstream
 	"ROG STRIX X570-F GAMING",
 	"ROG STRIX X570-I GAMING",
 	"ROG STRIX Z390-E GAMING",
@@ -1119,11 +1084,6 @@ static const char * const asus_wmi_boards[] = {
 	"ROG STRIX Z490-G GAMING (WI-FI)",
 	"ROG STRIX Z490-H GAMING",
 	"ROG STRIX Z490-I GAMING",
-<<<<<<< HEAD
-	"TUF GAMING B550M-PLUS",
-	"TUF GAMING B550M-PLUS (WI-FI)",
-	"TUF GAMING B550-PLUS",
-=======
 	"TUF GAMING B550M-E",
 	"TUF GAMING B550M-E (WI-FI)",
 	"TUF GAMING B550M-PLUS",
@@ -1131,7 +1091,6 @@ static const char * const asus_wmi_boards[] = {
 	"TUF GAMING B550M-PLUS WIFI II",
 	"TUF GAMING B550-PLUS",
 	"TUF GAMING B550-PLUS WIFI II",
->>>>>>> origin/linux_6.1.15_upstream
 	"TUF GAMING B550-PRO",
 	"TUF GAMING X570-PLUS",
 	"TUF GAMING X570-PLUS (WI-FI)",
@@ -1249,15 +1208,8 @@ static int __init sensors_nct6775_platform_init(void)
 exit_device_put:
 	platform_device_put(pdev[i]);
 exit_device_unregister:
-<<<<<<< HEAD
-	while (--i >= 0) {
-		if (pdev[i])
-			platform_device_unregister(pdev[i]);
-	}
-=======
 	while (i--)
 		platform_device_unregister(pdev[i]);
->>>>>>> origin/linux_6.1.15_upstream
 exit_unregister:
 	platform_driver_unregister(&nct6775_driver);
 	return err;
@@ -1267,15 +1219,8 @@ static void __exit sensors_nct6775_platform_exit(void)
 {
 	int i;
 
-<<<<<<< HEAD
-	for (i = 0; i < ARRAY_SIZE(pdev); i++) {
-		if (pdev[i])
-			platform_device_unregister(pdev[i]);
-	}
-=======
 	for (i = 0; i < ARRAY_SIZE(pdev); i++)
 		platform_device_unregister(pdev[i]);
->>>>>>> origin/linux_6.1.15_upstream
 	platform_driver_unregister(&nct6775_driver);
 }
 

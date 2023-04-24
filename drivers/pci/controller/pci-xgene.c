@@ -477,11 +477,7 @@ static int xgene_pcie_select_ib_reg(u8 *ib_reg_mask, u64 size)
 	return -EINVAL;
 }
 
-<<<<<<< HEAD
-static void xgene_pcie_setup_ib_reg(struct xgene_pcie_port *port,
-=======
 static void xgene_pcie_setup_ib_reg(struct xgene_pcie *port,
->>>>>>> origin/linux_6.1.15_upstream
 				    struct of_pci_range *range, u8 *ib_reg_mask)
 {
 	void __iomem *cfg_base = port->cfg_base;

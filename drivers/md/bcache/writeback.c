@@ -988,10 +988,7 @@ void bch_sectors_dirty_init(struct bcache_device *d)
 		return;
 	}
 
-<<<<<<< HEAD
-=======
 	memset(&state, 0, sizeof(struct bch_dirty_init_state));
->>>>>>> origin/linux_6.1.15_upstream
 	state.c = c;
 	state.d = d;
 	state.total_threads = bch_btre_dirty_init_thread_nr();

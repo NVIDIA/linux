@@ -204,19 +204,7 @@ struct gendisk {
 	struct blk_independent_access_ranges *ia_ranges;
 };
 
-<<<<<<< HEAD
-static inline int blk_validate_block_size(unsigned int bsize)
-{
-	if (bsize < 512 || bsize > PAGE_SIZE || !is_power_of_2(bsize))
-		return -EINVAL;
-
-	return 0;
-}
-
-static inline bool blk_op_is_passthrough(unsigned int op)
-=======
 static inline bool disk_live(struct gendisk *disk)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return !inode_unhashed(disk->part0->bd_inode);
 }
@@ -1520,16 +1508,11 @@ int truncate_bdev_range(struct block_device *bdev, fmode_t mode, loff_t lstart,
 #ifdef CONFIG_BLOCK
 void invalidate_bdev(struct block_device *bdev);
 int sync_blockdev(struct block_device *bdev);
-<<<<<<< HEAD
-int sync_blockdev_nowait(struct block_device *bdev);
-void sync_bdevs(bool wait);
-=======
 int sync_blockdev_range(struct block_device *bdev, loff_t lstart, loff_t lend);
 int sync_blockdev_nowait(struct block_device *bdev);
 void sync_bdevs(bool wait);
 void bdev_statx_dioalign(struct inode *inode, struct kstat *stat);
 void printk_all_partitions(void);
->>>>>>> origin/linux_6.1.15_upstream
 #else
 static inline void invalidate_bdev(struct block_device *bdev)
 {
@@ -1545,9 +1528,6 @@ static inline int sync_blockdev_nowait(struct block_device *bdev)
 static inline void sync_bdevs(bool wait)
 {
 }
-<<<<<<< HEAD
-#endif
-=======
 static inline void bdev_statx_dioalign(struct inode *inode, struct kstat *stat)
 {
 }
@@ -1556,7 +1536,6 @@ static inline void printk_all_partitions(void)
 }
 #endif /* CONFIG_BLOCK */
 
->>>>>>> origin/linux_6.1.15_upstream
 int fsync_bdev(struct block_device *bdev);
 
 int freeze_bdev(struct block_device *bdev);

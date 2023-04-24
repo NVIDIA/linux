@@ -731,18 +731,6 @@ static inline bool pv_eoi_enabled(struct kvm_vcpu *vcpu)
 	return vcpu->arch.pv_eoi.msr_val & KVM_MSR_ENABLED;
 }
 
-<<<<<<< HEAD
-static bool pv_eoi_get_pending(struct kvm_vcpu *vcpu)
-{
-	u8 val;
-	if (pv_eoi_get_user(vcpu, &val) < 0)
-		return false;
-
-	return val & KVM_PV_EOI_ENABLED;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void pv_eoi_set_pending(struct kvm_vcpu *vcpu)
 {
 	if (pv_eoi_put_user(vcpu, KVM_PV_EOI_ENABLED) < 0)
@@ -753,11 +741,6 @@ static void pv_eoi_set_pending(struct kvm_vcpu *vcpu)
 
 static bool pv_eoi_test_and_clr_pending(struct kvm_vcpu *vcpu)
 {
-<<<<<<< HEAD
-	if (pv_eoi_put_user(vcpu, KVM_PV_EOI_DISABLED) < 0)
-		return;
-
-=======
 	u8 val;
 
 	if (pv_eoi_get_user(vcpu, &val) < 0)
@@ -773,7 +756,6 @@ static bool pv_eoi_test_and_clr_pending(struct kvm_vcpu *vcpu)
 	 * While this might not be ideal from performance point of view,
 	 * this makes sure pv eoi is only enabled when we know it's safe.
 	 */
->>>>>>> origin/linux_6.1.15_upstream
 	__clear_bit(KVM_APIC_PV_EOI_PENDING, &vcpu->arch.apic_attention);
 
 	return val;

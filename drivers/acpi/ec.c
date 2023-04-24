@@ -449,15 +449,6 @@ static void acpi_ec_submit_event(struct acpi_ec *ec)
 	acpi_ec_mask_events(ec);
 	if (!acpi_ec_event_enabled(ec))
 		return;
-<<<<<<< HEAD
-	if (!test_and_set_bit(EC_FLAGS_QUERY_PENDING, &ec->flags)) {
-		ec_dbg_evt("Command(%s) submitted/blocked",
-			   acpi_ec_cmd_string(ACPI_EC_COMMAND_QUERY));
-		ec->nr_pending_queries++;
-		ec->events_in_progress++;
-		queue_work(ec_wq, &ec->work);
-	}
-=======
 
 	if (ec->event_state != EC_EVENT_READY)
 		return;
@@ -478,7 +469,6 @@ static void acpi_ec_submit_event(struct acpi_ec *ec)
 
 	ec->events_in_progress++;
 	queue_work(ec_wq, &ec->work);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void acpi_ec_complete_event(struct acpi_ec *ec)
@@ -1134,8 +1124,6 @@ void acpi_ec_remove_query_handler(struct acpi_ec *ec, u8 query_bit)
 }
 EXPORT_SYMBOL_GPL(acpi_ec_remove_query_handler);
 
-<<<<<<< HEAD
-=======
 static void acpi_ec_event_processor(struct work_struct *work)
 {
 	struct acpi_ec_query *q = container_of(work, struct acpi_ec_query, work);
@@ -1159,7 +1147,6 @@ static void acpi_ec_event_processor(struct work_struct *work)
 	kfree(q);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static struct acpi_ec_query *acpi_ec_create_query(struct acpi_ec *ec, u8 *pval)
 {
 	struct acpi_ec_query *q;
@@ -1178,42 +1165,7 @@ static struct acpi_ec_query *acpi_ec_create_query(struct acpi_ec *ec, u8 *pval)
 	return q;
 }
 
-<<<<<<< HEAD
-static void acpi_ec_delete_query(struct acpi_ec_query *q)
-{
-	if (q) {
-		if (q->handler)
-			acpi_ec_put_query_handler(q->handler);
-		kfree(q);
-	}
-}
-
-static void acpi_ec_event_processor(struct work_struct *work)
-{
-	struct acpi_ec_query *q = container_of(work, struct acpi_ec_query, work);
-	struct acpi_ec_query_handler *handler = q->handler;
-	struct acpi_ec *ec = q->ec;
-
-	ec_dbg_evt("Query(0x%02x) started", handler->query_bit);
-
-	if (handler->func)
-		handler->func(handler->data);
-	else if (handler->handle)
-		acpi_evaluate_object(handler->handle, NULL, NULL, NULL);
-
-	ec_dbg_evt("Query(0x%02x) stopped", handler->query_bit);
-
-	spin_lock_irq(&ec->lock);
-	ec->queries_in_progress--;
-	spin_unlock_irq(&ec->lock);
-
-	acpi_ec_delete_query(q);
-}
-
-static int acpi_ec_query(struct acpi_ec *ec, u8 *data)
-=======
 static int acpi_ec_submit_query(struct acpi_ec *ec)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct acpi_ec_query *q;
 	u8 value = 0;
@@ -1251,16 +1203,7 @@ static int acpi_ec_submit_query(struct acpi_ec *ec)
 	 * before any other messages emitted during workqueue handling.
 	 */
 	ec_dbg_evt("Query(0x%02x) scheduled", value);
-<<<<<<< HEAD
 
-	spin_lock_irq(&ec->lock);
-
-	ec->queries_in_progress++;
-	queue_work(ec_query_wq, &q->work);
-
-	spin_unlock_irq(&ec->lock);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock_irq(&ec->lock);
 
@@ -1313,13 +1256,6 @@ static void acpi_ec_event_handler(struct work_struct *work)
 
 		spin_lock_irq(&ec->lock);
 
-<<<<<<< HEAD
-	acpi_ec_check_event(ec);
-
-	spin_lock_irqsave(&ec->lock, flags);
-	ec->events_in_progress--;
-	spin_unlock_irqrestore(&ec->lock, flags);
-=======
 		/* Take care of SCI_EVT unless someone else is doing that. */
 		if (guard_timeout && !ec->curr)
 			advance_transaction(ec, false);
@@ -1332,7 +1268,6 @@ static void acpi_ec_event_handler(struct work_struct *work)
 	ec->events_in_progress--;
 
 	spin_unlock_irq(&ec->lock);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void acpi_ec_handle_interrupt(struct acpi_ec *ec)
@@ -2096,12 +2031,7 @@ static bool acpi_ec_work_in_progress(struct acpi_ec *ec)
 
 bool acpi_ec_dispatch_gpe(void)
 {
-<<<<<<< HEAD
-	bool work_in_progress;
-	u32 ret;
-=======
 	bool work_in_progress = false;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!first_ec)
 		return acpi_any_gpe_status_set(U32_MAX);
@@ -2136,8 +2066,6 @@ bool acpi_ec_dispatch_gpe(void)
 		work_in_progress = acpi_ec_work_in_progress(first_ec);
 	}
 
-<<<<<<< HEAD
-=======
 	spin_unlock_irq(&first_ec->lock);
 
 	if (!work_in_progress)
@@ -2145,7 +2073,6 @@ bool acpi_ec_dispatch_gpe(void)
 
 	pm_pr_dbg("ACPI EC GPE dispatched\n");
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Drain EC work. */
 	do {
 		acpi_ec_flush_work();
@@ -2154,12 +2081,7 @@ bool acpi_ec_dispatch_gpe(void)
 
 		spin_lock_irq(&first_ec->lock);
 
-<<<<<<< HEAD
-		work_in_progress = first_ec->events_in_progress +
-			first_ec->queries_in_progress > 0;
-=======
 		work_in_progress = acpi_ec_work_in_progress(first_ec);
->>>>>>> origin/linux_6.1.15_upstream
 
 		spin_unlock_irq(&first_ec->lock);
 	} while (work_in_progress && !pm_wakeup_pending());

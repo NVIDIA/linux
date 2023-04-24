@@ -2975,10 +2975,6 @@ struct page *follow_page(struct vm_area_struct *vma, unsigned long address,
 #define FOLL_FORCE	0x10	/* get_user_pages read/write w/o permission */
 #define FOLL_NOWAIT	0x20	/* if a disk transfer is needed, start the IO
 				 * and return without waiting upon it */
-<<<<<<< HEAD
-#define FOLL_POPULATE	0x40	/* fault in pages (with FOLL_MLOCK) */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #define FOLL_NOFAULT	0x80	/* do not fault in pages */
 #define FOLL_HWPOISON	0x100	/* check page is hwpoisoned */
 #define FOLL_MIGRATION	0x400	/* wait for page to replace migration entry */

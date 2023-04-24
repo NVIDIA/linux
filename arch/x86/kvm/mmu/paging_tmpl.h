@@ -31,10 +31,6 @@
 	#define PT_HAVE_ACCESSED_DIRTY(mmu) true
 	#ifdef CONFIG_X86_64
 	#define PT_MAX_FULL_LEVELS PT64_ROOT_MAX_LEVEL
-<<<<<<< HEAD
-	#define CMPXCHG "cmpxchgq"
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	#else
 	#define PT_MAX_FULL_LEVELS 2
 	#endif
@@ -47,15 +43,11 @@
 	#define PT_GUEST_DIRTY_SHIFT PT_DIRTY_SHIFT
 	#define PT_GUEST_ACCESSED_SHIFT PT_ACCESSED_SHIFT
 	#define PT_HAVE_ACCESSED_DIRTY(mmu) true
-<<<<<<< HEAD
-	#define CMPXCHG "cmpxchgl"
-=======
 
 	#define PT32_DIR_PSE36_SIZE 4
 	#define PT32_DIR_PSE36_SHIFT 13
 	#define PT32_DIR_PSE36_MASK \
 		(((1ULL << PT32_DIR_PSE36_SIZE) - 1) << PT32_DIR_PSE36_SHIFT)
->>>>>>> origin/linux_6.1.15_upstream
 #elif PTTYPE == PTTYPE_EPT
 	#define pt_element_t u64
 	#define guest_walker guest_walkerEPT
@@ -63,14 +55,7 @@
 	#define PT_LEVEL_BITS 9
 	#define PT_GUEST_DIRTY_SHIFT 9
 	#define PT_GUEST_ACCESSED_SHIFT 8
-<<<<<<< HEAD
-	#define PT_HAVE_ACCESSED_DIRTY(mmu) ((mmu)->ept_ad)
-	#ifdef CONFIG_X86_64
-	#define CMPXCHG "cmpxchgq"
-	#endif
-=======
 	#define PT_HAVE_ACCESSED_DIRTY(mmu) (!(mmu)->cpu_role.base.ad_disabled)
->>>>>>> origin/linux_6.1.15_upstream
 	#define PT_MAX_FULL_LEVELS PT64_ROOT_MAX_LEVEL
 #else
 	#error Invalid PTTYPE value
@@ -163,48 +148,6 @@ static bool FNAME(is_rsvd_bits_set)(struct kvm_mmu *mmu, u64 gpte, int level)
 	       FNAME(is_bad_mt_xwr)(&mmu->guest_rsvd_check, gpte);
 }
 
-<<<<<<< HEAD
-static int FNAME(cmpxchg_gpte)(struct kvm_vcpu *vcpu, struct kvm_mmu *mmu,
-			       pt_element_t __user *ptep_user, unsigned index,
-			       pt_element_t orig_pte, pt_element_t new_pte)
-{
-	int r = -EFAULT;
-
-	if (!user_access_begin(ptep_user, sizeof(pt_element_t)))
-		return -EFAULT;
-
-#ifdef CMPXCHG
-	asm volatile("1:" LOCK_PREFIX CMPXCHG " %[new], %[ptr]\n"
-		     "mov $0, %[r]\n"
-		     "setnz %b[r]\n"
-		     "2:"
-		     _ASM_EXTABLE_UA(1b, 2b)
-		     : [ptr] "+m" (*ptep_user),
-		       [old] "+a" (orig_pte),
-		       [r] "+q" (r)
-		     : [new] "r" (new_pte)
-		     : "memory");
-#else
-	asm volatile("1:" LOCK_PREFIX "cmpxchg8b %[ptr]\n"
-		     "movl $0, %[r]\n"
-		     "jz 2f\n"
-		     "incl %[r]\n"
-		     "2:"
-		     _ASM_EXTABLE_UA(1b, 2b)
-		     : [ptr] "+m" (*ptep_user),
-		       [old] "+A" (orig_pte),
-		       [r] "+rm" (r)
-		     : [new_lo] "b" ((u32)new_pte),
-		       [new_hi] "c" ((u32)(new_pte >> 32))
-		     : "memory");
-#endif
-
-	user_access_end();
-	return r;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static bool FNAME(prefetch_invalid_gpte)(struct kvm_vcpu *vcpu,
 				  struct kvm_mmu_page *sp, u64 *spte,
 				  u64 gpte)

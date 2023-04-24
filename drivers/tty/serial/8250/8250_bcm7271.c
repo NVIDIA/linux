@@ -1075,11 +1075,7 @@ static int brcmuart_probe(struct platform_device *pdev)
 						   priv->rx_size,
 						   &priv->rx_addr, GFP_KERNEL);
 		if (!priv->rx_bufs) {
-<<<<<<< HEAD
-			ret = -EINVAL;
-=======
 			ret = -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 			goto err;
 		}
 		priv->tx_size = UART_XMIT_SIZE;
@@ -1087,11 +1083,7 @@ static int brcmuart_probe(struct platform_device *pdev)
 						  priv->tx_size,
 						  &priv->tx_addr, GFP_KERNEL);
 		if (!priv->tx_buf) {
-<<<<<<< HEAD
-			ret = -EINVAL;
-=======
 			ret = -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 			goto err;
 		}
 	}
@@ -1147,8 +1139,6 @@ static int __maybe_unused brcmuart_suspend(struct device *dev)
 	struct brcmuart_priv *priv = dev_get_drvdata(dev);
 	struct uart_8250_port *up = serial8250_get_port(priv->line);
 	struct uart_port *port = &up->port;
-<<<<<<< HEAD
-=======
 	unsigned long flags;
 
 	/*
@@ -1159,7 +1149,6 @@ static int __maybe_unused brcmuart_suspend(struct device *dev)
 	priv->saved_mctrl = port->mctrl;
 	port->mctrl &= ~TIOCM_RTS;
 	spin_unlock_irqrestore(&port->lock, flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	serial8250_suspend_port(priv->line);
 	clk_disable_unprepare(priv->baud_mux_clk);
@@ -1179,10 +1168,7 @@ static int __maybe_unused brcmuart_resume(struct device *dev)
 	struct brcmuart_priv *priv = dev_get_drvdata(dev);
 	struct uart_8250_port *up = serial8250_get_port(priv->line);
 	struct uart_port *port = &up->port;
-<<<<<<< HEAD
-=======
 	unsigned long flags;
->>>>>>> origin/linux_6.1.15_upstream
 	int ret;
 
 	ret = clk_prepare_enable(priv->baud_mux_clk);
@@ -1205,9 +1191,6 @@ static int __maybe_unused brcmuart_resume(struct device *dev)
 		start_rx_dma(serial8250_get_port(priv->line));
 	}
 	serial8250_resume_port(priv->line);
-<<<<<<< HEAD
-	port->mctrl = priv->saved_mctrl;
-=======
 
 	if (priv->saved_mctrl & TIOCM_RTS) {
 		/* Restore RTS */
@@ -1217,7 +1200,6 @@ static int __maybe_unused brcmuart_resume(struct device *dev)
 		spin_unlock_irqrestore(&port->lock, flags);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

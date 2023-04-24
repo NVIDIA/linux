@@ -372,9 +372,6 @@ static void resync_handle_seq_match(struct mlx5e_ktls_offload_context_rx *priv_r
 
 	spin_lock_bh(&ktls_resync->lock);
 	spin_lock_bh(&priv_rx->lock);
-<<<<<<< HEAD
-	memcpy(info->rec_seq, &priv_rx->resync.sw_rcd_sn_be, sizeof(info->rec_seq));
-=======
 	switch (priv_rx->crypto_info.crypto_info.cipher_type) {
 	case TLS_CIPHER_AES_GCM_128: {
 		struct tls12_crypto_info_aes_gcm_128 *info =
@@ -400,7 +397,6 @@ static void resync_handle_seq_match(struct mlx5e_ktls_offload_context_rx *priv_r
 		return;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (list_empty(&priv_rx->list)) {
 		list_add_tail(&priv_rx->list, &ktls_resync->list);
 		trigger_poll = !test_and_set_bit(MLX5E_SQ_STATE_PENDING_TLS_RX_RESYNC, &sq->state);
@@ -631,10 +627,6 @@ int mlx5e_ktls_add_rx(struct net_device *netdev, struct sock *sk,
 
 	INIT_LIST_HEAD(&priv_rx->list);
 	spin_lock_init(&priv_rx->lock);
-<<<<<<< HEAD
-	priv_rx->crypto_info  =
-		*(struct tls12_crypto_info_aes_gcm_128 *)crypto_info;
-=======
 	switch (crypto_info->cipher_type) {
 	case TLS_CIPHER_AES_GCM_128:
 		priv_rx->crypto_info.crypto_info_128 =
@@ -649,7 +641,6 @@ int mlx5e_ktls_add_rx(struct net_device *netdev, struct sock *sk,
 			  crypto_info->cipher_type);
 		return -EOPNOTSUPP;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	rxq = mlx5e_ktls_sk_get_rxq(sk);
 	priv_rx->rxq = rxq;

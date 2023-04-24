@@ -604,8 +604,6 @@ static inline gfp_t nfs_io_gfp_mask(void)
 	return GFP_KERNEL;
 }
 
-<<<<<<< HEAD
-=======
 /*
  * Special version of should_remove_suid() that ignores capabilities.
  */
@@ -631,7 +629,6 @@ static inline int nfs_should_remove_suid(const struct inode *inode)
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /* unlink.c */
 extern struct rpc_task *
 nfs_async_rename(struct inode *old_dir, struct inode *new_dir,

@@ -300,12 +300,9 @@ static int ulpi_register(struct device *dev, struct ulpi *ulpi)
 		put_device(&ulpi->dev);
 		return ret;
 	}
-<<<<<<< HEAD
-=======
 
 	root = debugfs_create_dir(dev_name(dev), ULPI_ROOT);
 	debugfs_create_file("regs", 0444, root, ulpi, &ulpi_regs_fops);
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev_dbg(&ulpi->dev, "registered ULPI PHY: vendor %04x, product %04x\n",
 		ulpi->id.vendor, ulpi->id.product);
@@ -352,11 +349,8 @@ EXPORT_SYMBOL_GPL(ulpi_register_interface);
  */
 void ulpi_unregister_interface(struct ulpi *ulpi)
 {
-<<<<<<< HEAD
-=======
 	debugfs_remove_recursive(debugfs_lookup(dev_name(&ulpi->dev),
 						ULPI_ROOT));
->>>>>>> origin/linux_6.1.15_upstream
 	device_unregister(&ulpi->dev);
 }
 EXPORT_SYMBOL_GPL(ulpi_unregister_interface);

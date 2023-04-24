@@ -831,10 +831,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
 		goto out_err;
 	if (ret == 0)
 		goto out_drop;
-<<<<<<< HEAD
-	rqstp->rq_xprt_hlen = 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (svc_rdma_is_reverse_direction_reply(xprt, ctxt))
 		goto out_backchannel;

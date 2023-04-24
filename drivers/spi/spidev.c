@@ -719,17 +719,6 @@ static int spidev_of_check(struct device *dev)
 }
 
 static const struct of_device_id spidev_dt_ids[] = {
-<<<<<<< HEAD
-	{ .compatible = "rohm,dh2228fv" },
-	{ .compatible = "lineartechnology,ltc2488" },
-	{ .compatible = "hgx,glacier" },
-	{ .compatible = "semtech,sx1301" },
-	{ .compatible = "lwn,bk4" },
-	{ .compatible = "dh,dhcom-board" },
-	{ .compatible = "menlo,m53cpld" },
-	{ .compatible = "cisco,spi-petra" },
-	{ .compatible = "micron,spi-authenta" },
-=======
 	{ .compatible = "rohm,dh2228fv", .data = &spidev_of_check },
 	{ .compatible = "lineartechnology,ltc2488", .data = &spidev_of_check },
 	{ .compatible = "semtech,sx1301", .data = &spidev_of_check },
@@ -738,7 +727,6 @@ static const struct of_device_id spidev_dt_ids[] = {
 	{ .compatible = "menlo,m53cpld", .data = &spidev_of_check },
 	{ .compatible = "cisco,spi-petra", .data = &spidev_of_check },
 	{ .compatible = "micron,spi-authenta", .data = &spidev_of_check },
->>>>>>> origin/linux_6.1.15_upstream
 	{},
 };
 MODULE_DEVICE_TABLE(of, spidev_dt_ids);

@@ -379,11 +379,7 @@ static void sdhci_am654_reset(struct sdhci_host *host, u8 mask)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_am654_data *sdhci_am654 = sdhci_pltfm_priv(pltfm_host);
 
-<<<<<<< HEAD
-	sdhci_reset(host, mask);
-=======
 	sdhci_and_cqhci_reset(host, mask);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (sdhci_am654->quirks & SDHCI_AM654_QUIRK_FORCE_CDTEST) {
 		ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
@@ -767,13 +763,10 @@ static const struct of_device_id sdhci_am654_of_match[] = {
 	{
 		.compatible = "ti,am64-sdhci-4bit",
 		.data = &sdhci_j721e_4bit_drvdata,
-<<<<<<< HEAD
-=======
 	},
 	{
 		.compatible = "ti,am62-sdhci",
 		.data = &sdhci_j721e_4bit_drvdata,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	{ /* sentinel */ }
 };

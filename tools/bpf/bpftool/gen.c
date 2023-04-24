@@ -1196,10 +1196,7 @@ static int do_skeleton(int argc, char **argv)
 			if (!s)	{					    \n\
 				err = -ENOMEM;				    \n\
 				goto err;				    \n\
-<<<<<<< HEAD
-=======
 			}						    \n\
->>>>>>> origin/linux_6.1.15_upstream
 									    \n\
 			s->sz = sizeof(*s);				    \n\
 			s->name = \"%1$s\";				    \n\
@@ -1236,15 +1233,6 @@ static int do_skeleton(int argc, char **argv)
 	codegen("\
 		\n\
 		\";							    \n\
-<<<<<<< HEAD
-									    \n\
-			obj->skeleton = s;				    \n\
-			return 0;					    \n\
-		err:							    \n\
-			bpf_object__destroy_skeleton(s);		    \n\
-			return -ENOMEM;					    \n\
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		}							    \n\
 									    \n\
 		#ifdef __cplusplus					    \n\

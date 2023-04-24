@@ -177,10 +177,6 @@ static int tcp_msg_wait_data(struct sock *sk, struct sk_psock *psock,
 static int tcp_bpf_recvmsg_parser(struct sock *sk,
 				  struct msghdr *msg,
 				  size_t len,
-<<<<<<< HEAD
-				  int nonblock,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 				  int flags,
 				  int *addr_len)
 {
@@ -192,11 +188,7 @@ static int tcp_bpf_recvmsg_parser(struct sock *sk,
 
 	psock = sk_psock_get(sk);
 	if (unlikely(!psock))
-<<<<<<< HEAD
-		return tcp_recvmsg(sk, msg, len, nonblock, flags, addr_len);
-=======
 		return tcp_recvmsg(sk, msg, len, flags, addr_len);
->>>>>>> origin/linux_6.1.15_upstream
 
 	lock_sock(sk);
 msg_bytes_ready:
@@ -221,11 +213,7 @@ msg_bytes_ready:
 			goto out;
 		}
 
-<<<<<<< HEAD
-		timeo = sock_rcvtimeo(sk, nonblock);
-=======
 		timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
->>>>>>> origin/linux_6.1.15_upstream
 		if (!timeo) {
 			copied = -EAGAIN;
 			goto out;
@@ -395,11 +383,7 @@ more_data:
 		    msg->sg.data[msg->sg.start].page_link &&
 		    msg->sg.data[msg->sg.start].length) {
 			if (eval == __SK_REDIRECT)
-<<<<<<< HEAD
-				sk_mem_charge(sk, msg->sg.size);
-=======
 				sk_mem_charge(sk, tosend - sent);
->>>>>>> origin/linux_6.1.15_upstream
 			goto more_data;
 		}
 	}
@@ -564,10 +548,7 @@ static void tcp_bpf_rebuild_protos(struct proto prot[TCP_BPF_NUM_CFGS],
 				   struct proto *base)
 {
 	prot[TCP_BPF_BASE]			= *base;
-<<<<<<< HEAD
-=======
 	prot[TCP_BPF_BASE].destroy		= sock_map_destroy;
->>>>>>> origin/linux_6.1.15_upstream
 	prot[TCP_BPF_BASE].close		= sock_map_close;
 	prot[TCP_BPF_BASE].recvmsg		= tcp_bpf_recvmsg;
 	prot[TCP_BPF_BASE].sock_is_readable	= sk_msg_is_readable;

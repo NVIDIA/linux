@@ -395,22 +395,6 @@ u64 kvm_vcpu_reserved_gpa_bits_raw(struct kvm_vcpu *vcpu)
 static int kvm_set_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid_entry2 *e2,
                         int nent)
 {
-<<<<<<< HEAD
-    int r;
-
-    r = kvm_check_cpuid(e2, nent);
-    if (r)
-        return r;
-
-    kvfree(vcpu->arch.cpuid_entries);
-    vcpu->arch.cpuid_entries = e2;
-    vcpu->arch.cpuid_nent = nent;
-
-    kvm_update_cpuid_runtime(vcpu);
-    kvm_vcpu_after_set_cpuid(vcpu);
-
-    return 0;
-=======
 	int r;
 
 	__kvm_update_cpuid_runtime(vcpu, e2, nent);
@@ -453,7 +437,6 @@ static int kvm_set_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid_entry2 *e2,
 	kvm_vcpu_after_set_cpuid(vcpu);
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* when an old userspace process fills a new kernel module */
@@ -949,18 +932,6 @@ static inline int __do_cpuid_func(struct kvm_cpuid_array *array, u32 function)
 			entry->eax = entry->ebx = entry->ecx = entry->edx = 0;
 			break;
 		}
-<<<<<<< HEAD
-
-		perf_get_x86_pmu_capability(&cap);
-
-		/*
-		 * Only support guest architectural pmu on a host
-		 * with architectural pmu.
-		 */
-		if (!cap.version)
-			memset(&cap, 0, sizeof(cap));
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		eax.split.version_id = kvm_pmu_cap.version;
 		eax.split.num_counters = kvm_pmu_cap.num_counters_gp;

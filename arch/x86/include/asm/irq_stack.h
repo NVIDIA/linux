@@ -203,10 +203,7 @@
 			      IRQ_CONSTRAINTS, regs, vector);		\
 }
 
-<<<<<<< HEAD
-=======
 #ifdef CONFIG_SOFTIRQ_ON_OWN_STACK
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * Macro to invoke __do_softirq on the irq stack. This is only called from
  * task context when bottom halves are about to be reenabled and soft

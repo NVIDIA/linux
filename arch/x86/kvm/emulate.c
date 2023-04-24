@@ -333,11 +333,7 @@ static int fastop(struct x86_emulate_ctxt *ctxt, fastop_t fop);
 	__FOP_FUNC(#name)
 
 #define __FOP_RET(name) \
-<<<<<<< HEAD
-	ASM_RET \
-=======
 	"11: " ASM_RET \
->>>>>>> origin/linux_6.1.15_upstream
 	".size " name ", .-" name "\n\t"
 
 #define FOP_RET(name) \
@@ -467,21 +463,9 @@ static int fastop(struct x86_emulate_ctxt *ctxt, fastop_t fop);
 static_assert(SETCC_LENGTH <= SETCC_ALIGN);
 
 #define FOP_SETCC(op) \
-<<<<<<< HEAD
-	".align " __stringify(SETCC_ALIGN) " \n\t" \
-	".type " #op ", @function \n\t" \
-	#op ": \n\t" \
-	#op " %al \n\t" \
-	__FOP_RET(#op)
-
-asm(".pushsection .fixup, \"ax\"\n"
-    "kvm_fastop_exception: xor %esi, %esi; " ASM_RET
-    ".popsection");
-=======
 	FOP_FUNC(op) \
 	#op " %al \n\t" \
 	FOP_RET(op)
->>>>>>> origin/linux_6.1.15_upstream
 
 FOP_START(setcc)
 FOP_SETCC(seto)
@@ -1125,11 +1109,7 @@ static int em_bsr_c(struct x86_emulate_ctxt *ctxt)
 static __always_inline u8 test_cc(unsigned int condition, unsigned long flags)
 {
 	u8 rc;
-<<<<<<< HEAD
-	void (*fop)(void) = (void *)em_setcc + SETCC_ALIGN * (condition & 0xf);
-=======
 	void (*fop)(void) = (void *)em_setcc + FASTOP_SIZE * (condition & 0xf);
->>>>>>> origin/linux_6.1.15_upstream
 
 	flags = (flags & EFLAGS_MASK) | X86_EFLAGS_IF;
 	asm("push %[flags]; popf; " CALL_NOSPEC
@@ -1752,19 +1732,6 @@ static int __load_segment_descriptor(struct x86_emulate_ctxt *ctxt,
 	case VCPU_SREG_TR:
 		if (seg_desc.s || (seg_desc.type != 1 && seg_desc.type != 9))
 			goto exception;
-<<<<<<< HEAD
-		if (!seg_desc.p) {
-			err_vec = NP_VECTOR;
-			goto exception;
-		}
-		old_desc = seg_desc;
-		seg_desc.type |= 2; /* busy */
-		ret = ctxt->ops->cmpxchg_emulated(ctxt, desc_addr, &old_desc, &seg_desc,
-						  sizeof(seg_desc), &ctxt->exception);
-		if (ret != X86EMUL_CONTINUE)
-			return ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	case VCPU_SREG_LDTR:
 		if (seg_desc.s || seg_desc.type != 2)

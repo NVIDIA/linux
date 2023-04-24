@@ -97,11 +97,7 @@
 
 		ramoops@b3e00000 {
 			compatible = "ramoops";
-<<<<<<< HEAD
-			reg = <0xbc000000 0x200000>; /* 16 * (4 * 0x8000) */
-=======
 			reg = <0xb3e00000 0x200000>; /* 16 * (4 * 0x8000) */
->>>>>>> origin/linux_6.1.15_upstream
 			record-size = <0x8000>;
 			console-size = <0x8000>;
 			ftrace-size = <0x8000>;
@@ -268,12 +264,8 @@
 	/*P0-P7*/	"","","","","pcieslot-power","","","",
 	/*Q0-Q7*/	"cfam-reset","","regulator-standby-faulted","","","","","",
 	/*R0-R7*/	"bmc-tpm-reset","power-chassis-control","power-chassis-good","","","","","",
-<<<<<<< HEAD
-	/*S0-S7*/	"presence-ps0","presence-ps1","presence-ps2","presence-ps3","power-ffs-sync-history","","","",
-=======
 	/*S0-S7*/	"presence-ps0","presence-ps1","presence-ps2","presence-ps3",
 	"power-ffs-sync-history","","","",
->>>>>>> origin/linux_6.1.15_upstream
 	/*T0-T7*/	"","","","","","","","",
 	/*U0-U7*/	"","","","","","","","",
 	/*V0-V7*/	"","","","","","","","",

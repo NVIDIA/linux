@@ -545,13 +545,7 @@ static int __bpf_trampoline_link_prog(struct bpf_tramp_link *link, struct bpf_tr
 		/* cannot attach fentry/fexit if extension prog is attached.
 		 * cannot overwrite extension prog either.
 		 */
-<<<<<<< HEAD
-		err = -EBUSY;
-		goto out;
-	}
-=======
 		return -EBUSY;
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < BPF_TRAMP_MAX; i++)
 		cnt += tr->progs_cnt[i];
@@ -861,20 +855,6 @@ static __always_inline u64 notrace bpf_prog_start_time(void)
 	return start;
 }
 
-<<<<<<< HEAD
-static void notrace inc_misses_counter(struct bpf_prog *prog)
-{
-	struct bpf_prog_stats *stats;
-	unsigned int flags;
-
-	stats = this_cpu_ptr(prog->stats);
-	flags = u64_stats_update_begin_irqsave(&stats->syncp);
-	u64_stats_inc(&stats->misses);
-	u64_stats_update_end_irqrestore(&stats->syncp, flags);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /* The logic is similar to bpf_prog_run(), but with an explicit
  * rcu_read_lock() and migrate_disable() which are required
  * for the trampoline. The macro is split into

@@ -3556,22 +3556,13 @@ static int irdma_req_notify_cq(struct ib_cq *ibcq,
 	if (iwcq->last_notify == IRDMA_CQ_COMPL_SOLICITED && notify_flags != IB_CQ_SOLICITED)
 		promo_event = true;
 
-<<<<<<< HEAD
-	if (!iwcq->armed || promo_event) {
-		iwcq->armed = true;
-=======
 	if (!atomic_cmpxchg(&iwcq->armed, 0, 1) || promo_event) {
->>>>>>> origin/linux_6.1.15_upstream
 		iwcq->last_notify = cq_notify;
 		irdma_uk_cq_request_notification(ukcq, cq_notify);
 	}
 
-<<<<<<< HEAD
-	if ((notify_flags & IB_CQ_REPORT_MISSED_EVENTS) && !irdma_cq_empty(iwcq))
-=======
 	if ((notify_flags & IB_CQ_REPORT_MISSED_EVENTS) &&
 	    (!irdma_cq_empty(iwcq) || !list_empty(&iwcq->cmpl_generated)))
->>>>>>> origin/linux_6.1.15_upstream
 		ret = 1;
 	spin_unlock_irqrestore(&iwcq->lock, flags);
 

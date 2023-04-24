@@ -1210,8 +1210,6 @@ ipv4_fcnal()
 	check_nexthop "dev veth1" ""
 	log_test $? 0 "Nexthops removed on admin down"
 
-<<<<<<< HEAD
-=======
 	# nexthop route delete warning: route add with nhid and delete
 	# using device
 	run_cmd "$IP li set dev veth1 up"
@@ -1226,13 +1224,10 @@ ipv4_fcnal()
 	run_cmd "$IP route delete 172.16.101.1/32 nhid 12"
 	run_cmd "$IP nexthop del id 12"
 
->>>>>>> origin/linux_6.1.15_upstream
 	run_cmd "$IP nexthop add id 21 via 172.16.1.6 dev veth1"
 	run_cmd "$IP ro add 172.16.101.0/24 nhid 21"
 	run_cmd "$IP ro del 172.16.101.0/24 nexthop via 172.16.1.7 dev veth1 nexthop via 172.16.1.8 dev veth1"
 	log_test $? 2 "Delete multipath route with only nh id based entry"
-<<<<<<< HEAD
-=======
 
 	run_cmd "$IP nexthop add id 22 via 172.16.1.6 dev veth1"
 	run_cmd "$IP ro add 172.16.102.0/24 nhid 22"
@@ -1244,7 +1239,6 @@ ipv4_fcnal()
 
 	run_cmd "$IP ro del 172.16.102.0/24"
 	log_test $? 0 "Delete route when not specifying nexthop attributes"
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 ipv4_grp_fcnal()

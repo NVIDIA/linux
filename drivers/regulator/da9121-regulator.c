@@ -1022,8 +1022,6 @@ static int da9121_assign_chip_model(struct i2c_client *i2c,
 		chip->variant_id = DA9121_TYPE_DA9220_DA9132;
 		regmap = &da9121_2ch_regmap_config;
 		break;
-<<<<<<< HEAD
-=======
 	case DA9121_SUBTYPE_DA9141:
 		chip->variant_id = DA9121_TYPE_DA9141;
 		regmap = &da9121_1ch_regmap_config;
@@ -1032,7 +1030,6 @@ static int da9121_assign_chip_model(struct i2c_client *i2c,
 		chip->variant_id = DA9121_TYPE_DA9142;
 		regmap = &da9121_2ch_regmap_config;
 		break;
->>>>>>> origin/linux_6.1.15_upstream
 	default:
 		return -EINVAL;
 	}

@@ -415,11 +415,7 @@ static int tpm_add_char_device(struct tpm_chip *chip)
 		return rc;
 	}
 
-<<<<<<< HEAD
-	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
-=======
 	if (chip->flags & TPM_CHIP_FLAG_TPM2 && !tpm_is_firmware_upgrade(chip)) {
->>>>>>> origin/linux_6.1.15_upstream
 		rc = tpm_devs_add(chip);
 		if (rc)
 			goto err_del_cdev;
@@ -627,11 +623,7 @@ void tpm_chip_unregister(struct tpm_chip *chip)
 	if (IS_ENABLED(CONFIG_HW_RANDOM_TPM) && !tpm_is_firmware_upgrade(chip))
 		hwrng_unregister(&chip->hwrng);
 	tpm_bios_log_teardown(chip);
-<<<<<<< HEAD
-	if (chip->flags & TPM_CHIP_FLAG_TPM2)
-=======
 	if (chip->flags & TPM_CHIP_FLAG_TPM2 && !tpm_is_firmware_upgrade(chip))
->>>>>>> origin/linux_6.1.15_upstream
 		tpm_devs_remove(chip);
 	tpm_del_char_device(chip);
 }

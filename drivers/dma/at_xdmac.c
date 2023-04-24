@@ -1617,11 +1617,8 @@ static void at_xdmac_handle_cyclic(struct at_xdmac_chan *atchan)
 	struct dma_async_tx_descriptor	*txd;
 
 	spin_lock_irq(&atchan->lock);
-<<<<<<< HEAD
-=======
 	dev_dbg(chan2dev(&atchan->chan), "%s: status=0x%08x\n",
 		__func__, atchan->irq_status);
->>>>>>> origin/linux_6.1.15_upstream
 	if (list_empty(&atchan->xfers_list)) {
 		spin_unlock_irq(&atchan->lock);
 		return;
@@ -1958,12 +1955,7 @@ static void at_xdmac_axi_config(struct platform_device *pdev)
 	}
 }
 
-<<<<<<< HEAD
-#ifdef CONFIG_PM
-static int atmel_xdmac_prepare(struct device *dev)
-=======
 static int __maybe_unused atmel_xdmac_prepare(struct device *dev)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct at_xdmac		*atxdmac = dev_get_drvdata(dev);
 	struct dma_chan		*chan, *_chan;
@@ -2040,10 +2032,6 @@ static int __maybe_unused atmel_xdmac_resume(struct device *dev)
 	}
 	return 0;
 }
-<<<<<<< HEAD
-#endif /* CONFIG_PM_SLEEP */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 static int at_xdmac_probe(struct platform_device *pdev)
 {

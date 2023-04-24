@@ -31,42 +31,7 @@
  * pud level too.
  */
 
-<<<<<<< HEAD
-	BUILD_BUG_ON(KASAN_SHADOW_OFFSET !=
-		KASAN_SHADOW_END - (1UL << (64 - KASAN_SHADOW_SCALE_SHIFT)));
-
-	for (i = 0; i < PTRS_PER_PTE; ++i)
-		set_pte(kasan_early_shadow_pte + i,
-			pfn_pte(virt_to_pfn(kasan_early_shadow_page), PAGE_KERNEL));
-
-	for (i = 0; i < PTRS_PER_PMD; ++i)
-		set_pmd(kasan_early_shadow_pmd + i,
-			pfn_pmd(PFN_DOWN
-				(__pa((uintptr_t) kasan_early_shadow_pte)),
-				__pgprot(_PAGE_TABLE)));
-
-	for (i = KASAN_SHADOW_START; i < KASAN_SHADOW_END;
-	     i += PGDIR_SIZE, ++pgd)
-		set_pgd(pgd,
-			pfn_pgd(PFN_DOWN
-				(__pa(((uintptr_t) kasan_early_shadow_pmd))),
-				__pgprot(_PAGE_TABLE)));
-
-	/* init for swapper_pg_dir */
-	pgd = pgd_offset_k(KASAN_SHADOW_START);
-
-	for (i = KASAN_SHADOW_START; i < KASAN_SHADOW_END;
-	     i += PGDIR_SIZE, ++pgd)
-		set_pgd(pgd,
-			pfn_pgd(PFN_DOWN
-				(__pa(((uintptr_t) kasan_early_shadow_pmd))),
-				__pgprot(_PAGE_TABLE)));
-
-	local_flush_tlb_all();
-}
-=======
 extern pgd_t early_pg_dir[PTRS_PER_PGD];
->>>>>>> origin/linux_6.1.15_upstream
 
 static void __init kasan_populate_pte(pmd_t *pmd, unsigned long vaddr, unsigned long end)
 {

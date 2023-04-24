@@ -557,7 +557,6 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
 	struct xdr_buf *buf = &rqstp->rq_arg;
 	struct kvec *argv = buf->head;
-<<<<<<< HEAD
 
 	/*
 	 * svc_getnl() and friends do not keep the xdr_buf's ::len
@@ -566,16 +565,6 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
 	 */
 	buf->len = buf->head->iov_len + buf->page_len + buf->tail->iov_len;
 
-=======
-
-	/*
-	 * svc_getnl() and friends do not keep the xdr_buf's ::len
-	 * field up to date. Refresh that field before initializing
-	 * the argument decoding stream.
-	 */
-	buf->len = buf->head->iov_len + buf->page_len + buf->tail->iov_len;
-
->>>>>>> origin/linux_6.1.15_upstream
 	xdr_init_decode(xdr, buf, argv->iov_base, NULL);
 	xdr_set_scratch_page(xdr, rqstp->rq_scratch_page);
 }

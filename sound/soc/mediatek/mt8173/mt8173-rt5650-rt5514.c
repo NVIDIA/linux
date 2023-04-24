@@ -217,15 +217,8 @@ static int mt8173_rt5650_rt5514_dev_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-<<<<<<< HEAD
-	if (ret)
-		dev_err(&pdev->dev, "%s snd_soc_register_card fail %d\n",
-			__func__, ret);
-
-=======
 
 out:
->>>>>>> origin/linux_6.1.15_upstream
 	of_node_put(platform_node);
 	return ret;
 }

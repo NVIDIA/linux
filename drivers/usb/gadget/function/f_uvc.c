@@ -899,13 +899,6 @@ static void uvc_function_unbind(struct usb_configuration *c,
 {
 	struct usb_composite_dev *cdev = c->cdev;
 	struct uvc_device *uvc = to_uvc(f);
-<<<<<<< HEAD
-	long wait_ret = 1;
-
-	uvcg_info(f, "%s()\n", __func__);
-
-	/* If we know we're connected via v4l2, then there should be a cleanup
-=======
 	struct uvc_video *video = &uvc->video;
 	long wait_ret = 1;
 
@@ -916,7 +909,6 @@ static void uvc_function_unbind(struct usb_configuration *c,
 
 	/*
 	 * If we know we're connected via v4l2, then there should be a cleanup
->>>>>>> origin/linux_6.1.15_upstream
 	 * of the device from userspace either via UVC_EVENT_DISCONNECT or
 	 * though the video device removal uevent. Allow some time for the
 	 * application to close out before things get deleted.
@@ -933,12 +925,8 @@ static void uvc_function_unbind(struct usb_configuration *c,
 	v4l2_device_unregister(&uvc->v4l2_dev);
 
 	if (uvc->func_connected) {
-<<<<<<< HEAD
-		/* Wait for the release to occur to ensure there are no longer any
-=======
 		/*
 		 * Wait for the release to occur to ensure there are no longer any
->>>>>>> origin/linux_6.1.15_upstream
 		 * pending operations that may cause panics when resources are cleaned
 		 * up.
 		 */

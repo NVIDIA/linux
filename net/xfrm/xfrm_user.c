@@ -352,11 +352,6 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,
 
 	err = 0;
 
-<<<<<<< HEAD
-	if (attrs[XFRMA_MTIMER_THRESH])
-		if (!attrs[XFRMA_ENCAP])
-			err = -EINVAL;
-=======
 	if (attrs[XFRMA_MTIMER_THRESH]) {
 		if (!attrs[XFRMA_ENCAP]) {
 			NL_SET_ERR_MSG(extack, "MTIMER_THRESH attribute can only be set on ENCAP states");
@@ -364,7 +359,6 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,
 			goto out;
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 out:
 	return err;

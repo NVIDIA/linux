@@ -764,13 +764,10 @@ static void ffa_setup_partitions(void)
 			       __func__, tpbuf->id);
 			continue;
 		}
-<<<<<<< HEAD
-=======
 
 		if (drv_info->version > FFA_VERSION_1_0 &&
 		    !(tpbuf->properties & FFA_PARTITION_AARCH64_EXEC))
 			_ffa_mode_32bit_set(ffa_dev);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	kfree(pbuf);
 }

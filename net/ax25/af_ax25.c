@@ -92,10 +92,7 @@ again:
 				spin_unlock_bh(&ax25_list_lock);
 				ax25_disconnect(s, ENETUNREACH);
 				s->ax25_dev = NULL;
-<<<<<<< HEAD
-=======
 				ax25_cb_del(s);
->>>>>>> origin/linux_6.1.15_upstream
 				spin_lock_bh(&ax25_list_lock);
 				goto again;
 			}
@@ -105,17 +102,11 @@ again:
 			ax25_disconnect(s, ENETUNREACH);
 			s->ax25_dev = NULL;
 			if (sk->sk_socket) {
-<<<<<<< HEAD
-				dev_put(ax25_dev->dev);
-				ax25_dev_put(ax25_dev);
-			}
-=======
 				netdev_put(ax25_dev->dev,
 					   &ax25_dev->dev_tracker);
 				ax25_dev_put(ax25_dev);
 			}
 			ax25_cb_del(s);
->>>>>>> origin/linux_6.1.15_upstream
 			release_sock(sk);
 			spin_lock_bh(&ax25_list_lock);
 			sock_put(sk);
@@ -1068,14 +1059,6 @@ static int ax25_release(struct socket *sock)
 		ax25_destroy_socket(ax25);
 	}
 	if (ax25_dev) {
-<<<<<<< HEAD
-		del_timer_sync(&ax25->timer);
-		del_timer_sync(&ax25->t1timer);
-		del_timer_sync(&ax25->t2timer);
-		del_timer_sync(&ax25->t3timer);
-		del_timer_sync(&ax25->idletimer);
-		dev_put(ax25_dev->dev);
-=======
 		if (!ax25_dev->device_up) {
 			del_timer_sync(&ax25->timer);
 			del_timer_sync(&ax25->t1timer);
@@ -1084,7 +1067,6 @@ static int ax25_release(struct socket *sock)
 			del_timer_sync(&ax25->idletimer);
 		}
 		netdev_put(ax25_dev->dev, &ax25->dev_tracker);
->>>>>>> origin/linux_6.1.15_upstream
 		ax25_dev_put(ax25_dev);
 	}
 
@@ -1165,11 +1147,7 @@ static int ax25_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 
 	if (ax25_dev) {
 		ax25_fillin_cb(ax25, ax25_dev);
-<<<<<<< HEAD
-		dev_hold(ax25_dev->dev);
-=======
 		netdev_hold(ax25_dev->dev, &ax25->dev_tracker, GFP_ATOMIC);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 done:

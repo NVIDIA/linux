@@ -196,8 +196,6 @@ struct gc_info_v1_1 {
 	uint32_t gc_num_tcps;
 };
 
-<<<<<<< HEAD
-=======
 struct gc_info_v1_2 {
 	struct gpu_info_header header;
 	uint32_t gc_num_se;
@@ -232,7 +230,6 @@ struct gc_info_v1_2 {
 	uint32_t gc_gl2c_per_gpu;
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 struct gc_info_v2_0 {
 	struct gpu_info_header header;
 

@@ -70,11 +70,7 @@ late_initcall(stackleak_sysctls_init);
 #define skip_erasing()	false
 #endif /* CONFIG_STACKLEAK_RUNTIME_DISABLE */
 
-<<<<<<< HEAD
-asmlinkage void noinstr stackleak_erase(void)
-=======
 static __always_inline void __stackleak_erase(bool on_task_stack)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	const unsigned long task_stack_low = stackleak_task_low_bound(current);
 	const unsigned long task_stack_high = stackleak_task_high_bound(current);

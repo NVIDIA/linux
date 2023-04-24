@@ -1034,14 +1034,11 @@ static inline int acpi_get_local_address(acpi_handle handle, u32 *addr)
 	return -ENODEV;
 }
 
-<<<<<<< HEAD
-=======
 static inline const char *acpi_get_subsystem_id(acpi_handle handle)
 {
 	return ERR_PTR(-ENODEV);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static inline int acpi_register_wakeup_handler(int wake_irq,
 	bool (*wakeup)(void *context), void *context)
 {
@@ -1051,8 +1048,6 @@ static inline int acpi_register_wakeup_handler(int wake_irq,
 static inline void acpi_unregister_wakeup_handler(
 	bool (*wakeup)(void *context), void *context) { }
 
-<<<<<<< HEAD
-=======
 struct acpi_osc_context;
 static inline u32 acpi_osc_ctx_get_pci_control(struct acpi_osc_context *context)
 {
@@ -1064,7 +1059,6 @@ static inline u32 acpi_osc_ctx_get_cxl_control(struct acpi_osc_context *context)
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #endif	/* !CONFIG_ACPI */
 
 #ifdef CONFIG_ACPI_HOTPLUG_IOAPIC

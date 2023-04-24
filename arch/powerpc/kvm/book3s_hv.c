@@ -3957,18 +3957,10 @@ static noinline void kvmppc_run_core(struct kvmppc_vcore *vc)
 
 	kvmppc_set_host_core(pcpu);
 
-<<<<<<< HEAD
-	context_tracking_guest_exit();
-	if (!vtime_accounting_enabled_this_cpu()) {
-		local_irq_enable();
-		/*
-		 * Service IRQs here before vtime_account_guest_exit() so any
-=======
 	if (!vtime_accounting_enabled_this_cpu()) {
 		local_irq_enable();
 		/*
 		 * Service IRQs here before guest_timing_exit_irqoff() so any
->>>>>>> origin/linux_6.1.15_upstream
 		 * ticks that occurred while running the guest are accounted to
 		 * the guest. If vtime accounting is enabled, accounting uses
 		 * TB rather than ticks, so it can be done without enabling
@@ -3977,11 +3969,7 @@ static noinline void kvmppc_run_core(struct kvmppc_vcore *vc)
 		 */
 		local_irq_disable();
 	}
-<<<<<<< HEAD
-	vtime_account_guest_exit();
-=======
 	guest_timing_exit_irqoff();
->>>>>>> origin/linux_6.1.15_upstream
 
 	local_irq_enable();
 
@@ -4690,28 +4678,9 @@ int kvmhv_run_single_vcpu(struct kvm_vcpu *vcpu, u64 time_limit,
 
 	set_irq_happened(trap);
 
-<<<<<<< HEAD
-	kvmppc_set_host_core(pcpu);
-
-	context_tracking_guest_exit();
-	if (!vtime_accounting_enabled_this_cpu()) {
-		local_irq_enable();
-		/*
-		 * Service IRQs here before vtime_account_guest_exit() so any
-		 * ticks that occurred while running the guest are accounted to
-		 * the guest. If vtime accounting is enabled, accounting uses
-		 * TB rather than ticks, so it can be done without enabling
-		 * interrupts here, which has the problem that it accounts
-		 * interrupt processing overhead to the host.
-		 */
-		local_irq_disable();
-	}
-	vtime_account_guest_exit();
-=======
 	vcpu->cpu = -1;
 	vcpu->arch.thread_cpu = -1;
 	vcpu->arch.state = KVMPPC_VCPU_BUSY_IN_HOST;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!vtime_accounting_enabled_this_cpu()) {
 		powerpc_local_irq_pmu_restore(flags);
@@ -5049,22 +5018,13 @@ static int kvmppc_core_prepare_memory_region_hv(struct kvm *kvm,
 				enum kvm_mr_change change)
 {
 	if (change == KVM_MR_CREATE) {
-<<<<<<< HEAD
-		unsigned long size = array_size(npages, sizeof(*slot->arch.rmap));
-=======
 		unsigned long size = array_size(new->npages, sizeof(*new->arch.rmap));
->>>>>>> origin/linux_6.1.15_upstream
 
 		if ((size >> PAGE_SHIFT) > totalram_pages())
 			return -ENOMEM;
 
-<<<<<<< HEAD
-		slot->arch.rmap = vzalloc(size);
-		if (!slot->arch.rmap)
-=======
 		new->arch.rmap = vzalloc(size);
 		if (!new->arch.rmap)
->>>>>>> origin/linux_6.1.15_upstream
 			return -ENOMEM;
 	} else if (change != KVM_MR_DELETE) {
 		new->arch.rmap = old->arch.rmap;
@@ -6328,11 +6288,7 @@ static int kvmppc_book3s_init_hv(void)
 	if (kvmppc_radix_possible()) {
 		r = kvmppc_radix_init();
 		if (r)
-<<<<<<< HEAD
-			return r;
-=======
 			goto err;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	r = kvmppc_uvmem_init();

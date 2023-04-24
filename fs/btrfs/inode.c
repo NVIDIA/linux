@@ -2217,12 +2217,7 @@ int btrfs_run_delalloc_range(struct btrfs_inode *inode, struct page *locked_page
 		 * to use run_delalloc_nocow() here, like for  regular
 		 * preallocated inodes.
 		 */
-<<<<<<< HEAD
-		ASSERT(!zoned ||
-		       (zoned && btrfs_is_data_reloc_root(inode->root)));
-=======
 		ASSERT(!zoned || btrfs_is_data_reloc_root(inode->root));
->>>>>>> origin/linux_6.1.15_upstream
 		ret = run_delalloc_nocow(inode, locked_page, start, end,
 					 page_started, nr_written);
 	} else if (!btrfs_inode_can_compress(inode) ||
@@ -2735,21 +2730,6 @@ void btrfs_submit_data_write_bio(struct inode *inode, struct bio *bio, int mirro
 			btrfs_bio_end_io(btrfs_bio(bio), ret);
 			return;
 		}
-<<<<<<< HEAD
-		goto mapit;
-	} else if (async && !skip_sum) {
-		/* csum items have already been cloned */
-		if (btrfs_is_data_reloc_root(root))
-			goto mapit;
-		/* we're doing a write, do the async checksumming */
-		ret = btrfs_wq_submit_bio(inode, bio, mirror_num, bio_flags,
-					  0, btrfs_submit_bio_start);
-		goto out;
-	} else if (!skip_sum) {
-		ret = btrfs_csum_one_bio(BTRFS_I(inode), bio, 0, 0);
-		if (ret)
-			goto out;
-=======
 	}
 	btrfs_submit_bio(fs_info, bio, mirror_num);
 }
@@ -2767,7 +2747,6 @@ void btrfs_submit_data_read_bio(struct inode *inode, struct bio *bio,
 		 */
 		btrfs_submit_compressed_read(inode, bio, mirror_num);
 		return;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* Save the original iter for read repair */
@@ -7413,10 +7392,7 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 	struct extent_map *em = *map;
 	int type;
 	u64 block_start, orig_start, orig_block_len, ram_bytes;
-<<<<<<< HEAD
-=======
 	struct btrfs_block_group *bg;
->>>>>>> origin/linux_6.1.15_upstream
 	bool can_nocow = false;
 	bool space_reserved = false;
 	u64 prev_len;
@@ -7442,45 +7418,12 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 		block_start = em->block_start + (start - em->start);
 
 		if (can_nocow_extent(inode, start, &len, &orig_start,
-<<<<<<< HEAD
-				     &orig_block_len, &ram_bytes, false) == 1 &&
-		    btrfs_inc_nocow_writers(fs_info, block_start))
-			can_nocow = true;
-	}
-
-	prev_len = len;
-	if (can_nocow) {
-		struct extent_map *em2;
-
-		/* We can NOCOW, so only need to reserve metadata space. */
-		ret = btrfs_delalloc_reserve_metadata(BTRFS_I(inode), len);
-		if (ret < 0) {
-			/* Our caller expects us to free the input extent map. */
-			free_extent_map(em);
-			*map = NULL;
-			btrfs_dec_nocow_writers(fs_info, block_start);
-			goto out;
-		}
-		space_reserved = true;
-
-		em2 = btrfs_create_dio_extent(BTRFS_I(inode), start, len,
-					      orig_start, block_start,
-					      len, orig_block_len,
-					      ram_bytes, type);
-		btrfs_dec_nocow_writers(fs_info, block_start);
-		if (type == BTRFS_ORDERED_PREALLOC) {
-			free_extent_map(em);
-			*map = em = em2;
-=======
 				     &orig_block_len, &ram_bytes, false, false) == 1) {
 			bg = btrfs_inc_nocow_writers(fs_info, block_start);
 			if (bg)
 				can_nocow = true;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
-<<<<<<< HEAD
-=======
 	prev_len = len;
 	if (can_nocow) {
 		struct extent_map *em2;
@@ -7510,27 +7453,17 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 			em = em2;
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (IS_ERR(em2)) {
 			ret = PTR_ERR(em2);
 			goto out;
 		}
-<<<<<<< HEAD
-=======
 
 		dio_data->nocow_done = true;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		/* Our caller expects us to free the input extent map. */
 		free_extent_map(em);
 		*map = NULL;
 
-<<<<<<< HEAD
-		/* We have to COW, so need to reserve metadata and data space. */
-		ret = btrfs_delalloc_reserve_space(BTRFS_I(inode),
-						   &dio_data->data_reserved,
-						   start, len);
-=======
 		if (nowait)
 			return -EAGAIN;
 
@@ -7547,7 +7480,6 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 		 */
 		ret = btrfs_delalloc_reserve_metadata(BTRFS_I(inode), len, len,
 						      false);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret < 0)
 			goto out;
 		space_reserved = true;
@@ -7560,15 +7492,8 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 		*map = em;
 		len = min(len, em->len - (start - em->start));
 		if (len < prev_len)
-<<<<<<< HEAD
-			btrfs_delalloc_release_space(BTRFS_I(inode),
-						     dio_data->data_reserved,
-						     start + len, prev_len - len,
-						     true);
-=======
 			btrfs_delalloc_release_metadata(BTRFS_I(inode),
 							prev_len - len, true);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/*
@@ -7586,19 +7511,7 @@ static int btrfs_get_blocks_direct_write(struct extent_map **map,
 out:
 	if (ret && space_reserved) {
 		btrfs_delalloc_release_extents(BTRFS_I(inode), len);
-<<<<<<< HEAD
-		if (can_nocow) {
-			btrfs_delalloc_release_metadata(BTRFS_I(inode), len, true);
-		} else {
-			btrfs_delalloc_release_space(BTRFS_I(inode),
-						     dio_data->data_reserved,
-						     start, len, true);
-			extent_changeset_free(dio_data->data_reserved);
-			dio_data->data_reserved = NULL;
-		}
-=======
 		btrfs_delalloc_release_metadata(BTRFS_I(inode), len, true);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return ret;
 }
@@ -7677,10 +7590,6 @@ static int btrfs_dio_iomap_begin(struct inode *inode, loff_t start,
 
 	memset(dio_data, 0, sizeof(*dio_data));
 
-<<<<<<< HEAD
-	iomap->private = dio_data;
-
-=======
 	/*
 	 * We always try to allocate data space and must do it before locking
 	 * the file range, to avoid deadlocks with concurrent writes to the same
@@ -7700,7 +7609,6 @@ static int btrfs_dio_iomap_begin(struct inode *inode, loff_t start,
 				  (BTRFS_INODE_NODATACOW | BTRFS_INODE_PREALLOC)))
 			goto err;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * If this errors out it's because we couldn't invalidate pagecache for
@@ -7849,16 +7757,12 @@ unlock_err:
 	unlock_extent(&BTRFS_I(inode)->io_tree, lockstart, lockend,
 		      &cached_state);
 err:
-<<<<<<< HEAD
-	kfree(dio_data);
-=======
 	if (dio_data->data_space_reserved) {
 		btrfs_free_reserved_data_space(BTRFS_I(inode),
 					       dio_data->data_reserved,
 					       start, data_alloc_len);
 		extent_changeset_free(dio_data->data_reserved);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -7893,13 +7797,6 @@ static int btrfs_dio_iomap_end(struct inode *inode, loff_t pos, loff_t length,
 
 	if (write)
 		extent_changeset_free(dio_data->data_reserved);
-<<<<<<< HEAD
-out:
-	kfree(dio_data);
-	iomap->private = NULL;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

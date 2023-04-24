@@ -153,10 +153,6 @@ void opp_debug_create_one(struct dev_pm_opp *opp, struct opp_table *opp_table)
 	debugfs_create_bool("turbo", S_IRUGO, d, &opp->turbo);
 	debugfs_create_bool("suspend", S_IRUGO, d, &opp->suspend);
 	debugfs_create_u32("performance_state", S_IRUGO, d, &opp->pstate);
-<<<<<<< HEAD
-	debugfs_create_ulong("rate_hz", S_IRUGO, d, &opp->rate);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	debugfs_create_u32("level", S_IRUGO, d, &opp->level);
 	debugfs_create_ulong("clock_latency_ns", S_IRUGO, d,
 			     &opp->clock_latency_ns);
@@ -164,10 +160,7 @@ void opp_debug_create_one(struct dev_pm_opp *opp, struct opp_table *opp_table)
 	opp->of_name = of_node_full_name(opp->np);
 	debugfs_create_str("of_name", S_IRUGO, d, (char **)&opp->of_name);
 
-<<<<<<< HEAD
-=======
 	opp_debug_create_clks(opp, opp_table, d);
->>>>>>> origin/linux_6.1.15_upstream
 	opp_debug_create_supplies(opp, opp_table, d);
 	opp_debug_create_bw(opp, opp_table, d);
 

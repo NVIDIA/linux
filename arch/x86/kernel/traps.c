@@ -645,8 +645,6 @@ static bool fixup_iopl_exception(struct pt_regs *regs)
 	return true;
 }
 
-<<<<<<< HEAD
-=======
 /*
  * The unprivileged ENQCMD instruction generates #GPs if the
  * IA32_PASID MSR has not been populated.  If possible, populate
@@ -727,7 +725,6 @@ static void gp_user_force_sig_segv(struct pt_regs *regs, int trapnr,
 	force_sig(SIGSEGV);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 DEFINE_IDTENTRY_ERRORCODE(exc_general_protection)
 {
 	char desc[sizeof(GPFSTR) + 50 + 2*sizeof(unsigned long) + 1] = GPFSTR;
@@ -754,12 +751,6 @@ DEFINE_IDTENTRY_ERRORCODE(exc_general_protection)
 	if (user_mode(regs)) {
 		if (fixup_iopl_exception(regs))
 			goto exit;
-<<<<<<< HEAD
-
-		tsk->thread.error_code = error_code;
-		tsk->thread.trap_nr = X86_TRAP_GP;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (fixup_vdso_exception(regs, X86_TRAP_GP, error_code, 0))
 			goto exit;

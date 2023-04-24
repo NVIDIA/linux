@@ -1749,13 +1749,9 @@ struct kvm_hv_hcall {
 	sse128_t xmm[HV_HYPERCALL_MAX_XMM_REGISTERS];
 };
 
-<<<<<<< HEAD
-static u64 kvm_hv_flush_tlb(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
-=======
 static u64 kvm_get_sparse_vp_set(struct kvm *kvm, struct kvm_hv_hcall *hc,
 				 int consumed_xmm_halves,
 				 u64 *sparse_banks, gpa_t offset)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	u16 var_cnt;
 	int i;
@@ -1797,8 +1793,6 @@ static u64 kvm_hv_flush_tlb(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
 	u64 sparse_banks[KVM_HV_MAX_SPARSE_VCPU_SET_BITS];
 	bool all_cpus;
 
-<<<<<<< HEAD
-=======
 	/*
 	 * The Hyper-V TLFS doesn't allow more than 64 sparse banks, e.g. the
 	 * valid mask is a u64.  Fail the build if KVM's max allowed number of
@@ -1807,7 +1801,6 @@ static u64 kvm_hv_flush_tlb(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
 	 */
 	BUILD_BUG_ON(KVM_HV_MAX_SPARSE_VCPU_SET_BITS > 64);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (hc->code == HVCALL_FLUSH_VIRTUAL_ADDRESS_LIST ||
 	    hc->code == HVCALL_FLUSH_VIRTUAL_ADDRESS_SPACE) {
 		if (hc->fast) {
@@ -1865,31 +1858,10 @@ static u64 kvm_hv_flush_tlb(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
 		if (!hc->var_cnt)
 			goto ret_success;
 
-<<<<<<< HEAD
-		if (!all_cpus) {
-			if (hc->fast) {
-				/* XMM0 is already consumed, each XMM holds two sparse banks. */
-				if (sparse_banks_len > 2 * (HV_HYPERCALL_MAX_XMM_REGISTERS - 1))
-					return HV_STATUS_INVALID_HYPERCALL_INPUT;
-				for (i = 0; i < sparse_banks_len; i += 2) {
-					sparse_banks[i] = sse128_lo(hc->xmm[i / 2 + 1]);
-					sparse_banks[i + 1] = sse128_hi(hc->xmm[i / 2 + 1]);
-				}
-			} else {
-				gpa = hc->ingpa + offsetof(struct hv_tlb_flush_ex,
-							   hv_vp_set.bank_contents);
-				if (unlikely(kvm_read_guest(kvm, gpa, sparse_banks,
-							    sparse_banks_len *
-							    sizeof(sparse_banks[0]))))
-					return HV_STATUS_INVALID_HYPERCALL_INPUT;
-			}
-		}
-=======
 		if (kvm_get_sparse_vp_set(kvm, hc, 2, sparse_banks,
 					  offsetof(struct hv_tlb_flush_ex,
 						   hv_vp_set.bank_contents)))
 			return HV_STATUS_INVALID_HYPERCALL_INPUT;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 do_flush:
@@ -1977,39 +1949,6 @@ static u64 kvm_hv_send_ipi(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
 
 		vector = send_ipi_ex.vector;
 		valid_bank_mask = send_ipi_ex.vp_set.valid_bank_mask;
-<<<<<<< HEAD
-		sparse_banks_len = bitmap_weight(&valid_bank_mask, 64);
-
-		all_cpus = send_ipi_ex.vp_set.format == HV_GENERIC_SET_ALL;
-
-		if (all_cpus)
-			goto check_and_send_ipi;
-
-		if (!sparse_banks_len)
-			goto ret_success;
-
-		if (!hc->fast) {
-			if (kvm_read_guest(kvm,
-					   hc->ingpa + offsetof(struct hv_send_ipi_ex,
-								vp_set.bank_contents),
-					   sparse_banks,
-					   sparse_banks_len * sizeof(sparse_banks[0])))
-				return HV_STATUS_INVALID_HYPERCALL_INPUT;
-		} else {
-			/*
-			 * The lower half of XMM0 is already consumed, each XMM holds
-			 * two sparse banks.
-			 */
-			if (sparse_banks_len > (2 * HV_HYPERCALL_MAX_XMM_REGISTERS - 1))
-				return HV_STATUS_INVALID_HYPERCALL_INPUT;
-			for (i = 0; i < sparse_banks_len; i++) {
-				if (i % 2)
-					sparse_banks[i] = sse128_lo(hc->xmm[(i + 1) / 2]);
-				else
-					sparse_banks[i] = sse128_hi(hc->xmm[i / 2]);
-			}
-		}
-=======
 		all_cpus = send_ipi_ex.vp_set.format == HV_GENERIC_SET_ALL;
 
 		if (hc->var_cnt != hweight64(valid_bank_mask))
@@ -2025,7 +1964,6 @@ static u64 kvm_hv_send_ipi(struct kvm_vcpu *vcpu, struct kvm_hv_hcall *hc)
 					  offsetof(struct hv_send_ipi_ex,
 						   vp_set.bank_contents)))
 			return HV_STATUS_INVALID_HYPERCALL_INPUT;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 check_and_send_ipi:
@@ -2342,16 +2280,6 @@ int kvm_hv_hypercall(struct kvm_vcpu *vcpu)
 				kvm_hv_hypercall_complete_userspace;
 		return 0;
 	case HVCALL_FLUSH_VIRTUAL_ADDRESS_LIST:
-<<<<<<< HEAD
-	case HVCALL_FLUSH_VIRTUAL_ADDRESS_LIST_EX:
-		if (unlikely(!hc.rep_cnt || hc.rep_idx)) {
-			ret = HV_STATUS_INVALID_HYPERCALL_INPUT;
-			break;
-		}
-		ret = kvm_hv_flush_tlb(vcpu, &hc);
-		break;
-	case HVCALL_FLUSH_VIRTUAL_ADDRESS_SPACE:
-=======
 		if (unlikely(hc.var_cnt)) {
 			ret = HV_STATUS_INVALID_HYPERCALL_INPUT;
 			break;
@@ -2370,7 +2298,6 @@ int kvm_hv_hypercall(struct kvm_vcpu *vcpu)
 			break;
 		}
 		fallthrough;
->>>>>>> origin/linux_6.1.15_upstream
 	case HVCALL_FLUSH_VIRTUAL_ADDRESS_SPACE_EX:
 		if (unlikely(hc.rep)) {
 			ret = HV_STATUS_INVALID_HYPERCALL_INPUT;
@@ -2379,14 +2306,11 @@ int kvm_hv_hypercall(struct kvm_vcpu *vcpu)
 		ret = kvm_hv_flush_tlb(vcpu, &hc);
 		break;
 	case HVCALL_SEND_IPI:
-<<<<<<< HEAD
-=======
 		if (unlikely(hc.var_cnt)) {
 			ret = HV_STATUS_INVALID_HYPERCALL_INPUT;
 			break;
 		}
 		fallthrough;
->>>>>>> origin/linux_6.1.15_upstream
 	case HVCALL_SEND_IPI_EX:
 		if (unlikely(hc.rep)) {
 			ret = HV_STATUS_INVALID_HYPERCALL_INPUT;

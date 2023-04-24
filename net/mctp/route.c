@@ -106,19 +106,11 @@ static struct mctp_sk_key *mctp_lookup_key(struct net *net, struct sk_buff *skb,
 
 	ret = NULL;
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);
-<<<<<<< HEAD
 
 	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
 		if (!mctp_key_match(key, mh->dest, peer, tag))
 			continue;
 
-=======
-
-	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
-		if (!mctp_key_match(key, mh->dest, peer, tag))
-			continue;
-
->>>>>>> origin/linux_6.1.15_upstream
 		spin_lock(&key->lock);
 		if (key->valid) {
 			refcount_inc(&key->refs);
@@ -155,10 +147,7 @@ static struct mctp_sk_key *mctp_key_alloc(struct mctp_sock *msk,
 	key->valid = true;
 	spin_lock_init(&key->lock);
 	refcount_set(&key->refs, 1);
-<<<<<<< HEAD
-=======
 	sock_hold(key->sk);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return key;
 }
@@ -177,10 +166,7 @@ void mctp_key_unref(struct mctp_sk_key *key)
 	mctp_dev_release_key(key->dev, key);
 	spin_unlock_irqrestore(&key->lock, flags);
 
-<<<<<<< HEAD
-=======
 	sock_put(key->sk);
->>>>>>> origin/linux_6.1.15_upstream
 	kfree(key);
 }
 
@@ -247,19 +233,6 @@ __releases(&key->lock)
 		mctp_dev_release_key(key->dev, key);
 	}
 	spin_unlock_irqrestore(&key->lock, flags);
-<<<<<<< HEAD
-
-	if (!key->manual_alloc) {
-		spin_lock_irqsave(&net->mctp.keys_lock, flags);
-		hlist_del(&key->hlist);
-		hlist_del(&key->sklist);
-		spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
-
-		/* unref for the lists */
-		mctp_key_unref(key);
-	}
-
-=======
 
 	if (!key->manual_alloc) {
 		spin_lock_irqsave(&net->mctp.keys_lock, flags);
@@ -271,7 +244,6 @@ __releases(&key->lock)
 		spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* and one for the local reference */
 	mctp_key_unref(key);
 
@@ -289,26 +261,6 @@ static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key)
 
 	refcount_inc(&key->refs);
 	flow->key = key;
-<<<<<<< HEAD
-}
-
-static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev)
-{
-	struct mctp_sk_key *key;
-	struct mctp_flow *flow;
-
-	flow = skb_ext_find(skb, SKB_EXT_MCTP);
-	if (!flow)
-		return;
-
-	key = flow->key;
-
-	if (WARN_ON(key->dev && key->dev != dev))
-		return;
-
-	mctp_dev_set_key(dev, key);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 #else
 static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key) {}
@@ -421,21 +373,11 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * key for reassembly - we'll create a more specific
 			 * one for future packets if required (ie, !EOM).
 			 */
-<<<<<<< HEAD
-			key = mctp_lookup_key(net, skb, MCTP_ADDR_ANY, &f);
-			if (key) {
-				msk = container_of(key->sk,
-						   struct mctp_sock, sk);
-				spin_unlock_irqrestore(&key->lock, f);
-				mctp_key_unref(key);
-				key = NULL;
-=======
 			any_key = mctp_lookup_key(net, skb, MCTP_ADDR_ANY, &f);
 			if (any_key) {
 				msk = container_of(any_key->sk,
 						   struct mctp_sock, sk);
 				spin_unlock_irqrestore(&any_key->lock, f);
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 
@@ -487,16 +429,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * this function.
 			 */
 			rc = mctp_key_add(key, msk);
-<<<<<<< HEAD
-			if (rc) {
-				kfree(key);
-			} else {
-				trace_mctp_key_acquire(key);
-
-				/* we don't need to release key->lock on exit */
-				mctp_key_unref(key);
-			}
-=======
 			if (!rc)
 				trace_mctp_key_acquire(key);
 
@@ -505,7 +437,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * setting to NULL
 			 */
 			mctp_key_unref(key);
->>>>>>> origin/linux_6.1.15_upstream
 			key = NULL;
 
 		} else {
@@ -552,11 +483,8 @@ out_unlock:
 		spin_unlock_irqrestore(&key->lock, f);
 		mctp_key_unref(key);
 	}
-<<<<<<< HEAD
-=======
 	if (any_key)
 		mctp_key_unref(any_key);
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	if (rc)
 		kfree_skb(skb);
@@ -587,14 +515,11 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 
 	if (cb->ifindex) {
 		/* direct route; use the hwaddr we stashed in sendmsg */
-<<<<<<< HEAD
-=======
 		if (cb->halen != skb->dev->addr_len) {
 			/* sanity check, sendmsg should have already caught this */
 			kfree_skb(skb);
 			return -EMSGSIZE;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		daddr = cb->haddr;
 	} else {
 		/* If lookup fails let the device handle daddr==NULL */

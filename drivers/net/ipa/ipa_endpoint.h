@@ -41,8 +41,6 @@ enum ipa_endpoint_name {
 #define IPA_ENDPOINT_MAX		32	/* Max supported by driver */
 
 /**
-<<<<<<< HEAD
-=======
  * struct ipa_endpoint_tx - Endpoint configuration for TX endpoints
  * @seq_type:		primary packet processing sequencer type
  * @seq_rep_type:	sequencer type for replication processing
@@ -124,7 +122,6 @@ struct ipa_endpoint_config {
 };
 
 /**
->>>>>>> origin/linux_6.1.15_upstream
  * enum ipa_replenish_flag:	RX buffer replenish flags
  *
  * @IPA_REPLENISH_ENABLED:	Whether receive buffer replenishing is enabled
@@ -149,13 +146,7 @@ enum ipa_replenish_flag {
  * @evt_ring_id:	GSI event ring used by the endpoint
  * @netdev:		Network device pointer, if endpoint uses one
  * @replenish_flags:	Replenishing state flags
-<<<<<<< HEAD
- * @replenish_ready:	Number of replenish transactions without doorbell
- * @replenish_saved:	Replenish requests held while disabled
- * @replenish_backlog:	Number of buffers needed to fill hardware queue
-=======
  * @replenish_count:	Total number of replenish transactions committed
->>>>>>> origin/linux_6.1.15_upstream
  * @replenish_work:	Work item used for repeated replenish failures
  */
 struct ipa_endpoint {
@@ -174,13 +165,7 @@ struct ipa_endpoint {
 
 	/* Receive buffer replenishing for RX endpoints */
 	DECLARE_BITMAP(replenish_flags, IPA_REPLENISH_COUNT);
-<<<<<<< HEAD
-	u32 replenish_ready;
-	atomic_t replenish_saved;
-	atomic_t replenish_backlog;
-=======
 	u64 replenish_count;
->>>>>>> origin/linux_6.1.15_upstream
 	struct delayed_work replenish_work;		/* global wq */
 };
 

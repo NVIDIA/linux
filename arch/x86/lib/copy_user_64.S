@@ -79,33 +79,7 @@ SYM_FUNC_START(copy_user_generic_unrolled)
 	leaq 64(%rdi),%rdi
 	decl %ecx
 	jnz 1b
-<<<<<<< HEAD
-.L_copy_short_string:
-	movl %edx,%ecx
-	andl $7,%edx
-	shrl $3,%ecx
-	jz 20f
-18:	movq (%rsi),%r8
-19:	movq %r8,(%rdi)
-	leaq 8(%rsi),%rsi
-	leaq 8(%rdi),%rdi
-	decl %ecx
-	jnz 18b
-20:	andl %edx,%edx
-	jz 23f
-	movl %edx,%ecx
-21:	movb (%rsi),%al
-22:	movb %al,(%rdi)
-	incq %rsi
-	incq %rdi
-	decl %ecx
-	jnz 21b
-23:	xor %eax,%eax
-	ASM_CLAC
-	RET
-=======
 	jmp copy_user_short_string
->>>>>>> origin/linux_6.1.15_upstream
 
 30:	shll $6,%ecx
 	addl %ecx,%edx
@@ -226,19 +200,8 @@ SYM_CODE_START_LOCAL(.Lcopy_user_handle_tail)
 	ASM_CLAC
 	RET
 
-<<<<<<< HEAD
-	/*
-	 * Return zero to pretend that this copy succeeded. This
-	 * is counter-intuitive, but needed to prevent the code
-	 * in lib/iov_iter.c from retrying and running back into
-	 * the poison cache line again. The machine check handler
-	 * will ensure that a SIGBUS is sent to the task.
-	 */
-3:	xorl %eax,%eax
-=======
 3:
 	movl %edx,%eax
->>>>>>> origin/linux_6.1.15_upstream
 	ASM_CLAC
 	RET
 

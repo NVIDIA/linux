@@ -1756,35 +1756,7 @@ static int ctnetlink_dump_one_entry(struct sk_buff *skb,
 		if (!refcount_inc_not_zero(&ct->ct_general.use))
 			return 0;
 
-<<<<<<< HEAD
-			/* We can't dump extension info for the unconfirmed
-			 * list because unconfirmed conntracks can have
-			 * ct->ext reallocated (and thus freed).
-			 *
-			 * In the dying list case ct->ext can't be free'd
-			 * until after we drop pcpu->lock.
-			 */
-			res = ctnetlink_fill_info(skb, NETLINK_CB(cb->skb).portid,
-						  cb->nlh->nlmsg_seq,
-						  NFNL_MSG_TYPE(cb->nlh->nlmsg_type),
-						  ct, dying ? true : false, 0);
-			if (res < 0) {
-				if (!refcount_inc_not_zero(&ct->ct_general.use))
-					continue;
-				cb->args[0] = cpu;
-				cb->args[1] = (unsigned long)ct;
-				spin_unlock_bh(&pcpu->lock);
-				goto out;
-			}
-		}
-		if (cb->args[1]) {
-			cb->args[1] = 0;
-			goto restart;
-		}
-		spin_unlock_bh(&pcpu->lock);
-=======
 		ctx->last = ct;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return res;
@@ -2022,20 +1994,7 @@ static int ctnetlink_change_helper(struct nf_conn *ct,
 static int ctnetlink_change_timeout(struct nf_conn *ct,
 				    const struct nlattr * const cda[])
 {
-<<<<<<< HEAD
-	u64 timeout = (u64)ntohl(nla_get_be32(cda[CTA_TIMEOUT])) * HZ;
-
-	if (timeout > INT_MAX)
-		timeout = INT_MAX;
-	WRITE_ONCE(ct->timeout, nfct_time_stamp + (u32)timeout);
-
-	if (test_bit(IPS_DYING_BIT, &ct->status))
-		return -ETIME;
-
-	return 0;
-=======
 	return __nf_ct_change_timeout(ct, (u64)ntohl(nla_get_be32(cda[CTA_TIMEOUT])) * HZ);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #if defined(CONFIG_NF_CONNTRACK_MARK)

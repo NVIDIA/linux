@@ -403,8 +403,6 @@ static const struct dmi_system_id medion_laptop[] = {
 	{ }
 };
 
-<<<<<<< HEAD
-=======
 static const struct dmi_system_id asus_laptop[] = {
 	{
 		.ident = "Asus Vivobook K3402ZA",
@@ -480,19 +478,12 @@ static const struct dmi_system_id schenker_gm_rg[] = {
 	{ }
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 struct irq_override_cmp {
 	const struct dmi_system_id *system;
 	unsigned char irq;
 	unsigned char triggering;
 	unsigned char polarity;
 	unsigned char shareable;
-<<<<<<< HEAD
-};
-
-static const struct irq_override_cmp skip_override_table[] = {
-	{ medion_laptop, 1, ACPI_LEVEL_SENSITIVE, ACPI_ACTIVE_LOW, 0 },
-=======
 	bool override;
 };
 
@@ -502,7 +493,6 @@ static const struct irq_override_cmp override_table[] = {
 	{ lenovo_laptop, 6, ACPI_LEVEL_SENSITIVE, ACPI_ACTIVE_LOW, 0, true },
 	{ lenovo_laptop, 10, ACPI_LEVEL_SENSITIVE, ACPI_ACTIVE_LOW, 0, true },
 	{ schenker_gm_rg, 1, ACPI_EDGE_SENSITIVE, ACPI_ACTIVE_LOW, 1, true },
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static bool acpi_dev_irq_override(u32 gsi, u8 triggering, u8 polarity,
@@ -510,24 +500,14 @@ static bool acpi_dev_irq_override(u32 gsi, u8 triggering, u8 polarity,
 {
 	int i;
 
-<<<<<<< HEAD
-	for (i = 0; i < ARRAY_SIZE(skip_override_table); i++) {
-		const struct irq_override_cmp *entry = &skip_override_table[i];
-=======
 	for (i = 0; i < ARRAY_SIZE(override_table); i++) {
 		const struct irq_override_cmp *entry = &override_table[i];
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (dmi_check_system(entry->system) &&
 		    entry->irq == gsi &&
 		    entry->triggering == triggering &&
 		    entry->polarity == polarity &&
 		    entry->shareable == shareable)
-<<<<<<< HEAD
-			return false;
-	}
-
-=======
 			return entry->override;
 	}
 
@@ -541,17 +521,12 @@ static bool acpi_dev_irq_override(u32 gsi, u8 triggering, u8 polarity,
 		return false;
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 	return true;
 }
 
 static void acpi_dev_get_irqresource(struct resource *res, u32 gsi,
 				     u8 triggering, u8 polarity, u8 shareable,
-<<<<<<< HEAD
-				     bool check_override)
-=======
 				     u8 wake_capable, bool check_override)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int irq, p, t;
 

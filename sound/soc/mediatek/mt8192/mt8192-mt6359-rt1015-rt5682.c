@@ -1151,14 +1151,6 @@ static int mt8192_mt6359_dev_probe(struct platform_device *pdev)
 		return -EINVAL;
 	card->dev = &pdev->dev;
 
-<<<<<<< HEAD
-	card = (struct snd_soc_card *)of_device_get_match_data(&pdev->dev);
-	if (!card) {
-		ret = -EINVAL;
-		goto put_platform_node;
-	}
-	card->dev = &pdev->dev;
-=======
 	if (of_device_is_compatible(pdev->dev.of_node, RT1015P_RT5682_OF_NAME))
 		card->name = RT1015P_RT5682_CARD_NAME;
 	else if (of_device_is_compatible(pdev->dev.of_node, RT1015P_RT5682S_OF_NAME))
@@ -1176,7 +1168,6 @@ static int mt8192_mt6359_dev_probe(struct platform_device *pdev)
 		dev_err_probe(&pdev->dev, ret, "Property 'platform' missing or invalid\n");
 		goto err_platform_node;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	speaker_codec = of_get_child_by_name(pdev->dev.of_node, "speaker-codecs");
 	if (!speaker_codec) {
@@ -1229,28 +1220,12 @@ static int mt8192_mt6359_dev_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv) {
 		ret = -ENOMEM;
-<<<<<<< HEAD
-		goto put_hdmi_codec;
-=======
 		goto err_probe;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	snd_soc_card_set_drvdata(card, priv);
 
 	ret = mt8192_afe_gpio_init(&pdev->dev);
 	if (ret) {
-<<<<<<< HEAD
-		dev_err(&pdev->dev, "init gpio error %d\n", ret);
-		goto put_hdmi_codec;
-	}
-
-	ret = devm_snd_soc_register_card(&pdev->dev, card);
-
-put_hdmi_codec:
-	of_node_put(hdmi_codec);
-put_platform_node:
-	of_node_put(platform_node);
-=======
 		dev_err_probe(&pdev->dev, ret, "%s init gpio error\n", __func__);
 		goto err_probe;
 	}
@@ -1267,7 +1242,6 @@ err_speaker_codec:
 	of_node_put(platform_node);
 err_platform_node:
 	of_node_put(hdmi_codec);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

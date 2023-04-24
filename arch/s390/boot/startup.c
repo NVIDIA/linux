@@ -166,17 +166,10 @@ static void setup_kernel_memory_layout(void)
 	    vmalloc_size > _REGION2_SIZE ||
 	    vmemmap_start + vmemmap_size + vmalloc_size + MODULES_LEN >
 		    _REGION2_SIZE) {
-<<<<<<< HEAD
-		MODULES_END = _REGION1_SIZE;
-		rte_size = _REGION2_SIZE;
-	} else {
-		MODULES_END = _REGION2_SIZE;
-=======
 		vmax = _REGION1_SIZE;
 		rte_size = _REGION2_SIZE;
 	} else {
 		vmax = _REGION2_SIZE;
->>>>>>> origin/linux_6.1.15_upstream
 		rte_size = _REGION3_SIZE;
 	}
 	/*
@@ -184,17 +177,10 @@ static void setup_kernel_memory_layout(void)
 	 * secure storage limit, so that any vmalloc allocation
 	 * we do could be used to back secure guest storage.
 	 */
-<<<<<<< HEAD
-	adjust_to_uv_max(&MODULES_END);
-#ifdef CONFIG_KASAN
-	/* force vmalloc and modules below kasan shadow */
-	MODULES_END = min(MODULES_END, KASAN_SHADOW_START);
-=======
 	vmax = adjust_to_uv_max(vmax);
 #ifdef CONFIG_KASAN
 	/* force vmalloc and modules below kasan shadow */
 	vmax = min(vmax, KASAN_SHADOW_START);
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 	__memcpy_real_area = round_down(vmax - PAGE_SIZE, PAGE_SIZE);
 	__abs_lowcore = round_down(__memcpy_real_area - ABS_LOWCORE_MAP_SIZE,

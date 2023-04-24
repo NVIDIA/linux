@@ -67,10 +67,7 @@ static const struct tm_wheel_info tm_wheels_infos[] = {
 	{0x0200, 0x0005, "Thrustmaster T300RS (Missing Attachment)"},
 	{0x0206, 0x0005, "Thrustmaster T300RS"},
 	{0x0209, 0x0005, "Thrustmaster T300RS (Open Wheel Attachment)"},
-<<<<<<< HEAD
-=======
 	{0x020a, 0x0005, "Thrustmaster T300RS (Sparco R383 Mod)"},
->>>>>>> origin/linux_6.1.15_upstream
 	{0x0204, 0x0005, "Thrustmaster T300 Ferrari Alcantara Edition"},
 	{0x0002, 0x0002, "Thrustmaster T500RS"}
 	//{0x0407, 0x0001, "Thrustmaster TMX"}

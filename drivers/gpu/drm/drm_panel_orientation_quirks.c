@@ -304,22 +304,17 @@ static const struct dmi_system_id orientation_data[] = {
 		  DMI_EXACT_MATCH(DMI_PRODUCT_VERSION, "Lenovo ideapad D330-10IGM"),
 		},
 		.driver_data = (void *)&lcd1200x1920_rightside_up,
-<<<<<<< HEAD
-=======
 	}, {	/* Lenovo Ideapad D330-10IGL (HD) */
 		.matches = {
 		  DMI_EXACT_MATCH(DMI_SYS_VENDOR, "LENOVO"),
 		  DMI_EXACT_MATCH(DMI_PRODUCT_VERSION, "Lenovo ideapad D330-10IGL"),
 		},
 		.driver_data = (void *)&lcd800x1280_rightside_up,
->>>>>>> origin/linux_6.1.15_upstream
 	}, {	/* Lenovo Yoga Book X90F / X91F / X91L */
 		.matches = {
 		  /* Non exact match to match all versions */
 		  DMI_MATCH(DMI_PRODUCT_NAME, "Lenovo YB1-X9"),
 		},
-<<<<<<< HEAD
-=======
 		.driver_data = (void *)&lcd1200x1920_rightside_up,
 	}, {	/* Lenovo Yoga Tablet 2 830F / 830L */
 		.matches = {
@@ -341,7 +336,6 @@ static const struct dmi_system_id orientation_data[] = {
 		 DMI_MATCH(DMI_SYS_VENDOR, "RWC CO.,LTD"),
 		 DMI_MATCH(DMI_PRODUCT_NAME, "UMPC-01"),
 		},
->>>>>>> origin/linux_6.1.15_upstream
 		.driver_data = (void *)&lcd1200x1920_rightside_up,
 	}, {	/* OneGX1 Pro */
 		.matches = {

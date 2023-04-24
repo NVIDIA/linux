@@ -1001,20 +1001,13 @@ samsung_pinctrl_get_soc_data_for_of_alias(struct platform_device *pdev)
 	return &(of_data->ctrl[id]);
 }
 
-<<<<<<< HEAD
-static void samsung_banks_of_node_put(struct samsung_pinctrl_drv_data *d)
-=======
 static void samsung_banks_node_put(struct samsung_pinctrl_drv_data *d)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct samsung_pin_bank *bank;
 	unsigned int i;
 
 	bank = d->pin_banks;
 	for (i = 0; i < d->nr_banks; ++i, ++bank)
-<<<<<<< HEAD
-		of_node_put(bank->of_node);
-=======
 		fwnode_handle_put(bank->fwnode);
 }
 
@@ -1058,7 +1051,6 @@ static void samsung_banks_node_get(struct device *dev, struct samsung_pinctrl_dr
 				 bank->name);
 		/* child reference dropped in samsung_drop_banks_of_node() */
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* retrieve the soc specific data */
@@ -1173,13 +1165,6 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 	ret = samsung_pinctrl_register(pdev, drvdata);
 	if (ret)
 		goto err_put_banks;
-<<<<<<< HEAD
-
-	ret = samsung_gpiolib_register(pdev, drvdata);
-	if (ret)
-		goto err_unregister;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (ctrl->eint_gpio_init)
 		ctrl->eint_gpio_init(drvdata);
@@ -1197,11 +1182,7 @@ static int samsung_pinctrl_probe(struct platform_device *pdev)
 err_unregister:
 	samsung_pinctrl_unregister(pdev, drvdata);
 err_put_banks:
-<<<<<<< HEAD
-	samsung_banks_of_node_put(drvdata);
-=======
 	samsung_banks_node_put(drvdata);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

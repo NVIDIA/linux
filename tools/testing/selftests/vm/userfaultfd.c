@@ -96,12 +96,7 @@ static bool test_uffdio_minor = false;
 
 static bool map_shared;
 static int shm_fd;
-<<<<<<< HEAD
-static int huge_fd = -1;	/* only used for hugetlb_shared test */
-static char *huge_fd_off0;
-=======
 static int huge_fd;
->>>>>>> origin/linux_6.1.15_upstream
 static unsigned long long *count_verify;
 static int uffd = -1;
 static int uffd_flags, finished, *pipefd;
@@ -254,15 +249,6 @@ static void noop_alias_mapping(__u64 *start, size_t len, unsigned long offset)
 
 static void hugetlb_release_pages(char *rel_area)
 {
-<<<<<<< HEAD
-	if (huge_fd == -1)
-		return;
-
-	if (fallocate(huge_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-		      rel_area == huge_fd_off0 ? 0 : nr_pages * page_size,
-		      nr_pages * page_size))
-		err("fallocate() failed");
-=======
 	if (!map_shared) {
 		if (madvise(rel_area, nr_pages * page_size, MADV_DONTNEED))
 			err("madvise(MADV_DONTNEED) failed");
@@ -270,7 +256,6 @@ static void hugetlb_release_pages(char *rel_area)
 		if (madvise(rel_area, nr_pages * page_size, MADV_REMOVE))
 			err("madvise(MADV_REMOVE) failed");
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void hugetlb_allocate_area(void **alloc_area, bool is_src)
@@ -278,14 +263,6 @@ static void hugetlb_allocate_area(void **alloc_area, bool is_src)
 	void *area_alias = NULL;
 	char **alloc_area_alias;
 
-<<<<<<< HEAD
-	*alloc_area = mmap(NULL, nr_pages * page_size, PROT_READ | PROT_WRITE,
-			   map_shared ? MAP_SHARED :
-			   MAP_PRIVATE | MAP_HUGETLB |
-			   (*alloc_area == area_src ? 0 : MAP_NORESERVE),
-			   huge_fd,
-			   *alloc_area == area_src ? 0 : nr_pages * page_size);
-=======
 	if (!map_shared)
 		*alloc_area = mmap(NULL,
 			nr_pages * page_size,
@@ -302,24 +279,16 @@ static void hugetlb_allocate_area(void **alloc_area, bool is_src)
 				(is_src ? 0 : MAP_NORESERVE),
 			huge_fd,
 			is_src ? 0 : nr_pages * page_size);
->>>>>>> origin/linux_6.1.15_upstream
 	if (*alloc_area == MAP_FAILED)
 		err("mmap of hugetlbfs file failed");
 
 	if (map_shared) {
-<<<<<<< HEAD
-		area_alias = mmap(NULL, nr_pages * page_size, PROT_READ | PROT_WRITE,
-				  MAP_SHARED,
-				  huge_fd, *alloc_area == area_src ? 0 :
-				  nr_pages * page_size);
-=======
 		area_alias = mmap(NULL,
 			nr_pages * page_size,
 			PROT_READ | PROT_WRITE,
 			MAP_SHARED,
 			huge_fd,
 			is_src ? 0 : nr_pages * page_size);
->>>>>>> origin/linux_6.1.15_upstream
 		if (area_alias == MAP_FAILED)
 			err("mmap of hugetlb file alias failed");
 	}

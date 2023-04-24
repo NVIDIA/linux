@@ -1715,13 +1715,6 @@ static int writeback_single_inode(struct inode *inode,
 	 * If the inode is freeing, its i_io_list shoudn't be updated
 	 * as it can be finally deleted at this moment.
 	 */
-<<<<<<< HEAD
-	if (!(inode->i_state & I_DIRTY_ALL))
-		inode_cgwb_move_to_attached(inode, wb);
-	else if (!(inode->i_state & I_SYNC_QUEUED) &&
-		 (inode->i_state & I_DIRTY))
-		redirty_tail_locked(inode, wb);
-=======
 	if (!(inode->i_state & I_FREEING)) {
 		/*
 		 * If the inode is now fully clean, then it can be safely
@@ -1741,7 +1734,6 @@ static int writeback_single_inode(struct inode *inode,
 			}
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_unlock(&wb->list_lock);
 	inode_sync_complete(inode);
@@ -2516,10 +2508,6 @@ void __mark_inode_dirty(struct inode *inode, int flags)
 out_unlock:
 	if (wb)
 		spin_unlock(&wb->list_lock);
-<<<<<<< HEAD
-out_unlock_inode:
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock(&inode->i_lock);
 }
 EXPORT_SYMBOL(__mark_inode_dirty);

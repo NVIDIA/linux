@@ -435,8 +435,6 @@ int main(int argc, char **argv)
 
 	setlinebuf(stdout);
 
-<<<<<<< HEAD
-=======
 #ifdef USE_LIBCAP
 	/* Libcap < 2.63 hooks before main() to compute the number of
 	 * capabilities of the running kernel, and doing so it calls prctl()
@@ -447,7 +445,6 @@ int main(int argc, char **argv)
 	errno = 0;
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 	last_do_help = do_help;
 	pretty_output = false;
 	json_output = false;

@@ -125,28 +125,6 @@ static void nvme_remove_invalid_namespaces(struct nvme_ctrl *ctrl,
 static void nvme_update_keep_alive(struct nvme_ctrl *ctrl,
 				   struct nvme_command *cmd);
 
-<<<<<<< HEAD
-/*
- * Prepare a queue for teardown.
- *
- * This must forcibly unquiesce queues to avoid blocking dispatch, and only set
- * the capacity to 0 after that to avoid blocking dispatchers that may be
- * holding bd_butex.  This will end buffered writers dirtying pages that can't
- * be synced.
- */
-static void nvme_set_queue_dying(struct nvme_ns *ns)
-{
-	if (test_and_set_bit(NVME_NS_DEAD, &ns->flags))
-		return;
-
-	blk_mark_disk_dead(ns->disk);
-	blk_mq_unquiesce_queue(ns->queue);
-
-	set_capacity_and_notify(ns->disk, 0);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 void nvme_queue_scan(struct nvme_ctrl *ctrl)
 {
 	/*
@@ -1467,23 +1445,6 @@ static int nvme_identify_ns(struct nvme_ctrl *ctrl, unsigned nsid,
 	error = NVME_SC_INVALID_NS | NVME_SC_DNR;
 	if ((*id)->ncap == 0) /* namespace not allocated or attached */
 		goto out_free_id;
-<<<<<<< HEAD
-
-
-	if (ctrl->quirks & NVME_QUIRK_BOGUS_NID) {
-		dev_info(ctrl->device,
-			 "Ignoring bogus Namespace Identifiers\n");
-	} else {
-		if (ctrl->vs >= NVME_VS(1, 1, 0) &&
-		    !memchr_inv(ids->eui64, 0, sizeof(ids->eui64)))
-			memcpy(ids->eui64, (*id)->eui64, sizeof(ids->eui64));
-		if (ctrl->vs >= NVME_VS(1, 2, 0) &&
-		    !memchr_inv(ids->nguid, 0, sizeof(ids->nguid)))
-			memcpy(ids->nguid, (*id)->nguid, sizeof(ids->nguid));
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 
 out_free_id:
@@ -1965,14 +1926,11 @@ static void nvme_update_disk_info(struct gendisk *disk,
 	nvme_config_discard(disk, ns);
 	blk_queue_max_write_zeroes_sectors(disk->queue,
 					   ns->ctrl->max_zeroes_sectors);
-<<<<<<< HEAD
-=======
 }
 
 static bool nvme_ns_is_readonly(struct nvme_ns *ns, struct nvme_ns_info *info)
 {
 	return info->is_readonly || test_bit(NVME_NS_FORCE_RO, &ns->flags);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline bool nvme_first_scan(struct gendisk *disk)
@@ -2030,10 +1988,6 @@ static int nvme_update_ns_info_generic(struct nvme_ns *ns,
 		blk_mq_unfreeze_queue(ns->head->disk->queue);
 	}
 
-<<<<<<< HEAD
-	set_disk_ro(ns->disk, (id->nsattr & NVME_NS_ATTR_RO) ||
-		test_bit(NVME_NS_FORCE_RO, &ns->flags));
-=======
 	/* Hide the block-interface for these devices */
 	ns->disk->flags |= GENHD_FL_HIDDEN;
 	set_bit(NVME_NS_READY, &ns->flags);
@@ -2070,7 +2024,6 @@ static int nvme_update_ns_info_block(struct nvme_ns *ns,
 	}
 
 	set_disk_ro(ns->disk, nvme_ns_is_readonly(ns, info));
->>>>>>> origin/linux_6.1.15_upstream
 	set_bit(NVME_NS_READY, &ns->flags);
 	blk_mq_unfreeze_queue(ns->disk->queue);
 
@@ -2083,13 +2036,7 @@ static int nvme_update_ns_info_block(struct nvme_ns *ns,
 	if (nvme_ns_head_multipath(ns->head)) {
 		blk_mq_freeze_queue(ns->head->disk->queue);
 		nvme_update_disk_info(ns->head->disk, ns, id);
-<<<<<<< HEAD
-		set_disk_ro(ns->head->disk,
-			    (id->nsattr & NVME_NS_ATTR_RO) ||
-				    test_bit(NVME_NS_FORCE_RO, &ns->flags));
-=======
 		set_disk_ro(ns->head->disk, nvme_ns_is_readonly(ns, info));
->>>>>>> origin/linux_6.1.15_upstream
 		nvme_mpath_revalidate_paths(ns);
 		blk_stack_limits(&ns->head->disk->queue->limits,
 				 &ns->queue->limits, 0);
@@ -2097,12 +2044,8 @@ static int nvme_update_ns_info_block(struct nvme_ns *ns,
 		blk_mq_unfreeze_queue(ns->head->disk->queue);
 	}
 
-<<<<<<< HEAD
-out_unfreeze:
-=======
 	ret = 0;
 out:
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * If probing fails due an unsupported feature, hide the block device,
 	 * but still allow other access.
@@ -2112,11 +2055,7 @@ out:
 		set_bit(NVME_NS_READY, &ns->flags);
 		ret = 0;
 	}
-<<<<<<< HEAD
-	blk_mq_unfreeze_queue(ns->disk->queue);
-=======
 	kfree(id);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -4116,16 +4055,6 @@ static struct nvme_ns_head *nvme_alloc_ns_head(struct nvme_ctrl *ctrl,
 	head->shared = info->is_shared;
 	kref_init(&head->ref);
 
-<<<<<<< HEAD
-	ret = nvme_subsys_check_duplicate_ids(ctrl->subsys, &head->ids);
-	if (ret) {
-		dev_err(ctrl->device,
-			"duplicate IDs for nsid %d\n", nsid);
-		goto out_cleanup_srcu;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (head->ids.csi) {
 		ret = nvme_get_effects_log(ctrl, head->ids.csi, &head->effects);
 		if (ret)
@@ -4195,11 +4124,7 @@ static int nvme_init_ns_head(struct nvme_ns *ns, struct nvme_ns_info *info)
 	}
 
 	mutex_lock(&ctrl->subsys->lock);
-<<<<<<< HEAD
-	head = nvme_find_ns_head(ctrl, nsid);
-=======
 	head = nvme_find_ns_head(ctrl, info->nsid);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!head) {
 		ret = nvme_subsys_check_duplicate_ids(ctrl->subsys, &info->ids);
 		if (ret) {

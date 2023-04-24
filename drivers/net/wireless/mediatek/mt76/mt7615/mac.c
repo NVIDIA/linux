@@ -1560,11 +1560,7 @@ mt7615_txwi_free(struct mt7615_dev *dev, struct mt76_txwi_cache *txwi)
 	u32 val;
 	u8 wcid;
 
-<<<<<<< HEAD
-	mt7615_txp_skb_unmap(mdev, txwi);
-=======
 	mt76_connac_txp_skb_unmap(mdev, txwi);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!txwi->skb)
 		goto out;
 
@@ -1592,11 +1588,7 @@ mt7615_mac_tx_free_token(struct mt7615_dev *dev, u16 token)
 	mt7615_txwi_free(dev, txwi);
 }
 
-<<<<<<< HEAD
-static void mt7615_mac_tx_free(struct mt7615_dev *dev, struct sk_buff *skb)
-=======
 static void mt7615_mac_tx_free(struct mt7615_dev *dev, void *data, int len)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct mt76_connac_tx_free *free = data;
 	void *tx_token = data + sizeof(*free);

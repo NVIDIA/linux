@@ -37,13 +37,10 @@
 #define N_SPEAKUP	26	/* Speakup communication with synths */
 #define N_NULL		27	/* Null ldisc used for error handling */
 #define N_MCTP		28	/* MCTP-over-serial */
-<<<<<<< HEAD
-=======
 #define N_DEVELOPMENT	29	/* Manual out-of-tree testing */
 #define N_CAN327	30	/* ELM327 based OBD-II interfaces */
 
 /* Always the newest line discipline + 1 */
 #define NR_LDISCS	31
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* _UAPI_LINUX_TTY_H */

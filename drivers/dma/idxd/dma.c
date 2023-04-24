@@ -332,16 +332,7 @@ static int idxd_dmaengine_drv_probe(struct idxd_dev *idxd_dev)
 	return 0;
 
 err_dma:
-<<<<<<< HEAD
-	idxd_wq_quiesce(wq);
-	percpu_ref_exit(&wq->wq_active);
-err_ref:
-	idxd_wq_free_resources(wq);
-err_res_alloc:
-	__drv_disable_wq(wq);
-=======
 	drv_disable_wq(wq);
->>>>>>> origin/linux_6.1.15_upstream
 err:
 	wq->type = IDXD_WQT_NONE;
 	mutex_unlock(&wq->wq_lock);
@@ -355,13 +346,7 @@ static void idxd_dmaengine_drv_remove(struct idxd_dev *idxd_dev)
 	mutex_lock(&wq->wq_lock);
 	__idxd_wq_quiesce(wq);
 	idxd_unregister_dma_channel(wq);
-<<<<<<< HEAD
-	idxd_wq_free_resources(wq);
-	__drv_disable_wq(wq);
-	percpu_ref_exit(&wq->wq_active);
-=======
 	drv_disable_wq(wq);
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&wq->wq_lock);
 }
 

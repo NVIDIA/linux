@@ -183,16 +183,6 @@ static int efi_pstore_write(struct pstore_record *record)
 	for (i = 0; i < DUMP_NAME_LEN; i++)
 		efi_name[i] = name[i];
 
-<<<<<<< HEAD
-	ret = efivar_entry_set_safe(efi_name, vendor, PSTORE_EFI_ATTRIBUTES,
-			      false, record->size, record->psi->buf);
-
-	if (record->reason == KMSG_DUMP_OOPS && try_module_get(THIS_MODULE))
-		if (!schedule_work(&efivar_work))
-			module_put(THIS_MODULE);
-
-	return ret;
-=======
 	if (efivar_trylock())
 		return -EBUSY;
 	status = efivar_set_variable_locked(efi_name, &LINUX_EFI_CRASH_GUID,
@@ -201,7 +191,6 @@ static int efi_pstore_write(struct pstore_record *record)
 					    true);
 	efivar_unlock();
 	return status == EFI_SUCCESS ? 0 : -EIO;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static int efi_pstore_erase(struct pstore_record *record)

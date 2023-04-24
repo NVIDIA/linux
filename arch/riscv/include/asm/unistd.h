@@ -9,8 +9,6 @@
  */
 
 #define __ARCH_WANT_SYS_CLONE
-<<<<<<< HEAD
-=======
 
 #ifdef CONFIG_COMPAT
 #define __ARCH_WANT_COMPAT_TRUNCATE64
@@ -22,7 +20,6 @@
 #define __ARCH_WANT_COMPAT_READAHEAD
 #define __ARCH_WANT_COMPAT_FADVISE64_64
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <uapi/asm/unistd.h>
 

@@ -560,11 +560,7 @@ int main(int argc, char *argv[])
 			"require root in order to modify\nsystem settings.  "
 			"Exiting.\n");
 
-<<<<<<< HEAD
-	cpus_online = min(MAX_CPUS, sysconf(_SC_NPROCESSORS_ONLN));
-=======
 	cpus_online = MIN(MAX_CPUS, sysconf(_SC_NPROCESSORS_ONLN));
->>>>>>> origin/linux_6.1.15_upstream
 	cpu_set = CPU_ALLOC(cpus_online);
 	if (cpu_set == NULL) {
 		perror("CPU_ALLOC()");

@@ -131,31 +131,7 @@ static int st_accel_spi_probe(struct spi_device *spi)
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	err = st_accel_common_probe(indio_dev);
-	if (err < 0)
-		goto st_accel_power_off;
-
-	return 0;
-
-st_accel_power_off:
-	st_sensors_power_disable(indio_dev);
-
-	return err;
-}
-
-static int st_accel_spi_remove(struct spi_device *spi)
-{
-	struct iio_dev *indio_dev = spi_get_drvdata(spi);
-
-	st_accel_common_remove(indio_dev);
-
-	st_sensors_power_disable(indio_dev);
-
-	return 0;
-=======
 	return st_accel_common_probe(indio_dev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct spi_device_id st_accel_id_table[] = {

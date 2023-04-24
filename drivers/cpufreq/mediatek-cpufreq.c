@@ -735,10 +735,7 @@ static int __init mtk_cpufreq_driver_init(void)
 {
 	struct device_node *np;
 	const struct of_device_id *match;
-<<<<<<< HEAD
-=======
 	const struct mtk_cpufreq_platform_data *data;
->>>>>>> origin/linux_6.1.15_upstream
 	int err;
 
 	np = of_find_node_by_path("/");
@@ -763,12 +760,8 @@ static int __init mtk_cpufreq_driver_init(void)
 	 * and the device registration codes are put here to handle defer
 	 * probing.
 	 */
-<<<<<<< HEAD
-	cpufreq_pdev = platform_device_register_simple("mtk-cpufreq", -1, NULL, 0);
-=======
 	cpufreq_pdev = platform_device_register_data(NULL, "mtk-cpufreq", -1,
 						     data, sizeof(*data));
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(cpufreq_pdev)) {
 		pr_err("failed to register mtk-cpufreq platform device\n");
 		platform_driver_unregister(&mtk_cpufreq_platdrv);

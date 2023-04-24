@@ -16,14 +16,9 @@
 #include <linux/slab.h>
 
 #include <linux/spi/eeprom.h>
-<<<<<<< HEAD
-#include <linux/property.h>
-#include <linux/math.h>
-=======
 #include <linux/spi/spi.h>
 
 #include <linux/nvmem-provider.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * NOTE: this is an *EEPROM* driver. The vagaries of product naming
@@ -69,12 +64,8 @@ struct at25_data {
 
 #define	FM25_ID_LEN	9		/* ID length */
 
-<<<<<<< HEAD
-/* Specs often allow 5 msec for a page write, sometimes 20 msec;
-=======
 /*
  * Specs often allow 5ms for a page write, sometimes 20ms;
->>>>>>> origin/linux_6.1.15_upstream
  * it's important to recover from write timeouts.
  */
 #define	EE_TIMEOUT	25
@@ -89,21 +80,14 @@ static int at25_ee_read(void *priv, unsigned int offset,
 	struct at25_data *at25 = priv;
 	char *buf = val;
 	size_t max_chunk = spi_max_transfer_size(at25->spi);
-<<<<<<< HEAD
-	size_t num_msgs = DIV_ROUND_UP(count, max_chunk);
-	size_t			nr_bytes = 0;
-=======
 	unsigned int msg_offset = offset;
 	size_t bytes_left = count;
 	size_t segment;
->>>>>>> origin/linux_6.1.15_upstream
 	u8			*cp;
 	ssize_t			status;
 	struct spi_transfer	t[2];
 	struct spi_message	m;
 	u8			instr;
-	unsigned int		msg_offset;
-	size_t			msg_count;
 
 	if (unlikely(offset >= at25->chip.byte_len))
 		return -EINVAL;
@@ -112,23 +96,13 @@ static int at25_ee_read(void *priv, unsigned int offset,
 	if (unlikely(!count))
 		return -EINVAL;
 
-<<<<<<< HEAD
-	msg_offset = (unsigned int)offset;
-	msg_count = min(count, max_chunk);
-	while (num_msgs) {
-=======
 	do {
 		segment = min(bytes_left, max_chunk);
->>>>>>> origin/linux_6.1.15_upstream
 		cp = at25->command;
 
 		instr = AT25_READ;
 		if (at25->chip.flags & EE_INSTR_BIT3_IS_ADDR)
-<<<<<<< HEAD
-			if (msg_offset >= (1U << (at25->addrlen * 8)))
-=======
 			if (msg_offset >= BIT(at25->addrlen * 8))
->>>>>>> origin/linux_6.1.15_upstream
 				instr |= AT25_INSTR_BIT3;
 
 		mutex_lock(&at25->lock);
@@ -144,11 +118,7 @@ static int at25_ee_read(void *priv, unsigned int offset,
 			*cp++ = msg_offset >> 8;
 			fallthrough;
 		case 1:
-<<<<<<< HEAD
-		case 0:	/* can't happen: for better codegen */
-=======
 		case 0:	/* can't happen: for better code generation */
->>>>>>> origin/linux_6.1.15_upstream
 			*cp++ = msg_offset >> 0;
 		}
 
@@ -159,13 +129,8 @@ static int at25_ee_read(void *priv, unsigned int offset,
 		t[0].len = at25->addrlen + 1;
 		spi_message_add_tail(&t[0], &m);
 
-<<<<<<< HEAD
-		t[1].rx_buf = buf + nr_bytes;
-		t[1].len = msg_count;
-=======
 		t[1].rx_buf = buf;
 		t[1].len = segment;
->>>>>>> origin/linux_6.1.15_upstream
 		spi_message_add_tail(&t[1], &m);
 
 		status = spi_sync(at25->spi, &m);
@@ -175,17 +140,10 @@ static int at25_ee_read(void *priv, unsigned int offset,
 		if (status)
 			return status;
 
-<<<<<<< HEAD
-		--num_msgs;
-		msg_offset += msg_count;
-		nr_bytes += msg_count;
-	}
-=======
 		msg_offset += segment;
 		buf += segment;
 		bytes_left -= segment;
 	} while (bytes_left > 0);
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev_dbg(&at25->spi->dev, "read %zu bytes at %d\n",
 		count, offset);
@@ -476,15 +434,8 @@ static int at25_probe(struct spi_device *spi)
 	struct at25_data	*at25 = NULL;
 	int			err;
 	int			sr;
-<<<<<<< HEAD
-	u8 id[FM25_ID_LEN];
-	u8 sernum[FM25_SN_LEN];
-	bool is_fram;
-	int i;
-=======
 	struct spi_eeprom *pdata;
 	bool is_fram;
->>>>>>> origin/linux_6.1.15_upstream
 
 	err = device_property_match_string(&spi->dev, "compatible", "cypress,fm25");
 	if (err >= 0)
@@ -492,27 +443,9 @@ static int at25_probe(struct spi_device *spi)
 	else
 		is_fram = false;
 
-<<<<<<< HEAD
-	at25 = devm_kzalloc(&spi->dev, sizeof(struct at25_data), GFP_KERNEL);
-	if (!at25)
-		return -ENOMEM;
-
-	/* Chip description */
-	if (spi->dev.platform_data) {
-		memcpy(&at25->chip, spi->dev.platform_data, sizeof(at25->chip));
-	} else if (!is_fram) {
-		err = at25_fw_to_chip(&spi->dev, &at25->chip);
-		if (err)
-			return err;
-	}
-
-	/* Ping the chip ... the status register is pretty portable,
-	 * unlike probing manufacturer IDs.  We do expect that system
-=======
 	/*
 	 * Ping the chip ... the status register is pretty portable,
 	 * unlike probing manufacturer IDs. We do expect that system
->>>>>>> origin/linux_6.1.15_upstream
 	 * firmware didn't write it in the past few milliseconds!
 	 */
 	sr = spi_w8r8(spi, AT25_RDSR);
@@ -521,36 +454,14 @@ static int at25_probe(struct spi_device *spi)
 		return -ENXIO;
 	}
 
-<<<<<<< HEAD
-=======
 	at25 = devm_kzalloc(&spi->dev, sizeof(*at25), GFP_KERNEL);
 	if (!at25)
 		return -ENOMEM;
 
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_init(&at25->lock);
 	at25->spi = spi;
 	spi_set_drvdata(spi, at25);
 
-<<<<<<< HEAD
-	if (is_fram) {
-		/* Get ID of chip */
-		fm25_aux_read(at25, id, FM25_RDID, FM25_ID_LEN);
-		if (id[6] != 0xc2) {
-			dev_err(&spi->dev,
-				"Error: no Cypress FRAM (id %02x)\n", id[6]);
-			return -ENODEV;
-		}
-		/* set size found in ID */
-		if (id[7] < 0x21 || id[7] > 0x26) {
-			dev_err(&spi->dev, "Error: unsupported size (id %02x)\n", id[7]);
-			return -ENODEV;
-		}
-		at25->chip.byte_len = int_pow(2, id[7] - 0x21 + 4) * 1024;
-
-		if (at25->chip.byte_len > 64 * 1024)
-			at25->chip.flags |= EE_ADDR3;
-=======
 	/* Chip description */
 	pdata = dev_get_platdata(&spi->dev);
 	if (pdata) {
@@ -558,7 +469,6 @@ static int at25_probe(struct spi_device *spi)
 	} else {
 		if (is_fram)
 			err = at25_fram_to_chip(&spi->dev, &at25->chip);
->>>>>>> origin/linux_6.1.15_upstream
 		else
 			err = at25_fw_to_chip(&spi->dev, &at25->chip);
 		if (err)

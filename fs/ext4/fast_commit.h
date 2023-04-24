@@ -84,19 +84,6 @@ enum {
 };
 
 /*
-<<<<<<< HEAD
- * Fast commit status codes
- */
-enum {
-	EXT4_FC_STATUS_OK = 0,
-	EXT4_FC_STATUS_INELIGIBLE,
-	EXT4_FC_STATUS_SKIPPED,
-	EXT4_FC_STATUS_FAILED,
-};
-
-/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * Fast commit ineligiblity reasons:
  */
 enum {

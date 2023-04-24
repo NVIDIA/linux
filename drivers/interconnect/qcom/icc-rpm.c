@@ -254,10 +254,6 @@ static int __qcom_icc_set(struct icc_node *n, struct qcom_icc_node *qn,
 	return 0;
 }
 
-<<<<<<< HEAD
-	do_div(rate, qn->buswidth);
-	rate = min_t(u64, rate, LONG_MAX);
-=======
 /**
  * qcom_icc_pre_bw_aggregate - cleans up values before re-aggregate requests
  * @node: icc node to operate on
@@ -266,7 +262,6 @@ static void qcom_icc_pre_bw_aggregate(struct icc_node *node)
 {
 	struct qcom_icc_node *qn;
 	size_t i;
->>>>>>> origin/linux_6.1.15_upstream
 
 	qn = node->data;
 	for (i = 0; i < QCOM_ICC_NUM_BUCKETS; i++) {

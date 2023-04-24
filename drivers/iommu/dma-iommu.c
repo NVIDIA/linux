@@ -518,15 +518,6 @@ static bool dev_is_untrusted(struct device *dev)
 }
 
 static bool dev_use_swiotlb(struct device *dev)
-<<<<<<< HEAD
-{
-	return IS_ENABLED(CONFIG_SWIOTLB) && dev_is_untrusted(dev);
-}
-
-/* sysfs updates are serialised by the mutex of the group owning @domain */
-int iommu_dma_init_fq(struct iommu_domain *domain)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return IS_ENABLED(CONFIG_SWIOTLB) && dev_is_untrusted(dev);
 }
@@ -1003,21 +994,17 @@ static dma_addr_t iommu_dma_map_page(struct device *dev, struct page *page,
 		void *padding_start;
 		size_t padding_size, aligned_size;
 
-<<<<<<< HEAD
-=======
 		if (!is_swiotlb_active(dev)) {
 			dev_warn_once(dev, "DMA bounce buffers are inactive, unable to map unaligned transaction.\n");
 			return DMA_MAPPING_ERROR;
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		aligned_size = iova_align(iovad, size);
 		phys = swiotlb_tbl_map_single(dev, phys, size, aligned_size,
 					      iova_mask(iovad), dir, attrs);
 
 		if (phys == DMA_MAPPING_ERROR)
 			return DMA_MAPPING_ERROR;
-<<<<<<< HEAD
 
 		/* Cleanup the padding area. */
 		padding_start = phys_to_virt(phys);
@@ -1032,22 +1019,6 @@ static dma_addr_t iommu_dma_map_page(struct device *dev, struct page *page,
 		memset(padding_start, 0, padding_size);
 	}
 
-=======
-
-		/* Cleanup the padding area. */
-		padding_start = phys_to_virt(phys);
-		padding_size = aligned_size;
-
-		if (!(attrs & DMA_ATTR_SKIP_CPU_SYNC) &&
-		    (dir == DMA_TO_DEVICE || dir == DMA_BIDIRECTIONAL)) {
-			padding_start += size;
-			padding_size -= size;
-		}
-
-		memset(padding_start, 0, padding_size);
-	}
-
->>>>>>> origin/linux_6.1.15_upstream
 	if (!coherent && !(attrs & DMA_ATTR_SKIP_CPU_SYNC))
 		arch_sync_dma_for_device(phys, size, dir);
 

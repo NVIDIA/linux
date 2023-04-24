@@ -1248,11 +1248,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo,
 	int status = 0;
 
 	*pcred = NULL;
-<<<<<<< HEAD
-	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-=======
 	lrp = kzalloc(sizeof(*lrp), nfs_io_gfp_mask());
->>>>>>> origin/linux_6.1.15_upstream
 	if (unlikely(lrp == NULL)) {
 		status = -ENOMEM;
 		spin_lock(&ino->i_lock);
@@ -3275,11 +3271,7 @@ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
 {
 	struct nfs4_threshold *thp;
 
-<<<<<<< HEAD
-	thp = kzalloc(sizeof(*thp), GFP_KERNEL);
-=======
 	thp = kzalloc(sizeof(*thp), nfs_io_gfp_mask());
->>>>>>> origin/linux_6.1.15_upstream
 	if (!thp) {
 		dprintk("%s mdsthreshold allocation failed\n", __func__);
 		return NULL;

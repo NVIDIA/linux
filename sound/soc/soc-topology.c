@@ -1401,15 +1401,6 @@ static int soc_tplg_dapm_widget_create(struct soc_tplg *tplg,
 
 	template.num_kcontrols = le32_to_cpu(w->num_kcontrols);
 	kc = devm_kcalloc(tplg->dev, le32_to_cpu(w->num_kcontrols), sizeof(*kc), GFP_KERNEL);
-<<<<<<< HEAD
-	if (!kc)
-		goto hdr_err;
-
-	kcontrol_type = devm_kcalloc(tplg->dev, le32_to_cpu(w->num_kcontrols), sizeof(unsigned int),
-				     GFP_KERNEL);
-	if (!kcontrol_type)
-		goto hdr_err;
-=======
 	if (!kc) {
 		ret = -ENOMEM;
 		goto hdr_err;
@@ -1421,7 +1412,6 @@ static int soc_tplg_dapm_widget_create(struct soc_tplg *tplg,
 		ret = -ENOMEM;
 		goto hdr_err;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < le32_to_cpu(w->num_kcontrols); i++) {
 		control_hdr = (struct snd_soc_tplg_ctl_hdr *)tplg->pos;
@@ -2676,10 +2666,6 @@ int snd_soc_tplg_component_remove(struct snd_soc_component *comp)
 			}
 		}
 		up_write(&card->controls_rwsem);
-<<<<<<< HEAD
-		pass--;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* let caller know if FW can be freed when no objects are left */

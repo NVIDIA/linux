@@ -392,10 +392,6 @@ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
 skip_pseudoflavor_check:
 	/* Finally, check access permissions. */
 	error = nfsd_permission(rqstp, exp, dentry, access);
-<<<<<<< HEAD
-	trace_nfsd_fh_verify_err(rqstp, fhp, type, access, error);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	trace_nfsd_fh_verify_err(rqstp, fhp, type, access, error);
 	if (error == nfserr_stale)

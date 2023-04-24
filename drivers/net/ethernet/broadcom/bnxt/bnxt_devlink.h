@@ -21,8 +21,6 @@ static inline struct bnxt *bnxt_get_bp_from_dl(struct devlink *dl)
 	return ((struct bnxt_dl *)devlink_priv(dl))->bp;
 }
 
-<<<<<<< HEAD
-=======
 static inline void bnxt_dl_remote_reload(struct bnxt *bp)
 {
 	devlink_remote_reload_actions_performed(bp->dl, 0,
@@ -40,7 +38,6 @@ static inline void bnxt_dl_set_remote_reset(struct devlink *dl, bool value)
 	((struct bnxt_dl *)devlink_priv(dl))->remote_reset = value;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #define NVM_OFF_MSIX_VEC_PER_PF_MAX	108
 #define NVM_OFF_MSIX_VEC_PER_PF_MIN	114
 #define NVM_OFF_IGNORE_ARI		164

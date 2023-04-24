@@ -133,19 +133,11 @@ int tegra_asoc_machine_init(struct snd_soc_pcm_runtime *rtd)
 		else
 			jack_name = "Headphones Jack";
 
-<<<<<<< HEAD
-		err = snd_soc_card_jack_new(card, jack_name,
-					    SND_JACK_HEADPHONE,
-					    &tegra_machine_hp_jack,
-					    tegra_machine_hp_jack_pins,
-					    ARRAY_SIZE(tegra_machine_hp_jack_pins));
-=======
 		err = snd_soc_card_jack_new_pins(card, jack_name,
 						 SND_JACK_HEADPHONE,
 						 &tegra_machine_hp_jack,
 						 tegra_machine_hp_jack_pins,
 						 ARRAY_SIZE(tegra_machine_hp_jack_pins));
->>>>>>> origin/linux_6.1.15_upstream
 		if (err) {
 			dev_err(rtd->dev,
 				"Headphones Jack creation failed: %d\n", err);

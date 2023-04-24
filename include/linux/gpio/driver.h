@@ -265,14 +265,6 @@ struct gpio_irq_chip {
 				unsigned long *valid_mask,
 				unsigned int ngpios);
 
-	/**
-	 * @initialized:
-	 *
-	 * Flag to track GPIO chip irq member's initialization.
-	 * This flag will make sure GPIO chip irq members are not used
-	 * before they are initialized.
-	 */
-	bool initialized;
 
 	/**
 	 * @valid_mask:

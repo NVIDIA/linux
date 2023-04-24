@@ -44,12 +44,7 @@ mlx5e_tc_sample_cleanup(struct mlx5e_tc_psample *tc_psample);
 static inline struct mlx5_flow_handle *
 mlx5e_tc_sample_offload(struct mlx5e_tc_psample *tc_psample,
 			struct mlx5_flow_spec *spec,
-<<<<<<< HEAD
-			struct mlx5_flow_attr *attr,
-			u32 tunnel_id)
-=======
 			struct mlx5_flow_attr *attr)
->>>>>>> origin/linux_6.1.15_upstream
 { return ERR_PTR(-EOPNOTSUPP); }
 
 static inline void

@@ -12458,25 +12458,11 @@ lpfc_sli_issue_abort_iotag(struct lpfc_hba *phba, struct lpfc_sli_ring *pring,
 
 	/* ABTS WQE must go to the same WQ as the WQE to be aborted */
 	abtsiocbp->hba_wqidx = cmdiocb->hba_wqidx;
-<<<<<<< HEAD
-	if (cmdiocb->iocb_flag & LPFC_IO_FCP)
-		abtsiocbp->iocb_flag |= (LPFC_IO_FCP | LPFC_USE_FCPWQIDX);
-	if (cmdiocb->iocb_flag & LPFC_IO_FOF)
-		abtsiocbp->iocb_flag |= LPFC_IO_FOF;
-
-	if (phba->link_state < LPFC_LINK_UP ||
-	    (phba->sli_rev == LPFC_SLI_REV4 &&
-	     phba->sli4_hba.link_state.status == LPFC_FC_LA_TYPE_LINK_DOWN))
-		iabt->ulpCommand = CMD_CLOSE_XRI_CN;
-	else
-		iabt->ulpCommand = CMD_ABORT_XRI_CN;
-=======
 	if (cmdiocb->cmd_flag & LPFC_IO_FCP)
 		abtsiocbp->cmd_flag |= (LPFC_IO_FCP | LPFC_USE_FCPWQIDX);
 
 	if (cmdiocb->cmd_flag & LPFC_IO_FOF)
 		abtsiocbp->cmd_flag |= LPFC_IO_FOF;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (cmpl)
 		abtsiocbp->cmd_cmpl = cmpl;
@@ -12566,11 +12552,7 @@ static int
 lpfc_sli_validate_fcp_iocb_for_abort(struct lpfc_iocbq *iocbq,
 				     struct lpfc_vport *vport)
 {
-<<<<<<< HEAD
-	IOCB_t *icmd = NULL;
-=======
 	u8 ulp_command;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* No null ptr vports */
 	if (!iocbq || iocbq->vport != vport)
@@ -12579,14 +12561,6 @@ lpfc_sli_validate_fcp_iocb_for_abort(struct lpfc_iocbq *iocbq,
 	/* iocb must be for FCP IO, already exists on the TX cmpl queue,
 	 * can't be premarked as driver aborted, nor be an ABORT iocb itself
 	 */
-<<<<<<< HEAD
-	icmd = &iocbq->iocb;
-	if (!(iocbq->iocb_flag & LPFC_IO_FCP) ||
-	    !(iocbq->iocb_flag & LPFC_IO_ON_TXCMPLQ) ||
-	    (iocbq->iocb_flag & LPFC_DRIVER_ABORTED) ||
-	    (icmd->ulpCommand == CMD_ABORT_XRI_CN ||
-	     icmd->ulpCommand == CMD_CLOSE_XRI_CN))
-=======
 	ulp_command = get_job_cmnd(vport->phba, iocbq);
 	if (!(iocbq->cmd_flag & LPFC_IO_FCP) ||
 	    !(iocbq->cmd_flag & LPFC_IO_ON_TXCMPLQ) ||
@@ -12594,7 +12568,6 @@ lpfc_sli_validate_fcp_iocb_for_abort(struct lpfc_iocbq *iocbq,
 	    (ulp_command == CMD_ABORT_XRI_CN ||
 	     ulp_command == CMD_CLOSE_XRI_CN ||
 	     ulp_command == CMD_ABORT_XRI_WQE))
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 
 	return 0;
@@ -12689,10 +12662,7 @@ lpfc_sli_sum_iocb(struct lpfc_vport *vport, uint16_t tgt_id, uint64_t lun_id,
 	IOCB_t *icmd = NULL;
 	int sum, i;
 	unsigned long iflags;
-<<<<<<< HEAD
-=======
 	u8 ulp_command;
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock_irqsave(&phba->hbalock, iflags);
 	for (i = 1, sum = 0; i <= phba->sli.last_iotag; i++) {
@@ -12700,16 +12670,6 @@ lpfc_sli_sum_iocb(struct lpfc_vport *vport, uint16_t tgt_id, uint64_t lun_id,
 
 		if (!iocbq || iocbq->vport != vport)
 			continue;
-<<<<<<< HEAD
-		if (!(iocbq->iocb_flag & LPFC_IO_FCP) ||
-		    !(iocbq->iocb_flag & LPFC_IO_ON_TXCMPLQ))
-			continue;
-
-		/* Include counting outstanding aborts */
-		icmd = &iocbq->iocb;
-		if (icmd->ulpCommand == CMD_ABORT_XRI_CN ||
-		    icmd->ulpCommand == CMD_CLOSE_XRI_CN) {
-=======
 		if (!(iocbq->cmd_flag & LPFC_IO_FCP) ||
 		    !(iocbq->cmd_flag & LPFC_IO_ON_TXCMPLQ))
 			continue;
@@ -12719,7 +12679,6 @@ lpfc_sli_sum_iocb(struct lpfc_vport *vport, uint16_t tgt_id, uint64_t lun_id,
 		if (ulp_command == CMD_ABORT_XRI_CN ||
 		    ulp_command == CMD_CLOSE_XRI_CN ||
 		    ulp_command == CMD_ABORT_XRI_WQE) {
->>>>>>> origin/linux_6.1.15_upstream
 			sum++;
 			continue;
 		}

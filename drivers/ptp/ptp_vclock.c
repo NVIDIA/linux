@@ -265,12 +265,7 @@ out:
 }
 EXPORT_SYMBOL(ptp_get_vclocks_index);
 
-<<<<<<< HEAD
-ktime_t ptp_convert_timestamp(const struct skb_shared_hwtstamps *hwtstamps,
-			      int vclock_index)
-=======
 ktime_t ptp_convert_timestamp(const ktime_t *hwtstamp, int vclock_index)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	unsigned int hash = vclock_index % HASH_SIZE(vclock_hash);
 	struct ptp_vclock *vclock;
@@ -278,22 +273,9 @@ ktime_t ptp_convert_timestamp(const ktime_t *hwtstamp, int vclock_index)
 	u64 ns;
 	u64 vclock_ns = 0;
 
-<<<<<<< HEAD
-	snprintf(name, PTP_CLOCK_NAME_LEN, "ptp%d", vclock_index);
-	dev = class_find_device_by_name(ptp_class, name);
-	if (!dev)
-		return 0;
-
-	ptp = dev_get_drvdata(dev);
-	if (!ptp->is_virtual_clock) {
-		put_device(dev);
-		return 0;
-	}
-=======
 	ns = ktime_to_ns(*hwtstamp);
 
 	rcu_read_lock();
->>>>>>> origin/linux_6.1.15_upstream
 
 	hlist_for_each_entry_rcu(vclock, &vclock_hash[hash], vclock_hash_node) {
 		if (vclock->clock->index != vclock_index)
@@ -307,12 +289,7 @@ ktime_t ptp_convert_timestamp(const ktime_t *hwtstamp, int vclock_index)
 
 	rcu_read_unlock();
 
-<<<<<<< HEAD
-	put_device(dev);
-	return ns_to_ktime(ns);
-=======
 	return ns_to_ktime(vclock_ns);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(ptp_convert_timestamp);
 #endif

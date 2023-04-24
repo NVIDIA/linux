@@ -175,18 +175,8 @@ int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 			adev->pm.rpm_mode = AMDGPU_RUNPM_BACO;
 			break;
 		}
-<<<<<<< HEAD
-		/* XXX: disable runtime pm if we are the primary adapter
-		 * to avoid displays being re-enabled after DPMS.
-		 * This needs to be sorted out and fixed properly.
-		 */
-		if (adev->is_fw_fb)
-			adev->runpm = false;
-		if (adev->runpm)
-=======
 
 		if (adev->pm.rpm_mode == AMDGPU_RUNPM_BACO)
->>>>>>> origin/linux_6.1.15_upstream
 			dev_info(adev->dev, "Using BACO for runtime pm\n");
 	}
 

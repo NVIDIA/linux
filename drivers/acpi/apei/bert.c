@@ -69,14 +69,6 @@ static void __init bert_print_all(struct acpi_bert_region *region,
 			break;
 		}
 
-<<<<<<< HEAD
-		pr_info_once("Error records from previous boot:\n");
-		if (region_len < ACPI_BERT_PRINT_MAX_LEN)
-			cper_estatus_print(KERN_INFO HW_ERR, estatus);
-		else
-			pr_info_once("Max print length exceeded, table data is available at:\n"
-				     "/sys/firmware/acpi/tables/data/BERT");
-=======
 		if (estatus_len < ACPI_BERT_PRINT_MAX_LEN &&
 		    printed < ACPI_BERT_PRINT_MAX_RECORDS) {
 			pr_info_once("Error records from previous boot:\n");
@@ -85,7 +77,6 @@ static void __init bert_print_all(struct acpi_bert_region *region,
 		} else {
 			skipped++;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		/*
 		 * Because the boot error source is "one-time polled" type,

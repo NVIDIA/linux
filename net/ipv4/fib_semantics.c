@@ -30,10 +30,7 @@
 #include <linux/slab.h>
 #include <linux/netlink.h>
 #include <linux/hash.h>
-<<<<<<< HEAD
-=======
 #include <linux/nospec.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <net/arp.h>
 #include <net/inet_dscp.h>
@@ -893,17 +890,11 @@ int fib_nh_match(struct net *net, struct fib_config *cfg, struct fib_info *fi,
 		return 1;
 	}
 
-<<<<<<< HEAD
-	/* cannot match on nexthop object attributes */
-	if (fi->nh)
-		return 1;
-=======
 	if (fi->nh) {
 		if (cfg->fc_oif || cfg->fc_gw_family || cfg->fc_mp)
 			return 1;
 		return 0;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (cfg->fc_oif || cfg->fc_gw_family) {
 		struct fib_nh *nh;

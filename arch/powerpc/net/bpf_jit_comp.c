@@ -72,22 +72,13 @@ static int bpf_jit_fixup_addresses(struct bpf_prog *fp, u32 *image,
 			tmp_idx = ctx->idx;
 			ctx->idx = addrs[i] / 4;
 #ifdef CONFIG_PPC32
-<<<<<<< HEAD
-			PPC_LI32(ctx->b2p[insn[i].dst_reg] - 1, (u32)insn[i + 1].imm);
-			PPC_LI32(ctx->b2p[insn[i].dst_reg], (u32)insn[i].imm);
-=======
 			PPC_LI32(bpf_to_ppc(insn[i].dst_reg) - 1, (u32)insn[i + 1].imm);
 			PPC_LI32(bpf_to_ppc(insn[i].dst_reg), (u32)insn[i].imm);
->>>>>>> origin/linux_6.1.15_upstream
 			for (j = ctx->idx - addrs[i] / 4; j < 4; j++)
 				EMIT(PPC_RAW_NOP());
 #else
 			func_addr = ((u64)(u32)insn[i].imm) | (((u64)(u32)insn[i + 1].imm) << 32);
-<<<<<<< HEAD
-			PPC_LI64(b2p[insn[i].dst_reg], func_addr);
-=======
 			PPC_LI64(bpf_to_ppc(insn[i].dst_reg), func_addr);
->>>>>>> origin/linux_6.1.15_upstream
 			/* overwrite rest with nops */
 			for (j = ctx->idx - addrs[i] / 4; j < 5; j++)
 				EMIT(PPC_RAW_NOP());
@@ -295,11 +286,7 @@ skip_codegen_passes:
 	fp->jited = 1;
 	fp->jited_len = proglen + FUNCTION_DESCR_SIZE;
 
-<<<<<<< HEAD
-	bpf_flush_icache(bpf_hdr, (u8 *)bpf_hdr + (bpf_hdr->pages * PAGE_SIZE));
-=======
 	bpf_flush_icache(bpf_hdr, (u8 *)bpf_hdr + bpf_hdr->size);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!fp->is_func || extra_pass) {
 		bpf_jit_binary_lock_ro(bpf_hdr);
 		bpf_prog_fill_jited_linfo(fp, addrs);

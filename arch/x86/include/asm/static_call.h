@@ -52,10 +52,7 @@
 #else
 #define ARCH_DEFINE_STATIC_CALL_NULL_TRAMP(name)			\
 	__ARCH_DEFINE_STATIC_CALL_TRAMP(name, "ret; int3; nop; nop; nop")
-<<<<<<< HEAD
-=======
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 
 #define ARCH_DEFINE_STATIC_CALL_RET0_TRAMP(name)			\
 	ARCH_DEFINE_STATIC_CALL_TRAMP(name, __static_call_return0)

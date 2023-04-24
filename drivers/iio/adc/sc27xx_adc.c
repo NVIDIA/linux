@@ -41,13 +41,9 @@
 /* Bits and mask definition for SC27XX_ADC_CH_CFG register */
 #define SC27XX_ADC_CHN_ID_MASK		GENMASK(4, 0)
 #define SC27XX_ADC_SCALE_MASK		GENMASK(10, 9)
-<<<<<<< HEAD
-#define SC27XX_ADC_SCALE_SHIFT		9
-=======
 #define SC2721_ADC_SCALE_MASK		BIT(5)
 #define SC27XX_ADC_SCALE_SHIFT		9
 #define SC2721_ADC_SCALE_SHIFT		5
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Bits definitions for SC27XX_ADC_INT_EN registers */
 #define SC27XX_ADC_IRQ_EN		BIT(0)
@@ -141,8 +137,6 @@ static struct sc27xx_adc_linear_graph small_scale_graph = {
 static const struct sc27xx_adc_linear_graph sc2731_big_scale_graph_calib = {
 	4200, 850,
 	3600, 728,
-<<<<<<< HEAD
-=======
 };
 
 static const struct sc27xx_adc_linear_graph sc2731_small_scale_graph_calib = {
@@ -153,7 +147,6 @@ static const struct sc27xx_adc_linear_graph sc2731_small_scale_graph_calib = {
 static const struct sc27xx_adc_linear_graph big_scale_graph_calib = {
 	4200, 856,
 	3600, 733,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct sc27xx_adc_linear_graph sc2731_small_scale_graph_calib = {
@@ -203,19 +196,11 @@ static int sc27xx_adc_scale_calibration(struct sc27xx_adc_data *data,
 	u32 calib_data = 0;
 
 	if (big_scale) {
-<<<<<<< HEAD
-		calib_graph = &sc2731_big_scale_graph_calib;
-		graph = &big_scale_graph;
-		cell_name = "big_scale_calib";
-	} else {
-		calib_graph = &sc2731_small_scale_graph_calib;
-=======
 		calib_graph = data->var_data->bscale_cal;
 		graph = &big_scale_graph;
 		cell_name = "big_scale_calib";
 	} else {
 		calib_graph = data->var_data->sscale_cal;
->>>>>>> origin/linux_6.1.15_upstream
 		graph = &small_scale_graph;
 		cell_name = "small_scale_calib";
 	}

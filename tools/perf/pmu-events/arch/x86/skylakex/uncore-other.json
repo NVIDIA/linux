@@ -501,23 +501,7 @@
         "Unit": "CHA"
     },
     {
-<<<<<<< HEAD
-        "BriefDescription": "PCIe Completion Buffer Inserts of completions with data: Part 0-3",
-        "Counter": "0,1,2,3",
-        "EventCode": "0xC2",
-        "EventName": "UNC_IIO_COMP_BUF_INSERTS.CMPD.ALL_PARTS",
-        "FCMask": "0x4",
-        "PerPkg": "1",
-        "PortMask": "0x0f",
-        "PublicDescription": "PCIe Completion Buffer Inserts of completions with data: Part 0-3",
-        "UMask": "0x03",
-        "Unit": "IIO"
-    },
-    {
-        "BriefDescription": "PCIe Completion Buffer Inserts of completions with data: Part 0",
-=======
         "BriefDescription": "Snoop filter capacity evictions for M-state entries",
->>>>>>> origin/linux_6.1.15_upstream
         "Counter": "0,1,2,3",
         "EventCode": "0x3D",
         "EventName": "UNC_CHA_SF_EVICTION.M_STATE",
@@ -554,29 +538,10 @@
         "Unit": "CHA"
     },
     {
-<<<<<<< HEAD
-        "BriefDescription": "PCIe Completion Buffer occupancy of completions with data: Part 0-3",
-        "Counter": "2,3",
-        "EventCode": "0xD5",
-        "EventName": "UNC_IIO_COMP_BUF_OCCUPANCY.CMPD.ALL_PARTS",
-        "FCMask": "0x04",
-        "PerPkg": "1",
-        "PublicDescription": "PCIe Completion Buffer occupancy of completions with data: Part 0-3",
-        "UMask": "0x0f",
-        "Unit": "IIO"
-    },
-    {
-        "BriefDescription": "PCIe Completion Buffer occupancy of completions with data: Part 0",
-        "Counter": "2,3",
-        "EventCode": "0xD5",
-        "EventName": "UNC_IIO_COMP_BUF_OCCUPANCY.CMPD.PART0",
-        "FCMask": "0x04",
-=======
         "BriefDescription": "Lines Victimized; Lines in M state",
         "Counter": "0,1,2,3",
         "EventCode": "0x37",
         "EventName": "UNC_CHA_LLC_VICTIMS.TOTAL_M",
->>>>>>> origin/linux_6.1.15_upstream
         "PerPkg": "1",
         "UMask": "0x01",
         "Unit": "CHA"

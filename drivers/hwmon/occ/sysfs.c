@@ -21,8 +21,6 @@
 #define OCC_EXT_STAT_QUICK_DROP		BIT(4)
 #define OCC_EXT_STAT_DVFS_VDD		BIT(3)
 #define OCC_EXT_STAT_GPU_THROTTLE	GENMASK(2, 0)
-<<<<<<< HEAD
-=======
 
 static ssize_t occ_active_store(struct device *dev,
 				struct device_attribute *attr,
@@ -42,7 +40,6 @@ static ssize_t occ_active_store(struct device *dev,
 
 	return count;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 static ssize_t occ_sysfs_show(struct device *dev,
 			      struct device_attribute *attr, char *buf)
@@ -66,23 +63,6 @@ static ssize_t occ_sysfs_show(struct device *dev,
 			break;
 		case 1:
 			val = 1;
-<<<<<<< HEAD
-		break;
-	case 8:
-		val = header->ips_status;
-		break;
-	case 9:
-		val = header->mode;
-		break;
-	case 10:
-		val = !!(header->ext_status & OCC_EXT_STAT_DVFS_VDD);
-		break;
-	case 11:
-		val = header->ext_status & OCC_EXT_STAT_GPU_THROTTLE;
-		break;
-	default:
-		return -EINVAL;
-=======
 			break;
 		case 2:
 			val = !!(header->ext_status & OCC_EXT_STAT_DVFS_OT);
@@ -128,7 +108,6 @@ static ssize_t occ_sysfs_show(struct device *dev,
 			val = -ENODATA;
 		else
 			return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return sysfs_emit(buf, "%d\n", val);

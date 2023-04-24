@@ -435,15 +435,12 @@ static int lm25066_write_word_data(struct i2c_client *client, int page, int reg,
 	return ret;
 }
 
-<<<<<<< HEAD
-=======
 #if IS_ENABLED(CONFIG_SENSORS_LM25066_REGULATOR)
 static const struct regulator_desc lm25066_reg_desc[] = {
 	PMBUS_REGULATOR("vout", 0),
 };
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct i2c_device_id lm25066_id[] = {
 	{"lm25056", lm25056},
 	{"lm25066", lm25066},
@@ -550,15 +547,6 @@ static int lm25066_probe(struct i2c_client *client)
 	 */
 	if (of_property_read_u32(client->dev.of_node, "shunt-resistor-micro-ohms", &shunt))
 		shunt = 1000;
-<<<<<<< HEAD
-
-	info->m[PSC_CURRENT_IN] = info->m[PSC_CURRENT_IN] * shunt / 1000;
-	info->m[PSC_POWER] = info->m[PSC_POWER] * shunt / 1000;
-
-	return pmbus_do_probe(client, info);
-}
-
-=======
 
 	info->m[PSC_CURRENT_IN] = info->m[PSC_CURRENT_IN] * shunt / 1000;
 	info->m[PSC_POWER] = info->m[PSC_POWER] * shunt / 1000;
@@ -574,7 +562,6 @@ static int lm25066_probe(struct i2c_client *client)
 	return pmbus_do_probe(client, info);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /* This is the driver that will be inserted */
 static struct i2c_driver lm25066_driver = {
 	.driver = {

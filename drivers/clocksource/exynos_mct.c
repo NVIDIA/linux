@@ -528,10 +528,6 @@ static int __init exynos4_timer_resources(struct device_node *np)
 	return 0;
 }
 
-<<<<<<< HEAD
-static int __init exynos4_timer_interrupts(struct device_node *np,
-					   unsigned int int_type)
-=======
 /**
  * exynos4_timer_interrupts - initialize MCT interrupts
  * @np: device node for MCT
@@ -543,7 +539,6 @@ static int __init exynos4_timer_interrupts(struct device_node *np,
 					   unsigned int int_type,
 					   const u32 *local_idx,
 					   size_t nr_local)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int nr_irqs, i, err, cpu;
 
@@ -576,10 +571,7 @@ static int __init exynos4_timer_interrupts(struct device_node *np,
 	} else {
 		for_each_possible_cpu(cpu) {
 			int mct_irq;
-<<<<<<< HEAD
-=======
 			unsigned int irq_idx;
->>>>>>> origin/linux_6.1.15_upstream
 			struct mct_clock_event_device *pcpu_mevt =
 				per_cpu_ptr(&percpu_mct_tick, cpu);
 
@@ -591,15 +583,9 @@ static int __init exynos4_timer_interrupts(struct device_node *np,
 			irq_idx = MCT_L0_IRQ + local_idx[cpu];
 
 			pcpu_mevt->evt.irq = -1;
-<<<<<<< HEAD
-			if (MCT_L0_IRQ + cpu >= ARRAY_SIZE(mct_irqs))
-				break;
-			mct_irq = mct_irqs[MCT_L0_IRQ + cpu];
-=======
 			if (irq_idx >= ARRAY_SIZE(mct_irqs))
 				break;
 			mct_irq = mct_irqs[irq_idx];
->>>>>>> origin/linux_6.1.15_upstream
 
 			irq_set_status_flags(mct_irq, IRQ_NOAUTOEN);
 			if (request_irq(mct_irq,
@@ -655,10 +641,6 @@ out_irq:
 
 static int __init mct_init_dt(struct device_node *np, unsigned int int_type)
 {
-<<<<<<< HEAD
-	int ret;
-
-=======
 	bool frc_shared = of_property_read_bool(np, "samsung,frc-shared");
 	u32 local_idx[MCT_NR_LOCAL] = {0};
 	int nr_local;
@@ -683,16 +665,11 @@ static int __init mct_init_dt(struct device_node *np, unsigned int int_type)
 			local_idx[i] = i;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = exynos4_timer_resources(np);
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	ret = exynos4_timer_interrupts(np, int_type);
-=======
 	ret = exynos4_timer_interrupts(np, int_type, local_idx, nr_local);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		return ret;
 

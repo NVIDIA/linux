@@ -763,49 +763,8 @@ int inet_hash(struct sock *sk)
 }
 EXPORT_SYMBOL_GPL(inet_hash);
 
-static void __inet_unhash(struct sock *sk, struct inet_listen_hashbucket *ilb)
-{
-<<<<<<< HEAD
-	if (sk_unhashed(sk))
-		return;
-
-	if (rcu_access_pointer(sk->sk_reuseport_cb))
-		reuseport_stop_listen_sock(sk);
-	if (ilb) {
-		struct inet_hashinfo *hashinfo = sk->sk_prot->h.hashinfo;
-
-		inet_unhash2(hashinfo, sk);
-		ilb->count--;
-	}
-	__sk_nulls_del_node_init_rcu(sk);
-	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, -1);
-}
-
 void inet_unhash(struct sock *sk)
 {
-	struct inet_hashinfo *hashinfo = sk->sk_prot->h.hashinfo;
-
-	if (sk_unhashed(sk))
-		return;
-
-	if (sk->sk_state == TCP_LISTEN) {
-		struct inet_listen_hashbucket *ilb;
-
-		ilb = &hashinfo->listening_hash[inet_sk_listen_hashfn(sk)];
-		/* Don't disable bottom halves while acquiring the lock to
-		 * avoid circular locking dependency on PREEMPT_RT.
-		 */
-		spin_lock(&ilb->lock);
-		__inet_unhash(sk, ilb);
-		spin_unlock(&ilb->lock);
-	} else {
-		spinlock_t *lock = inet_ehash_lockp(hashinfo, sk->sk_hash);
-
-		spin_lock_bh(lock);
-		__inet_unhash(sk, NULL);
-		spin_unlock_bh(lock);
-	}
-=======
 	struct inet_hashinfo *hashinfo = tcp_or_dccp_get_hashinfo(sk);
 
 	if (sk_unhashed(sk))
@@ -842,7 +801,6 @@ void inet_unhash(struct sock *sk)
 		sock_prot_inuse_add(sock_net(sk), sk->sk_prot, -1);
 		spin_unlock_bh(lock);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(inet_unhash);
 
@@ -1022,15 +980,6 @@ EXPORT_SYMBOL_GPL(inet_bhash2_reset_saddr);
  * Note that we use 32bit integers (vs RFC 'short integers')
  * because 2^16 is not a multiple of num_ephemeral and this
  * property might be used by clever attacker.
-<<<<<<< HEAD
- * RFC claims using TABLE_LENGTH=10 buckets gives an improvement, though
- * attacks were since demonstrated, thus we use 65536 instead to really
- * give more isolation and privacy, at the expense of 256kB of kernel
- * memory.
- */
-#define INET_TABLE_PERTURB_SHIFT 16
-#define INET_TABLE_PERTURB_SIZE (1 << INET_TABLE_PERTURB_SHIFT)
-=======
  *
  * RFC claims using TABLE_LENGTH=10 buckets gives an improvement, though
  * attacks were since demonstrated, thus we use 65536 by default instead
@@ -1038,7 +987,6 @@ EXPORT_SYMBOL_GPL(inet_bhash2_reset_saddr);
  * of kernel memory.
  */
 #define INET_TABLE_PERTURB_SIZE (1 << CONFIG_INET_TABLE_PERTURB_ORDER)
->>>>>>> origin/linux_6.1.15_upstream
 static u32 *table_perturb;
 
 int __inet_hash_connect(struct inet_timewait_death_row *death_row,
@@ -1084,13 +1032,8 @@ int __inet_hash_connect(struct inet_timewait_death_row *death_row,
 	if (likely(remaining > 1))
 		remaining &= ~1U;
 
-<<<<<<< HEAD
-	net_get_random_once(table_perturb,
-			    INET_TABLE_PERTURB_SIZE * sizeof(*table_perturb));
-=======
 	get_random_sleepable_once(table_perturb,
 				  INET_TABLE_PERTURB_SIZE * sizeof(*table_perturb));
->>>>>>> origin/linux_6.1.15_upstream
 	index = port_offset & (INET_TABLE_PERTURB_SIZE - 1);
 
 	offset = READ_ONCE(table_perturb[index]) + (port_offset >> 32);
@@ -1149,8 +1092,6 @@ next_port:
 	return -EADDRNOTAVAIL;
 
 ok:
-<<<<<<< HEAD
-=======
 	/* Find the corresponding tb2 bucket since we need to
 	 * add the socket to the bhash2 table as well
 	 */
@@ -1165,17 +1106,12 @@ ok:
 			goto error;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Here we want to add a little bit of randomness to the next source
 	 * port that will be chosen. We use a max() with a random here so that
 	 * on low contention the randomness is maximal and on high contention
 	 * it may be inexistent.
 	 */
-<<<<<<< HEAD
-	i = max_t(int, i, (prandom_u32() & 7) * 2);
-=======
 	i = max_t(int, i, prandom_u32_max(8) * 2);
->>>>>>> origin/linux_6.1.15_upstream
 	WRITE_ONCE(table_perturb[index], READ_ONCE(table_perturb[index]) + i + 2);
 
 	/* Head lock still held and bh's disabled */

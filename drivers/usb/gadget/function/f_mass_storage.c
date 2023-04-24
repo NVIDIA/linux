@@ -1191,11 +1191,8 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 	u8		*buf = (u8 *)bh->buf;
 	u8		format;
 	int		i, len;
-<<<<<<< HEAD
-=======
 
 	format = common->cmnd[2] & 0xf;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if ((common->cmnd[1] & ~0x02) != 0 ||	/* Mask away MSF */
 			(start_track > 1 && format != 0x1)) {
@@ -1203,10 +1200,6 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	format = common->cmnd[2] & 0xf;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Check if CDB is old style SFF-8020i
 	 * i.e. format is in 2 MSBs of byte 9
@@ -1216,13 +1209,8 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 		format = (common->cmnd[9] >> 6) & 0x3;
 
 	switch (format) {
-<<<<<<< HEAD
-	case 0:
-		/* Formatted TOC */
-=======
 	case 0:	/* Formatted TOC */
 	case 1:	/* Multi-session info */
->>>>>>> origin/linux_6.1.15_upstream
 		len = 4 + 2*8;		/* 4 byte header + 2 descriptors */
 		memset(buf, 0, len);
 		buf[1] = len - 2;	/* TOC Length excludes length field */
@@ -1263,11 +1251,7 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 		return len;
 
 	default:
-<<<<<<< HEAD
-		/* Multi-session, PMA, ATIP, CD-TEXT not supported/required */
-=======
 		/* PMA, ATIP, CD-TEXT not supported/required */
->>>>>>> origin/linux_6.1.15_upstream
 		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
 		return -EINVAL;
 	}

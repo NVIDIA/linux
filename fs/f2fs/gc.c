@@ -1104,8 +1104,6 @@ static bool is_alive(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		return false;
 	}
 
-<<<<<<< HEAD
-=======
 	if (IS_INODE(node_page)) {
 		base = offset_in_addr(F2FS_INODE(node_page));
 		max_addrs = DEF_ADDRS_PER_INODE;
@@ -1121,7 +1119,6 @@ static bool is_alive(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		return false;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	*nofs = ofs_of_node(node_page);
 	source_blkaddr = data_blkaddr(NULL, node_page, ofs_in_node);
 	f2fs_put_page(node_page, 1);

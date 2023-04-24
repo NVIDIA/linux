@@ -1355,11 +1355,7 @@ config HW_PERF_EVENTS
 	def_bool y
 	depends on ARM_PMU
 
-<<<<<<< HEAD
-# Supported by clang >= 7.0
-=======
 # Supported by clang >= 7.0 or GCC >= 12.0.0
->>>>>>> origin/linux_6.1.15_upstream
 config CC_HAVE_SHADOW_CALL_STACK
 	def_bool $(cc-option, -fsanitize=shadow-call-stack -ffixed-x18)
 

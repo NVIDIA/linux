@@ -30,15 +30,11 @@
 #include <linux/module.h>
 #include <linux/console.h>
 #include <linux/slab.h>
-<<<<<<< HEAD
-#include <linux/pci.h>
-=======
 #include <linux/iommu.h>
 #include <linux/pci.h>
 #include <linux/devcoredump.h>
 #include <generated/utsrelease.h>
 #include <linux/pci-p2pdma.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <drm/drm_aperture.h>
 #include <drm/drm_atomic_helper.h>
@@ -2490,8 +2486,6 @@ static int amdgpu_device_ip_init(struct amdgpu_device *adev)
 					goto init_failed;
 				}
 
-<<<<<<< HEAD
-=======
 				if (!hive->reset_domain ||
 				    !amdgpu_reset_get_reset_domain(hive->reset_domain)) {
 					r = -ENOENT;
@@ -2515,7 +2509,6 @@ static int amdgpu_device_ip_init(struct amdgpu_device *adev)
 	if (!adev->gmc.xgmi.pending_reset)
 		amdgpu_amdkfd_device_init(adev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	amdgpu_fru_get_product_info(adev);
 
 init_failed:
@@ -4041,11 +4034,8 @@ void amdgpu_device_fini_hw(struct amdgpu_device *adev)
 
 void amdgpu_device_fini_sw(struct amdgpu_device *adev)
 {
-<<<<<<< HEAD
-=======
 	int idx;
 
->>>>>>> origin/linux_6.1.15_upstream
 	amdgpu_fence_driver_sw_fini(adev);
 	amdgpu_device_ip_fini(adev);
 	release_firmware(adev->firmware.gpu_info_fw);
@@ -4100,17 +4090,6 @@ void amdgpu_device_fini_sw(struct amdgpu_device *adev)
  * at suspend time.
  *
  */
-<<<<<<< HEAD
-static void amdgpu_device_evict_resources(struct amdgpu_device *adev)
-{
-	/* No need to evict vram on APUs for suspend to ram or s2idle */
-	if ((adev->in_s3 || adev->in_s0ix) && (adev->flags & AMD_IS_APU))
-		return;
-
-	if (amdgpu_ttm_evict_resources(adev, TTM_PL_VRAM))
-		DRM_WARN("evicting device resources failed\n");
-
-=======
 static int amdgpu_device_evict_resources(struct amdgpu_device *adev)
 {
 	int ret;
@@ -4123,7 +4102,6 @@ static int amdgpu_device_evict_resources(struct amdgpu_device *adev)
 	if (ret)
 		DRM_WARN("evicting device resources failed\n");
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -4173,28 +4151,16 @@ int amdgpu_device_suspend(struct drm_device *dev, bool fbcon)
 	if (!adev->in_s0ix)
 		amdgpu_amdkfd_suspend(adev, adev->in_runpm);
 
-<<<<<<< HEAD
-	/* First evict vram memory */
-	amdgpu_device_evict_resources(adev);
-=======
 	r = amdgpu_device_evict_resources(adev);
 	if (r)
 		return r;
->>>>>>> origin/linux_6.1.15_upstream
 
 	amdgpu_fence_driver_hw_fini(adev);
 
 	amdgpu_device_ip_suspend_phase2(adev);
-<<<<<<< HEAD
-	/* This second call to evict device resources is to evict
-	 * the gart page table using the CPU.
-	 */
-	amdgpu_device_evict_resources(adev);
-=======
 
 	if (amdgpu_sriov_vf(adev))
 		amdgpu_virt_release_full_gpu(adev, false);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -5473,12 +5439,9 @@ skip_hw_reset:
 			drm_sched_start(&ring->sched, !tmp_adev->asic_reset_res);
 		}
 
-<<<<<<< HEAD
-=======
 		if (adev->enable_mes && adev->ip_versions[GC_HWIP][0] != IP_VERSION(11, 0, 3))
 			amdgpu_mes_self_test(tmp_adev);
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (!drm_drv_uses_atomic_modeset(adev_to_drm(tmp_adev)) && !job_signaled) {
 			drm_helper_resume_force_mode(adev_to_drm(tmp_adev));
 		}

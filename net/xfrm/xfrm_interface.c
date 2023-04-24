@@ -823,16 +823,6 @@ static int xfrmi_newlink(struct net *src_net, struct net_device *dev,
 	int err;
 
 	xfrmi_netlink_parms(data, &p);
-<<<<<<< HEAD
-	if (!p.if_id) {
-		NL_SET_ERR_MSG(extack, "if_id must be non zero");
-		return -EINVAL;
-	}
-
-	xi = xfrmi_locate(net, &p);
-	if (xi)
-		return -EEXIST;
-=======
 	if (p.collect_md) {
 		struct xfrmi_net *xfrmn = net_generic(net, xfrmi_net_id);
 
@@ -854,7 +844,6 @@ static int xfrmi_newlink(struct net *src_net, struct net_device *dev,
 		if (xi)
 			return -EEXIST;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	xi = netdev_priv(dev);
 	xi->p = p;
@@ -884,14 +873,11 @@ static int xfrmi_changelink(struct net_device *dev, struct nlattr *tb[],
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-=======
 	if (p.collect_md) {
 		NL_SET_ERR_MSG(extack, "collect_md can't be changed");
 		return -EINVAL;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	xi = xfrmi_locate(net, &p);
 	if (!xi) {
 		xi = netdev_priv(dev);

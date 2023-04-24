@@ -463,18 +463,6 @@ config USB_TEGRA_XUDC
 	 dynamically linked module called "tegra_xudc" and force all
 	 gadget drivers to also be dynamically linked.
 
-<<<<<<< HEAD
-config USB_ASPEED
-        tristate "ASPEED USB Driver"
-        depends on HAS_DMA
-        depends on OF || COMPILE_TEST
-        help
-          USB peripheral controller driver for ASPEED USB device.
-
-          Say "y" to link the driver statically, or "m" to build a
-          dynamically linked module called "ast2600-udc" and force all
-          gadget drivers to also be dynamically linked.
-=======
 config USB_ASPEED_UDC
 	tristate "Aspeed UDC driver support"
 	depends on ARCH_ASPEED || COMPILE_TEST
@@ -487,7 +475,6 @@ config USB_ASPEED_UDC
 	  Say "y" to link the driver statically, or "m" to build a
 	  dynamically linked module called "aspeed_udc" and force all
 	  gadget drivers to also be dynamically linked.
->>>>>>> origin/linux_6.1.15_upstream
 
 source "drivers/usb/gadget/udc/aspeed-vhub/Kconfig"
 

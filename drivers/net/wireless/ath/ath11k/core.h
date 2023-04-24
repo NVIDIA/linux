@@ -957,8 +957,6 @@ struct ath11k_base {
 		u32 subsystem_device;
 	} id;
 
-<<<<<<< HEAD
-=======
 	struct {
 		struct {
 			const struct ath11k_msi_config *config;
@@ -971,7 +969,6 @@ struct ath11k_base {
 		const struct ath11k_pci_ops *ops;
 	} pci;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* must be last */
 	u8 drv_priv[] __aligned(sizeof(void *));
 };

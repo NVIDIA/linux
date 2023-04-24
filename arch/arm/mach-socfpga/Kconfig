@@ -3,10 +3,6 @@ menuconfig ARCH_INTEL_SOCFPGA
 	bool "Altera SOCFPGA family"
 	depends on ARCH_MULTI_V7
 	select ARCH_HAS_RESET_CONTROLLER
-<<<<<<< HEAD
-	select ARCH_SUPPORTS_BIG_ENDIAN
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	select ARM_AMBA
 	select ARM_GIC
 	select CACHE_L2X0

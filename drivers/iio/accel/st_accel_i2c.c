@@ -187,31 +187,7 @@ static int st_accel_i2c_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	ret = st_accel_common_probe(indio_dev);
-	if (ret < 0)
-		goto st_accel_power_off;
-
-	return 0;
-
-st_accel_power_off:
-	st_sensors_power_disable(indio_dev);
-
-	return ret;
-}
-
-static int st_accel_i2c_remove(struct i2c_client *client)
-{
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-
-	st_accel_common_remove(indio_dev);
-
-	st_sensors_power_disable(indio_dev);
-
-	return 0;
-=======
 	return st_accel_common_probe(indio_dev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct i2c_driver st_accel_driver = {

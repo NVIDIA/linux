@@ -334,14 +334,11 @@ void page_table_free(struct mm_struct *mm, unsigned long *table)
 		/* Free 2K page table fragment of a 4K page */
 		bit = ((unsigned long) table & ~PAGE_MASK)/(PTRS_PER_PTE*sizeof(pte_t));
 		spin_lock_bh(&mm->context.lock);
-<<<<<<< HEAD
-=======
 		/*
 		 * Mark the page for delayed release. The actual release
 		 * will happen outside of the critical section from this
 		 * function or from __tlb_remove_table()
 		 */
->>>>>>> origin/linux_6.1.15_upstream
 		mask = atomic_xor_bits(&page->_refcount, 0x11U << (bit + 24));
 		mask >>= 24;
 		if (mask & 0x03U)
@@ -351,11 +348,7 @@ void page_table_free(struct mm_struct *mm, unsigned long *table)
 		spin_unlock_bh(&mm->context.lock);
 		mask = atomic_xor_bits(&page->_refcount, 0x10U << (bit + 24));
 		mask >>= 24;
-<<<<<<< HEAD
-		if (mask != 0)
-=======
 		if (mask != 0x00U)
->>>>>>> origin/linux_6.1.15_upstream
 			return;
 		half = 0x01U << bit;
 	} else {

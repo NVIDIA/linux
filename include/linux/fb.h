@@ -616,14 +616,6 @@ extern ssize_t fb_sys_write(struct fb_info *info, const char __user *buf,
 /* drivers/video/fbmem.c */
 extern int register_framebuffer(struct fb_info *fb_info);
 extern void unregister_framebuffer(struct fb_info *fb_info);
-<<<<<<< HEAD
-extern int remove_conflicting_pci_framebuffers(struct pci_dev *pdev,
-					       const char *name);
-extern int remove_conflicting_framebuffers(struct apertures_struct *a,
-					   const char *name, bool primary);
-extern bool is_firmware_framebuffer(struct apertures_struct *a);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 extern int fb_prepare_logo(struct fb_info *fb_info, int rotate);
 extern int fb_show_logo(struct fb_info *fb_info, int rotate);
 extern char* fb_get_buffer_offset(struct fb_info *info, struct fb_pixmap *buf, u32 size);

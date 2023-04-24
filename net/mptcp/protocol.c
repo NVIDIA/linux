@@ -472,17 +472,10 @@ static void mptcp_set_datafin_timeout(const struct sock *sk)
 {
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	u32 retransmits;
-<<<<<<< HEAD
 
 	retransmits = min_t(u32, icsk->icsk_retransmits,
 			    ilog2(TCP_RTO_MAX / TCP_RTO_MIN));
 
-=======
-
-	retransmits = min_t(u32, icsk->icsk_retransmits,
-			    ilog2(TCP_RTO_MAX / TCP_RTO_MIN));
-
->>>>>>> origin/linux_6.1.15_upstream
 	mptcp_sk(sk)->timer_ival = TCP_RTO_MIN << retransmits;
 }
 
@@ -1522,10 +1515,6 @@ static void mptcp_update_post_push(struct mptcp_sock *msk,
 	dfrag->already_sent += sent;
 
 	msk->snd_burst -= sent;
-<<<<<<< HEAD
-	msk->tx_pending_data -= sent;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	snd_nxt_new += dfrag->already_sent;
 
@@ -1542,15 +1531,12 @@ static void mptcp_update_post_push(struct mptcp_sock *msk,
 		msk->snd_nxt = snd_nxt_new;
 }
 
-<<<<<<< HEAD
-=======
 void mptcp_check_and_set_pending(struct sock *sk)
 {
 	if (mptcp_send_head(sk))
 		mptcp_sk(sk)->push_pending |= BIT(MPTCP_PUSH_PENDING);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 void __mptcp_push_pending(struct sock *sk, unsigned int flags)
 {
 	struct sock *prev_ssk = NULL, *ssk = NULL;
@@ -1570,10 +1556,6 @@ void __mptcp_push_pending(struct sock *sk, unsigned int flags)
 			int ret = 0;
 
 			prev_ssk = ssk;
-<<<<<<< HEAD
-			__mptcp_flush_join_list(msk);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			ssk = mptcp_subflow_get_send(msk);
 
 			/* First check. If the ssk has changed since
@@ -1601,10 +1583,6 @@ void __mptcp_push_pending(struct sock *sk, unsigned int flags)
 
 			do_check_data_fin = true;
 			info.sent += ret;
-<<<<<<< HEAD
-			copied += ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			len -= ret;
 
 			mptcp_update_post_push(msk, dfrag, ret);
@@ -2324,10 +2302,6 @@ bool __mptcp_retransmit_pending_data(struct sock *sk)
 	mptcp_data_unlock(sk);
 
 	msk->first_pending = rtx_head;
-<<<<<<< HEAD
-	msk->tx_pending_data += msk->snd_nxt - rtx_head->data_seq;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	msk->snd_burst = 0;
 
 	/* be sure to clear the "sent status" on all re-injected fragments */
@@ -3366,11 +3340,7 @@ void mptcp_subflow_process_delegated(struct sock *ssk)
 		if (!sock_owned_by_user(sk))
 			__mptcp_subflow_push_pending(sk, ssk);
 		else
-<<<<<<< HEAD
-			set_bit(MPTCP_PUSH_PENDING, &mptcp_sk(sk)->flags);
-=======
 			__set_bit(MPTCP_PUSH_PENDING, &mptcp_sk(sk)->cb_flags);
->>>>>>> origin/linux_6.1.15_upstream
 		mptcp_data_unlock(sk);
 		mptcp_subflow_delegated_done(subflow, MPTCP_DELEGATE_SEND);
 	}

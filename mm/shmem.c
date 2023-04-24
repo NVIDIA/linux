@@ -614,13 +614,8 @@ next:
 		 * Waiting for the lock may lead to deadlock in the
 		 * reclaim path.
 		 */
-<<<<<<< HEAD
-		if (!trylock_page(page)) {
-			put_page(page);
-=======
 		if (!folio_trylock(folio)) {
 			folio_put(folio);
->>>>>>> origin/linux_6.1.15_upstream
 			goto move_back;
 		}
 
@@ -2468,15 +2463,9 @@ int shmem_mfill_atomic_pte(struct mm_struct *dst_mm,
 				goto out_unacct_blocks;
 			}
 
-<<<<<<< HEAD
-			flush_dcache_page(page);
-		} else {		/* ZEROPAGE */
-			clear_user_highpage(page, dst_addr);
-=======
 			flush_dcache_folio(folio);
 		} else {		/* ZEROPAGE */
 			clear_user_highpage(&folio->page, dst_addr);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	} else {
 		folio = page_folio(*pagep);

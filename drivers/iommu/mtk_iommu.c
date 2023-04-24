@@ -659,13 +659,6 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 	if (region_id < 0)
 		return region_id;
 
-<<<<<<< HEAD
-	if (!dom->data) {
-		/* Data is in the frstdata in sharing pgtable case. */
-		frstdata = mtk_iommu_get_m4u_data();
-
-		if (mtk_iommu_domain_finalise(dom, frstdata, domid))
-=======
 	bankid = mtk_iommu_get_bank_id(dev, data->plat_data);
 	mutex_lock(&dom->mutex);
 	if (!dom->bank) {
@@ -675,7 +668,6 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 		ret = mtk_iommu_domain_finalise(dom, frstdata, region_id);
 		if (ret) {
 			mutex_unlock(&dom->mutex);
->>>>>>> origin/linux_6.1.15_upstream
 			return -ENODEV;
 		}
 		dom->bank = &data->bank[bankid];
@@ -683,12 +675,6 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 	mutex_unlock(&dom->mutex);
 
 	mutex_lock(&data->mutex);
-<<<<<<< HEAD
-	if (!data->m4u_dom) { /* Initialize the M4U HW */
-		ret = pm_runtime_resume_and_get(m4udev);
-		if (ret < 0)
-			goto err_unlock;
-=======
 	bank = &data->bank[bankid];
 	if (!bank->m4u_dom) { /* Initialize the M4U HW for each a BANK */
 		ret = pm_runtime_resume_and_get(m4udev);
@@ -696,7 +682,6 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 			dev_err(m4udev, "pm get fail(%d) in attach.\n", ret);
 			goto err_unlock;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		ret = mtk_iommu_hw_init(data, bankid);
 		if (ret) {
@@ -710,12 +695,7 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 	}
 	mutex_unlock(&data->mutex);
 
-<<<<<<< HEAD
-	mtk_iommu_config(data, dev, true, domid);
-	return 0;
-=======
 	return mtk_iommu_config(data, dev, true, region_id);
->>>>>>> origin/linux_6.1.15_upstream
 
 err_unlock:
 	mutex_unlock(&data->mutex);
@@ -785,11 +765,7 @@ static phys_addr_t mtk_iommu_iova_to_phys(struct iommu_domain *domain,
 
 	pa = dom->iop->iova_to_phys(dom->iop, iova);
 	if (IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT) &&
-<<<<<<< HEAD
-	    dom->data->enable_4GB &&
-=======
 	    dom->bank->parent_data->enable_4GB &&
->>>>>>> origin/linux_6.1.15_upstream
 	    pa >= MTK_IOMMU_4GB_MODE_REMAP_BASE)
 		pa &= ~BIT_ULL(32);
 
@@ -809,12 +785,9 @@ static struct iommu_device *mtk_iommu_probe_device(struct device *dev)
 
 	data = dev_iommu_priv_get(dev);
 
-<<<<<<< HEAD
-=======
 	if (!MTK_IOMMU_IS_TYPE(data->plat_data, MTK_IOMMU_TYPE_MM))
 		return &data->iommu;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Link the consumer device with the smi-larb device(supplier).
 	 * The device that connects with each a larb is a independent HW.
@@ -858,14 +831,6 @@ static void mtk_iommu_release_device(struct device *dev)
 	}
 }
 
-<<<<<<< HEAD
-	data = dev_iommu_priv_get(dev);
-	larbid = MTK_M4U_TO_LARB(fwspec->ids[0]);
-	larbdev = data->larb_imu[larbid].dev;
-	device_link_remove(dev, larbdev);
-
-	iommu_fwspec_free(dev);
-=======
 static int mtk_iommu_get_group_id(struct device *dev, const struct mtk_iommu_plat_data *plat_data)
 {
 	unsigned int bankid;
@@ -879,7 +844,6 @@ static int mtk_iommu_get_group_id(struct device *dev, const struct mtk_iommu_pla
 		return bankid;
 
 	return mtk_iommu_get_iova_region_id(dev, plat_data);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct iommu_group *mtk_iommu_device_group(struct device *dev)
@@ -898,11 +862,7 @@ static struct iommu_group *mtk_iommu_device_group(struct device *dev)
 		return ERR_PTR(groupid);
 
 	mutex_lock(&data->mutex);
-<<<<<<< HEAD
-	group = data->m4u_group[domid];
-=======
 	group = data->m4u_group[groupid];
->>>>>>> origin/linux_6.1.15_upstream
 	if (!group) {
 		group = iommu_group_alloc();
 		if (!IS_ERR(group))
@@ -1285,24 +1245,12 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 			dev_err_probe(dev, ret, "mm dts parse fail\n");
 			goto out_runtime_disable;
 		}
-<<<<<<< HEAD
-
-		ret = of_property_read_u32(larbnode, "mediatek,larb-id", &id);
-		if (ret)/* The id is consecutive if there is no this property */
-			id = i;
-
-		plarbdev = of_find_device_by_node(larbnode);
-		if (!plarbdev) {
-			of_node_put(larbnode);
-			return -ENODEV;
-=======
 	} else if (MTK_IOMMU_IS_TYPE(data->plat_data, MTK_IOMMU_TYPE_INFRA)) {
 		p = data->plat_data->pericfg_comp_str;
 		data->pericfg = syscon_regmap_lookup_by_compatible(p);
 		if (IS_ERR(data->pericfg)) {
 			ret = PTR_ERR(data->pericfg);
 			goto out_runtime_disable;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 
@@ -1358,14 +1306,10 @@ static int mtk_iommu_remove(struct platform_device *pdev)
 
 	list_del(&data->list);
 
-<<<<<<< HEAD
-	device_link_remove(data->smicomm_dev, &pdev->dev);
-=======
 	if (MTK_IOMMU_IS_TYPE(data->plat_data, MTK_IOMMU_TYPE_MM)) {
 		device_link_remove(data->smicomm_dev, &pdev->dev);
 		component_master_del(&pdev->dev, &mtk_iommu_com_ops);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	pm_runtime_disable(&pdev->dev);
 	for (i = 0; i < data->plat_data->banks_num; i++) {
 		bank = &data->bank[i];

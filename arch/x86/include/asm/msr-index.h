@@ -143,8 +143,6 @@
 						 * bit available to control VERW
 						 * behavior.
 						 */
-<<<<<<< HEAD
-=======
 #define ARCH_CAP_RRSBA			BIT(19)	/*
 						 * Indicates RET may use predictors
 						 * other than the RSB. With eIBRS
@@ -161,7 +159,6 @@
 						 * IA32_XAPIC_DISABLE_STATUS MSR
 						 * supported
 						 */
->>>>>>> origin/linux_6.1.15_upstream
 
 #define MSR_IA32_FLUSH_CMD		0x0000010b
 #define L1D_FLUSH			BIT(0)	/*

@@ -464,11 +464,7 @@ int btrfs_delalloc_reserve_space(struct btrfs_inode *inode,
 	ret = btrfs_check_data_free_space(inode, reserved, start, len, false);
 	if (ret < 0)
 		return ret;
-<<<<<<< HEAD
-	ret = btrfs_delalloc_reserve_metadata(inode, len);
-=======
 	ret = btrfs_delalloc_reserve_metadata(inode, len, len, false);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret < 0) {
 		btrfs_free_reserved_data_space(inode, *reserved, start, len);
 		extent_changeset_free(*reserved);

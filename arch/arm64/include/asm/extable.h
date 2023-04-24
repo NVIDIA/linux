@@ -23,8 +23,6 @@ struct exception_table_entry
 
 #define ARCH_HAS_RELATIVE_EXTABLE
 
-<<<<<<< HEAD
-=======
 #define swap_ex_entry_fixup(a, b, tmp, delta)		\
 do {							\
 	(a)->fixup = (b)->fixup + (delta);		\
@@ -35,7 +33,6 @@ do {							\
 	(b)->data = (tmp).data;				\
 } while (0)
 
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_BPF_JIT
 bool ex_handler_bpf(const struct exception_table_entry *ex,
 		    struct pt_regs *regs);

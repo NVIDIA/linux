@@ -35,10 +35,6 @@ SYM_FUNC_START(__pi_clear_page)
 	tst	x0, #(PAGE_SIZE - 1)
 	b.ne	2b
 	ret
-<<<<<<< HEAD
-SYM_FUNC_END_PI(clear_page)
-=======
 SYM_FUNC_END(__pi_clear_page)
 SYM_FUNC_ALIAS(clear_page, __pi_clear_page)
->>>>>>> origin/linux_6.1.15_upstream
 EXPORT_SYMBOL(clear_page)

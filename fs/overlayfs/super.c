@@ -796,11 +796,7 @@ retry:
 			goto retry;
 		}
 
-<<<<<<< HEAD
-		err = ovl_mkdir_real(dir, &work, attr.ia_mode);
-=======
 		err = ovl_mkdir_real(ofs, dir, &work, attr.ia_mode);
->>>>>>> origin/linux_6.1.15_upstream
 		if (err)
 			goto out_dput;
 

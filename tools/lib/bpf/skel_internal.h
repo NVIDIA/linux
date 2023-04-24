@@ -353,19 +353,12 @@ static inline int bpf_load_and_run(struct bpf_load_and_run_opts *opts)
 	if (err < 0 || (int)attr.test.retval < 0) {
 		opts->errstr = "failed to execute loader prog";
 		if (err < 0) {
-<<<<<<< HEAD
-			err = -errno;
-		} else {
-			err = (int)attr.test.retval;
-			errno = -err;
-=======
 			set_err;
 		} else {
 			err = (int)attr.test.retval;
 #ifndef __KERNEL__
 			errno = -err;
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		goto out;
 	}

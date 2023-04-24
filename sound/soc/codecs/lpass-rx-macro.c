@@ -3568,15 +3568,10 @@ static int rx_macro_probe(struct platform_device *pdev)
 	}
 
 	rx->regmap = devm_regmap_init_mmio(dev, base, &rx_regmap_config);
-<<<<<<< HEAD
-	if (IS_ERR(rx->regmap))
-		return PTR_ERR(rx->regmap);
-=======
 	if (IS_ERR(rx->regmap)) {
 		ret = PTR_ERR(rx->regmap);
 		goto err;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev_set_drvdata(dev, rx);
 

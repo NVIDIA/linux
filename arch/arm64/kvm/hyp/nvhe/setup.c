@@ -249,21 +249,12 @@ static int finalize_host_mappings(void)
 	for (i = 0; i < hyp_memblock_nr; i++) {
 		struct memblock_region *reg = &hyp_memory[i];
 		u64 start = (u64)hyp_phys_to_virt(reg->base);
-<<<<<<< HEAD
 
 		ret = kvm_pgtable_walk(&pkvm_pgtable, start, reg->size, &walker);
 		if (ret)
 			return ret;
 	}
 
-=======
-
-		ret = kvm_pgtable_walk(&pkvm_pgtable, start, reg->size, &walker);
-		if (ret)
-			return ret;
-	}
-
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

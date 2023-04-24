@@ -823,19 +823,10 @@ static void _dpu_kms_hw_destroy(struct dpu_kms *dpu_kms)
 	_dpu_kms_mmu_destroy(dpu_kms);
 
 	if (dpu_kms->catalog) {
-<<<<<<< HEAD
-		for (i = 0; i < dpu_kms->catalog->vbif_count; i++) {
-			u32 vbif_idx = dpu_kms->catalog->vbif[i].id;
-
-			if ((vbif_idx < VBIF_MAX) && dpu_kms->hw_vbif[vbif_idx]) {
-				dpu_hw_vbif_destroy(dpu_kms->hw_vbif[vbif_idx]);
-				dpu_kms->hw_vbif[vbif_idx] = NULL;
-=======
 		for (i = 0; i < ARRAY_SIZE(dpu_kms->hw_vbif); i++) {
 			if (dpu_kms->hw_vbif[i]) {
 				dpu_hw_vbif_destroy(dpu_kms->hw_vbif[i]);
 				dpu_kms->hw_vbif[i] = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 	}
@@ -997,25 +988,8 @@ static int _dpu_kms_mmu_init(struct dpu_kms *dpu_kms)
 {
 	struct msm_gem_address_space *aspace;
 
-<<<<<<< HEAD
-	domain = iommu_domain_alloc(&platform_bus_type);
-	if (!domain)
-		return 0;
-
-	mmu = msm_iommu_new(dpu_kms->dev->dev, domain);
-	if (IS_ERR(mmu)) {
-		iommu_domain_free(domain);
-		return PTR_ERR(mmu);
-	}
-	aspace = msm_gem_address_space_create(mmu, "dpu1",
-		0x1000, 0x100000000 - 0x1000);
-
-	if (IS_ERR(aspace)) {
-		mmu->funcs->destroy(mmu);
-=======
 	aspace = msm_kms_init_aspace(dpu_kms->dev);
 	if (IS_ERR(aspace))
->>>>>>> origin/linux_6.1.15_upstream
 		return PTR_ERR(aspace);
 
 	dpu_kms->base.aspace = aspace;
@@ -1251,27 +1225,12 @@ static int dpu_kms_init(struct drm_device *ddev)
 
 	priv->kms = &dpu_kms->base;
 
-<<<<<<< HEAD
-	return 0;
-}
-
-static void dpu_unbind(struct device *dev, struct device *master, void *data)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct dpu_kms *dpu_kms = platform_get_drvdata(pdev);
-	struct dss_module_power *mp = &dpu_kms->mp;
-
-	msm_dss_put_clk(mp->clk_config, mp->num_clk);
-	devm_kfree(&pdev->dev, mp->clk_config);
-	mp->num_clk = 0;
-=======
 	irq = irq_of_parse_and_map(dpu_kms->pdev->dev.of_node, 0);
 	if (!irq) {
 		DPU_ERROR("failed to get irq\n");
 		return -EINVAL;
 	}
 	dpu_kms->base.irq = irq;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

@@ -93,11 +93,7 @@ static void amd_stop_all_sensor_v2(struct amd_mp2_dev *privdata)
 	writel(cmd_base.ul, privdata->mmio + AMD_C2P_MSG0);
 }
 
-<<<<<<< HEAD
-static void amd_sfh_clear_intr_v2(struct amd_mp2_dev *privdata)
-=======
 void amd_sfh_clear_intr_v2(struct amd_mp2_dev *privdata)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (readl(privdata->mmio + AMD_P2C_MSG(4))) {
 		writel(0, privdata->mmio + AMD_P2C_MSG(4));
@@ -105,11 +101,7 @@ void amd_sfh_clear_intr_v2(struct amd_mp2_dev *privdata)
 	}
 }
 
-<<<<<<< HEAD
-static void amd_sfh_clear_intr(struct amd_mp2_dev *privdata)
-=======
 void amd_sfh_clear_intr(struct amd_mp2_dev *privdata)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (privdata->mp2_ops->clear_intr)
 		privdata->mp2_ops->clear_intr(privdata);
@@ -122,11 +114,7 @@ static irqreturn_t amd_sfh_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-<<<<<<< HEAD
-static int amd_sfh_irq_init_v2(struct amd_mp2_dev *privdata)
-=======
 int amd_sfh_irq_init_v2(struct amd_mp2_dev *privdata)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int rc;
 
@@ -149,11 +137,7 @@ static int amd_sfh_dis_sts_v2(struct amd_mp2_dev *privdata)
 		      SENSOR_DISCOVERY_STATUS_MASK) >> SENSOR_DISCOVERY_STATUS_SHIFT;
 }
 
-<<<<<<< HEAD
-void amd_start_sensor(struct amd_mp2_dev *privdata, struct amd_mp2_sensor_info info)
-=======
 static void amd_start_sensor(struct amd_mp2_dev *privdata, struct amd_mp2_sensor_info info)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	union sfh_cmd_param cmd_param;
 	union sfh_cmd_base cmd_base;
@@ -269,10 +253,7 @@ static struct amd_mp2_ops amd_sfh_ops_v2 = {
 	.clear_intr = amd_sfh_clear_intr_v2,
 	.init_intr = amd_sfh_irq_init_v2,
 	.discovery_status = amd_sfh_dis_sts_v2,
-<<<<<<< HEAD
-=======
 	.remove = amd_mp2_pci_remove,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static struct amd_mp2_ops amd_sfh_ops = {
@@ -299,11 +280,7 @@ static void mp2_select_ops(struct amd_mp2_dev *privdata)
 	}
 }
 
-<<<<<<< HEAD
-static int amd_sfh_irq_init(struct amd_mp2_dev *privdata)
-=======
 int amd_sfh_irq_init(struct amd_mp2_dev *privdata)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (privdata->mp2_ops->init_intr)
 		return privdata->mp2_ops->init_intr(privdata);
@@ -311,8 +288,6 @@ int amd_sfh_irq_init(struct amd_mp2_dev *privdata)
 	return 0;
 }
 
-<<<<<<< HEAD
-=======
 static const struct dmi_system_id dmi_nodevs[] = {
 	{
 		/*
@@ -328,7 +303,6 @@ static const struct dmi_system_id dmi_nodevs[] = {
 	{ }
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static int amd_mp2_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct amd_mp2_dev *privdata;
@@ -382,19 +356,12 @@ static int amd_mp2_pci_probe(struct pci_dev *pdev, const struct pci_device_id *i
 	rc = amd_sfh_hid_client_init(privdata);
 	if (rc) {
 		amd_sfh_clear_intr(privdata);
-<<<<<<< HEAD
-		dev_err(&pdev->dev, "amd_sfh_hid_client_init failed\n");
-		return rc;
-	}
-
-=======
 		if (rc != -EOPNOTSUPP)
 			dev_err(&pdev->dev, "amd_sfh_hid_client_init failed\n");
 		return rc;
 	}
 
 init_done:
->>>>>>> origin/linux_6.1.15_upstream
 	amd_sfh_clear_intr(privdata);
 
 	return devm_add_action_or_reset(&pdev->dev, privdata->mp2_ops->remove, privdata);

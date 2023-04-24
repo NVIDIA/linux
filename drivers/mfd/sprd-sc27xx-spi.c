@@ -247,10 +247,7 @@ static const struct of_device_id sprd_pmic_match[] = {
 MODULE_DEVICE_TABLE(of, sprd_pmic_match);
 
 static const struct spi_device_id sprd_pmic_spi_ids[] = {
-<<<<<<< HEAD
-=======
 	{ .name = "sc2730", .driver_data = (unsigned long)&sc2730_data },
->>>>>>> origin/linux_6.1.15_upstream
 	{ .name = "sc2731", .driver_data = (unsigned long)&sc2731_data },
 	{},
 };

@@ -33,11 +33,8 @@ static struct mac_ops	rpm_mac_ops   = {
 	.mac_enadis_ptp_config =	rpm_lmac_ptp_config,
 	.mac_rx_tx_enable =		rpm_lmac_rx_tx_enable,
 	.mac_tx_enable =		rpm_lmac_tx_enable,
-<<<<<<< HEAD
-=======
 	.pfc_config =                   rpm_lmac_pfc_config,
 	.mac_get_pfc_frm_cfg   =        rpm_lmac_get_pfc_frm_cfg,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct mac_ops *rpm_get_mac_ops(void)
@@ -396,8 +393,6 @@ int rpm_lmac_internal_loopback(void *rpmd, int lmac_id, bool enable)
 	if (lmac_type == LMAC_MODE_QSGMII || lmac_type == LMAC_MODE_SGMII) {
 		dev_err(&rpm->pdev->dev, "loopback not supported for LPC mode\n");
 		return 0;
-<<<<<<< HEAD
-=======
 	}
 
 	cfg = rpm_read(rpm, lmac_id, RPMX_MTI_PCS100X_CONTROL1);
@@ -498,7 +493,6 @@ int  rpm_lmac_get_pfc_frm_cfg(void *rpmd, int lmac_id, u8 *tx_pause, u8 *rx_paus
 	if (cfg & RPMX_MTI_MAC100X_COMMAND_CONFIG_PFC_MODE) {
 		*rx_pause = !(cfg & RPMX_MTI_MAC100X_COMMAND_CONFIG_RX_P_DISABLE);
 		*tx_pause = !(cfg & RPMX_MTI_MAC100X_COMMAND_CONFIG_TX_P_DISABLE);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	cfg = rpm_read(rpm, lmac_id, RPMX_MTI_PCS100X_CONTROL1);

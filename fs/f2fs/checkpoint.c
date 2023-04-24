@@ -1180,11 +1180,7 @@ static bool __need_flush_quota(struct f2fs_sb_info *sbi)
 	if (!is_journalled_quota(sbi))
 		return false;
 
-<<<<<<< HEAD
-	if (!down_write_trylock(&sbi->quota_sem))
-=======
 	if (!f2fs_down_write_trylock(&sbi->quota_sem))
->>>>>>> origin/linux_6.1.15_upstream
 		return true;
 	if (is_sbi_flag_set(sbi, SBI_QUOTA_SKIP_FLUSH)) {
 		ret = false;

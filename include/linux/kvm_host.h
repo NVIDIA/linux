@@ -454,11 +454,7 @@ static __always_inline void guest_state_enter_irqoff(void)
 {
 	instrumentation_begin();
 	trace_hardirqs_on_prepare();
-<<<<<<< HEAD
-	lockdep_hardirqs_on_prepare(CALLER_ADDR0);
-=======
 	lockdep_hardirqs_on_prepare();
->>>>>>> origin/linux_6.1.15_upstream
 	instrumentation_end();
 
 	guest_context_enter_irqoff();

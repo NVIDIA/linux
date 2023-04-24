@@ -1366,12 +1366,6 @@ static void gsi_evt_ring_update(struct gsi *gsi, u32 evt_ring_id, u32 index)
 	struct gsi_ring *ring = &evt_ring->ring;
 	struct gsi_event *event_done;
 	struct gsi_event *event;
-<<<<<<< HEAD
-	struct gsi_trans *trans;
-	u32 trans_count = 0;
-	u32 byte_count = 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u32 event_avail;
 	u32 old_index;
 
@@ -1391,11 +1385,6 @@ static void gsi_evt_ring_update(struct gsi *gsi, u32 evt_ring_id, u32 index)
 	event_avail = ring->count - old_index % ring->count;
 	event_done = gsi_ring_virt(ring, index);
 	do {
-<<<<<<< HEAD
-		trans->len = __le16_to_cpu(event->len);
-		byte_count += trans->len;
-		trans_count++;
-=======
 		struct gsi_trans *trans;
 
 		trans = gsi_event_trans(gsi, event);
@@ -1408,7 +1397,6 @@ static void gsi_evt_ring_update(struct gsi *gsi, u32 evt_ring_id, u32 index)
 			gsi_trans_tx_completed(trans);
 
 		gsi_trans_move_complete(trans);
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* Move on to the next event and transaction */
 		if (--event_avail)
@@ -1417,14 +1405,8 @@ static void gsi_evt_ring_update(struct gsi *gsi, u32 evt_ring_id, u32 index)
 			event = gsi_ring_virt(ring, 0);
 	} while (event != event_done);
 
-<<<<<<< HEAD
-	/* We record RX bytes when they are received */
-	channel->byte_count += byte_count;
-	channel->trans_count += trans_count;
-=======
 	/* Tell the hardware we've handled these events */
 	gsi_evt_ring_doorbell(gsi, evt_ring_id, index);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* Initialize a ring, including allocating DMA memory for its entries */

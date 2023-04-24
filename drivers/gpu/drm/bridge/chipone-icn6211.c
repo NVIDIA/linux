@@ -30,14 +30,11 @@
 #define PD_CTRL(n)		(0x0a + ((n) & 0x3)) /* 0..3 */
 #define RST_CTRL(n)		(0x0e + ((n) & 0x1)) /* 0..1 */
 #define SYS_CTRL(n)		(0x10 + ((n) & 0x7)) /* 0..4 */
-<<<<<<< HEAD
-=======
 #define SYS_CTRL_1_CLK_PHASE_MSK	GENMASK(5, 4)
 #define CLK_PHASE_0			0
 #define CLK_PHASE_1_4			1
 #define CLK_PHASE_1_2			2
 #define CLK_PHASE_3_4			3
->>>>>>> origin/linux_6.1.15_upstream
 #define RGB_DRV(n)		(0x18 + ((n) & 0x3)) /* 0..3 */
 #define RGB_DLY(n)		(0x1c + ((n) & 0x1)) /* 0..1 */
 #define RGB_TEST_CTRL		0x1e
@@ -112,11 +109,7 @@
 #define MIPI_PN_SWAP		0x87
 #define MIPI_PN_SWAP_CLK		BIT(4)
 #define MIPI_PN_SWAP_D(n)		BIT((n) & 0x3)
-<<<<<<< HEAD
-#define MIPI_SOT_SYNC_BIT_(n)	(0x88 + ((n) & 0x1)) /* 0..1 */
-=======
 #define MIPI_SOT_SYNC_BIT(n)	(0x88 + ((n) & 0x1)) /* 0..1 */
->>>>>>> origin/linux_6.1.15_upstream
 #define MIPI_ULPS_CTRL		0x8a
 #define MIPI_CLK_CHK_VAR	0x8e
 #define MIPI_CLK_CHK_INI	0x8f
@@ -131,11 +124,7 @@
 #define MIPI_T_CLK_SETTLE	0x9a
 #define MIPI_TO_HS_RX_L		0x9e
 #define MIPI_TO_HS_RX_H		0x9f
-<<<<<<< HEAD
-#define MIPI_PHY_(n)		(0xa0 + ((n) & 0x7)) /* 0..5 */
-=======
 #define MIPI_PHY(n)		(0xa0 + ((n) & 0x7)) /* 0..5 */
->>>>>>> origin/linux_6.1.15_upstream
 #define MIPI_PD_RX		0xb0
 #define MIPI_PD_TERM		0xb1
 #define MIPI_PD_HSRX		0xb2
@@ -145,21 +134,11 @@
 #define MIPI_FORCE_0		0xb6
 #define MIPI_RST_CTRL		0xb7
 #define MIPI_RST_NUM		0xb8
-<<<<<<< HEAD
-#define MIPI_DBG_SET_(n)	(0xc0 + ((n) & 0xf)) /* 0..9 */
-#define MIPI_DBG_SEL		0xe0
-#define MIPI_DBG_DATA		0xe1
-#define MIPI_ATE_TEST_SEL	0xe2
-#define MIPI_ATE_STATUS_(n)	(0xe3 + ((n) & 0x1)) /* 0..1 */
-#define MIPI_ATE_STATUS_1	0xe4
-#define ICN6211_MAX_REGISTER	MIPI_ATE_STATUS(1)
-=======
 #define MIPI_DBG_SET(n)		(0xc0 + ((n) & 0xf)) /* 0..9 */
 #define MIPI_DBG_SEL		0xe0
 #define MIPI_DBG_DATA		0xe1
 #define MIPI_ATE_TEST_SEL	0xe2
 #define MIPI_ATE_STATUS(n)	(0xe3 + ((n) & 0x1)) /* 0..1 */
->>>>>>> origin/linux_6.1.15_upstream
 
 struct chipone {
 	struct device *dev;
@@ -365,13 +344,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 				  struct drm_bridge_state *old_bridge_state)
 {
 	struct chipone *icn = bridge_to_chipone(bridge);
-<<<<<<< HEAD
-	struct drm_display_mode *mode = bridge_to_mode(bridge);
-	u16 hfp, hbp, hsync;
-
-	ICN6211_DSI(icn, MIPI_CFG_PW, MIPI_CFG_PW_CONFIG_DSI);
-=======
-	struct drm_atomic_state *state = old_bridge_state->base.state;
 	struct drm_display_mode *mode = &icn->mode;
 	const struct drm_bridge_state *bridge_state;
 	u16 hfp, hbp, hsync;
@@ -395,7 +367,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 	/* Get the DPI flags from the bridge state. */
 	bridge_state = drm_atomic_get_new_bridge_state(state, bridge);
 	bus_flags = bridge_state->output_bus_cfg.flags;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (icn->interface_i2c)
 		chipone_writeb(icn, MIPI_CFG_PW, MIPI_CFG_PW_CONFIG_I2C);
@@ -404,11 +375,8 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 
 	chipone_writeb(icn, HACTIVE_LI, mode->hdisplay & 0xff);
 
-<<<<<<< HEAD
-=======
 	chipone_writeb(icn, VACTIVE_LI, mode->vdisplay & 0xff);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * lsb nibble: 2nd nibble of hdisplay
 	 * msb nibble: 2nd nibble of vdisplay
@@ -420,17 +388,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 	hfp = mode->hsync_start - mode->hdisplay;
 	hsync = mode->hsync_end - mode->hsync_start;
 	hbp = mode->htotal - mode->hsync_end;
-<<<<<<< HEAD
-
-	ICN6211_DSI(icn, HFP_LI, hfp & 0xff);
-	ICN6211_DSI(icn, HSYNC_LI, hsync & 0xff);
-	ICN6211_DSI(icn, HBP_LI, hbp & 0xff);
-	/* Top two bits of Horizontal Front porch/Sync/Back porch */
-	ICN6211_DSI(icn, HFP_HSW_HBP_HI,
-		    HFP_HSW_HBP_HI_HFP(hfp) |
-		    HFP_HSW_HBP_HI_HS(hsync) |
-		    HFP_HSW_HBP_HI_HBP(hbp));
-=======
 
 	chipone_writeb(icn, HFP_LI, hfp & 0xff);
 	chipone_writeb(icn, HSYNC_LI, hsync & 0xff);
@@ -444,7 +401,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 	chipone_writeb(icn, VFP, mode->vsync_start - mode->vdisplay);
 
 	chipone_writeb(icn, VSYNC, mode->vsync_end - mode->vsync_start);
->>>>>>> origin/linux_6.1.15_upstream
 
 	chipone_writeb(icn, VBP, mode->vtotal - mode->vsync_end);
 
@@ -456,24 +412,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 	chipone_writeb(icn, DSI_CTRL,
 		       DSI_CTRL_UNKNOWN | DSI_CTRL_DSI_LANES(icn->dsi->lanes - 1));
 
-<<<<<<< HEAD
-	/* dsi specific sequence */
-	ICN6211_DSI(icn, SYNC_EVENT_DLY, 0x80);
-	ICN6211_DSI(icn, HFP_MIN, hfp & 0xff);
-	ICN6211_DSI(icn, MIPI_PD_CK_LANE, 0xa0);
-	ICN6211_DSI(icn, PLL_CTRL(12), 0xff);
-	ICN6211_DSI(icn, BIST_POL, BIST_POL_DE_POL);
-	ICN6211_DSI(icn, PLL_CTRL(6), PLL_CTRL_6_MIPI_CLK);
-	ICN6211_DSI(icn, PLL_REF_DIV, 0x71);
-	ICN6211_DSI(icn, PLL_INT(0), 0x2b);
-	ICN6211_DSI(icn, SYS_CTRL(0), 0x40);
-	ICN6211_DSI(icn, SYS_CTRL(1), 0x98);
-
-	/* icn6211 specific sequence */
-	ICN6211_DSI(icn, MIPI_FORCE_0, 0x20);
-	ICN6211_DSI(icn, PLL_CTRL(1), 0x20);
-	ICN6211_DSI(icn, CONFIG_FINISH, 0x10);
-=======
 	chipone_writeb(icn, MIPI_PD_CK_LANE, 0xa0);
 	chipone_writeb(icn, PLL_CTRL(12), 0xff);
 	chipone_writeb(icn, MIPI_PN_SWAP, 0x00);
@@ -501,7 +439,6 @@ static void chipone_atomic_enable(struct drm_bridge *bridge,
 	chipone_writeb(icn, MIPI_FORCE_0, 0x20);
 	chipone_writeb(icn, PLL_CTRL(1), 0x20);
 	chipone_writeb(icn, CONFIG_FINISH, 0x10);
->>>>>>> origin/linux_6.1.15_upstream
 
 	usleep_range(10000, 11000);
 }

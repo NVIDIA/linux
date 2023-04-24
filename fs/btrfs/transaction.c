@@ -828,8 +828,6 @@ static noinline void wait_for_commit(struct btrfs_transaction *commit,
 	u64 transid = commit->transid;
 	bool put = false;
 
-<<<<<<< HEAD
-=======
 	/*
 	 * At the moment this function is called with min_state either being
 	 * TRANS_STATE_COMPLETED or TRANS_STATE_SUPER_COMMITTED.
@@ -839,7 +837,6 @@ static noinline void wait_for_commit(struct btrfs_transaction *commit,
 	else
 		btrfs_might_wait_for_state(fs_info, BTRFS_LOCKDEP_TRANS_SUPER_COMMITTED);
 
->>>>>>> origin/linux_6.1.15_upstream
 	while (1) {
 		wait_event(commit->commit_wait, commit->state >= min_state);
 		if (put)
@@ -2083,8 +2080,6 @@ static void add_pending_snapshot(struct btrfs_trans_handle *trans)
 	list_add(&trans->pending_snapshot->list, &cur_trans->pending_snapshots);
 }
 
-<<<<<<< HEAD
-=======
 static void update_commit_stats(struct btrfs_fs_info *fs_info, ktime_t interval)
 {
 	fs_info->commit_stats.commit_count++;
@@ -2094,7 +2089,6 @@ static void update_commit_stats(struct btrfs_fs_info *fs_info, ktime_t interval)
 	fs_info->commit_stats.total_commit_dur += interval;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 int btrfs_commit_transaction(struct btrfs_trans_handle *trans)
 {
 	struct btrfs_fs_info *fs_info = trans->fs_info;

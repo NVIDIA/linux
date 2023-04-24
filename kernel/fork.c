@@ -2425,8 +2425,6 @@ static __latent_entropy struct task_struct *copy_process(
 		goto bad_fork_cancel_cgroup;
 	}
 
-<<<<<<< HEAD
-=======
 	/* No more failure paths after this point. */
 
 	/*
@@ -2435,7 +2433,6 @@ static __latent_entropy struct task_struct *copy_process(
 	 */
 	copy_seccomp(p);
 
->>>>>>> origin/linux_6.1.15_upstream
 	init_task_pid_links(p);
 	if (likely(p->pid)) {
 		ptrace_init_task(p, (clone_flags & CLONE_PTRACE) || trace);

@@ -6873,11 +6873,7 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 	    in_task() &&
 	    prev == smp_processor_id() &&
 	    this_rq()->nr_running <= 1 &&
-<<<<<<< HEAD
-	    asym_fits_capacity(task_util, prev)) {
-=======
 	    asym_fits_cpu(task_util, util_min, util_max, prev)) {
->>>>>>> origin/linux_6.1.15_upstream
 		return prev;
 	}
 
@@ -9541,20 +9537,6 @@ static bool update_pick_idlest(struct sched_group *idlest,
 }
 
 /*
-<<<<<<< HEAD
- * Allow a NUMA imbalance if busy CPUs is less than 25% of the domain.
- * This is an approximation as the number of running tasks may not be
- * related to the number of busy CPUs due to sched_setaffinity.
- */
-static inline bool
-allow_numa_imbalance(unsigned int running, unsigned int weight)
-{
-	return (running < (weight >> 2));
-}
-
-/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * find_idlest_group() finds and returns the least busy CPU group within the
  * domain.
  *
@@ -9690,12 +9672,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu)
 			 * Otherwise, keep the task close to the wakeup source
 			 * and improve locality if the number of running tasks
 			 * would remain below threshold where an imbalance is
-<<<<<<< HEAD
-			 * allowed. If there is a real need of migration,
-			 * periodic load balance will take care of it.
-			 */
-			if (allow_numa_imbalance(local_sgs.sum_nr_running + 1, local_sgs.group_weight))
-=======
 			 * allowed while accounting for the possibility the
 			 * task is pinned to a subset of CPUs. If there is a
 			 * real need of migration, periodic load balance will
@@ -9712,7 +9688,6 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu)
 			if (!adjust_numa_imbalance(imbalance,
 						   local_sgs.sum_nr_running + 1,
 						   imb_numa_nr)) {
->>>>>>> origin/linux_6.1.15_upstream
 				return NULL;
 			}
 		}
@@ -9987,12 +9962,8 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 		/* Consider allowing a small imbalance between NUMA groups */
 		if (env->sd->flags & SD_NUMA) {
 			env->imbalance = adjust_numa_imbalance(env->imbalance,
-<<<<<<< HEAD
-				local->sum_nr_running + 1, local->group_weight);
-=======
 							       local->sum_nr_running + 1,
 							       env->sd->imb_numa_nr);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 #endif
 

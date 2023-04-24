@@ -966,30 +966,9 @@ int intel_bw_calc_min_cdclk(struct intel_atomic_state *state,
 
 static u16 icl_qgv_points_mask(struct drm_i915_private *i915)
 {
-<<<<<<< HEAD
-	struct drm_i915_private *dev_priv = to_i915(state->base.dev);
-	struct intel_crtc_state *new_crtc_state, *old_crtc_state;
-	struct intel_bw_state *new_bw_state = NULL;
-	const struct intel_bw_state *old_bw_state = NULL;
-	unsigned int data_rate;
-	unsigned int num_active_planes;
-	struct intel_crtc *crtc;
-	int i, ret;
-	u32 allowed_points = 0;
-	unsigned int max_bw_point = 0, max_bw = 0;
-	unsigned int num_qgv_points = dev_priv->max_bw[0].num_qgv_points;
-	unsigned int num_psf_gv_points = dev_priv->max_bw[0].num_psf_gv_points;
-	bool changed = false;
-	u32 mask = 0;
-
-	/* FIXME earlier gens need some checks too */
-	if (DISPLAY_VER(dev_priv) < 11)
-		return 0;
-=======
 	unsigned int num_psf_gv_points = i915->display.bw.max[0].num_psf_gv_points;
 	unsigned int num_qgv_points = i915->display.bw.max[0].num_qgv_points;
 	u16 qgv_points = 0, psf_points = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * We can _not_ use the whole ADLS_QGV_PT_MASK here, as PCode rejects
@@ -1039,25 +1018,15 @@ static int intel_bw_check_data_rate(struct intel_atomic_state *state, bool *chan
 		new_bw_state->data_rate[crtc->pipe] = new_data_rate;
 		new_bw_state->num_active_planes[crtc->pipe] = new_active_planes;
 
-<<<<<<< HEAD
-		changed = true;
-
-		drm_dbg_kms(&dev_priv->drm,
-			    "pipe %c data rate %u num active planes %u\n",
-			    pipe_name(crtc->pipe),
-=======
 		*changed = true;
 
 		drm_dbg_kms(&i915->drm,
 			    "[CRTC:%d:%s] data rate %u num active planes %u\n",
 			    crtc->base.base.id, crtc->base.name,
->>>>>>> origin/linux_6.1.15_upstream
 			    new_bw_state->data_rate[crtc->pipe],
 			    new_bw_state->num_active_planes[crtc->pipe]);
 	}
 
-<<<<<<< HEAD
-=======
 	return 0;
 }
 
@@ -1083,7 +1052,6 @@ int intel_bw_atomic_check(struct intel_atomic_state *state)
 	if (ret)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	old_bw_state = intel_atomic_get_old_bw_state(state);
 	new_bw_state = intel_atomic_get_new_bw_state(state);
 
@@ -1170,12 +1138,7 @@ int intel_bw_atomic_check(struct intel_atomic_state *state)
 	 * cause.
 	 */
 	if (!intel_can_enable_sagv(dev_priv, new_bw_state)) {
-<<<<<<< HEAD
-		allowed_points &= ADLS_PSF_PT_MASK;
-		allowed_points |= BIT(max_bw_point);
-=======
 		qgv_points = BIT(max_bw_point);
->>>>>>> origin/linux_6.1.15_upstream
 		drm_dbg_kms(&dev_priv->drm, "No SAGV, using single QGV point %d\n",
 			    max_bw_point);
 	}

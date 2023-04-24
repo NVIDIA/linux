@@ -3647,11 +3647,7 @@ ice_get_rc_coalesce(struct ethtool_coalesce *ec, struct ice_ring_container *rc)
 		ec->tx_coalesce_usecs = rc->itr_setting;
 		break;
 	default:
-<<<<<<< HEAD
-		dev_dbg(ice_pf_to_dev(rc->ring->vsi->back), "Invalid c_type %d\n", rc->type);
-=======
 		dev_dbg(ice_pf_to_dev(rc->rx_ring->vsi->back), "Invalid c_type %d\n", rc->type);
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 	}
 

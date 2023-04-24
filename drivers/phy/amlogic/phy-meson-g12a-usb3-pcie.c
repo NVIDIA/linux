@@ -411,13 +411,6 @@ static int phy_g12a_usb3_pcie_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->clk_ref))
 		return PTR_ERR(priv->clk_ref);
 
-<<<<<<< HEAD
-	ret = clk_prepare_enable(priv->clk_ref);
-	if (ret)
-		return ret;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	priv->reset = devm_reset_control_array_get_exclusive(dev);
 	if (IS_ERR(priv->reset)) {
 		ret = PTR_ERR(priv->reset);
@@ -425,37 +418,15 @@ static int phy_g12a_usb3_pcie_probe(struct platform_device *pdev)
 	}
 
 	priv->phy = devm_phy_create(dev, np, &phy_g12a_usb3_pcie_ops);
-<<<<<<< HEAD
-	if (IS_ERR(priv->phy)) {
-		ret = PTR_ERR(priv->phy);
-		dev_err_probe(dev, ret, "failed to create PHY\n");
-		goto err_disable_clk_ref;
-	}
-=======
 	if (IS_ERR(priv->phy))
 		return dev_err_probe(dev, PTR_ERR(priv->phy), "failed to create PHY\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 	phy_set_drvdata(priv->phy, priv);
 	dev_set_drvdata(dev, priv);
 
 	phy_provider = devm_of_phy_provider_register(dev,
 						     phy_g12a_usb3_pcie_xlate);
-<<<<<<< HEAD
-	if (IS_ERR(phy_provider)) {
-		ret = PTR_ERR(phy_provider);
-		goto err_disable_clk_ref;
-	}
-
-	return 0;
-
-err_disable_clk_ref:
-	clk_disable_unprepare(priv->clk_ref);
-
-	return ret;
-=======
 	return PTR_ERR_OR_ZERO(phy_provider);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id phy_g12a_usb3_pcie_of_match[] = {

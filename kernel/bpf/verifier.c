@@ -459,30 +459,9 @@ static bool reg_may_point_to_spin_lock(const struct bpf_reg_state *reg)
 
 static bool reg_type_may_be_refcounted_or_null(enum bpf_reg_type type)
 {
-<<<<<<< HEAD
-	return base_type(type) == PTR_TO_SOCKET ||
-		base_type(type) == PTR_TO_TCP_SOCK ||
-		base_type(type) == PTR_TO_MEM;
-}
-
-static bool type_is_rdonly_mem(u32 type)
-{
-	return type & MEM_RDONLY;
-}
-
-static bool arg_type_may_be_refcounted(enum bpf_arg_type type)
-{
-	return type == ARG_PTR_TO_SOCK_COMMON;
-}
-
-static bool type_may_be_null(u32 type)
-{
-	return type & PTR_MAYBE_NULL;
-=======
 	type = base_type(type);
 	return type == PTR_TO_SOCKET || type == PTR_TO_TCP_SOCK ||
 		type == PTR_TO_MEM || type == PTR_TO_BTF_ID;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool type_is_rdonly_mem(u32 type)
@@ -562,17 +541,10 @@ static bool is_cmpxchg_insn(const struct bpf_insn *insn)
 static const char *reg_type_str(struct bpf_verifier_env *env,
 				enum bpf_reg_type type)
 {
-<<<<<<< HEAD
-	char postfix[16] = {0}, prefix[16] = {0};
-	static const char * const str[] = {
-		[NOT_INIT]		= "?",
-		[SCALAR_VALUE]		= "inv",
-=======
 	char postfix[16] = {0}, prefix[32] = {0};
 	static const char * const str[] = {
 		[NOT_INIT]		= "?",
 		[SCALAR_VALUE]		= "scalar",
->>>>>>> origin/linux_6.1.15_upstream
 		[PTR_TO_CTX]		= "ctx",
 		[CONST_PTR_TO_MAP]	= "map_ptr",
 		[PTR_TO_MAP_VALUE]	= "map_value",
@@ -587,36 +559,21 @@ static const char *reg_type_str(struct bpf_verifier_env *env,
 		[PTR_TO_TP_BUFFER]	= "tp_buffer",
 		[PTR_TO_XDP_SOCK]	= "xdp_sock",
 		[PTR_TO_BTF_ID]		= "ptr_",
-<<<<<<< HEAD
-		[PTR_TO_PERCPU_BTF_ID]	= "percpu_ptr_",
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		[PTR_TO_MEM]		= "mem",
 		[PTR_TO_BUF]		= "buf",
 		[PTR_TO_FUNC]		= "func",
 		[PTR_TO_MAP_KEY]	= "map_key",
-<<<<<<< HEAD
-	};
-
-	if (type & PTR_MAYBE_NULL) {
-		if (base_type(type) == PTR_TO_BTF_ID ||
-		    base_type(type) == PTR_TO_PERCPU_BTF_ID)
-=======
 		[PTR_TO_DYNPTR]		= "dynptr_ptr",
 	};
 
 	if (type & PTR_MAYBE_NULL) {
 		if (base_type(type) == PTR_TO_BTF_ID)
->>>>>>> origin/linux_6.1.15_upstream
 			strncpy(postfix, "or_null_", 16);
 		else
 			strncpy(postfix, "_or_null", 16);
 	}
 
 	if (type & MEM_RDONLY)
-<<<<<<< HEAD
-		strncpy(prefix, "rdonly_", 16);
-=======
 		strncpy(prefix, "rdonly_", 32);
 	if (type & MEM_ALLOC)
 		strncpy(prefix, "alloc_", 32);
@@ -626,7 +583,6 @@ static const char *reg_type_str(struct bpf_verifier_env *env,
 		strncpy(prefix, "percpu_", 32);
 	if (type & PTR_UNTRUSTED)
 		strncpy(prefix, "untrusted_", 32);
->>>>>>> origin/linux_6.1.15_upstream
 
 	snprintf(env->type_str_buf, TYPE_STR_BUF_LEN, "%s%s%s",
 		 prefix, str[base_type(type)], postfix);
@@ -896,11 +852,7 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 			continue;
 		verbose(env, " R%d", i);
 		print_liveness(env, reg->live);
-<<<<<<< HEAD
-		verbose(env, "=%s", reg_type_str(env, t));
-=======
 		verbose(env, "=");
->>>>>>> origin/linux_6.1.15_upstream
 		if (t == SCALAR_VALUE && reg->precise)
 			verbose(env, "P");
 		if ((t == SCALAR_VALUE || t == PTR_TO_STACK) &&
@@ -909,15 +861,10 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 			verbose(env, "%s", t == SCALAR_VALUE ? "" : reg_type_str(env, t));
 			verbose(env, "%lld", reg->var_off.value + reg->off);
 		} else {
-<<<<<<< HEAD
-			if (base_type(t) == PTR_TO_BTF_ID ||
-			    base_type(t) == PTR_TO_PERCPU_BTF_ID)
-=======
 			const char *sep = "";
 
 			verbose(env, "%s", reg_type_str(env, t));
 			if (base_type(t) == PTR_TO_BTF_ID)
->>>>>>> origin/linux_6.1.15_upstream
 				verbose(env, "%s", kernel_type_name(reg->btf, reg->btf_id));
 			verbose(env, "(");
 /*
@@ -933,15 +880,6 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 			if (t != SCALAR_VALUE)
 				verbose_a("off=%d", reg->off);
 			if (type_is_pkt_pointer(t))
-<<<<<<< HEAD
-				verbose(env, ",r=%d", reg->range);
-			else if (base_type(t) == CONST_PTR_TO_MAP ||
-				 base_type(t) == PTR_TO_MAP_KEY ||
-				 base_type(t) == PTR_TO_MAP_VALUE)
-				verbose(env, ",ks=%d,vs=%d",
-					reg->map_ptr->key_size,
-					reg->map_ptr->value_size);
-=======
 				verbose_a("r=%d", reg->range);
 			else if (base_type(t) == CONST_PTR_TO_MAP ||
 				 base_type(t) == PTR_TO_MAP_KEY ||
@@ -949,7 +887,6 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 				verbose_a("ks=%d,vs=%d",
 					  reg->map_ptr->key_size,
 					  reg->map_ptr->value_size);
->>>>>>> origin/linux_6.1.15_upstream
 			if (tnum_is_const(reg->var_off)) {
 				/* Typically an immediate SCALAR_VALUE, but
 				 * could be a pointer whose offset is too big
@@ -1012,11 +949,7 @@ static void print_verifier_state(struct bpf_verifier_env *env,
 		if (is_spilled_reg(&state->stack[i])) {
 			reg = &state->stack[i].spilled_ptr;
 			t = reg->type;
-<<<<<<< HEAD
-			verbose(env, "=%s", reg_type_str(env, t));
-=======
 			verbose(env, "=%s", t == SCALAR_VALUE ? "" : reg_type_str(env, t));
->>>>>>> origin/linux_6.1.15_upstream
 			if (t == SCALAR_VALUE && reg->precise)
 				verbose(env, "P");
 			if (t == SCALAR_VALUE && tnum_is_const(reg->var_off))
@@ -1664,8 +1597,6 @@ static void __reg_bound_offset(struct bpf_reg_state *reg)
 	reg->var_off = tnum_or(tnum_clear_subreg(var64_off), var32_off);
 }
 
-<<<<<<< HEAD
-=======
 static void reg_bounds_sync(struct bpf_reg_state *reg)
 {
 	/* We might have learned new bounds from the var_off. */
@@ -1681,7 +1612,6 @@ static void reg_bounds_sync(struct bpf_reg_state *reg)
 	__update_reg_bounds(reg);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static bool __reg32_bound_s64(s32 a)
 {
 	return a >= 0 && a <= S32_MAX;
@@ -3044,10 +2974,6 @@ static bool is_spillable_regtype(enum bpf_reg_type type)
 	case PTR_TO_XDP_SOCK:
 	case PTR_TO_BTF_ID:
 	case PTR_TO_BUF:
-<<<<<<< HEAD
-	case PTR_TO_PERCPU_BTF_ID:
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	case PTR_TO_MEM:
 	case PTR_TO_FUNC:
 	case PTR_TO_MAP_KEY:
@@ -4458,34 +4384,6 @@ static int get_callee_stack_depth(struct bpf_verifier_env *env,
 }
 #endif
 
-<<<<<<< HEAD
-int check_ptr_off_reg(struct bpf_verifier_env *env,
-		      const struct bpf_reg_state *reg, int regno)
-{
-	/* Access to this pointer-typed register or passing it to a helper
-	 * is only allowed in its original, unmodified form.
-	 */
-
-	if (reg->off) {
-		verbose(env, "dereference of modified %s ptr R%d off=%d disallowed\n",
-			reg_type_str(env, reg->type), regno, reg->off);
-		return -EACCES;
-	}
-
-	if (!tnum_is_const(reg->var_off) || reg->var_off.value) {
-		char tn_buf[48];
-
-		tnum_strn(tn_buf, sizeof(tn_buf), reg->var_off);
-		verbose(env, "variable %s access var_off=%s disallowed\n",
-			reg_type_str(env, reg->type), tn_buf);
-		return -EACCES;
-	}
-
-	return 0;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int __check_buffer_access(struct bpf_verifier_env *env,
 				 const char *buf_info,
 				 const struct bpf_reg_state *reg,
@@ -5060,10 +4958,6 @@ static int check_mem_access(struct bpf_verifier_env *env, int insn_idx, u32 regn
 					      value_regno);
 	} else if (base_type(reg->type) == PTR_TO_BUF) {
 		bool rdonly_mem = type_is_rdonly_mem(reg->type);
-<<<<<<< HEAD
-		const char *buf_info;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		u32 *max_access;
 
 		if (rdonly_mem) {
@@ -5072,24 +4966,13 @@ static int check_mem_access(struct bpf_verifier_env *env, int insn_idx, u32 regn
 					regno, reg_type_str(env, reg->type));
 				return -EACCES;
 			}
-<<<<<<< HEAD
-			buf_info = "rdonly";
 			max_access = &env->prog->aux->max_rdonly_access;
 		} else {
-			buf_info = "rdwr";
-=======
-			max_access = &env->prog->aux->max_rdonly_access;
-		} else {
->>>>>>> origin/linux_6.1.15_upstream
 			max_access = &env->prog->aux->max_rdwr_access;
 		}
 
 		err = check_buffer_access(env, reg, regno, off, size, false,
-<<<<<<< HEAD
-					  buf_info, max_access);
-=======
 					  max_access);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (!err && value_regno >= 0 && (rdonly_mem || t == BPF_READ))
 			mark_reg_unknown(env, regs, value_regno);
@@ -5353,10 +5236,6 @@ static int check_helper_mem_access(struct bpf_verifier_env *env, int regno,
 				   struct bpf_call_arg_meta *meta)
 {
 	struct bpf_reg_state *regs = cur_regs(env), *reg = &regs[regno];
-<<<<<<< HEAD
-	const char *buf_info;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u32 *max_access;
 
 	switch (base_type(reg->type)) {
@@ -5398,24 +5277,13 @@ static int check_helper_mem_access(struct bpf_verifier_env *env, int regno,
 				return -EACCES;
 			}
 
-<<<<<<< HEAD
-			buf_info = "rdonly";
 			max_access = &env->prog->aux->max_rdonly_access;
 		} else {
-			buf_info = "rdwr";
-=======
-			max_access = &env->prog->aux->max_rdonly_access;
-		} else {
->>>>>>> origin/linux_6.1.15_upstream
 			max_access = &env->prog->aux->max_rdwr_access;
 		}
 		return check_buffer_access(env, reg, regno, reg->off,
 					   access_size, zero_size_allowed,
-<<<<<<< HEAD
-					   buf_info, max_access);
-=======
 					   max_access);
->>>>>>> origin/linux_6.1.15_upstream
 	case PTR_TO_STACK:
 		return check_stack_range_initialized(
 				env,
@@ -5449,8 +5317,6 @@ static int check_helper_mem_access(struct bpf_verifier_env *env, int regno,
 		verbose(env, "R%d type=%s ", regno,
 			reg_type_str(env, reg->type));
 		verbose(env, "expected=%s\n", reg_type_str(env, PTR_TO_STACK));
-<<<<<<< HEAD
-=======
 		return -EACCES;
 	}
 }
@@ -5500,7 +5366,6 @@ static int check_mem_size_reg(struct bpf_verifier_env *env,
 	if (reg->umax_value >= BPF_MAX_VAR_SIZ) {
 		verbose(env, "R%d unbounded memory access, use 'var &= const' or 'if (var < const)'\n",
 			regno);
->>>>>>> origin/linux_6.1.15_upstream
 		return -EACCES;
 	}
 	err = check_helper_mem_access(env, regno - 1,
@@ -5522,16 +5387,6 @@ int check_mem_reg(struct bpf_verifier_env *env, struct bpf_reg_state *reg,
 	if (register_is_null(reg))
 		return 0;
 
-<<<<<<< HEAD
-	if (type_may_be_null(reg->type)) {
-		/* Assuming that the register contains a value check if the memory
-		 * access is safe. Temporarily save and restore the register's state as
-		 * the conversion shouldn't be visible to a caller.
-		 */
-		const struct bpf_reg_state saved_reg = *reg;
-		int rv;
-
-=======
 	memset(&meta, 0, sizeof(meta));
 	/* Assuming that the register contains a value check if the memory
 	 * access is safe. Temporarily save and restore the register's state as
@@ -5539,7 +5394,6 @@ int check_mem_reg(struct bpf_verifier_env *env, struct bpf_reg_state *reg,
 	 */
 	if (may_be_null) {
 		saved_reg = *reg;
->>>>>>> origin/linux_6.1.15_upstream
 		mark_ptr_not_null_reg(reg);
 	}
 
@@ -5714,10 +5568,6 @@ static int process_timer_func(struct bpf_verifier_env *env, int regno,
 static int process_kptr_func(struct bpf_verifier_env *env, int regno,
 			     struct bpf_call_arg_meta *meta)
 {
-<<<<<<< HEAD
-	return base_type(type) == ARG_PTR_TO_MEM ||
-	       base_type(type) == ARG_PTR_TO_UNINIT_MEM;
-=======
 	struct bpf_reg_state *regs = cur_regs(env), *reg = &regs[regno];
 	struct bpf_map_value_off_desc *off_desc;
 	struct bpf_map *map_ptr = reg->map_ptr;
@@ -5760,7 +5610,6 @@ static int process_kptr_func(struct bpf_verifier_env *env, int regno,
 	}
 	meta->kptr_off_desc = off_desc;
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool arg_type_is_mem_size(enum bpf_arg_type type)
@@ -5864,10 +5713,7 @@ static const struct bpf_reg_types mem_types = {
 		PTR_TO_MAP_KEY,
 		PTR_TO_MAP_VALUE,
 		PTR_TO_MEM,
-<<<<<<< HEAD
-=======
 		PTR_TO_MEM | MEM_ALLOC,
->>>>>>> origin/linux_6.1.15_upstream
 		PTR_TO_BUF,
 	},
 };
@@ -5905,10 +5751,6 @@ static const struct bpf_reg_types dynptr_types = {
 static const struct bpf_reg_types *compatible_reg_types[__BPF_ARG_TYPE_MAX] = {
 	[ARG_PTR_TO_MAP_KEY]		= &map_key_value_types,
 	[ARG_PTR_TO_MAP_VALUE]		= &map_key_value_types,
-<<<<<<< HEAD
-	[ARG_PTR_TO_UNINIT_MAP_VALUE]	= &map_key_value_types,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	[ARG_CONST_SIZE]		= &scalar_types,
 	[ARG_CONST_SIZE_OR_ZERO]	= &scalar_types,
 	[ARG_CONST_ALLOC_SIZE_OR_ZERO]	= &scalar_types,
@@ -5922,10 +5764,6 @@ static const struct bpf_reg_types *compatible_reg_types[__BPF_ARG_TYPE_MAX] = {
 	[ARG_PTR_TO_BTF_ID]		= &btf_ptr_types,
 	[ARG_PTR_TO_SPIN_LOCK]		= &spin_lock_types,
 	[ARG_PTR_TO_MEM]		= &mem_types,
-<<<<<<< HEAD
-	[ARG_PTR_TO_UNINIT_MEM]		= &mem_types,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	[ARG_PTR_TO_ALLOC_MEM]		= &alloc_mem_types,
 	[ARG_PTR_TO_INT]		= &int_ptr_types,
 	[ARG_PTR_TO_LONG]		= &int_ptr_types,
@@ -5986,8 +5824,6 @@ static int check_reg_type(struct bpf_verifier_env *env, u32 regno,
 
 found:
 	if (reg->type == PTR_TO_BTF_ID) {
-<<<<<<< HEAD
-=======
 		/* For bpf_sk_release, it needs to match against first member
 		 * 'struct sock_common', hence make an exception for it. This
 		 * allows bpf_sk_release to work for multiple socket types.
@@ -5995,7 +5831,6 @@ found:
 		bool strict_type_match = arg_type_is_release(arg_type) &&
 					 meta->func_id != BPF_FUNC_sk_release;
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (!arg_btf_id) {
 			if (!compatible->btf_id) {
 				verbose(env, "verifier internal error: missing arg compatible BTF ID\n");
@@ -6126,12 +5961,7 @@ static int check_func_arg(struct bpf_verifier_env *env, u32 arg,
 		return -EACCES;
 	}
 
-<<<<<<< HEAD
-	if (base_type(arg_type) == ARG_PTR_TO_MAP_VALUE ||
-	    base_type(arg_type) == ARG_PTR_TO_UNINIT_MAP_VALUE) {
-=======
 	if (base_type(arg_type) == ARG_PTR_TO_MAP_VALUE) {
->>>>>>> origin/linux_6.1.15_upstream
 		err = resolve_map_arg_type(env, meta, &arg_type);
 		if (err)
 			return err;
@@ -6151,17 +5981,9 @@ static int check_func_arg(struct bpf_verifier_env *env, u32 arg,
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	if (type == PTR_TO_CTX) {
-		err = check_ptr_off_reg(env, reg, regno);
-		if (err < 0)
-			return err;
-	}
-=======
 	err = check_func_arg_reg_off(env, reg, regno, arg_type);
 	if (err)
 		return err;
->>>>>>> origin/linux_6.1.15_upstream
 
 skip_type_check:
 	if (arg_type_is_release(arg_type)) {
@@ -6240,13 +6062,8 @@ skip_type_check:
 		err = check_helper_mem_access(env, regno,
 					      meta->map_ptr->key_size, false,
 					      NULL);
-<<<<<<< HEAD
-	} else if (base_type(arg_type) == ARG_PTR_TO_MAP_VALUE ||
-		   base_type(arg_type) == ARG_PTR_TO_UNINIT_MAP_VALUE) {
-=======
 		break;
 	case ARG_PTR_TO_MAP_VALUE:
->>>>>>> origin/linux_6.1.15_upstream
 		if (type_may_be_null(arg_type) && register_is_null(reg))
 			return 0;
 
@@ -7679,15 +7496,6 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 
 	/* update return register (already marked as written above) */
 	ret_type = fn->ret_type;
-<<<<<<< HEAD
-	ret_flag = type_flag(fn->ret_type);
-	if (ret_type == RET_INTEGER) {
-		/* sets type to SCALAR_VALUE */
-		mark_reg_unknown(env, regs, BPF_REG_0);
-	} else if (ret_type == RET_VOID) {
-		regs[BPF_REG_0].type = NOT_INIT;
-	} else if (base_type(ret_type) == RET_PTR_TO_MAP_VALUE) {
-=======
 	ret_flag = type_flag(ret_type);
 
 	switch (base_type(ret_type)) {
@@ -7699,7 +7507,6 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 		regs[BPF_REG_0].type = NOT_INIT;
 		break;
 	case RET_PTR_TO_MAP_VALUE:
->>>>>>> origin/linux_6.1.15_upstream
 		/* There is no offset yet applied, variable or fixed */
 		mark_reg_known_zero(env, regs, BPF_REG_0);
 		/* remember map_ptr, so that check_map_access()
@@ -7718,22 +7525,6 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 		    map_value_has_spin_lock(meta.map_ptr)) {
 			regs[BPF_REG_0].id = ++env->id_gen;
 		}
-<<<<<<< HEAD
-	} else if (base_type(ret_type) == RET_PTR_TO_SOCKET) {
-		mark_reg_known_zero(env, regs, BPF_REG_0);
-		regs[BPF_REG_0].type = PTR_TO_SOCKET | ret_flag;
-	} else if (base_type(ret_type) == RET_PTR_TO_SOCK_COMMON) {
-		mark_reg_known_zero(env, regs, BPF_REG_0);
-		regs[BPF_REG_0].type = PTR_TO_SOCK_COMMON | ret_flag;
-	} else if (base_type(ret_type) == RET_PTR_TO_TCP_SOCK) {
-		mark_reg_known_zero(env, regs, BPF_REG_0);
-		regs[BPF_REG_0].type = PTR_TO_TCP_SOCK | ret_flag;
-	} else if (base_type(ret_type) == RET_PTR_TO_ALLOC_MEM) {
-		mark_reg_known_zero(env, regs, BPF_REG_0);
-		regs[BPF_REG_0].type = PTR_TO_MEM | ret_flag;
-		regs[BPF_REG_0].mem_size = meta.mem_size;
-	} else if (base_type(ret_type) == RET_PTR_TO_MEM_OR_BTF_ID) {
-=======
 		break;
 	case RET_PTR_TO_SOCKET:
 		mark_reg_known_zero(env, regs, BPF_REG_0);
@@ -7754,7 +7545,6 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 		break;
 	case RET_PTR_TO_MEM_OR_BTF_ID:
 	{
->>>>>>> origin/linux_6.1.15_upstream
 		const struct btf_type *t;
 
 		mark_reg_known_zero(env, regs, BPF_REG_0);
@@ -7786,22 +7576,15 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 			regs[BPF_REG_0].btf = meta.ret_btf;
 			regs[BPF_REG_0].btf_id = meta.ret_btf_id;
 		}
-<<<<<<< HEAD
-	} else if (base_type(ret_type) == RET_PTR_TO_BTF_ID) {
-=======
 		break;
 	}
 	case RET_PTR_TO_BTF_ID:
 	{
 		struct btf *ret_btf;
->>>>>>> origin/linux_6.1.15_upstream
 		int ret_btf_id;
 
 		mark_reg_known_zero(env, regs, BPF_REG_0);
 		regs[BPF_REG_0].type = PTR_TO_BTF_ID | ret_flag;
-<<<<<<< HEAD
-		ret_btf_id = *fn->ret_btf_id;
-=======
 		if (func_id == BPF_FUNC_kptr_xchg) {
 			ret_btf = meta.kptr_off_desc->kptr.btf;
 			ret_btf_id = meta.kptr_off_desc->kptr.btf_id;
@@ -7815,7 +7598,6 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 			ret_btf = btf_vmlinux;
 			ret_btf_id = *fn->ret_btf_id;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret_btf_id == 0) {
 			verbose(env, "invalid return type %u of func %s#%d\n",
 				base_type(ret_type), func_id_name(func_id),
@@ -7824,13 +7606,9 @@ static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn
 		}
 		regs[BPF_REG_0].btf = ret_btf;
 		regs[BPF_REG_0].btf_id = ret_btf_id;
-<<<<<<< HEAD
-	} else {
-=======
 		break;
 	}
 	default:
->>>>>>> origin/linux_6.1.15_upstream
 		verbose(env, "unknown return type %u of func %s#%d\n",
 			base_type(ret_type), func_id_name(func_id), func_id);
 		return -EINVAL;
@@ -9604,14 +9382,7 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
 							 insn->dst_reg);
 				}
 				zext_32_to_64(dst_reg);
-<<<<<<< HEAD
-
-				__update_reg_bounds(dst_reg);
-				__reg_deduce_bounds(dst_reg);
-				__reg_bound_offset(dst_reg);
-=======
 				reg_bounds_sync(dst_reg);
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		} else {
 			/* case: R = imm

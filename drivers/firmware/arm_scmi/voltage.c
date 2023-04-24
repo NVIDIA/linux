@@ -231,64 +231,6 @@ static int scmi_voltage_descriptors_get(const struct scmi_protocol_handle *ph,
 
 		v = vinfo->domains + dom;
 		v->id = dom;
-<<<<<<< HEAD
-		v->attributes = le32_to_cpu(resp_dom->attr);
-		strlcpy(v->name, resp_dom->name, SCMI_MAX_STR_SIZE);
-
-		cmd = tl->tx.buf;
-		/* ...then retrieve domain levels descriptions */
-		do {
-			u32 flags;
-			int cnt;
-
-			cmd->domain_id = cpu_to_le32(v->id);
-			cmd->level_index = cpu_to_le32(desc_index);
-			ret = ph->xops->do_xfer(ph, tl);
-			if (ret)
-				break;
-
-			flags = le32_to_cpu(resp_levels->flags);
-			num_returned = NUM_RETURNED_LEVELS(flags);
-			num_remaining = NUM_REMAINING_LEVELS(flags);
-
-			/* Allocate space for num_levels if not already done */
-			if (!v->num_levels) {
-				ret = scmi_init_voltage_levels(dev, v,
-							       num_returned,
-							       num_remaining,
-					      SUPPORTS_SEGMENTED_LEVELS(flags));
-				if (ret)
-					break;
-			}
-
-			if (desc_index + num_returned > v->num_levels) {
-				dev_err(ph->dev,
-					"No. of voltage levels can't exceed %d\n",
-					v->num_levels);
-				ret = -EINVAL;
-				break;
-			}
-
-			for (cnt = 0; cnt < num_returned; cnt++) {
-				s32 val;
-
-				val =
-				    (s32)le32_to_cpu(resp_levels->voltage[cnt]);
-				v->levels_uv[desc_index + cnt] = val;
-				if (val < 0)
-					v->negative_volts_allowed = true;
-			}
-
-			desc_index += num_returned;
-
-			ph->xops->reset_rx_to_maxsz(ph, tl);
-			/* check both to avoid infinite loop due to buggy fw */
-		} while (num_returned && num_remaining);
-
-		if (ret) {
-			v->num_levels = 0;
-			devm_kfree(dev, v->levels_uv);
-=======
 		attributes = le32_to_cpu(resp_dom->attr);
 		strscpy(v->name, resp_dom->name, SCMI_SHORT_NAME_MAX_SIZE);
 
@@ -304,7 +246,6 @@ static int scmi_voltage_descriptors_get(const struct scmi_protocol_handle *ph,
 							SCMI_MAX_STR_SIZE);
 			if (SUPPORTS_ASYNC_LEVEL_SET(attributes))
 				v->async_level_set = true;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		/* Skip invalid voltage descriptors */

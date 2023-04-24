@@ -61,10 +61,7 @@ extern int devm_hwrng_register(struct device *dev, struct hwrng *rng);
 /** Unregister a Hardware Random Number Generator driver. */
 extern void hwrng_unregister(struct hwrng *rng);
 extern void devm_hwrng_unregister(struct device *dve, struct hwrng *rng);
-<<<<<<< HEAD
-=======
 
 extern long hwrng_msleep(struct hwrng *rng, unsigned int msecs);
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* LINUX_HWRANDOM_H_ */

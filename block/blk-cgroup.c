@@ -1942,11 +1942,7 @@ EXPORT_SYMBOL_GPL(bio_associate_blkg);
 void bio_clone_blkg_association(struct bio *dst, struct bio *src)
 {
 	if (src->bi_blkg)
-<<<<<<< HEAD
-		bio_associate_blkg_from_css(dst, &bio_blkcg(src)->css);
-=======
 		bio_associate_blkg_from_css(dst, bio_blkcg_css(src));
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(bio_clone_blkg_association);
 

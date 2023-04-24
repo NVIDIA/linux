@@ -1561,12 +1561,6 @@ static int it66121_probe(struct i2c_client *client,
 		dev_dbg(ctx->dev, "Next bridge not found, deferring probe\n");
 		return -EPROBE_DEFER;
 	}
-<<<<<<< HEAD
-
-	if (!ctx->next_bridge)
-		return -EPROBE_DEFER;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	i2c_set_clientdata(client, ctx);
 	mutex_init(&ctx->lock);

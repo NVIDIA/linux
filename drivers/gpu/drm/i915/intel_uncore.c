@@ -758,11 +758,7 @@ static void __intel_uncore_forcewake_put(struct intel_uncore *uncore,
 		    !(domain->uncore->fw_domains_timer & domain->mask))
 			fw_domain_arm_timer(domain);
 		else
-<<<<<<< HEAD
-			uncore->funcs.force_wake_put(uncore, domain->mask);
-=======
 			fw_domains_put(uncore, domain->mask);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -796,22 +792,6 @@ void intel_uncore_forcewake_put_delayed(struct intel_uncore *uncore,
 		return;
 
 	spin_lock_irqsave(&uncore->lock, irqflags);
-<<<<<<< HEAD
-	__intel_uncore_forcewake_put(uncore, fw_domains, false);
-	spin_unlock_irqrestore(&uncore->lock, irqflags);
-}
-
-void intel_uncore_forcewake_put_delayed(struct intel_uncore *uncore,
-					enum forcewake_domains fw_domains)
-{
-	unsigned long irqflags;
-
-	if (!uncore->funcs.force_wake_put)
-		return;
-
-	spin_lock_irqsave(&uncore->lock, irqflags);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	__intel_uncore_forcewake_put(uncore, fw_domains, true);
 	spin_unlock_irqrestore(&uncore->lock, irqflags);
 }

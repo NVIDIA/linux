@@ -141,17 +141,12 @@ enum {
 	/* The btrfs_fs_info created for self-tests */
 	BTRFS_FS_STATE_DUMMY_FS_INFO,
 
-<<<<<<< HEAD
-	/* Indicates there was an error cleaning up a log tree. */
-	BTRFS_FS_STATE_LOG_CLEANUP_ERROR,
-=======
 	BTRFS_FS_STATE_NO_CSUMS,
 
 	/* Indicates there was an error cleaning up a log tree. */
 	BTRFS_FS_STATE_LOG_CLEANUP_ERROR,
 
 	BTRFS_FS_STATE_COUNT
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #define BTRFS_BACKREF_REV_MAX		256
@@ -586,11 +581,6 @@ enum {
 	/* Indicate whether there are any tree modification log users */
 	BTRFS_FS_TREE_MOD_LOG_USERS,
 
-<<<<<<< HEAD
-	/* Indicate we have half completed snapshot deletions pending. */
-	BTRFS_FS_UNFINISHED_DROPS,
-
-=======
 	/* Indicate that we want the transaction kthread to commit right now. */
 	BTRFS_FS_COMMIT_TRANS,
 
@@ -606,7 +596,6 @@ enum {
 	 */
 	BTRFS_FS_NO_OVERCOMMIT,
 
->>>>>>> origin/linux_6.1.15_upstream
 #if BITS_PER_LONG == 32
 	/* Indicate if we have error/warn message printed on 32bit systems */
 	BTRFS_FS_32BIT_ERROR,
@@ -1051,8 +1040,6 @@ struct btrfs_fs_info {
 	 */
 	spinlock_t relocation_bg_lock;
 	u64 data_reloc_bg;
-<<<<<<< HEAD
-=======
 	struct mutex zoned_data_reloc_io_lock;
 
 	u64 nr_global_roots;
@@ -1079,7 +1066,6 @@ struct btrfs_fs_info {
 	struct lockdep_map btrfs_state_change_map[4];
 	struct lockdep_map btrfs_trans_pending_ordered_map;
 	struct lockdep_map btrfs_ordered_extent_map;
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifdef CONFIG_BTRFS_FS_REF_VERIFY
 	spinlock_t ref_verify_lock;
@@ -1227,10 +1213,6 @@ enum {
 	BTRFS_ROOT_HAS_LOG_TREE,
 	/* Qgroup flushing is in progress */
 	BTRFS_ROOT_QGROUP_FLUSHING,
-<<<<<<< HEAD
-	/* This root has a drop operation that was started previously. */
-	BTRFS_ROOT_UNFINISHED_DROP,
-=======
 	/* We started the orphan cleanup for this root. */
 	BTRFS_ROOT_ORPHAN_CLEANUP,
 	/* This root has a drop operation that was started previously. */
@@ -1244,7 +1226,6 @@ enum btrfs_lockdep_trans_states {
 	BTRFS_LOCKDEP_TRANS_UNBLOCKED,
 	BTRFS_LOCKDEP_TRANS_SUPER_COMMITTED,
 	BTRFS_LOCKDEP_TRANS_COMPLETED,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static inline void btrfs_wake_unfinished_drop(struct btrfs_fs_info *fs_info)
@@ -3865,8 +3846,6 @@ do {									\
 				(errno), fmt, ##args);			\
 } while (0)
 
-<<<<<<< HEAD
-=======
 #else
 
 #define btrfs_handle_fs_error(fs_info, errno, fmt, args...)		\
@@ -3877,7 +3856,6 @@ do {									\
 
 #define BTRFS_FS_ERROR(fs_info)	(unlikely(test_bit(BTRFS_FS_STATE_ERROR, \
 						   &(fs_info)->fs_state)))
->>>>>>> origin/linux_6.1.15_upstream
 #define BTRFS_FS_LOG_CLEANUP_ERROR(fs_info)				\
 	(unlikely(test_bit(BTRFS_FS_STATE_LOG_CLEANUP_ERROR,		\
 			   &(fs_info)->fs_state)))

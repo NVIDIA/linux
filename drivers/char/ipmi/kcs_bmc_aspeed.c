@@ -662,17 +662,9 @@ static int aspeed_kcs_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id ast_kcs_bmc_match[] = {
-<<<<<<< HEAD
-	{ .compatible = "aspeed,ast2400-kcs-bmc", .data = &of_v1_ops },
-	{ .compatible = "aspeed,ast2500-kcs-bmc", .data = &of_v1_ops },
-	{ .compatible = "aspeed,ast2400-kcs-bmc-v2", .data = &of_v2_ops },
-	{ .compatible = "aspeed,ast2500-kcs-bmc-v2", .data = &of_v2_ops },
-	{ .compatible = "aspeed,ast2600-kcs-bmc", .data = &of_v2_ops },
-=======
 	{ .compatible = "aspeed,ast2400-kcs-bmc-v2" },
 	{ .compatible = "aspeed,ast2500-kcs-bmc-v2" },
 	{ .compatible = "aspeed,ast2600-kcs-bmc" },
->>>>>>> origin/linux_6.1.15_upstream
 	{ }
 };
 MODULE_DEVICE_TABLE(of, ast_kcs_bmc_match);

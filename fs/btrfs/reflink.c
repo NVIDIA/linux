@@ -514,12 +514,8 @@ process_slot:
 			 */
 			ASSERT(key.offset == 0);
 			ASSERT(datal <= fs_info->sectorsize);
-<<<<<<< HEAD
-			if (WARN_ON(key.offset != 0) ||
-=======
 			if (WARN_ON(type != BTRFS_FILE_EXTENT_INLINE) ||
 			    WARN_ON(key.offset != 0) ||
->>>>>>> origin/linux_6.1.15_upstream
 			    WARN_ON(datal > fs_info->sectorsize)) {
 				ret = -EUCLEAN;
 				goto out;

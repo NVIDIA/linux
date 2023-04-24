@@ -250,10 +250,7 @@ static const u16 mt_i2c_regs_v3[] = {
 	[OFFSET_SOFTRESET] = 0x50,
 	[OFFSET_MULTI_DMA] = 0x8c,
 	[OFFSET_SCL_MIS_COMP_POINT] = 0x90,
-<<<<<<< HEAD
-=======
 	[OFFSET_SLAVE_ADDR] = 0x94,
->>>>>>> origin/linux_6.1.15_upstream
 	[OFFSET_DEBUGSTAT] = 0xe4,
 	[OFFSET_DEBUGCTRL] = 0xe8,
 	[OFFSET_FIFO_STAT] = 0xf4,

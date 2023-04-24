@@ -1365,46 +1365,6 @@ static int hdmi_find_pcm_slot(struct hdmi_spec *spec,
 {
 	int i;
 
-<<<<<<< HEAD
-	/* on the new machines, try to assign the pcm slot dynamically,
-	 * not use the preferred fixed map (legacy way) anymore.
-	 */
-	if (spec->dyn_pcm_no_legacy)
-		goto last_try;
-
-	/*
-	 * generic_hdmi_build_pcms() may allocate extra PCMs on some
-	 * platforms (with maximum of 'num_nids + dev_num - 1')
-	 *
-	 * The per_pin of pin_nid_idx=n and dev_id=m prefers to get pcm-n
-	 * if m==0. This guarantees that dynamic pcm assignments are compatible
-	 * with the legacy static per_pin-pcm assignment that existed in the
-	 * days before DP-MST.
-	 *
-	 * Intel DP-MST prefers this legacy behavior for compatibility, too.
-	 *
-	 * per_pin of m!=0 prefers to get pcm=(num_nids + (m - 1)).
-	 */
-
-	if (per_pin->dev_id == 0 || spec->intel_hsw_fixup) {
-		if (!test_bit(per_pin->pin_nid_idx, &spec->pcm_bitmap))
-			return per_pin->pin_nid_idx;
-	} else {
-		i = spec->num_nids + (per_pin->dev_id - 1);
-		if (i < spec->pcm_used && !(test_bit(i, &spec->pcm_bitmap)))
-			return i;
-	}
-
-	/* have a second try; check the area over num_nids */
-	for (i = spec->num_nids; i < spec->pcm_used; i++) {
-		if (!test_bit(i, &spec->pcm_bitmap))
-			return i;
-	}
-
- last_try:
-	/* the last try; check the empty slots in pins */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	for (i = 0; i < spec->pcm_used; i++) {
 		if (!test_bit(i, &spec->pcm_bitmap))
 			return i;
@@ -2326,26 +2286,8 @@ static int generic_hdmi_build_pcms(struct hda_codec *codec)
 	struct hdmi_spec *spec = codec->spec;
 	int idx, pcm_num;
 
-<<<<<<< HEAD
-	/*
-	 * for non-mst mode, pcm number is the same as before
-	 * for DP MST mode without extra PCM, pcm number is same
-	 * for DP MST mode with extra PCMs, pcm number is
-	 *  (nid number + dev_num - 1)
-	 * dev_num is the device entry number in a pin
-	 */
-
-	if (spec->dyn_pcm_no_legacy && codec->mst_no_extra_pcms)
-		pcm_num = spec->num_cvts;
-	else if (codec->mst_no_extra_pcms)
-		pcm_num = spec->num_nids;
-	else
-		pcm_num = spec->num_nids + spec->dev_num - 1;
-
-=======
 	/* limit the PCM devices to the codec converters or available PINs */
 	pcm_num = min(spec->num_cvts, spec->num_pins);
->>>>>>> origin/linux_6.1.15_upstream
 	codec_dbg(codec, "hdmi: pcm_num set to %d\n", pcm_num);
 
 	for (idx = 0; idx < pcm_num; idx++) {
@@ -3152,11 +3094,7 @@ static int intel_hsw_common_init(struct hda_codec *codec, hda_nid_t vendor_nid,
 	 * module param or Kconfig option
 	 */
 	if (send_silent_stream)
-<<<<<<< HEAD
-		spec->send_silent_stream = true;
-=======
 		spec->silent_stream_type = SILENT_STREAM_I915;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return parse_intel_hdmi(codec);
 }
@@ -3197,12 +3135,6 @@ static int patch_i915_tgl_hdmi(struct hda_codec *codec)
 	 */
 	static const int map[] = {0x4, 0x6, 0x8, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
 
-<<<<<<< HEAD
-	ret = intel_hsw_common_init(codec, 0x02, map, ARRAY_SIZE(map), 4,
-				    enable_silent_stream);
-	if (!ret) {
-		struct hdmi_spec *spec = codec->spec;
-=======
 	return intel_hsw_common_init(codec, 0x02, map, ARRAY_SIZE(map), 4,
 				     enable_silent_stream);
 }
@@ -4661,20 +4593,12 @@ HDA_CODEC_ENTRY(0x80862812, "Tigerlake HDMI",	patch_i915_tgl_hdmi),
 HDA_CODEC_ENTRY(0x80862814, "DG1 HDMI",	patch_i915_tgl_hdmi),
 HDA_CODEC_ENTRY(0x80862815, "Alderlake HDMI",	patch_i915_tgl_hdmi),
 HDA_CODEC_ENTRY(0x80862816, "Rocketlake HDMI",	patch_i915_tgl_hdmi),
-<<<<<<< HEAD
-HDA_CODEC_ENTRY(0x80862819, "DG2 HDMI",	patch_i915_tgl_hdmi),
-HDA_CODEC_ENTRY(0x8086281a, "Jasperlake HDMI",	patch_i915_icl_hdmi),
-HDA_CODEC_ENTRY(0x8086281b, "Elkhartlake HDMI",	patch_i915_icl_hdmi),
-HDA_CODEC_ENTRY(0x8086281c, "Alderlake-P HDMI", patch_i915_tgl_hdmi),
-=======
-HDA_CODEC_ENTRY(0x80862818, "Raptorlake HDMI",	patch_i915_tgl_hdmi),
 HDA_CODEC_ENTRY(0x80862819, "DG2 HDMI",	patch_i915_adlp_hdmi),
 HDA_CODEC_ENTRY(0x8086281a, "Jasperlake HDMI",	patch_i915_icl_hdmi),
 HDA_CODEC_ENTRY(0x8086281b, "Elkhartlake HDMI",	patch_i915_icl_hdmi),
 HDA_CODEC_ENTRY(0x8086281c, "Alderlake-P HDMI", patch_i915_adlp_hdmi),
 HDA_CODEC_ENTRY(0x8086281f, "Raptorlake-P HDMI",	patch_i915_adlp_hdmi),
 HDA_CODEC_ENTRY(0x8086281d, "Meteorlake HDMI",	patch_i915_adlp_hdmi),
->>>>>>> origin/linux_6.1.15_upstream
 HDA_CODEC_ENTRY(0x80862880, "CedarTrail HDMI",	patch_generic_hdmi),
 HDA_CODEC_ENTRY(0x80862882, "Valleyview2 HDMI",	patch_i915_byt_hdmi),
 HDA_CODEC_ENTRY(0x80862883, "Braswell HDMI",	patch_i915_byt_hdmi),

@@ -770,11 +770,7 @@ static void tpm_cr50_i2c_remove(struct i2c_client *client)
 
 	if (!chip) {
 		dev_crit(dev, "Could not get client data at remove, memory corruption ahead\n");
-<<<<<<< HEAD
-		return 0;
-=======
 		return;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	tpm_chip_unregister(chip);

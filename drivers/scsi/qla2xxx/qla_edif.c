@@ -299,16 +299,6 @@ qla_edif_app_check(scsi_qla_host_t *vha, struct app_id appid)
 {
 	/* check that the app is allow/known to the driver */
 
-<<<<<<< HEAD
-	if (appid.app_vid == EDIF_APP_ID) {
-		ql_dbg(ql_dbg_edif + ql_dbg_verbose, vha, 0x911d, "%s app id ok\n", __func__);
-		return true;
-	}
-	ql_dbg(ql_dbg_edif, vha, 0x911d, "%s app id not ok (%x)",
-	    __func__, appid.app_vid);
-
-	return false;
-=======
 	if (appid.app_vid != EDIF_APP_ID) {
 		ql_dbg(ql_dbg_edif, vha, 0x911d, "%s app id not ok (%x)",
 		    __func__, appid.app_vid);
@@ -322,7 +312,6 @@ qla_edif_app_check(scsi_qla_host_t *vha, struct app_id appid)
 	}
 
 	return true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void
@@ -570,14 +559,6 @@ qla_edif_app_start(scsi_qla_host_t *vha, struct bsg_job *bsg_job)
 
 			if (atomic_read(&vha->loop_state) == LOOP_DOWN)
 				break;
-<<<<<<< HEAD
-
-			fcport->edif.app_started = 1;
-			fcport->login_retry = vha->hw->login_retry_count;
-
-			/* no activity */
-			fcport->edif.app_stop = 0;
-=======
 
 			fcport->login_retry = vha->hw->login_retry_count;
 
@@ -596,15 +577,10 @@ qla_edif_app_start(scsi_qla_host_t *vha, struct bsg_job *bsg_job)
 				continue;
 
 			rval = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 			ql_dbg(ql_dbg_edif, vha, 0x911e,
 			       "%s wwpn %8phC calling qla_edif_reset_auth_wait\n",
 			       __func__, fcport->port_name);
-<<<<<<< HEAD
-			fcport->edif.app_sess_online = 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			qlt_schedule_sess_for_deletion(fcport);
 			qla_edif_sa_ctl_init(vha, fcport);
 		}
@@ -750,10 +726,7 @@ qla_edif_app_authok(scsi_qla_host_t *vha, struct bsg_job *bsg_job)
 	portid.b.area   = appplogiok.u.d_id.b.area;
 	portid.b.al_pa  = appplogiok.u.d_id.b.al_pa;
 
-<<<<<<< HEAD
-=======
 	appplogireply.version = EDIF_VERSION1;
->>>>>>> origin/linux_6.1.15_upstream
 	switch (appplogiok.type) {
 	case PL_TYPE_WWPN:
 		fcport = qla2x00_find_fcport_by_wwpn(vha,
@@ -945,11 +918,8 @@ qla_edif_app_getfcinfo(scsi_qla_host_t *vha, struct bsg_job *bsg_job)
 		rval = -1;
 	} else {
 		struct fc_port	*fcport = NULL, *tf;
-<<<<<<< HEAD
-=======
 
 		app_reply->version = EDIF_VERSION1;
->>>>>>> origin/linux_6.1.15_upstream
 
 		list_for_each_entry_safe(fcport, tf, &vha->vp_fcports, list) {
 			if (!(fcport->flags & FCF_FCSP_DEVICE))
@@ -1081,11 +1051,8 @@ qla_edif_app_getstats(scsi_qla_host_t *vha, struct bsg_job *bsg_job)
 		rval = -1;
 	} else {
 		struct fc_port	*fcport = NULL, *tf;
-<<<<<<< HEAD
-=======
 
 		app_reply->version = EDIF_VERSION1;
->>>>>>> origin/linux_6.1.15_upstream
 
 		list_for_each_entry_safe(fcport, tf, &vha->vp_fcports, list) {
 			if (fcport->edif.enable) {
@@ -2376,10 +2343,7 @@ qla_edif_timer(scsi_qla_host_t *vha)
 
 static void qla_noop_sp_done(srb_t *sp, int res)
 {
-<<<<<<< HEAD
-=======
 	sp->fcport->flags &= ~(FCF_ASYNC_SENT | FCF_ASYNC_ACTIVE);
->>>>>>> origin/linux_6.1.15_upstream
 	/* ref: INIT */
 	kref_put(&sp->cmd_kref, qla2x00_sp_release);
 }

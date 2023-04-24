@@ -60,10 +60,7 @@ KVM_NVHE_ALIAS(spectre_bhb_patch_loop_iter);
 KVM_NVHE_ALIAS(spectre_bhb_patch_loop_mitigation_enable);
 KVM_NVHE_ALIAS(spectre_bhb_patch_wa3);
 KVM_NVHE_ALIAS(spectre_bhb_patch_clearbhb);
-<<<<<<< HEAD
-=======
 KVM_NVHE_ALIAS(alt_cb_patch_nops);
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Global kernel state accessed by nVHE hyp code. */
 KVM_NVHE_ALIAS(kvm_vgic_global_state);

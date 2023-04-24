@@ -640,11 +640,6 @@ int acpi_disable_wakeup_device_power(struct acpi_device *dev);
 
 #ifdef CONFIG_X86
 bool acpi_device_override_status(struct acpi_device *adev, unsigned long long *status);
-<<<<<<< HEAD
-#else
-static inline bool acpi_device_override_status(struct acpi_device *adev,
-					       unsigned long long *status)
-=======
 bool acpi_quirk_skip_acpi_ac_and_battery(void);
 #else
 static inline bool acpi_device_override_status(struct acpi_device *adev,
@@ -653,7 +648,6 @@ static inline bool acpi_device_override_status(struct acpi_device *adev,
 	return false;
 }
 static inline bool acpi_quirk_skip_acpi_ac_and_battery(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return false;
 }

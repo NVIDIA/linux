@@ -256,8 +256,6 @@ irq_restore:
 		local_irq_restore(flags);
 
 	return ret;
-<<<<<<< HEAD
-=======
 }
 
 static int xgmac_mdio_set_mdc_freq(struct mii_bus *bus)
@@ -302,7 +300,6 @@ static void xgmac_mdio_set_suppress_preamble(struct mii_bus *bus)
 	mdio_stat = xgmac_read32(&regs->mdio_stat, priv->is_little_endian);
 	mdio_stat |= MDIO_STAT_PRE_DIS;
 	xgmac_write32(mdio_stat, &regs->mdio_stat, priv->is_little_endian);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int xgmac_mdio_probe(struct platform_device *pdev)
@@ -373,29 +370,6 @@ static int xgmac_mdio_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, bus);
 
 	return 0;
-<<<<<<< HEAD
-
-err_registration:
-	iounmap(priv->mdio_base);
-
-err_ioremap:
-	mdiobus_free(bus);
-
-	return ret;
-}
-
-static int xgmac_mdio_remove(struct platform_device *pdev)
-{
-	struct mii_bus *bus = platform_get_drvdata(pdev);
-	struct mdio_fsl_priv *priv = bus->priv;
-
-	mdiobus_unregister(bus);
-	iounmap(priv->mdio_base);
-	mdiobus_free(bus);
-
-	return 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id xgmac_mdio_match[] = {

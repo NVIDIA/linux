@@ -607,11 +607,8 @@ static bool gve_rx(struct gve_rx_ring *rx, netdev_features_t feat,
 		skb_set_hash(skb, be32_to_cpu(first_desc->rss_hash),
 			     gve_rss_type(first_desc->flags_seq));
 
-<<<<<<< HEAD
-=======
 	*packet_size_bytes = skb->len + (skb->protocol ? ETH_HLEN : 0);
 	*work_done = work_cnt;
->>>>>>> origin/linux_6.1.15_upstream
 	skb_record_rx_queue(skb, rx->q_num);
 	if (skb_is_nonlinear(skb))
 		napi_gro_frags(napi);

@@ -701,8 +701,6 @@ static void queue_oom_reaper(struct task_struct *tsk)
 	add_timer(&tsk->oom_reaper_timer);
 }
 
-<<<<<<< HEAD
-=======
 #ifdef CONFIG_SYSCTL
 static struct ctl_table vm_oom_kill_table[] = {
 	{
@@ -732,7 +730,6 @@ static struct ctl_table vm_oom_kill_table[] = {
 };
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 static int __init oom_init(void)
 {
 	oom_reaper_th = kthread_run(oom_reaper, NULL, "oom_reaper");

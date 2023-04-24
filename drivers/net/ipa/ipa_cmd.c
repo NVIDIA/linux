@@ -642,19 +642,6 @@ void ipa_cmd_pipeline_clear_wait(struct ipa *ipa)
 	wait_for_completion(&ipa->completion);
 }
 
-<<<<<<< HEAD
-static struct ipa_cmd_info *
-ipa_cmd_info_alloc(struct ipa_endpoint *endpoint, u32 tre_count)
-{
-	struct gsi_channel *channel;
-
-	channel = &endpoint->ipa->gsi.channel[endpoint->channel_id];
-
-	return gsi_trans_pool_alloc(&channel->trans_info.info_pool, tre_count);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /* Allocate a transaction for the command TX endpoint */
 struct gsi_trans *ipa_cmd_trans_alloc(struct ipa *ipa, u32 tre_count)
 {

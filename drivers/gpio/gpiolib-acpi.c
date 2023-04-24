@@ -1079,13 +1079,10 @@ int acpi_dev_gpio_irq_wake_get_by(struct acpi_device *adev, const char *name, in
 			} else {
 				dev_dbg(&adev->dev, "IRQ %d already in use\n", irq);
 			}
-<<<<<<< HEAD
-=======
 
 			/* avoid suspend issues with GPIOs when systems are using S3 */
 			if (wake_capable && acpi_gbl_FADT.flags & ACPI_FADT_LOW_POWER_S0)
 				*wake_capable = info.wake_capable;
->>>>>>> origin/linux_6.1.15_upstream
 
 			return irq;
 		}

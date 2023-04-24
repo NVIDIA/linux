@@ -1421,11 +1421,7 @@ struct svm_validate_context {
 	struct kfd_process *process;
 	struct svm_range *prange;
 	bool intr;
-<<<<<<< HEAD
-	unsigned long bitmap[MAX_GPU_INSTANCE];
-=======
 	DECLARE_BITMAP(bitmap, MAX_GPU_INSTANCE);
->>>>>>> origin/linux_6.1.15_upstream
 	struct ttm_validate_buffer tv[MAX_GPU_INSTANCE];
 	struct list_head validate_list;
 	struct ww_acquire_ctx ticket;
@@ -1704,17 +1700,12 @@ static void svm_range_restore_work(struct work_struct *work)
 	pr_debug("restore svm ranges\n");
 
 	p = container_of(svms, struct kfd_process, svms);
-<<<<<<< HEAD
-	mm = p->mm;
-	if (!mm)
-=======
 	process_info = p->kgd_process_info;
 
 	/* Keep mm reference when svm_range_validate_and_map ranges */
 	mm = get_task_mm(p->lead_thread);
 	if (!mm) {
 		pr_debug("svms 0x%p process mm gone\n", svms);
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 
@@ -1996,11 +1987,7 @@ svm_range_add(struct kfd_process *p, uint64_t start, uint64_t size,
 	INIT_LIST_HEAD(update_list);
 	INIT_LIST_HEAD(insert_list);
 	INIT_LIST_HEAD(remove_list);
-<<<<<<< HEAD
-	svm_range_apply_attrs(p, &new, nattr, attrs);
-=======
 	INIT_LIST_HEAD(&new_list);
->>>>>>> origin/linux_6.1.15_upstream
 
 	node = interval_tree_iter_first(&svms->objects, start, last);
 	while (node) {
@@ -2051,13 +2038,6 @@ svm_range_add(struct kfd_process *p, uint64_t start, uint64_t size,
 			/* The node is contained within start..last,
 			 * just update it
 			 */
-<<<<<<< HEAD
-			prange = old;
-		}
-
-		if (!svm_range_is_same_attrs(prange, &new))
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			list_add(&prange->update_list, update_list);
 		}
 
@@ -2075,22 +2055,10 @@ svm_range_add(struct kfd_process *p, uint64_t start, uint64_t size,
 	}
 
 	/* add a final range at the end if needed */
-<<<<<<< HEAD
-	if (start <= last) {
-		prange = svm_range_new(svms, start, last);
-		if (!prange) {
-			r = -ENOMEM;
-			goto out;
-		}
-		list_add(&prange->insert_list, insert_list);
-		list_add(&prange->update_list, update_list);
-	}
-=======
 	if (start <= last)
 		r = svm_range_split_new(svms, start, last,
 					READ_ONCE(max_svm_range_pages),
 					&new_list, update_list);
->>>>>>> origin/linux_6.1.15_upstream
 
 out:
 	if (r) {
@@ -3198,12 +3166,8 @@ svm_range_is_valid(struct kfd_process *p, uint64_t start, uint64_t size)
 		start = min(end, vma->vm_end);
 	} while (start < end);
 
-<<<<<<< HEAD
-	return true;
-=======
 	return svm_range_check_vm(p, start_unchg, (end - 1) >> PAGE_SHIFT, NULL,
 				  NULL);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -3418,11 +3382,7 @@ svm_range_set_attr(struct kfd_process *p, struct mm_struct *mm,
 		   uint64_t start, uint64_t size, uint32_t nattr,
 		   struct kfd_ioctl_svm_attribute *attrs)
 {
-<<<<<<< HEAD
-	struct mm_struct *mm = current->mm;
-=======
 	struct amdkfd_process_info *process_info = p->kgd_process_info;
->>>>>>> origin/linux_6.1.15_upstream
 	struct list_head update_list;
 	struct list_head insert_list;
 	struct list_head remove_list;

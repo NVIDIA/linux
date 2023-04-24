@@ -194,10 +194,7 @@ static void mt_post_parse(struct mt_device *td, struct mt_application *app);
 #define MT_CLS_WIN_8_FORCE_MULTI_INPUT		0x0015
 #define MT_CLS_WIN_8_DISABLE_WAKEUP		0x0016
 #define MT_CLS_WIN_8_NO_STICKY_FINGERS		0x0017
-<<<<<<< HEAD
-=======
 #define MT_CLS_WIN_8_FORCE_MULTI_INPUT_NSMU	0x0018
->>>>>>> origin/linux_6.1.15_upstream
 
 /* vendor specific classes */
 #define MT_CLS_3M				0x0101
@@ -2053,11 +2050,7 @@ static const struct hid_device_id mt_devices[] = {
 			   USB_DEVICE_ID_LENOVO_X1_TAB3) },
 
 	/* Lenovo X12 TAB Gen 1 */
-<<<<<<< HEAD
-	{ .driver_data = MT_CLS_WIN_8_FORCE_MULTI_INPUT,
-=======
 	{ .driver_data = MT_CLS_WIN_8_FORCE_MULTI_INPUT_NSMU,
->>>>>>> origin/linux_6.1.15_upstream
 		HID_DEVICE(BUS_USB, HID_GROUP_MULTITOUCH_WIN_8,
 			   USB_VENDOR_ID_LENOVO,
 			   USB_DEVICE_ID_LENOVO_X12_TAB) },

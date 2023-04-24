@@ -112,11 +112,8 @@ allOf:
               - mediatek,mt2701-smi-larb
               - mediatek,mt2712-smi-larb
               - mediatek,mt6779-smi-larb
-<<<<<<< HEAD
-=======
               - mediatek,mt8186-smi-larb
               - mediatek,mt8188-smi-larb
->>>>>>> origin/linux_6.1.15_upstream
               - mediatek,mt8192-smi-larb
               - mediatek,mt8195-smi-larb
 

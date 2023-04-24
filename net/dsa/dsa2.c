@@ -1803,14 +1803,6 @@ void dsa_switch_shutdown(struct dsa_switch *ds)
 	struct dsa_port *dp;
 
 	mutex_lock(&dsa2_mutex);
-<<<<<<< HEAD
-
-	if (!ds->setup)
-		goto out;
-
-	rtnl_lock();
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!ds->setup)
 		goto out;

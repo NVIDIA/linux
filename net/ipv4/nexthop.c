@@ -1919,12 +1919,6 @@ static void nh_rt_cache_flush(struct net *net, struct nexthop *nh,
 	if (!replaced_nh->is_group)
 		return;
 
-<<<<<<< HEAD
-	/* new dsts must use only the new nexthop group */
-	synchronize_net();
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	nhg = rtnl_dereference(replaced_nh->nh_grp);
 	for (i = 0; i < nhg->num_nh; i++) {
 		struct nh_grp_entry *nhge = &nhg->nh_entries[i];

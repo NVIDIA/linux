@@ -175,17 +175,10 @@ static int mt7915_thermal_init(struct mt7915_phy *phy)
 	struct thermal_cooling_device *cdev;
 	struct device *hwmon;
 	const char *name;
-<<<<<<< HEAD
 
 	name = devm_kasprintf(&wiphy->dev, GFP_KERNEL, "mt7915_%s",
 			      wiphy_name(wiphy));
 
-=======
-
-	name = devm_kasprintf(&wiphy->dev, GFP_KERNEL, "mt7915_%s",
-			      wiphy_name(wiphy));
-
->>>>>>> origin/linux_6.1.15_upstream
 	cdev = thermal_cooling_device_register(name, phy, &mt7915_thermal_ops);
 	if (!IS_ERR(cdev)) {
 		if (sysfs_create_link(&wiphy->dev.kobj, &cdev->device.kobj,

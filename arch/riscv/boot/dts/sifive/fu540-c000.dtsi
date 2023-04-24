@@ -192,11 +192,7 @@
 			status = "disabled";
 		};
 		dma: dma-controller@3000000 {
-<<<<<<< HEAD
-			compatible = "sifive,fu540-c000-pdma";
-=======
 			compatible = "sifive,fu540-c000-pdma", "sifive,pdma0";
->>>>>>> origin/linux_6.1.15_upstream
 			reg = <0x0 0x3000000 0x0 0x8000>;
 			interrupt-parent = <&plic0>;
 			interrupts = <23>, <24>, <25>, <26>, <27>, <28>, <29>,

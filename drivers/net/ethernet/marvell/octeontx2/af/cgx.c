@@ -1741,11 +1741,8 @@ static struct mac_ops	cgx_mac_ops    = {
 	.mac_enadis_ptp_config =	cgx_lmac_ptp_config,
 	.mac_rx_tx_enable =		cgx_lmac_rx_tx_enable,
 	.mac_tx_enable =		cgx_lmac_tx_enable,
-<<<<<<< HEAD
-=======
 	.pfc_config =                   cgx_lmac_pfc_config,
 	.mac_get_pfc_frm_cfg   =        cgx_lmac_get_pfc_frm_cfg,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static int cgx_probe(struct pci_dev *pdev, const struct pci_device_id *id)

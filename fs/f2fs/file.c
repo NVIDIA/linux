@@ -962,11 +962,7 @@ int f2fs_setattr(struct user_namespace *mnt_userns, struct dentry *dentry,
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	if (is_quota_modification(inode, attr)) {
-=======
 	if (is_quota_modification(mnt_userns, inode, attr)) {
->>>>>>> origin/linux_6.1.15_upstream
 		err = f2fs_dquot_initialize(inode);
 		if (err)
 			return err;
@@ -1491,10 +1487,7 @@ static int f2fs_do_zero_range(struct dnode_of_data *dn, pgoff_t start,
 		if (!f2fs_is_valid_blkaddr(sbi, dn->data_blkaddr,
 					DATA_GENERIC_ENHANCE)) {
 			ret = -EFSCORRUPTED;
-<<<<<<< HEAD
-=======
 			f2fs_handle_error(sbi, ERROR_INVALID_BLKADDR);
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		}
 
@@ -2067,15 +2060,6 @@ static int f2fs_ioc_start_atomic_write(struct file *filp)
 
 	if (!f2fs_disable_compressed_file(inode)) {
 		ret = -EINVAL;
-<<<<<<< HEAD
-		goto out;
-	}
-
-	if (f2fs_is_atomic_file(inode)) {
-		if (is_inode_flag_set(inode, FI_ATOMIC_REVOKE_REQUEST))
-			ret = -EINVAL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		goto out;
 	}
 
@@ -3041,17 +3025,6 @@ static int f2fs_ioc_setproject(struct inode *inode, __u32 projid)
 	if (!F2FS_FITS_IN_INODE(ri, fi->i_extra_isize, i_projid))
 		return -EOVERFLOW;
 
-<<<<<<< HEAD
-	if (!F2FS_FITS_IN_INODE(F2FS_INODE(ipage), fi->i_extra_isize,
-								i_projid)) {
-		err = -EOVERFLOW;
-		f2fs_put_page(ipage, 1);
-		return err;
-	}
-	f2fs_put_page(ipage, 1);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	err = f2fs_dquot_initialize(inode);
 	if (err)
 		return err;
@@ -4680,26 +4653,6 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	/* Determine whether we will do a direct write or a buffered write. */
 	dio = f2fs_should_use_dio(inode, iocb, from);
 
-<<<<<<< HEAD
-	ret = generic_write_checks(iocb, from);
-	if (ret > 0) {
-		bool preallocated = false;
-		size_t target_size = 0;
-		int err;
-
-		if (fault_in_iov_iter_readable(from, iov_iter_count(from)))
-			set_inode_flag(inode, FI_NO_PREALLOC);
-
-		if ((iocb->ki_flags & IOCB_NOWAIT)) {
-			if (!f2fs_overwrite_io(inode, iocb->ki_pos,
-						iov_iter_count(from)) ||
-				f2fs_has_inline_data(inode) ||
-				f2fs_force_buffered_io(inode, iocb, from)) {
-				clear_inode_flag(inode, FI_NO_PREALLOC);
-				inode_unlock(inode);
-				ret = -EAGAIN;
-				goto out;
-=======
 	/* Possibly preallocate the blocks for the write. */
 	target_size = iocb->ki_pos + iov_iter_count(from);
 	preallocated = f2fs_preallocate_blocks(iocb, from, dio);
@@ -4718,7 +4671,6 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 			if (IS_ERR(path)) {
 				kfree(p);
 				goto skip_write_trace;
->>>>>>> origin/linux_6.1.15_upstream
 			}
 			trace_f2fs_datawrite_start(inode, orig_pos, orig_count,
 					current->pid, path, current->comm);

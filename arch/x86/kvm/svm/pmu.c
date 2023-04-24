@@ -23,49 +23,7 @@ enum pmu_type {
 	PMU_TYPE_EVNTSEL,
 };
 
-<<<<<<< HEAD
-enum index {
-	INDEX_ZERO = 0,
-	INDEX_ONE,
-	INDEX_TWO,
-	INDEX_THREE,
-	INDEX_FOUR,
-	INDEX_FIVE,
-	INDEX_ERROR,
-};
-
-/* duplicated from amd_perfmon_event_map, K7 and above should work. */
-static struct kvm_event_hw_type_mapping amd_event_mapping[] = {
-	[0] = { 0x76, 0x00, PERF_COUNT_HW_CPU_CYCLES },
-	[1] = { 0xc0, 0x00, PERF_COUNT_HW_INSTRUCTIONS },
-	[2] = { 0x7d, 0x07, PERF_COUNT_HW_CACHE_REFERENCES },
-	[3] = { 0x7e, 0x07, PERF_COUNT_HW_CACHE_MISSES },
-	[4] = { 0xc2, 0x00, PERF_COUNT_HW_BRANCH_INSTRUCTIONS },
-	[5] = { 0xc3, 0x00, PERF_COUNT_HW_BRANCH_MISSES },
-	[6] = { 0xd0, 0x00, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND },
-	[7] = { 0xd1, 0x00, PERF_COUNT_HW_STALLED_CYCLES_BACKEND },
-};
-
-/* duplicated from amd_f17h_perfmon_event_map. */
-static struct kvm_event_hw_type_mapping amd_f17h_event_mapping[] = {
-	[0] = { 0x76, 0x00, PERF_COUNT_HW_CPU_CYCLES },
-	[1] = { 0xc0, 0x00, PERF_COUNT_HW_INSTRUCTIONS },
-	[2] = { 0x60, 0xff, PERF_COUNT_HW_CACHE_REFERENCES },
-	[3] = { 0x64, 0x09, PERF_COUNT_HW_CACHE_MISSES },
-	[4] = { 0xc2, 0x00, PERF_COUNT_HW_BRANCH_INSTRUCTIONS },
-	[5] = { 0xc3, 0x00, PERF_COUNT_HW_BRANCH_MISSES },
-	[6] = { 0x87, 0x02, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND },
-	[7] = { 0x87, 0x01, PERF_COUNT_HW_STALLED_CYCLES_BACKEND },
-};
-
-/* amd_pmc_perf_hw_id depends on these being the same size */
-static_assert(ARRAY_SIZE(amd_event_mapping) ==
-	     ARRAY_SIZE(amd_f17h_event_mapping));
-
-static unsigned int get_msr_base(struct kvm_pmu *pmu, enum pmu_type type)
-=======
 static struct kvm_pmc *amd_pmc_idx_to_pmc(struct kvm_pmu *pmu, int pmc_idx)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	unsigned int num_counters = pmu->nr_arch_gp_counters;
 
@@ -113,39 +71,9 @@ static inline struct kvm_pmc *get_gp_pmc_amd(struct kvm_pmu *pmu, u32 msr,
 	return amd_pmc_idx_to_pmc(pmu, idx);
 }
 
-<<<<<<< HEAD
-static unsigned int amd_pmc_perf_hw_id(struct kvm_pmc *pmc)
-{
-	struct kvm_event_hw_type_mapping *event_mapping;
-	u8 event_select = pmc->eventsel & ARCH_PERFMON_EVENTSEL_EVENT;
-	u8 unit_mask = (pmc->eventsel & ARCH_PERFMON_EVENTSEL_UMASK) >> 8;
-	int i;
-
-	if (guest_cpuid_family(pmc->vcpu) >= 0x17)
-		event_mapping = amd_f17h_event_mapping;
-	else
-		event_mapping = amd_event_mapping;
-
-	for (i = 0; i < ARRAY_SIZE(amd_event_mapping); i++)
-		if (event_mapping[i].eventsel == event_select
-		    && event_mapping[i].unit_mask == unit_mask)
-			break;
-
-	if (i == ARRAY_SIZE(amd_event_mapping))
-		return PERF_COUNT_HW_MAX;
-
-	return event_mapping[i].event_type;
-}
-
-/* return PERF_COUNT_HW_MAX as AMD doesn't have fixed events */
-static unsigned amd_find_fixed_event(int idx)
-{
-	return PERF_COUNT_HW_MAX;
-=======
 static bool amd_hw_event_available(struct kvm_pmc *pmc)
 {
 	return true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* check if a PMC is enabled by comparing it against global_ctrl bits. Because
@@ -229,15 +157,10 @@ static int amd_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 	pmc = get_gp_pmc_amd(pmu, msr, PMU_TYPE_EVNTSEL);
 	if (pmc) {
 		data &= ~pmu->reserved_bits;
-<<<<<<< HEAD
-		if (data != pmc->eventsel)
-			reprogram_gp_counter(pmc, data);
-=======
 		if (data != pmc->eventsel) {
 			pmc->eventsel = data;
 			reprogram_counter(pmc);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 	}
 
@@ -293,14 +216,8 @@ static void amd_pmu_reset(struct kvm_vcpu *vcpu)
 	}
 }
 
-<<<<<<< HEAD
-struct kvm_pmu_ops amd_pmu_ops = {
-	.pmc_perf_hw_id = amd_pmc_perf_hw_id,
-	.find_fixed_event = amd_find_fixed_event,
-=======
 struct kvm_pmu_ops amd_pmu_ops __initdata = {
 	.hw_event_available = amd_hw_event_available,
->>>>>>> origin/linux_6.1.15_upstream
 	.pmc_is_enabled = amd_pmc_is_enabled,
 	.pmc_idx_to_pmc = amd_pmc_idx_to_pmc,
 	.rdpmc_ecx_to_pmc = amd_rdpmc_ecx_to_pmc,

@@ -647,27 +647,9 @@ struct mlx5_ib_mr *mlx5_mr_cache_alloc(struct mlx5_ib_dev *dev,
 	if (!mlx5r_umr_can_reconfig(dev, 0, access_flags))
 		return ERR_PTR(-EOPNOTSUPP);
 
-<<<<<<< HEAD
-	ent = &cache->ent[entry];
-	spin_lock_irq(&ent->lock);
-	if (list_empty(&ent->head)) {
-		queue_adjust_cache_locked(ent);
-		ent->miss++;
-		spin_unlock_irq(&ent->lock);
-		mr = create_cache_mr(ent);
-		if (IS_ERR(mr))
-			return mr;
-	} else {
-		mr = list_first_entry(&ent->head, struct mlx5_ib_mr, list);
-		list_del(&mr->list);
-		ent->available_mrs--;
-		queue_adjust_cache_locked(ent);
-		spin_unlock_irq(&ent->lock);
-=======
 	mr = kzalloc(sizeof(*mr), GFP_KERNEL);
 	if (!mr)
 		return ERR_PTR(-ENOMEM);
->>>>>>> origin/linux_6.1.15_upstream
 
 	xa_lock_irq(&ent->mkeys);
 	ent->in_use++;
@@ -689,27 +671,10 @@ struct mlx5_ib_mr *mlx5_mr_cache_alloc(struct mlx5_ib_dev *dev,
 		queue_adjust_cache_locked(ent);
 		xa_unlock_irq(&ent->mkeys);
 	}
-<<<<<<< HEAD
-	req_ent->miss++;
-	return NULL;
-}
-
-static void mlx5_mr_cache_free(struct mlx5_ib_dev *dev, struct mlx5_ib_mr *mr)
-{
-	struct mlx5_cache_ent *ent = mr->cache_ent;
-
-	WRITE_ONCE(dev->cache.last_add, jiffies);
-	spin_lock_irq(&ent->lock);
-	list_add_tail(&mr->list, &ent->head);
-	ent->available_mrs++;
-	queue_adjust_cache_locked(ent);
-	spin_unlock_irq(&ent->lock);
-=======
 	mr->mmkey.cache_ent = ent;
 	mr->mmkey.type = MLX5_MKEY_MR;
 	init_waitqueue_head(&mr->mmkey.wait);
 	return mr;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void clean_keys(struct mlx5_ib_dev *dev, int c)

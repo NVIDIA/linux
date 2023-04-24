@@ -889,10 +889,7 @@ static const struct intel_device_info jsl_info = {
 	}, \
 	TGL_CURSOR_OFFSETS, \
 	.has_global_mocs = 1, \
-<<<<<<< HEAD
-=======
 	.has_pxp = 1, \
->>>>>>> origin/linux_6.1.15_upstream
 	.display.has_dsb = 0 /* FIXME: LUT load is broken with DSB */
 
 static const struct intel_device_info tgl_info = {

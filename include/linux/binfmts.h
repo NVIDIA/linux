@@ -75,24 +75,6 @@ struct linux_binprm {
 #define BINPRM_FLAGS_PRESERVE_ARGV0_BIT 3
 #define BINPRM_FLAGS_PRESERVE_ARGV0 (1 << BINPRM_FLAGS_PRESERVE_ARGV0_BIT)
 
-<<<<<<< HEAD
-/* Function parameter for binfmt->coredump */
-struct coredump_params {
-	const kernel_siginfo_t *siginfo;
-	struct pt_regs *regs;
-	struct file *file;
-	unsigned long limit;
-	unsigned long mm_flags;
-	loff_t written;
-	loff_t pos;
-	loff_t to_skip;
-	int vma_count;
-	size_t vma_data_size;
-	struct core_vma_metadata *vma_meta;
-};
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * This structure defines the functions that are used to load the binary formats that
  * linux accepts.

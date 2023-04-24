@@ -447,11 +447,6 @@ static uint32_t dict_flush(struct dictionary *dict, struct xz_buf *b)
 		 * decompression because in multi-call mode dict->buf
 		 * has been allocated by us in this file; it's not
 		 * provided by the caller like in single-call mode.
-<<<<<<< HEAD
-		 */
-		memcpy(b->out + b->out_pos, dict->buf + dict->start,
-				copy_size);
-=======
 		 *
 		 * With MicroLZMA, b->out can be NULL to skip bytes that
 		 * the caller doesn't need. This cannot be done with XZ
@@ -460,7 +455,6 @@ static uint32_t dict_flush(struct dictionary *dict, struct xz_buf *b)
 		if (!DICT_FLUSH_SUPPORTS_SKIPPING || b->out != NULL)
 			memcpy(b->out + b->out_pos, dict->buf + dict->start,
 					copy_size);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	dict->start = dict->pos;

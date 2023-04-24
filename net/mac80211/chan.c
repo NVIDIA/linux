@@ -1880,15 +1880,9 @@ int ieee80211_link_use_reserved_context(struct ieee80211_link_data *link)
 
 	if (new_ctx->replace_state == IEEE80211_CHANCTX_REPLACE_NONE) {
 		if (old_ctx)
-<<<<<<< HEAD
-			return ieee80211_vif_use_reserved_reassign(sdata);
-
-		return ieee80211_vif_use_reserved_assign(sdata);
-=======
 			return ieee80211_link_use_reserved_reassign(link);
 
 		return ieee80211_link_use_reserved_assign(link);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/*

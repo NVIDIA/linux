@@ -279,8 +279,6 @@
 	assigned-clocks = <&clk IMX8MM_CLK_UART3>;
 	assigned-clock-parents = <&clk IMX8MM_SYS_PLL1_80M>;
 	uart-has-rtscts;
-<<<<<<< HEAD
-=======
 	status = "okay";
 };
 
@@ -295,7 +293,6 @@
 	pinctrl-names = "default";
 	disable-over-current;
 	dr_mode = "host";
->>>>>>> origin/linux_6.1.15_upstream
 	status = "okay";
 };
 

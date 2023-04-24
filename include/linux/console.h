@@ -151,11 +151,8 @@ struct console {
 	int	cflag;
 	uint	ispeed;
 	uint	ospeed;
-<<<<<<< HEAD
-=======
 	u64	seq;
 	unsigned long dropped;
->>>>>>> origin/linux_6.1.15_upstream
 	void	*data;
 	struct	 console *next;
 };

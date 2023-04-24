@@ -366,22 +366,6 @@ static void sdma_v5_0_ring_set_wptr(struct amdgpu_ring *ring)
 	uint32_t mqd_size = adev->mqds[AMDGPU_HW_IP_DMA].mqd_size;
 
 	DRM_DEBUG("Setting write pointer\n");
-<<<<<<< HEAD
-	if (ring->use_doorbell) {
-		DRM_DEBUG("Using doorbell -- "
-				"wptr_offs == 0x%08x "
-				"lower_32_bits(ring->wptr << 2) == 0x%08x "
-				"upper_32_bits(ring->wptr << 2) == 0x%08x\n",
-				ring->wptr_offs,
-				lower_32_bits(ring->wptr << 2),
-				upper_32_bits(ring->wptr << 2));
-		/* XXX check if swapping is necessary on BE */
-		adev->wb.wb[ring->wptr_offs] = lower_32_bits(ring->wptr << 2);
-		adev->wb.wb[ring->wptr_offs + 1] = upper_32_bits(ring->wptr << 2);
-		DRM_DEBUG("calling WDOORBELL64(0x%08x, 0x%016llx)\n",
-				ring->doorbell_index, ring->wptr << 2);
-		WDOORBELL64(ring->doorbell_index, ring->wptr << 2);
-=======
 	if (ring->is_mes_queue) {
 		wptr_saved = (uint32_t *)(ring->mqd_ptr + mqd_size);
 		is_queue_unmap = (uint32_t *)(ring->mqd_ptr + mqd_size +
@@ -407,7 +391,6 @@ static void sdma_v5_0_ring_set_wptr(struct amdgpu_ring *ring)
 				WDOORBELL64(aggregated_db_index,
 					    ring->wptr << 2);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		if (ring->use_doorbell) {
 			DRM_DEBUG("Using doorbell -- "

@@ -201,10 +201,6 @@ static int rpcif_reg_read(void *context, unsigned int reg, unsigned int *val)
 
 	*val = readl(rpc->base + reg);
 	return 0;
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int rpcif_reg_write(void *context, unsigned int reg, unsigned int val)
@@ -263,12 +259,7 @@ int rpcif_sw_init(struct rpcif *rpc, struct device *dev)
 
 	rpc->dev = dev;
 
-<<<<<<< HEAD
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
-	rpc->base = devm_ioremap_resource(&pdev->dev, res);
-=======
 	rpc->base = devm_platform_ioremap_resource_byname(pdev, "regs");
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(rpc->base))
 		return PTR_ERR(rpc->base);
 
@@ -499,11 +490,7 @@ int rpcif_manual_xfer(struct rpcif *rpc)
 	case RPCIF_DATA_OUT:
 		while (pos < rpc->xferlen) {
 			u32 bytes_left = rpc->xferlen - pos;
-<<<<<<< HEAD
-			u32 nbytes, data[2];
-=======
 			u32 nbytes, data[2], *p = data;
->>>>>>> origin/linux_6.1.15_upstream
 
 			smcr = rpc->smcr | RPCIF_SMCR_SPIE;
 
@@ -517,21 +504,9 @@ int rpcif_manual_xfer(struct rpcif *rpc)
 			rpc->xfer_size = nbytes;
 
 			memcpy(data, rpc->buffer + pos, nbytes);
-<<<<<<< HEAD
-			if (nbytes == 8) {
-				regmap_write(rpc->regmap, RPCIF_SMWDR1,
-					     data[0]);
-				regmap_write(rpc->regmap, RPCIF_SMWDR0,
-					     data[1]);
-			} else {
-				regmap_write(rpc->regmap, RPCIF_SMWDR0,
-					     data[0]);
-			}
-=======
 			if (nbytes == 8)
 				regmap_write(rpc->regmap, RPCIF_SMWDR1, *p++);
 			regmap_write(rpc->regmap, RPCIF_SMWDR0, *p);
->>>>>>> origin/linux_6.1.15_upstream
 
 			regmap_write(rpc->regmap, RPCIF_SMCR, smcr);
 			ret = wait_msg_xfer_end(rpc);
@@ -573,11 +548,7 @@ int rpcif_manual_xfer(struct rpcif *rpc)
 		}
 		while (pos < rpc->xferlen) {
 			u32 bytes_left = rpc->xferlen - pos;
-<<<<<<< HEAD
-			u32 nbytes, data[2];
-=======
 			u32 nbytes, data[2], *p = data;
->>>>>>> origin/linux_6.1.15_upstream
 
 			/* nbytes may only be 1, 2, 4, or 8 */
 			nbytes = bytes_left >= max ? max : (1 << ilog2(bytes_left));
@@ -594,21 +565,9 @@ int rpcif_manual_xfer(struct rpcif *rpc)
 			if (ret)
 				goto err_out;
 
-<<<<<<< HEAD
-			if (nbytes == 8) {
-				regmap_read(rpc->regmap, RPCIF_SMRDR1,
-					    &data[0]);
-				regmap_read(rpc->regmap, RPCIF_SMRDR0,
-					    &data[1]);
-			} else {
-				regmap_read(rpc->regmap, RPCIF_SMRDR0,
-					    &data[0]);
-			}
-=======
 			if (nbytes == 8)
 				regmap_read(rpc->regmap, RPCIF_SMRDR1, p++);
 			regmap_read(rpc->regmap, RPCIF_SMRDR0, p);
->>>>>>> origin/linux_6.1.15_upstream
 			memcpy(rpc->buffer + pos, data, nbytes);
 
 			pos += nbytes;

@@ -4607,22 +4607,12 @@ static bool svm_can_emulate_instruction(struct kvm_vcpu *vcpu, int emul_type,
 	 *    3. The #NPF is not due to a code fetch, in which case failure to
 	 *       retrieve the instruction bytes is legitimate (see abvoe).
 	 *
-<<<<<<< HEAD
-	 * But in the SEV guest, the guest memory is encrypted with the
-	 * guest specific key and hypervisor will not be able to decode the
-	 * instruction pointer so we will not able to workaround it. Lets
-	 * print the error and request to kill the guest.
-	 */
-	if (likely(!insn || insn_len))
-		return true;
-=======
 	 * In addition, don't apply the erratum workaround if the #NPF occurred
 	 * while translating guest page tables (see below).
 	 */
 	error_code = to_svm(vcpu)->vmcb->control.exit_info_1;
 	if (error_code & (PFERR_GUEST_PAGE_MASK | PFERR_FETCH_MASK))
 		goto resume_guest;
->>>>>>> origin/linux_6.1.15_upstream
 
 	cr4 = kvm_read_cr4(vcpu);
 	smep = cr4 & X86_CR4_SMEP;
@@ -4771,25 +4761,10 @@ static struct kvm_x86_ops svm_x86_ops __initdata = {
 	.enable_nmi_window = svm_enable_nmi_window,
 	.enable_irq_window = svm_enable_irq_window,
 	.update_cr8_intercept = svm_update_cr8_intercept,
-<<<<<<< HEAD
-	.set_virtual_apic_mode = svm_set_virtual_apic_mode,
-	.refresh_apicv_exec_ctrl = svm_refresh_apicv_exec_ctrl,
-	.check_apicv_inhibit_reasons = svm_check_apicv_inhibit_reasons,
-	.load_eoi_exitmap = svm_load_eoi_exitmap,
-	.hwapic_irr_update = svm_hwapic_irr_update,
-	.hwapic_isr_update = svm_hwapic_isr_update,
-	.apicv_post_state_restore = avic_post_state_restore,
-
-	.set_tss_addr = svm_set_tss_addr,
-	.set_identity_map_addr = svm_set_identity_map_addr,
-	.get_mt_mask = svm_get_mt_mask,
-=======
 	.set_virtual_apic_mode = avic_set_virtual_apic_mode,
 	.refresh_apicv_exec_ctrl = avic_refresh_apicv_exec_ctrl,
 	.check_apicv_inhibit_reasons = avic_check_apicv_inhibit_reasons,
 	.apicv_post_state_restore = avic_apicv_post_state_restore,
->>>>>>> origin/linux_6.1.15_upstream
-
 	.get_exit_info = svm_get_exit_info,
 
 	.vcpu_after_set_cpuid = svm_vcpu_after_set_cpuid,

@@ -183,12 +183,6 @@ static void dpu_hw_intf_setup_timing_engine(struct dpu_hw_intf *ctx,
 		active_v_start = display_v_start;
 		active_v_end = active_v_start + (p->yres * hsync_period) - 1;
 
-<<<<<<< HEAD
-		display_v_start += p->hsync_pulse_width + p->h_back_porch;
-		display_v_end   -= p->h_front_porch; 
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		active_hctl = (active_h_end << 16) | active_h_start;
 		display_hctl = active_hctl;
 

@@ -178,10 +178,7 @@ struct meson_host {
 	bool vqmmc_enabled;
 	bool needs_pre_post_req;
 
-<<<<<<< HEAD
-=======
 	spinlock_t lock;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #define CMD_CFG_LENGTH_MASK GENMASK(8, 0)

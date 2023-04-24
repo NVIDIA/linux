@@ -27,19 +27,11 @@
 #define LUT_TURBO_IND			1
 
 #define GT_IRQ_STATUS			BIT(2)
-<<<<<<< HEAD
-
-#define HZ_PER_KHZ			1000
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 struct qcom_cpufreq_soc_data {
 	u32 reg_enable;
 	u32 reg_domain_state;
-<<<<<<< HEAD
-=======
 	u32 reg_dcvs_ctrl;
->>>>>>> origin/linux_6.1.15_upstream
 	u32 reg_freq_lut;
 	u32 reg_volt_lut;
 	u32 reg_intr_clr;
@@ -325,21 +317,6 @@ static void qcom_get_related_cpus(int index, struct cpumask *m)
 	}
 }
 
-<<<<<<< HEAD
-static unsigned long qcom_lmh_get_throttle_freq(struct qcom_cpufreq_data *data)
-{
-	unsigned int lval;
-
-	if (data->soc_data->reg_current_vote)
-		lval = readl_relaxed(data->base + data->soc_data->reg_current_vote) & 0x3ff;
-	else
-		lval = readl_relaxed(data->base + data->soc_data->reg_domain_state) & 0xff;
-
-	return lval * xo_rate;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 {
 	struct cpufreq_policy *policy = data->policy;
@@ -368,13 +345,8 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 
 	freq_qos_update_request(&data->throttle_freq_req, throttled_freq);
 
-<<<<<<< HEAD
-	arch_set_thermal_pressure(policy->related_cpus,
-				  max_capacity - capacity);
-=======
 	/* Update thermal pressure (the boost frequencies are accepted) */
 	arch_update_thermal_pressure(policy->related_cpus, throttled_freq);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * In the unlikely case policy is unregistered do not enable
@@ -434,10 +406,7 @@ static const struct qcom_cpufreq_soc_data qcom_soc_data = {
 static const struct qcom_cpufreq_soc_data epss_soc_data = {
 	.reg_enable = 0x0,
 	.reg_domain_state = 0x20,
-<<<<<<< HEAD
-=======
 	.reg_dcvs_ctrl = 0xb0,
->>>>>>> origin/linux_6.1.15_upstream
 	.reg_freq_lut = 0x100,
 	.reg_volt_lut = 0x200,
 	.reg_intr_clr = 0x308,

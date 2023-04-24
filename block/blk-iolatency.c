@@ -756,11 +756,7 @@ static void blkiolatency_enable_work_fn(struct work_struct *work)
 	}
 }
 
-<<<<<<< HEAD
-int blk_iolatency_init(struct request_queue *q)
-=======
 int blk_iolatency_init(struct gendisk *disk)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct request_queue *q = disk->queue;
 	struct blk_iolatency *blkiolat;

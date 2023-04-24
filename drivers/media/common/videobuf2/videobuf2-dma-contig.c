@@ -43,10 +43,7 @@ struct vb2_dc_buf {
 	struct dma_buf_attachment	*db_attach;
 
 	struct vb2_buffer		*vb;
-<<<<<<< HEAD
-=======
 	bool				non_coherent_mem;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /*********************************************/
@@ -80,8 +77,6 @@ static void *vb2_dc_cookie(struct vb2_buffer *vb, void *buf_priv)
 	return &buf->dma_addr;
 }
 
-<<<<<<< HEAD
-=======
 /*
  * This function may fail if:
  *
@@ -96,7 +91,6 @@ static void *vb2_dc_cookie(struct vb2_buffer *vb, void *buf_priv)
  * - Queue DMA attrs have DMA_ATTR_NO_KERNEL_MAPPING set
  *   Relevant for buffers that use coherent memory.
  */
->>>>>>> origin/linux_6.1.15_upstream
 static void *vb2_dc_vaddr(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct vb2_dc_buf *buf = buf_priv;
@@ -194,8 +188,6 @@ static void vb2_dc_put(void *buf_priv)
 	kfree(buf);
 }
 
-<<<<<<< HEAD
-=======
 static int vb2_dc_alloc_coherent(struct vb2_dc_buf *buf)
 {
 	struct vb2_queue *q = buf->vb->vb2_queue;
@@ -236,7 +228,6 @@ static int vb2_dc_alloc_non_coherent(struct vb2_dc_buf *buf)
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void *vb2_dc_alloc(struct vb2_buffer *vb,
 			  struct device *dev,
 			  unsigned long size)
@@ -252,31 +243,13 @@ static void *vb2_dc_alloc(struct vb2_buffer *vb,
 		return ERR_PTR(-ENOMEM);
 
 	buf->attrs = vb->vb2_queue->dma_attrs;
-<<<<<<< HEAD
-	buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
-				      GFP_KERNEL | vb->vb2_queue->gfp_flags,
-				      buf->attrs);
-	if (!buf->cookie) {
-		dev_err(dev, "dma_alloc_coherent of size %lu failed\n", size);
-		kfree(buf);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	if ((buf->attrs & DMA_ATTR_NO_KERNEL_MAPPING) == 0)
-		buf->vaddr = buf->cookie;
-=======
 	buf->dma_dir = vb->vb2_queue->dma_dir;
 	buf->vb = vb;
 	buf->non_coherent_mem = vb->vb2_queue->non_coherent_mem;
->>>>>>> origin/linux_6.1.15_upstream
 
 	buf->size = size;
 	/* Prevent the device from being released while the buffer is used */
 	buf->dev = get_device(dev);
-<<<<<<< HEAD
-	buf->size = size;
-	buf->dma_dir = vb->vb2_queue->dma_dir;
-=======
 
 	if (buf->non_coherent_mem)
 		ret = vb2_dc_alloc_non_coherent(buf);
@@ -288,7 +261,6 @@ static void *vb2_dc_alloc(struct vb2_buffer *vb,
 		kfree(buf);
 		return ERR_PTR(-ENOMEM);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	buf->handler.refcount = &buf->refcount;
 	buf->handler.put = vb2_dc_put;

@@ -2012,19 +2012,12 @@ static struct hist_field *create_hist_field(struct hist_trigger_data *hist_data,
 			goto free;
 
 		if (field->filter_type == FILTER_STATIC_STRING) {
-<<<<<<< HEAD
-			hist_field->fn = hist_field_string;
-			hist_field->size = field->size;
-		} else if (field->filter_type == FILTER_DYN_STRING)
-			hist_field->fn = hist_field_dynstring;
-=======
 			hist_field->fn_num = HIST_FIELD_FN_STRING;
 			hist_field->size = field->size;
 		} else if (field->filter_type == FILTER_DYN_STRING) {
 			hist_field->fn_num = HIST_FIELD_FN_DYNSTRING;
 		} else if (field->filter_type == FILTER_RDYN_STRING)
 			hist_field->fn_num = HIST_FIELD_FN_RELDYNSTRING;
->>>>>>> origin/linux_6.1.15_upstream
 		else
 			hist_field->fn_num = HIST_FIELD_FN_PSTRING;
 	} else {
@@ -2735,15 +2728,9 @@ static struct hist_field *parse_expr(struct hist_trigger_data *hist_data,
 	expr->operands[0] = operand1;
 	expr->operands[1] = operand2;
 
-<<<<<<< HEAD
-	/* The operand sizes should be the same, so just pick one */
-	expr->size = operand1->size;
-	expr->is_signed = operand1->is_signed;
-=======
 	if (field_op == FIELD_OP_DIV &&
 			operand2_flags & HIST_FIELD_FL_CONST) {
 		u64 divisor = var2 ? var2->constant : operand2->constant;
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (!divisor) {
 			hist_err(file->tr, HIST_ERR_DIVISION_BY_ZERO, errpos(str));

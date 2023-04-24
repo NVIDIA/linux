@@ -40,10 +40,7 @@
 #include <linux/fs.h>
 #include <linux/path.h>
 #include <linux/timekeeping.h>
-<<<<<<< HEAD
-=======
 #include <linux/sysctl.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/elf.h>
 
 #include <linux/uaccess.h>
@@ -59,15 +56,9 @@
 static bool dump_vma_snapshot(struct coredump_params *cprm);
 static void free_vma_snapshot(struct coredump_params *cprm);
 
-<<<<<<< HEAD
-int core_uses_pid;
-unsigned int core_pipe_limit;
-char core_pattern[CORENAME_MAX_SIZE] = "core";
-=======
 static int core_uses_pid;
 static unsigned int core_pipe_limit;
 static char core_pattern[CORENAME_MAX_SIZE] = "core";
->>>>>>> origin/linux_6.1.15_upstream
 static int core_name_size = CORENAME_MAX_SIZE;
 
 struct core_name {
@@ -1148,12 +1139,8 @@ static bool dump_vma_snapshot(struct coredump_params *cprm)
 {
 	struct vm_area_struct *gate_vma, *vma = NULL;
 	struct mm_struct *mm = current->mm;
-<<<<<<< HEAD
-	int i;
-=======
 	MA_STATE(mas, &mm->mm_mt, 0, 0);
 	int i = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Once the stack expansion code is fixed to not change VMA bounds
@@ -1173,12 +1160,7 @@ static bool dump_vma_snapshot(struct coredump_params *cprm)
 		return false;
 	}
 
-<<<<<<< HEAD
-	for (i = 0, vma = first_vma(current, gate_vma); vma != NULL;
-			vma = next_vma(vma, gate_vma), i++) {
-=======
 	while ((vma = coredump_next_vma(&mas, vma, gate_vma)) != NULL) {
->>>>>>> origin/linux_6.1.15_upstream
 		struct core_vma_metadata *m = cprm->vma_meta + i;
 
 		m->start = vma->vm_start;
@@ -1186,17 +1168,10 @@ static bool dump_vma_snapshot(struct coredump_params *cprm)
 		m->flags = vma->vm_flags;
 		m->dump_size = vma_dump_size(vma, cprm->mm_flags);
 		m->pgoff = vma->vm_pgoff;
-<<<<<<< HEAD
-
-		m->file = vma->vm_file;
-		if (m->file)
-			get_file(m->file);
-=======
 		m->file = vma->vm_file;
 		if (m->file)
 			get_file(m->file);
 		i++;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	mmap_write_unlock(mm);

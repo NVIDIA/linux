@@ -3887,10 +3887,6 @@ static void mtip_pci_remove(struct pci_dev *pdev)
 			"Completion workers still active!\n");
 	}
 
-<<<<<<< HEAD
-	blk_mark_disk_dead(dd->disk);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	set_bit(MTIP_DDF_REMOVE_PENDING_BIT, &dd->dd_flag);
 
 	if (test_bit(MTIP_DDF_INIT_DONE_BIT, &dd->dd_flag))

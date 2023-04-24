@@ -255,8 +255,6 @@ enum {
 	 * during the hdev->setup vendor callback.
 	 */
 	HCI_QUIRK_BROKEN_READ_TRANSMIT_POWER,
-<<<<<<< HEAD
-=======
 
 	/* When this quirk is set, HCI_OP_SET_EVENT_FLT requests with
 	 * HCI_FLT_CLEAR_ALL are ignored and event filtering is
@@ -296,7 +294,6 @@ enum {
 	 * during the hdev->setup vendor callback.
 	 */
 	HCI_QUIRK_BROKEN_MWS_TRANSPORT_CONFIG,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /* HCI device flags */

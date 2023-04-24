@@ -6236,14 +6236,9 @@ static int btf_check_func_arg_match(struct bpf_verifier_env *env,
 				    struct bpf_kfunc_arg_meta *kfunc_meta,
 				    bool processing_call)
 {
-<<<<<<< HEAD
-	enum bpf_prog_type prog_type = env->prog->type == BPF_PROG_TYPE_EXT ?
-		env->prog->aux->dst_prog->type : env->prog->type;
-=======
 	enum bpf_prog_type prog_type = resolve_prog_type(env->prog);
 	bool rel = false, kptr_get = false, trusted_args = false;
 	bool sleepable = false;
->>>>>>> origin/linux_6.1.15_upstream
 	struct bpf_verifier_log *log = &env->log;
 	u32 i, nargs, ref_id, ref_obj_id = 0;
 	bool is_kfunc = btf_is_kernel(btf);
@@ -6447,12 +6442,6 @@ static int btf_check_func_arg_match(struct bpf_verifier_env *env,
 			if (reg->type == PTR_TO_BTF_ID) {
 				reg_btf = reg->btf;
 				reg_ref_id = reg->btf_id;
-<<<<<<< HEAD
-			} else if (reg2btf_ids[base_type(reg->type)]) {
-				reg_btf = btf_vmlinux;
-				reg_ref_id = *reg2btf_ids[base_type(reg->type)];
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			} else {
 				reg_btf = btf_vmlinux;
 				reg_ref_id = *reg2btf_ids[base_type(reg->type)];
@@ -6472,23 +6461,7 @@ static int btf_check_func_arg_match(struct bpf_verifier_env *env,
 					reg_ref_tname);
 				return -EINVAL;
 			}
-<<<<<<< HEAD
-		} else if (btf_get_prog_ctx_type(log, btf, t, prog_type, i)) {
-			/* If function expects ctx type in BTF check that caller
-			 * is passing PTR_TO_CTX.
-			 */
-			if (reg->type != PTR_TO_CTX) {
-				bpf_log(log,
-					"arg#%d expected pointer to ctx, but got %s\n",
-					i, btf_type_str(t));
-				return -EINVAL;
-			}
-			if (check_ptr_off_reg(env, reg, regno))
-				return -EINVAL;
-		} else if (ptr_to_mem_ok) {
-=======
 		} else if (ptr_to_mem_ok && processing_call) {
->>>>>>> origin/linux_6.1.15_upstream
 			const struct btf_type *resolve_ret;
 			u32 type_size;
 
@@ -7082,14 +7055,11 @@ bool btf_id_set_contains(const struct btf_id_set *set, u32 id)
 	return bsearch(&id, set->ids, set->cnt, sizeof(u32), btf_id_cmp_func) != NULL;
 }
 
-<<<<<<< HEAD
-=======
 static void *btf_id_set8_contains(const struct btf_id_set8 *set, u32 id)
 {
 	return bsearch(&id, set->pairs, set->cnt, sizeof(set->pairs[0]), btf_id_cmp_func);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 enum {
 	BTF_MODULE_F_LIVE = (1 << 0),
 };

@@ -651,22 +651,6 @@ static void cs42l42_enable_jack_detect(struct sub_codec *cs42l42)
 static void cs42l42_run_jack_detect(struct sub_codec *cs42l42)
 {
 	/* Clear interrupts */
-<<<<<<< HEAD
-	cs8409_i2c_read(cs42l42, 0x1308);
-	cs8409_i2c_read(cs42l42, 0x1b77);
-	cs8409_i2c_write(cs42l42, 0x1320, 0xFF);
-	cs8409_i2c_read(cs42l42, 0x130f);
-
-	cs8409_i2c_write(cs42l42, 0x1102, 0x87);
-	cs8409_i2c_write(cs42l42, 0x1f06, 0x86);
-	cs8409_i2c_write(cs42l42, 0x1b74, 0x07);
-	cs8409_i2c_write(cs42l42, 0x131b, 0xFD);
-	cs8409_i2c_write(cs42l42, 0x1120, 0x80);
-	/* Wait ~20ms*/
-	usleep_range(20000, 25000);
-	cs8409_i2c_write(cs42l42, 0x111f, 0x77);
-	cs8409_i2c_write(cs42l42, 0x1120, 0xc0);
-=======
 	cs8409_i2c_read(cs42l42, CS42L42_CODEC_STATUS);
 	cs8409_i2c_read(cs42l42, CS42L42_DET_STATUS1);
 	cs8409_i2c_write(cs42l42, CS42L42_TSRS_PLUG_INT_MASK, 0xFF);

@@ -16,27 +16,7 @@
 
 static struct mtk_pcs *pcs_to_mtk_pcs(struct phylink_pcs *pcs)
 {
-<<<<<<< HEAD
-	struct device_node *np;
-	int i;
-
-	ss->ana_rgc3 = ana_rgc3;
-
-	for (i = 0; i < MTK_MAX_DEVS; i++) {
-		np = of_parse_phandle(r, "mediatek,sgmiisys", i);
-		if (!np)
-			break;
-
-		ss->regmap[i] = syscon_node_to_regmap(np);
-		of_node_put(np);
-		if (IS_ERR(ss->regmap[i]))
-			return PTR_ERR(ss->regmap[i]);
-	}
-
-	return 0;
-=======
 	return container_of(pcs, struct mtk_pcs, pcs);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* For SGMII interface mode */

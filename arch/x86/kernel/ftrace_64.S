@@ -183,25 +183,7 @@ SYM_INNER_LABEL(ftrace_caller_end, SYM_L_GLOBAL)
 	ANNOTATE_NOENDBR
 	RET
 SYM_FUNC_END(ftrace_caller);
-<<<<<<< HEAD
-
-SYM_FUNC_START(ftrace_epilogue)
-#ifdef CONFIG_FUNCTION_GRAPH_TRACER
-SYM_INNER_LABEL(ftrace_graph_call, SYM_L_GLOBAL)
-	jmp ftrace_stub
-#endif
-
-/*
- * This is weak to keep gas from relaxing the jumps.
- * It is also used to copy the RET for trampolines.
- */
-SYM_INNER_LABEL_ALIGN(ftrace_stub, SYM_L_WEAK)
-	UNWIND_HINT_FUNC
-	RET
-SYM_FUNC_END(ftrace_epilogue)
-=======
 STACK_FRAME_NON_STANDARD_FP(ftrace_caller)
->>>>>>> origin/linux_6.1.15_upstream
 
 SYM_FUNC_START(ftrace_regs_caller)
 	/* Save the current flags before any operations that can change them */
@@ -304,20 +286,6 @@ STACK_FRAME_NON_STANDARD_FP(ftrace_regs_caller)
 SYM_FUNC_START(__fentry__)
 	cmpq $ftrace_stub, ftrace_trace_function
 	jnz trace
-<<<<<<< HEAD
-
-fgraph_trace:
-#ifdef CONFIG_FUNCTION_GRAPH_TRACER
-	cmpq $ftrace_stub, ftrace_graph_return
-	jnz ftrace_graph_caller
-
-	cmpq $ftrace_graph_entry_stub, ftrace_graph_entry
-	jnz ftrace_graph_caller
-#endif
-
-SYM_INNER_LABEL(ftrace_stub, SYM_L_GLOBAL)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	RET
 
 trace:
@@ -342,28 +310,10 @@ STACK_FRAME_NON_STANDARD_FP(__fentry__)
 #endif /* CONFIG_DYNAMIC_FTRACE */
 
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
-<<<<<<< HEAD
-SYM_FUNC_START(ftrace_graph_caller)
-	/* Saves rbp into %rdx and fills first parameter  */
-	save_mcount_regs
-
-	leaq MCOUNT_REG_SIZE+8(%rsp), %rsi
-	movq $0, %rdx	/* No framepointers needed */
-	call	prepare_ftrace_return
-
-	restore_mcount_regs
-
-	RET
-SYM_FUNC_END(ftrace_graph_caller)
-
-SYM_FUNC_START(return_to_handler)
-	subq  $24, %rsp
-=======
 SYM_CODE_START(return_to_handler)
 	UNWIND_HINT_EMPTY
 	ANNOTATE_NOENDBR
 	subq  $16, %rsp
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Save the return values */
 	movq %rax, (%rsp)

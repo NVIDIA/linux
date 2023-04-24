@@ -1736,8 +1736,6 @@ static int finish_need_commit_sem_search(struct btrfs_path *path)
 
 	return 0;
 }
-<<<<<<< HEAD
-=======
 
 static inline int search_for_key_slot(struct extent_buffer *eb,
 				      int search_low_slot,
@@ -1887,7 +1885,6 @@ static int search_leaf(struct btrfs_trans_handle *trans,
 
 	return ret;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * btrfs_search_slot - look for a key in a tree and perform necessary
@@ -1975,16 +1972,12 @@ int btrfs_search_slot(struct btrfs_trans_handle *trans, struct btrfs_root *root,
 
 	if (p->need_commit_sem) {
 		ASSERT(p->search_commit_root);
-<<<<<<< HEAD
-		down_read(&fs_info->commit_root_sem);
-=======
 		if (p->nowait) {
 			if (!down_read_trylock(&fs_info->commit_root_sem))
 				return -EAGAIN;
 		} else {
 			down_read(&fs_info->commit_root_sem);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 again:
@@ -4695,9 +4688,6 @@ again:
 		if (path->need_commit_sem) {
 			path->need_commit_sem = 0;
 			need_commit_sem = true;
-<<<<<<< HEAD
-			down_read(&fs_info->commit_root_sem);
-=======
 			if (path->nowait) {
 				if (!down_read_trylock(&fs_info->commit_root_sem)) {
 					ret = -EAGAIN;
@@ -4706,7 +4696,6 @@ again:
 			} else {
 				down_read(&fs_info->commit_root_sem);
 			}
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		ret = btrfs_search_slot(NULL, root, &key, path, 0, 0);
 	}

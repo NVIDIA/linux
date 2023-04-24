@@ -93,13 +93,9 @@ SYM_CODE_START_NOALIGN(relocate_kernel)
 	movl    %edi, %eax
 	addl    $(identity_mapped - relocate_kernel), %eax
 	pushl   %eax
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(relocate_kernel)
 
 SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
@@ -167,13 +163,9 @@ SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
 	xorl    %edx, %edx
 	xorl    %esi, %esi
 	xorl    %ebp, %ebp
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 1:
 	popl	%edx
 	movl	CP_PA_SWAP_PAGE(%edi), %esp
@@ -205,13 +197,9 @@ SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
 	movl	%edi, %eax
 	addl	$(virtual_mapped - relocate_kernel), %eax
 	pushl	%eax
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(identity_mapped)
 
 SYM_CODE_START_LOCAL_NOALIGN(virtual_mapped)
@@ -229,13 +217,9 @@ SYM_CODE_START_LOCAL_NOALIGN(virtual_mapped)
 	popl	%edi
 	popl	%esi
 	popl	%ebx
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(virtual_mapped)
 
 	/* Do the copies */
@@ -298,13 +282,9 @@ SYM_CODE_START_LOCAL_NOALIGN(swap_pages)
 	popl	%edi
 	popl	%ebx
 	popl	%ebp
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(swap_pages)
 
 	.globl kexec_control_code_size

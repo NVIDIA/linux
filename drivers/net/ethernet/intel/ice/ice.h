@@ -161,12 +161,9 @@
 #define ice_for_each_q_vector(vsi, i) \
 	for ((i) = 0; (i) < (vsi)->num_q_vectors; (i)++)
 
-<<<<<<< HEAD
-=======
 #define ice_for_each_chnl_tc(i)	\
 	for ((i) = ICE_CHNL_START_TC; (i) < ICE_CHNL_MAX_TC; (i)++)
 
->>>>>>> origin/linux_6.1.15_upstream
 #define ICE_UCAST_PROMISC_BITS (ICE_PROMISC_UCAST_TX | ICE_PROMISC_UCAST_RX)
 
 #define ICE_UCAST_VLAN_PROMISC_BITS (ICE_PROMISC_UCAST_TX | \
@@ -489,10 +486,7 @@ enum ice_pf_flags {
 	ICE_FLAG_LINK_LENIENT_MODE_ENA,
 	ICE_FLAG_PLUG_AUX_DEV,
 	ICE_FLAG_MTU_CHANGED,
-<<<<<<< HEAD
-=======
 	ICE_FLAG_GNSS,			/* GNSS successfully initialized */
->>>>>>> origin/linux_6.1.15_upstream
 	ICE_PF_FLAGS_NBITS		/* must be last */
 };
 
@@ -922,10 +916,6 @@ static inline void ice_set_rdma_cap(struct ice_pf *pf)
 {
 	if (pf->hw.func_caps.common_cap.rdma && pf->num_rdma_msix) {
 		set_bit(ICE_FLAG_RDMA_ENA, pf->flags);
-<<<<<<< HEAD
-		set_bit(ICE_FLAG_AUX_ENA, pf->flags);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		set_bit(ICE_FLAG_PLUG_AUX_DEV, pf->flags);
 	}
 }

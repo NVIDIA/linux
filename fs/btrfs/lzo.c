@@ -374,21 +374,12 @@ int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 		       (cur_in + LZO_LEN - 1) / sectorsize);
 		cur_page = cb->compressed_pages[cur_in / PAGE_SIZE];
 		ASSERT(cur_page);
-<<<<<<< HEAD
-		kaddr = kmap(cur_page);
-		seg_len = read_compress_length(kaddr + offset_in_page(cur_in));
-		kunmap(cur_page);
-		cur_in += LZO_LEN;
-
-		if (seg_len > lzo1x_worst_compress(PAGE_SIZE)) {
-=======
 		kaddr = kmap_local_page(cur_page);
 		seg_len = read_compress_length(kaddr + offset_in_page(cur_in));
 		kunmap_local(kaddr);
 		cur_in += LZO_LEN;
 
 		if (seg_len > WORKSPACE_CBUF_LENGTH) {
->>>>>>> origin/linux_6.1.15_upstream
 			/*
 			 * seg_len shouldn't be larger than we have allocated
 			 * for workspace->cbuf

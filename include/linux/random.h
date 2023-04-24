@@ -21,16 +21,6 @@ void add_hwgenerator_randomness(const void *buf, size_t len, size_t entropy);
 
 static inline void add_latent_entropy(void)
 {
-<<<<<<< HEAD
-	add_device_randomness((const void *)&latent_entropy, sizeof(latent_entropy));
-}
-#else
-static inline void add_latent_entropy(void) { }
-#endif
-
-void get_random_bytes(void *buf, size_t len);
-size_t __must_check get_random_bytes_arch(void *buf, size_t len);
-=======
 #if defined(LATENT_ENTROPY_PLUGIN) && !defined(__CHECKER__)
 	add_device_randomness((const void *)&latent_entropy, sizeof(latent_entropy));
 #else
@@ -50,7 +40,6 @@ static inline int unregister_random_vmfork_notifier(struct notifier_block *nb) {
 void get_random_bytes(void *buf, size_t len);
 u8 get_random_u8(void);
 u16 get_random_u16(void);
->>>>>>> origin/linux_6.1.15_upstream
 u32 get_random_u32(void);
 u64 get_random_u64(void);
 static inline unsigned long get_random_long(void)
@@ -146,18 +135,10 @@ static inline unsigned long get_random_canary(void)
 	return get_random_long() & CANARY_MASK;
 }
 
-<<<<<<< HEAD
-int __init random_init(const char *command_line);
-bool rng_is_initialized(void);
-int wait_for_random_bytes(void);
-int register_random_ready_notifier(struct notifier_block *nb);
-int unregister_random_ready_notifier(struct notifier_block *nb);
-=======
 void __init random_init_early(const char *command_line);
 void __init random_init(void);
 bool rng_is_initialized(void);
 int wait_for_random_bytes(void);
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Calls wait_for_random_bytes() and then calls get_random_bytes(buf, nbytes).
  * Returns the result of the call to wait_for_random_bytes. */
@@ -176,16 +157,10 @@ static inline int get_random_bytes_wait(void *buf, size_t nbytes)
 		*out = get_random_ ## name(); \
 		return 0; \
 	}
-<<<<<<< HEAD
-declare_get_random_var_wait(u32, u32)
-declare_get_random_var_wait(u64, u32)
-declare_get_random_var_wait(int, unsigned int)
-=======
 declare_get_random_var_wait(u8, u8)
 declare_get_random_var_wait(u16, u16)
 declare_get_random_var_wait(u32, u32)
 declare_get_random_var_wait(u64, u32)
->>>>>>> origin/linux_6.1.15_upstream
 declare_get_random_var_wait(long, unsigned long)
 #undef declare_get_random_var
 
@@ -196,18 +171,7 @@ declare_get_random_var_wait(long, unsigned long)
  */
 #include <linux/prandom.h>
 
-<<<<<<< HEAD
-#ifdef CONFIG_ARCH_RANDOM
-# include <asm/archrandom.h>
-#else
-static inline bool __must_check arch_get_random_long(unsigned long *v) { return false; }
-static inline bool __must_check arch_get_random_int(unsigned int *v) { return false; }
-static inline bool __must_check arch_get_random_seed_long(unsigned long *v) { return false; }
-static inline bool __must_check arch_get_random_seed_int(unsigned int *v) { return false; }
-#endif
-=======
 #include <asm/archrandom.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * Called from the boot CPU during startup; not valid to call once

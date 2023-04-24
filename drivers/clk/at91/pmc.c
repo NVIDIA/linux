@@ -176,11 +176,6 @@ static int __init pmc_register_ops(void)
 		of_node_put(np);
 		return -ENODEV;
 	}
-<<<<<<< HEAD
-
-	pmcreg = device_node_to_regmap(np);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	of_node_put(np);
 
 	at91_pmc_backup_suspend = of_iomap(np, 0);

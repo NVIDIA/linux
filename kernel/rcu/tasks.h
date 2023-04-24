@@ -547,18 +547,12 @@ static int __noreturn rcu_tasks_kthread(void *arg)
 	 * This loop is terminated by the system going down.  ;-)
 	 */
 	for (;;) {
-<<<<<<< HEAD
-		set_tasks_gp_state(rtp, RTGS_WAIT_CBS);
-=======
 		// Wait for one grace period and invoke any callbacks
 		// that are ready.
 		rcu_tasks_one_gp(rtp, false);
->>>>>>> origin/linux_6.1.15_upstream
 
 		// Paranoid sleep to keep this from entering a tight loop.
 		schedule_timeout_idle(rtp->gp_sleep);
-<<<<<<< HEAD
-=======
 	}
 }
 
@@ -573,7 +567,6 @@ static void synchronize_rcu_tasks_generic(struct rcu_tasks *rtp)
 	if (READ_ONCE(rtp->kthread_ptr)) {
 		wait_rcu_gp(rtp->call_func);
 		return;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	rcu_tasks_one_gp(rtp, true);
 }

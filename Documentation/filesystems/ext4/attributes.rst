@@ -75,13 +75,8 @@ The beginning of an extended attribute block is in
      - h_checksum
      - Checksum of the extended attribute block.
    * - 0x14
-<<<<<<< HEAD
-     - \_\_u32
-     - h\_reserved[3]
-=======
      - __u32
      - h_reserved[3]
->>>>>>> origin/linux_6.1.15_upstream
      - Zero.
 
 The checksum is calculated against the FS UUID, the 64-bit block number

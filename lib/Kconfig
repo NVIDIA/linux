@@ -118,12 +118,6 @@ config INDIRECT_IOMEM_FALLBACK
 	  mmio accesses when the IO memory address is not a registered
 	  emulated region.
 
-<<<<<<< HEAD
-source "lib/crypto/Kconfig"
-
-config LIB_MEMNEQ
-	bool
-=======
 config TRACE_MMIO_ACCESS
 	bool "Register read/write tracing"
 	depends on TRACING && ARCH_HAVE_TRACE_MMIO_ACCESS
@@ -132,7 +126,6 @@ config TRACE_MMIO_ACCESS
 	  can be used for logging all MMIO read/write operations.
 
 source "lib/crypto/Kconfig"
->>>>>>> origin/linux_6.1.15_upstream
 
 config CRC_CCITT
 	tristate "CRC-CCITT functions"

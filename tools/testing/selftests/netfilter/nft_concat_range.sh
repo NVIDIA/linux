@@ -363,11 +363,7 @@ src		mac
 start		1
 count		1
 src_delta	2000
-<<<<<<< HEAD
-tools		sendip nc bash
-=======
 tools		sendip socat nc bash
->>>>>>> origin/linux_6.1.15_upstream
 proto		udp
 
 race_repeat	0

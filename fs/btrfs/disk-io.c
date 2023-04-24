@@ -344,9 +344,6 @@ error:
 	btrfs_print_tree(eb, 0);
 	btrfs_err(fs_info, "block=%llu write time tree block corruption detected",
 		  eb->start);
-<<<<<<< HEAD
-	WARN_ON(IS_ENABLED(CONFIG_BTRFS_DEBUG));
-=======
 	/*
 	 * Be noisy if this is an extent buffer from a log tree. We don't abort
 	 * a transaction in case there's a bad log tree extent buffer, we just
@@ -355,7 +352,6 @@ error:
 	 */
 	WARN_ON(IS_ENABLED(CONFIG_BTRFS_DEBUG) ||
 		btrfs_header_owner(eb) == BTRFS_TREE_LOG_OBJECTID);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -1711,11 +1707,7 @@ again:
 fail:
 	/*
 	 * If our caller provided us an anonymous device, then it's his
-<<<<<<< HEAD
-	 * responsability to free it in case we fail. So we have to set our
-=======
 	 * responsibility to free it in case we fail. So we have to set our
->>>>>>> origin/linux_6.1.15_upstream
 	 * root's anon_dev to 0 to avoid a double free, once by btrfs_put_root()
 	 * and once again by our caller.
 	 */
@@ -2959,13 +2951,8 @@ static int __cold init_tree_roots(struct btrfs_fs_info *fs_info)
 		}
 
 		/* All successful */
-<<<<<<< HEAD
-		fs_info->generation = generation;
-		fs_info->last_trans_committed = generation;
-=======
 		fs_info->generation = btrfs_header_generation(tree_root->node);
 		fs_info->last_trans_committed = fs_info->generation;
->>>>>>> origin/linux_6.1.15_upstream
 		fs_info->last_reloc_trans = 0;
 
 		/* Always begin writing backup roots after the one being used */
@@ -2999,10 +2986,7 @@ void btrfs_init_fs_info(struct btrfs_fs_info *fs_info)
 	spin_lock_init(&fs_info->buffer_lock);
 	spin_lock_init(&fs_info->unused_bgs_lock);
 	spin_lock_init(&fs_info->treelog_bg_lock);
-<<<<<<< HEAD
-=======
 	spin_lock_init(&fs_info->zone_active_bgs_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	spin_lock_init(&fs_info->relocation_bg_lock);
 	rwlock_init(&fs_info->tree_mod_log_lock);
 	rwlock_init(&fs_info->global_root_lock);
@@ -3573,59 +3557,15 @@ int __cold open_ctree(struct super_block *sb, struct btrfs_fs_devices *fs_device
 		goto fail_alloc;
 	}
 
-<<<<<<< HEAD
-	features = btrfs_super_incompat_flags(disk_super) &
-		~BTRFS_FEATURE_INCOMPAT_SUPP;
-	if (features) {
-		btrfs_err(fs_info,
-		    "cannot mount because of unsupported optional features (0x%llx)",
-		    features);
-		err = -EINVAL;
-		goto fail_alloc;
-	}
-
-	features = btrfs_super_incompat_flags(disk_super);
-	features |= BTRFS_FEATURE_INCOMPAT_MIXED_BACKREF;
-	if (fs_info->compress_type == BTRFS_COMPRESS_LZO)
-		features |= BTRFS_FEATURE_INCOMPAT_COMPRESS_LZO;
-	else if (fs_info->compress_type == BTRFS_COMPRESS_ZSTD)
-		features |= BTRFS_FEATURE_INCOMPAT_COMPRESS_ZSTD;
-
-	if (features & BTRFS_FEATURE_INCOMPAT_SKINNY_METADATA)
-		btrfs_info(fs_info, "has skinny extents");
-
-	/*
-	 * mixed block groups end up with duplicate but slightly offset
-	 * extent buffers for the same range.  It leads to corruptions
-	 */
-	if ((features & BTRFS_FEATURE_INCOMPAT_MIXED_GROUPS) &&
-	    (sectorsize != nodesize)) {
-		btrfs_err(fs_info,
-"unequal nodesize/sectorsize (%u != %u) are not allowed for mixed block groups",
-			nodesize, sectorsize);
-=======
 	ret = btrfs_check_features(fs_info, !sb_rdonly(sb));
 	if (ret < 0) {
 		err = ret;
->>>>>>> origin/linux_6.1.15_upstream
 		goto fail_alloc;
 	}
 
 	if (sectorsize < PAGE_SIZE) {
 		struct btrfs_subpage_info *subpage_info;
 
-<<<<<<< HEAD
-	features = btrfs_super_compat_ro_flags(disk_super) &
-		~BTRFS_FEATURE_COMPAT_RO_SUPP;
-	if (!sb_rdonly(sb) && features) {
-		btrfs_err(fs_info,
-	"cannot mount read-write because of unsupported optional features (0x%llx)",
-		       features);
-		err = -EINVAL;
-		goto fail_alloc;
-	}
-
-	if (sectorsize != PAGE_SIZE) {
 		/*
 		 * V1 space cache has some hardcoded PAGE_SIZE usage, and is
 		 * going to be deprecated.
@@ -3637,19 +3577,6 @@ int __cold open_ctree(struct super_block *sb, struct btrfs_fs_devices *fs_device
 			"forcing free space tree for sector size %u with page size %lu",
 			sectorsize, PAGE_SIZE);
 
-=======
-		/*
-		 * V1 space cache has some hardcoded PAGE_SIZE usage, and is
-		 * going to be deprecated.
-		 *
-		 * Force to use v2 cache for subpage case.
-		 */
-		btrfs_clear_opt(fs_info->mount_opt, SPACE_CACHE);
-		btrfs_set_and_info(fs_info, FREE_SPACE_TREE,
-			"forcing free space tree for sector size %u with page size %lu",
-			sectorsize, PAGE_SIZE);
-
->>>>>>> origin/linux_6.1.15_upstream
 		btrfs_warn(fs_info,
 		"read-write for sector size %u with page size %lu is experimental",
 			   sectorsize, PAGE_SIZE);
@@ -4235,11 +4162,7 @@ static void btrfs_end_empty_barrier(struct bio *bio)
  */
 static void write_dev_flush(struct btrfs_device *device)
 {
-<<<<<<< HEAD
-	struct bio *bio = device->flush_bio;
-=======
 	struct bio *bio = &device->flush_bio;
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifndef CONFIG_BTRFS_FS_CHECK_INTEGRITY
 	/*
@@ -4252,12 +4175,7 @@ static void write_dev_flush(struct btrfs_device *device)
 	 * of simplicity, since this is a debug tool and not meant for use in
 	 * non-debug builds.
 	 */
-<<<<<<< HEAD
-	struct request_queue *q = bdev_get_queue(device->bdev);
-	if (!test_bit(QUEUE_FLAG_WC, &q->queue_flags))
-=======
 	if (!bdev_write_cache(device->bdev))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 #endif
 

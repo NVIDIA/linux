@@ -163,11 +163,6 @@ struct mlx5_vdpa_net {
 	struct mlx5_flow_table *rxft;
 	bool setup;
 	u32 cur_num_vqs;
-<<<<<<< HEAD
-	struct notifier_block nb;
-	struct vdpa_callback config_cb;
-	struct mlx5_vdpa_wq_ent cvq_ent;
-=======
 	u32 rqt_size;
 	bool nb_registered;
 	struct notifier_block nb;
@@ -181,7 +176,6 @@ struct macvlan_node {
 	struct mlx5_flow_handle *ucast_rule;
 	struct mlx5_flow_handle *mcast_rule;
 	u64 macvlan;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static void free_resources(struct mlx5_vdpa_net *ndev);
@@ -895,11 +889,8 @@ static int create_virtqueue(struct mlx5_vdpa_net *ndev, struct mlx5_vdpa_virtque
 	MLX5_SET(virtio_q, vq_ctx, umem_3_id, mvq->umem3.id);
 	MLX5_SET(virtio_q, vq_ctx, umem_3_size, mvq->umem3.size);
 	MLX5_SET(virtio_q, vq_ctx, pd, ndev->mvdev.res.pdn);
-<<<<<<< HEAD
-=======
 	if (counters_supported(&ndev->mvdev))
 		MLX5_SET(virtio_q, vq_ctx, counter_set_id, mvq->counter_set_id);
->>>>>>> origin/linux_6.1.15_upstream
 
 	err = mlx5_cmd_exec(ndev->mvdev.mdev, in, inlen, out, sizeof(out));
 	if (err)
@@ -1804,11 +1795,7 @@ static virtio_net_ctrl_ack handle_ctrl_mq(struct mlx5_vdpa_dev *mvdev, u8 cmd)
 
 		newqps = mlx5vdpa16_to_cpu(mvdev, mq.virtqueue_pairs);
 		if (newqps < VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN ||
-<<<<<<< HEAD
-		    newqps > mlx5_vdpa_max_qps(mvdev->max_vqs))
-=======
 		    newqps > ndev->rqt_size)
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 
 		if (ndev->cur_num_vqs == 2 * newqps) {
@@ -1930,11 +1917,6 @@ static void mlx5_cvq_kick_handler(struct work_struct *work)
 		if (vringh_need_notify_iotlb(&cvq->vring))
 			vringh_notify(&cvq->vring);
 
-<<<<<<< HEAD
-		queue_work(mvdev->wq, &wqent->work);
-		break;
-	}
-=======
 		cvq->completed_desc++;
 		queue_work(mvdev->wq, &wqent->work);
 		break;
@@ -1942,7 +1924,6 @@ static void mlx5_cvq_kick_handler(struct work_struct *work)
 
 out:
 	up_write(&ndev->reslock);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void mlx5_vdpa_kick_vq(struct vdpa_device *vdev, u16 idx)
@@ -2191,17 +2172,6 @@ static u64 get_supported_features(struct mlx5_core_dev *mdev)
 	u64 mlx_vdpa_features = 0;
 	u16 dev_features;
 
-<<<<<<< HEAD
-	dev_features = MLX5_CAP_DEV_VDPA_EMULATION(mvdev->mdev, device_features_bits_mask);
-	ndev->mvdev.mlx_features |= mlx_to_vritio_features(dev_features);
-	if (MLX5_CAP_DEV_VDPA_EMULATION(mvdev->mdev, virtio_version_1_0))
-		ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_F_VERSION_1);
-	ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_F_ACCESS_PLATFORM);
-	ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_NET_F_CTRL_VQ);
-	ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_NET_F_CTRL_MAC_ADDR);
-	ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_NET_F_MQ);
-	ndev->mvdev.mlx_features |= BIT_ULL(VIRTIO_NET_F_STATUS);
-=======
 	dev_features = MLX5_CAP_DEV_VDPA_EMULATION(mdev, device_features_bits_mask);
 	mlx_vdpa_features |= mlx_to_vritio_features(dev_features);
 	if (MLX5_CAP_DEV_VDPA_EMULATION(mdev, virtio_version_1_0))
@@ -2221,7 +2191,6 @@ static u64 mlx5_vdpa_get_device_features(struct vdpa_device *vdev)
 {
 	struct mlx5_vdpa_dev *mvdev = to_mvdev(vdev);
 	struct mlx5_vdpa_net *ndev = to_mlx5_vdpa_ndev(mvdev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	print_features(mvdev, ndev->mvdev.mlx_features, false);
 	return ndev->mvdev.mlx_features;
@@ -2610,14 +2579,10 @@ static int mlx5_vdpa_reset(struct vdpa_device *vdev)
 	clear_vqs_ready(ndev);
 	mlx5_vdpa_destroy_mr(&ndev->mvdev);
 	ndev->mvdev.status = 0;
-<<<<<<< HEAD
-	memset(ndev->event_cbs, 0, sizeof(ndev->event_cbs));
-=======
 	ndev->cur_num_vqs = 0;
 	ndev->mvdev.cvq.received_desc = 0;
 	ndev->mvdev.cvq.completed_desc = 0;
 	memset(ndev->event_cbs, 0, sizeof(*ndev->event_cbs) * (mvdev->max_vqs + 1));
->>>>>>> origin/linux_6.1.15_upstream
 	ndev->mvdev.actual_features = 0;
 	init_group_to_asid_map(mvdev);
 	++mvdev->generation;
@@ -3030,11 +2995,7 @@ static void update_carrier(struct work_struct *work)
 	else
 		ndev->config.status &= cpu_to_mlx5vdpa16(mvdev, ~VIRTIO_NET_S_LINK_UP);
 
-<<<<<<< HEAD
-	if (ndev->config_cb.callback)
-=======
 	if (ndev->nb_registered && ndev->config_cb.callback)
->>>>>>> origin/linux_6.1.15_upstream
 		ndev->config_cb.callback(ndev->config_cb.private);
 
 	kfree(wqent);
@@ -3068,9 +3029,6 @@ static int event_handler(struct notifier_block *nb, unsigned long event, void *p
 	return ret;
 }
 
-<<<<<<< HEAD
-static int mlx5_vdpa_dev_add(struct vdpa_mgmt_dev *v_mdev, const char *name)
-=======
 static int config_func_mtu(struct mlx5_core_dev *mdev, u16 mtu)
 {
 	int inlen = MLX5_ST_SZ_BYTES(modify_nic_vport_context_in);
@@ -3095,7 +3053,6 @@ static int config_func_mtu(struct mlx5_core_dev *mdev, u16 mtu)
 
 static int mlx5_vdpa_dev_add(struct vdpa_mgmt_dev *v_mdev, const char *name,
 			     const struct vdpa_dev_set_config *add_config)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct mlx5_vdpa_mgmtdev *mgtdev = container_of(v_mdev, struct mlx5_vdpa_mgmtdev, mgtdev);
 	struct virtio_net_config *config;
@@ -3220,11 +3177,7 @@ static int mlx5_vdpa_dev_add(struct vdpa_mgmt_dev *v_mdev, const char *name,
 
 	ndev->nb.notifier_call = event_handler;
 	mlx5_notifier_register(mdev, &ndev->nb);
-<<<<<<< HEAD
-	ndev->cur_num_vqs = 2 * mlx5_vdpa_max_qps(max_vqs);
-=======
 	ndev->nb_registered = true;
->>>>>>> origin/linux_6.1.15_upstream
 	mvdev->vdev.mdev = &mgtdev->mgtdev;
 	err = _vdpa_register_device(&mvdev->vdev, max_vqs + 1);
 	if (err)
@@ -3254,11 +3207,6 @@ static void mlx5_vdpa_dev_del(struct vdpa_mgmt_dev *v_mdev, struct vdpa_device *
 	struct mlx5_vdpa_mgmtdev *mgtdev = container_of(v_mdev, struct mlx5_vdpa_mgmtdev, mgtdev);
 	struct mlx5_vdpa_dev *mvdev = to_mvdev(dev);
 	struct mlx5_vdpa_net *ndev = to_mlx5_vdpa_ndev(mvdev);
-<<<<<<< HEAD
-
-	mlx5_notifier_unregister(mvdev->mdev, &ndev->nb);
-	destroy_workqueue(mvdev->wq);
-=======
 	struct workqueue_struct *wq;
 
 	if (ndev->nb_registered) {
@@ -3268,7 +3216,6 @@ static void mlx5_vdpa_dev_del(struct vdpa_mgmt_dev *v_mdev, struct vdpa_device *
 	wq = mvdev->wq;
 	mvdev->wq = NULL;
 	destroy_workqueue(wq);
->>>>>>> origin/linux_6.1.15_upstream
 	_vdpa_unregister_device(dev);
 	mgtdev->ndev = NULL;
 }

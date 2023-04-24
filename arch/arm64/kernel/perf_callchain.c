@@ -102,13 +102,7 @@ compat_user_backtrace(struct compat_frame_tail __user *tail,
 void perf_callchain_user(struct perf_callchain_entry_ctx *entry,
 			 struct pt_regs *regs)
 {
-<<<<<<< HEAD
-	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
-
-	if (guest_cbs && guest_cbs->is_in_guest()) {
-=======
 	if (perf_guest_state()) {
->>>>>>> origin/linux_6.1.15_upstream
 		/* We don't support guest os callchain now */
 		return;
 	}
@@ -147,14 +141,7 @@ static bool callchain_trace(void *data, unsigned long pc)
 void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
 			   struct pt_regs *regs)
 {
-<<<<<<< HEAD
-	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
-	struct stackframe frame;
-
-	if (guest_cbs && guest_cbs->is_in_guest()) {
-=======
 	if (perf_guest_state()) {
->>>>>>> origin/linux_6.1.15_upstream
 		/* We don't support guest os callchain now */
 		return;
 	}
@@ -164,34 +151,19 @@ void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
 
 unsigned long perf_instruction_pointer(struct pt_regs *regs)
 {
-<<<<<<< HEAD
-	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
-
-	if (guest_cbs && guest_cbs->is_in_guest())
-		return guest_cbs->get_guest_ip();
-=======
 	if (perf_guest_state())
 		return perf_guest_get_ip();
->>>>>>> origin/linux_6.1.15_upstream
 
 	return instruction_pointer(regs);
 }
 
 unsigned long perf_misc_flags(struct pt_regs *regs)
 {
-<<<<<<< HEAD
-	struct perf_guest_info_callbacks *guest_cbs = perf_get_guest_cbs();
-	int misc = 0;
-
-	if (guest_cbs && guest_cbs->is_in_guest()) {
-		if (guest_cbs->is_user_mode())
-=======
 	unsigned int guest_state = perf_guest_state();
 	int misc = 0;
 
 	if (guest_state) {
 		if (guest_state & PERF_GUEST_USER)
->>>>>>> origin/linux_6.1.15_upstream
 			misc |= PERF_RECORD_MISC_GUEST_USER;
 		else
 			misc |= PERF_RECORD_MISC_GUEST_KERNEL;

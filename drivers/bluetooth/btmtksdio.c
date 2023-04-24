@@ -1442,14 +1442,8 @@ static int btmtksdio_runtime_suspend(struct device *dev)
 	if (!bdev)
 		return 0;
 
-<<<<<<< HEAD
-	sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
-
-	sdio_claim_host(bdev->func);
-=======
 	if (!test_bit(BTMTKSDIO_FUNC_ENABLED, &bdev->tx_state))
 		return 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 

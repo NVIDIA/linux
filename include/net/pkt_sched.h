@@ -232,8 +232,6 @@ static inline struct tc_skb_cb *tc_skb_cb(const struct sk_buff *skb)
 	return cb;
 }
 
-<<<<<<< HEAD
-=======
 static inline bool tc_qdisc_stats_dump(struct Qdisc *sch,
 				       unsigned long cl,
 				       struct qdisc_walker *arg)
@@ -247,5 +245,4 @@ static inline bool tc_qdisc_stats_dump(struct Qdisc *sch,
 	return true;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #endif

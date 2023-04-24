@@ -604,14 +604,9 @@ static unsigned int wrap_area_index(struct io_tlb_mem *mem, unsigned int index)
  * Find a suitable number of IO TLB entries size that will fit this request and
  * allocate a buffer from that IO TLB pool.
  */
-<<<<<<< HEAD
-static int swiotlb_find_slots(struct device *dev, phys_addr_t orig_addr,
-			      size_t alloc_size, unsigned int alloc_align_mask)
-=======
 static int swiotlb_do_find_slots(struct device *dev, int area_index,
 		phys_addr_t orig_addr, size_t alloc_size,
 		unsigned int alloc_align_mask)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct io_tlb_mem *mem = dev->dma_io_tlb_mem;
 	struct io_tlb_area *area = mem->areas + area_index;
@@ -775,11 +770,7 @@ phys_addr_t swiotlb_tbl_map_single(struct device *dev, phys_addr_t orig_addr,
 	/*
 	 * When dir == DMA_FROM_DEVICE we could omit the copy from the orig
 	 * to the tlb buffer, if we knew for sure the device will
-<<<<<<< HEAD
-	 * overwirte the entire current content. But we don't. Thus
-=======
 	 * overwrite the entire current content. But we don't. Thus
->>>>>>> origin/linux_6.1.15_upstream
 	 * unconditional bounce may prevent leaking swiotlb content (i.e.
 	 * kernel memory) to user-space.
 	 */

@@ -177,17 +177,6 @@ typec_switch_register(struct device *parent,
 
 	sw_dev->set = desc->set;
 
-<<<<<<< HEAD
-	device_initialize(&sw->dev);
-	sw->dev.parent = parent;
-	sw->dev.fwnode = desc->fwnode;
-	sw->dev.class = &typec_mux_class;
-	sw->dev.type = &typec_switch_dev_type;
-	sw->dev.driver_data = desc->drvdata;
-	ret = dev_set_name(&sw->dev, "%s-switch", desc->name ? desc->name : dev_name(parent));
-	if (ret) {
-		put_device(&sw->dev);
-=======
 	device_initialize(&sw_dev->dev);
 	sw_dev->dev.parent = parent;
 	sw_dev->dev.fwnode = desc->fwnode;
@@ -197,7 +186,6 @@ typec_switch_register(struct device *parent,
 	ret = dev_set_name(&sw_dev->dev, "%s-switch", desc->name ? desc->name : dev_name(parent));
 	if (ret) {
 		put_device(&sw_dev->dev);
->>>>>>> origin/linux_6.1.15_upstream
 		return ERR_PTR(ret);
 	}
 
@@ -476,17 +464,6 @@ typec_mux_register(struct device *parent, const struct typec_mux_desc *desc)
 
 	mux_dev->set = desc->set;
 
-<<<<<<< HEAD
-	device_initialize(&mux->dev);
-	mux->dev.parent = parent;
-	mux->dev.fwnode = desc->fwnode;
-	mux->dev.class = &typec_mux_class;
-	mux->dev.type = &typec_mux_dev_type;
-	mux->dev.driver_data = desc->drvdata;
-	ret = dev_set_name(&mux->dev, "%s-mux", desc->name ? desc->name : dev_name(parent));
-	if (ret) {
-		put_device(&mux->dev);
-=======
 	device_initialize(&mux_dev->dev);
 	mux_dev->dev.parent = parent;
 	mux_dev->dev.fwnode = desc->fwnode;
@@ -496,7 +473,6 @@ typec_mux_register(struct device *parent, const struct typec_mux_desc *desc)
 	ret = dev_set_name(&mux_dev->dev, "%s-mux", desc->name ? desc->name : dev_name(parent));
 	if (ret) {
 		put_device(&mux_dev->dev);
->>>>>>> origin/linux_6.1.15_upstream
 		return ERR_PTR(ret);
 	}
 

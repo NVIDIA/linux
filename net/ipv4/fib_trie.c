@@ -1063,17 +1063,11 @@ void fib_alias_hw_flags_set(struct net *net, const struct fib_rt_info *fri)
 
 	WRITE_ONCE(fa_match->offload, fri->offload);
 	WRITE_ONCE(fa_match->trap, fri->trap);
-<<<<<<< HEAD
-
-	/* 2 means send notifications only if offload_failed was changed. */
-	if (net->ipv4.sysctl_fib_notify_on_flag_change == 2 &&
-=======
 
 	fib_notify_on_flag_change = READ_ONCE(net->ipv4.sysctl_fib_notify_on_flag_change);
 
 	/* 2 means send notifications only if offload_failed was changed. */
 	if (fib_notify_on_flag_change == 2 &&
->>>>>>> origin/linux_6.1.15_upstream
 	    READ_ONCE(fa_match->offload_failed) == fri->offload_failed)
 		goto out;
 

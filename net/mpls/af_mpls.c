@@ -1514,18 +1514,9 @@ static int mpls_ifdown(struct net_device *dev, int event)
 			u8 deleted = 0;
 
 			for_nexthops(rt) {
-<<<<<<< HEAD
-				struct net_device *nh_dev =
-					rtnl_dereference(nh->nh_dev);
-
-				if (!nh_dev || nh_dev == dev)
-					deleted++;
-				if (nh_dev == dev)
-=======
 				if (!nh->nh_dev || nh->nh_dev == dev)
 					deleted++;
 				if (nh->nh_dev == dev)
->>>>>>> origin/linux_6.1.15_upstream
 					nh_del = true;
 			} endfor_nexthops(rt);
 
@@ -1540,16 +1531,9 @@ static int mpls_ifdown(struct net_device *dev, int event)
 					rt->rt_nh_size;
 				struct mpls_route *orig = rt;
 
-<<<<<<< HEAD
-				rt = kmalloc(size, GFP_KERNEL);
-				if (!rt)
-					return -ENOMEM;
-				memcpy(rt, orig, size);
-=======
 				rt = kmemdup(orig, size, GFP_KERNEL);
 				if (!rt)
 					return -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 
@@ -1641,10 +1625,6 @@ static int mpls_dev_notify(struct notifier_block *this, unsigned long event,
 		return NOTIFY_OK;
 
 	switch (event) {
-<<<<<<< HEAD
-		int err;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	case NETDEV_DOWN:
 		err = mpls_ifdown(dev, event);

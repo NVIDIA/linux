@@ -293,33 +293,12 @@ void *dma_direct_alloc(struct device *dev, size_t size,
 				__builtin_return_address(0));
 		if (!ret)
 			goto out_free_pages;
-<<<<<<< HEAD
-		memset(ret, 0, size);
-		goto done;
-	}
-
-	if (PageHighMem(page)) {
-		/*
-		 * Depending on the cma= arguments and per-arch setup
-		 * dma_alloc_contiguous could return highmem pages.
-		 * Without remapping there is no way to return them here,
-		 * so log an error and fail.
-		 */
-		dev_info(dev, "Rejecting highmem page from CMA.\n");
-		goto out_free_pages;
-	}
-
-	ret = page_address(page);
-	if (dma_set_decrypted(dev, ret, size))
-		goto out_free_pages;
-=======
 	} else {
 		ret = page_address(page);
 		if (dma_set_decrypted(dev, ret, size))
 			goto out_free_pages;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	memset(ret, 0, size);
 
 	if (set_uncached) {
@@ -373,20 +352,12 @@ void dma_direct_free(struct device *dev, size_t size,
 	    dma_free_from_pool(dev, cpu_addr, PAGE_ALIGN(size)))
 		return;
 
-<<<<<<< HEAD
-	if (IS_ENABLED(CONFIG_DMA_REMAP) && is_vmalloc_addr(cpu_addr)) {
-=======
 	if (is_vmalloc_addr(cpu_addr)) {
->>>>>>> origin/linux_6.1.15_upstream
 		vunmap(cpu_addr);
 	} else {
 		if (IS_ENABLED(CONFIG_ARCH_HAS_DMA_CLEAR_UNCACHED))
 			arch_dma_clear_uncached(cpu_addr, size);
-<<<<<<< HEAD
-		if (dma_set_encrypted(dev, cpu_addr, 1 << page_order))
-=======
 		if (dma_set_encrypted(dev, cpu_addr, size))
->>>>>>> origin/linux_6.1.15_upstream
 			return;
 	}
 
@@ -428,11 +399,7 @@ void dma_direct_free_pages(struct device *dev, size_t size,
 	    dma_free_from_pool(dev, vaddr, size))
 		return;
 
-<<<<<<< HEAD
-	if (dma_set_encrypted(dev, vaddr, 1 << page_order))
-=======
 	if (dma_set_encrypted(dev, vaddr, size))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	__dma_direct_free_pages(dev, page, size);
 }

@@ -7,10 +7,7 @@
 #include "test_ksyms_btf.skel.h"
 #include "test_ksyms_btf_null_check.skel.h"
 #include "test_ksyms_weak.skel.h"
-<<<<<<< HEAD
-=======
 #include "test_ksyms_weak.lskel.h"
->>>>>>> origin/linux_6.1.15_upstream
 #include "test_ksyms_btf_write_check.skel.h"
 
 static int duration;
@@ -114,14 +111,6 @@ cleanup:
 	test_ksyms_weak__destroy(skel);
 }
 
-<<<<<<< HEAD
-static void test_write_check(void)
-{
-	struct test_ksyms_btf_write_check *skel;
-
-	skel = test_ksyms_btf_write_check__open_and_load();
-	ASSERT_ERR_PTR(skel, "unexpected load of a prog writing to ksym memory\n");
-=======
 static void test_weak_syms_lskel(void)
 {
 	struct test_ksyms_weak_lskel *skel;
@@ -159,7 +148,6 @@ static void test_write_check(bool test_handler1)
 	bpf_program__set_autoload(test_handler1 ? skel->progs.handler2 : skel->progs.handler1, false);
 	ASSERT_ERR(test_ksyms_btf_write_check__load(skel),
 		   "unexpected load of a prog writing to ksym memory\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 	test_ksyms_btf_write_check__destroy(skel);
 }
@@ -192,10 +180,6 @@ void test_ksyms_btf(void)
 	if (test__start_subtest("weak_ksyms"))
 		test_weak_syms();
 
-<<<<<<< HEAD
-	if (test__start_subtest("write_check"))
-		test_write_check();
-=======
 	if (test__start_subtest("weak_ksyms_lskel"))
 		test_weak_syms_lskel();
 
@@ -204,5 +188,4 @@ void test_ksyms_btf(void)
 
 	if (test__start_subtest("write_check2"))
 		test_write_check(false);
->>>>>>> origin/linux_6.1.15_upstream
 }

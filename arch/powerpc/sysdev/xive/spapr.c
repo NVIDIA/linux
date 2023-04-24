@@ -76,11 +76,7 @@ static void xive_irq_bitmap_remove_all(void)
 
 	list_for_each_entry_safe(xibm, tmp, &xive_irq_bitmaps, list) {
 		list_del(&xibm->list);
-<<<<<<< HEAD
-		kfree(xibm->bitmap);
-=======
 		bitmap_free(xibm->bitmap);
->>>>>>> origin/linux_6.1.15_upstream
 		kfree(xibm);
 	}
 }

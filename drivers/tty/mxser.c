@@ -275,12 +275,6 @@ struct mxser_port {
 	u8 read_status_mask;
 	u8 ignore_status_mask;
 	u8 xmit_fifo_size;
-<<<<<<< HEAD
-	unsigned int xmit_head;
-	unsigned int xmit_tail;
-	unsigned int xmit_cnt;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	spinlock_t slock;
 };
@@ -812,11 +806,6 @@ static int mxser_activate(struct tty_port *port, struct tty_struct *tty)
 
 	return 0;
 err_free_xmit:
-<<<<<<< HEAD
-	free_page(page);
-	info->port.xmit_buf = NULL;
-	return ret;
-=======
 	tty_port_free_xmit_buf(port);
 	return ret;
 }
@@ -833,7 +822,6 @@ static void mxser_stop_rx(struct mxser_port *info)
 		info->IER &= ~MOXA_MUST_RECV_ISR;
 
 	outb(info->IER, info->ioaddr + UART_IER);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -909,29 +897,7 @@ static void mxser_flush_buffer(struct tty_struct *tty)
 
 static void mxser_close(struct tty_struct *tty, struct file *filp)
 {
-<<<<<<< HEAD
-	struct mxser_port *info = tty->driver_data;
-	struct tty_port *port = &info->port;
-
-	if (info == NULL)
-		return;
-	if (tty_port_close_start(port, tty, filp) == 0)
-		return;
-	mutex_lock(&port->mutex);
-	mxser_close_port(port);
-	mxser_flush_buffer(tty);
-	if (tty_port_initialized(port) && C_HUPCL(tty))
-		tty_port_lower_dtr_rts(port);
-	mxser_shutdown_port(port);
-	tty_port_set_initialized(port, 0);
-	mutex_unlock(&port->mutex);
-	/* Right now the tty_port set is done outside of the close_end helper
-	   as we don't yet have everyone using refcounts */	
-	tty_port_close_end(port, tty);
-	tty_port_tty_set(port, NULL);
-=======
 	tty_port_close(tty->port, tty, filp);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int mxser_write(struct tty_struct *tty, const unsigned char *buf, int count)

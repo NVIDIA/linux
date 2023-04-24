@@ -52,11 +52,7 @@ static int enetc_setup_taprio(struct net_device *ndev,
 	struct enetc_cbd cbd = {.cmd = 0};
 	struct tgs_gcl_conf *gcl_config;
 	struct tgs_gcl_data *gcl_data;
-<<<<<<< HEAD
-	dma_addr_t dma, dma_align;
-=======
 	dma_addr_t dma;
->>>>>>> origin/linux_6.1.15_upstream
 	struct gce *gce;
 	u16 data_size;
 	u16 gcl_len;
@@ -89,18 +85,9 @@ static int enetc_setup_taprio(struct net_device *ndev,
 	gcl_config = &cbd.gcl_conf;
 
 	data_size = struct_size(gcl_data, entry, gcl_len);
-<<<<<<< HEAD
-	tmp = dma_alloc_coherent(&priv->si->pdev->dev,
-				 data_size + ENETC_QOS_ALIGN,
-				 &dma, GFP_KERNEL);
-	if (!tmp) {
-		dev_err(&priv->si->pdev->dev,
-			"DMA mapping of taprio gate list failed!\n");
-=======
 	tmp = enetc_cbd_alloc_data_mem(priv->si, &cbd, data_size,
 				       &dma, (void *)&gcl_data);
 	if (!tmp)
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENOMEM;
 	}
 	dma_align = ALIGN(dma, ENETC_QOS_ALIGN);
@@ -129,11 +116,6 @@ static int enetc_setup_taprio(struct net_device *ndev,
 
 	cbd.status_flags = 0;
 
-<<<<<<< HEAD
-	cbd.addr[0] = cpu_to_le32(lower_32_bits(dma_align));
-	cbd.addr[1] = cpu_to_le32(upper_32_bits(dma_align));
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	cbd.cls = BDCR_CMD_PORT_GCL;
 	cbd.status_flags = 0;
 
@@ -143,12 +125,7 @@ static int enetc_setup_taprio(struct net_device *ndev,
 	if (err)
 		enetc_wr(hw, ENETC_PTGCR, tge & ~ENETC_PTGCR_TGE);
 
-<<<<<<< HEAD
-	dma_free_coherent(&priv->si->pdev->dev, data_size + ENETC_QOS_ALIGN,
-			  tmp, dma);
-=======
 	enetc_cbd_free_data_mem(priv->si, data_size, tmp, &dma);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (err)
 		return err;
@@ -485,11 +462,7 @@ static int enetc_streamid_hw_set(struct enetc_ndev_priv *priv,
 	struct enetc_cbd cbd = {.cmd = 0};
 	struct streamid_data *si_data;
 	struct streamid_conf *si_conf;
-<<<<<<< HEAD
-	dma_addr_t dma, dma_align;
-=======
 	dma_addr_t dma;
->>>>>>> origin/linux_6.1.15_upstream
 	u16 data_size;
 	void *tmp;
 	int port;
@@ -512,28 +485,11 @@ static int enetc_streamid_hw_set(struct enetc_ndev_priv *priv,
 	cbd.status_flags = 0;
 
 	data_size = sizeof(struct streamid_data);
-<<<<<<< HEAD
-	tmp = dma_alloc_coherent(&priv->si->pdev->dev,
-				 data_size + ENETC_QOS_ALIGN,
-				 &dma, GFP_KERNEL);
-	if (!tmp) {
-		dev_err(&priv->si->pdev->dev,
-			"DMA mapping of stream identify failed!\n");
-		return -ENOMEM;
-	}
-	dma_align = ALIGN(dma, ENETC_QOS_ALIGN);
-	si_data = (struct streamid_data *)PTR_ALIGN(tmp, ENETC_QOS_ALIGN);
-
-	cbd.length = cpu_to_le16(data_size);
-	cbd.addr[0] = cpu_to_le32(lower_32_bits(dma_align));
-	cbd.addr[1] = cpu_to_le32(upper_32_bits(dma_align));
-=======
 	tmp = enetc_cbd_alloc_data_mem(priv->si, &cbd, data_size,
 				       &dma, (void *)&si_data);
 	if (!tmp)
 		return -ENOMEM;
 
->>>>>>> origin/linux_6.1.15_upstream
 	eth_broadcast_addr(si_data->dmac);
 	si_data->vid_vidm_tg = (ENETC_CBDR_SID_VID_MASK
 			       + ((0x3 << 14) | ENETC_CBDR_SID_VIDM));
@@ -566,14 +522,6 @@ static int enetc_streamid_hw_set(struct enetc_ndev_priv *priv,
 
 	memset(si_data, 0, data_size);
 
-<<<<<<< HEAD
-	cbd.length = cpu_to_le16(data_size);
-
-	cbd.addr[0] = cpu_to_le32(lower_32_bits(dma_align));
-	cbd.addr[1] = cpu_to_le32(upper_32_bits(dma_align));
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/* VIDM default to be 1.
 	 * VID Match. If set (b1) then the VID must match, otherwise
 	 * any VID is considered a match. VIDM setting is only used
@@ -593,12 +541,7 @@ static int enetc_streamid_hw_set(struct enetc_ndev_priv *priv,
 
 	err = enetc_send_cmd(priv->si, &cbd);
 out:
-<<<<<<< HEAD
-	dma_free_coherent(&priv->si->pdev->dev, data_size + ENETC_QOS_ALIGN,
-			  tmp, dma);
-=======
 	enetc_cbd_free_data_mem(priv->si, data_size, tmp, &dma);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return err;
 }
@@ -678,29 +621,11 @@ static int enetc_streamcounter_hw_get(struct enetc_ndev_priv *priv,
 	cbd.status_flags = 0;
 
 	data_size = sizeof(struct sfi_counter_data);
-<<<<<<< HEAD
-	tmp = dma_alloc_coherent(&priv->si->pdev->dev,
-				 data_size + ENETC_QOS_ALIGN,
-				 &dma, GFP_KERNEL);
-	if (!tmp) {
-		dev_err(&priv->si->pdev->dev,
-			"DMA mapping of stream counter failed!\n");
-		return -ENOMEM;
-	}
-	dma_align = ALIGN(dma, ENETC_QOS_ALIGN);
-	data_buf = (struct sfi_counter_data *)PTR_ALIGN(tmp, ENETC_QOS_ALIGN);
-
-	cbd.addr[0] = cpu_to_le32(lower_32_bits(dma_align));
-	cbd.addr[1] = cpu_to_le32(upper_32_bits(dma_align));
-
-	cbd.length = cpu_to_le16(data_size);
-=======
 
 	tmp = enetc_cbd_alloc_data_mem(priv->si, &cbd, data_size,
 				       &dma, (void *)&data_buf);
 	if (!tmp)
 		return -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 
 	err = enetc_send_cmd(priv->si, &cbd);
 	if (err)
@@ -727,12 +652,7 @@ static int enetc_streamcounter_hw_get(struct enetc_ndev_priv *priv,
 				data_buf->flow_meter_dropl;
 
 exit:
-<<<<<<< HEAD
-	dma_free_coherent(&priv->si->pdev->dev, data_size + ENETC_QOS_ALIGN,
-			  tmp, dma);
-=======
 	enetc_cbd_free_data_mem(priv->si, data_size, tmp, &dma);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return err;
 }
@@ -822,27 +742,10 @@ static int enetc_streamgate_hw_set(struct enetc_ndev_priv *priv,
 	sgcl_config->acl_len = (sgi->num_entries - 1) & 0x3;
 
 	data_size = struct_size(sgcl_data, sgcl, sgi->num_entries);
-<<<<<<< HEAD
-	tmp = dma_alloc_coherent(&priv->si->pdev->dev,
-				 data_size + ENETC_QOS_ALIGN,
-				 &dma, GFP_KERNEL);
-	if (!tmp) {
-		dev_err(&priv->si->pdev->dev,
-			"DMA mapping of stream counter failed!\n");
-		return -ENOMEM;
-	}
-	dma_align = ALIGN(dma, ENETC_QOS_ALIGN);
-	sgcl_data = (struct sgcl_data *)PTR_ALIGN(tmp, ENETC_QOS_ALIGN);
-
-	cbd.length = cpu_to_le16(data_size);
-	cbd.addr[0] = cpu_to_le32(lower_32_bits(dma_align));
-	cbd.addr[1] = cpu_to_le32(upper_32_bits(dma_align));
-=======
 	tmp = enetc_cbd_alloc_data_mem(priv->si, &cbd, data_size,
 				       &dma, (void *)&sgcl_data);
 	if (!tmp)
 		return -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 
 	sgce = &sgcl_data->sgcl[0];
 
@@ -897,13 +800,7 @@ static int enetc_streamgate_hw_set(struct enetc_ndev_priv *priv,
 	err = enetc_send_cmd(priv->si, &cbd);
 
 exit:
-<<<<<<< HEAD
-	dma_free_coherent(&priv->si->pdev->dev, data_size + ENETC_QOS_ALIGN,
-			  tmp, dma);
-
-=======
 	enetc_cbd_free_data_mem(priv->si, data_size, tmp, &dma);
->>>>>>> origin/linux_6.1.15_upstream
 	return err;
 }
 

@@ -2055,16 +2055,11 @@ static int __file_update_time(struct file *file, struct timespec64 *now,
 	int ret = 0;
 	struct inode *inode = file_inode(file);
 
-<<<<<<< HEAD
-	ret = inode_update_time(inode, &now, sync_it);
-	__mnt_drop_write_file(file);
-=======
 	/* try to update time settings */
 	if (!__mnt_want_write_file(file)) {
 		ret = inode_update_time(inode, now, sync_mode);
 		__mnt_drop_write_file(file);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }

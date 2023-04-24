@@ -509,19 +509,12 @@ ddq_add_8:
 	sub	$(8*16), num_bytes
 	jne	.Lmain_loop2\xctr\key_len
 
-<<<<<<< HEAD
-.Ldo_return2\key_len:
-	/* return updated IV */
-	vpshufb	xbyteswap, xcounter, xcounter
-	vmovdqu	xcounter, (p_iv)
-=======
 .Ldo_return2\xctr\key_len:
 	.if !\xctr
 		/* return updated IV */
 		vpshufb	xbyteswap, xcounter, xcounter
 		vmovdqu	xcounter, (p_iv)
 	.endif
->>>>>>> origin/linux_6.1.15_upstream
 	RET
 .endm
 

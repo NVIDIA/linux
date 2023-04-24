@@ -1979,13 +1979,10 @@ static void xgbe_phy_rx_reset(struct xgbe_prv_data *pdata)
 
 static void xgbe_phy_pll_ctrl(struct xgbe_prv_data *pdata, bool enable)
 {
-<<<<<<< HEAD
-=======
 	/* PLL_CTRL feature needs to be enabled for fixed PHY modes (Non-Autoneg) only */
 	if (pdata->phy.autoneg != AUTONEG_DISABLE)
 		return;
 
->>>>>>> origin/linux_6.1.15_upstream
 	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_MISC_CTRL0,
 			 XGBE_PMA_PLL_CTRL_MASK,
 			 enable ? XGBE_PMA_PLL_CTRL_ENABLE
@@ -2036,15 +2033,10 @@ static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
 	xgbe_phy_rx_reset(pdata);
 
 reenable_pll:
-<<<<<<< HEAD
-	/* Enable PLL re-initialization */
-	xgbe_phy_pll_ctrl(pdata, true);
-=======
 	/* Enable PLL re-initialization, not needed for PHY Power Off and RRC cmds */
 	if (cmd != XGBE_MB_CMD_POWER_OFF &&
 	    cmd != XGBE_MB_CMD_RRC)
 		xgbe_phy_pll_ctrl(pdata, true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void xgbe_phy_rrc(struct xgbe_prv_data *pdata)

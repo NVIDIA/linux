@@ -2,11 +2,7 @@
 #ifndef _LINUX_PART_STAT_H
 #define _LINUX_PART_STAT_H
 
-<<<<<<< HEAD
-#include <linux/genhd.h>
-=======
 #include <linux/blkdev.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <asm/local.h>
 
 struct disk_stats {

@@ -34,8 +34,6 @@ struct btf *btf__load_from_kernel_by_id(__u32 id)
        return err ? ERR_PTR(err) : btf;
 }
 #endif
-<<<<<<< HEAD
-=======
 
 #ifndef HAVE_LIBBPF_BPF_PROG_LOAD
 LIBBPF_API int bpf_load_program(enum bpf_prog_type type,
@@ -78,7 +76,6 @@ bpf_object__next_map(const struct bpf_object *obj, const struct bpf_map *prev)
 #pragma GCC diagnostic pop
 }
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifndef HAVE_LIBBPF_BTF__RAW_DATA
 const void *

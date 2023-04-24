@@ -44,11 +44,6 @@ struct intel_bw_state {
 	int min_cdclk[I915_MAX_PIPES];
 	unsigned int data_rate[I915_MAX_PIPES];
 	u8 num_active_planes[I915_MAX_PIPES];
-<<<<<<< HEAD
-
-	int min_cdclk;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #define to_intel_bw_state(x) container_of((x), struct intel_bw_state, base)

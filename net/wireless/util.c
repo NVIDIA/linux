@@ -1050,11 +1050,7 @@ int cfg80211_change_iface(struct cfg80211_registered_device *rdev,
 		switch (otype) {
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_P2P_GO:
-<<<<<<< HEAD
-			cfg80211_stop_ap(rdev, dev, true);
-=======
 			cfg80211_stop_ap(rdev, dev, -1, true);
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		case NL80211_IFTYPE_ADHOC:
 			cfg80211_leave_ibss(rdev, dev, false);

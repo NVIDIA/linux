@@ -6,10 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-<<<<<<< HEAD
-=======
 #include <sys/mman.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <arch/elf.h>
 #include <objtool/builtin.h>
@@ -1197,95 +1194,6 @@ static struct reloc *insn_reloc(struct objtool_file *file, struct instruction *i
 }
 
 static void remove_insn_ops(struct instruction *insn)
-<<<<<<< HEAD
-{
-	struct stack_op *op, *tmp;
-
-	list_for_each_entry_safe(op, tmp, &insn->stack_ops, list) {
-		list_del(&op->list);
-		free(op);
-	}
-}
-
-static void add_call_dest(struct objtool_file *file, struct instruction *insn,
-			  struct symbol *dest, bool sibling)
-{
-	struct reloc *reloc = insn_reloc(file, insn);
-
-	insn->call_dest = dest;
-	if (!dest)
-		return;
-
-	if (insn->call_dest->static_call_tramp) {
-		list_add_tail(&insn->call_node,
-			      &file->static_call_list);
-	}
-
-	/*
-	 * Many compilers cannot disable KCOV with a function attribute
-	 * so they need a little help, NOP out any KCOV calls from noinstr
-	 * text.
-	 */
-	if (insn->sec->noinstr &&
-	    !strncmp(insn->call_dest->name, "__sanitizer_cov_", 16)) {
-		if (reloc) {
-			reloc->type = R_NONE;
-			elf_write_reloc(file->elf, reloc);
-		}
-
-		elf_write_insn(file->elf, insn->sec,
-			       insn->offset, insn->len,
-			       sibling ? arch_ret_insn(insn->len)
-			               : arch_nop_insn(insn->len));
-
-		insn->type = sibling ? INSN_RETURN : INSN_NOP;
-
-		if (sibling) {
-			/*
-			 * We've replaced the tail-call JMP insn by two new
-			 * insn: RET; INT3, except we only have a single struct
-			 * insn here. Mark it retpoline_safe to avoid the SLS
-			 * warning, instead of adding another insn.
-			 */
-			insn->retpoline_safe = true;
-		}
-	}
-
-	if (mcount && !strcmp(insn->call_dest->name, "__fentry__")) {
-		if (sibling)
-			WARN_FUNC("Tail call to __fentry__ !?!?", insn->sec, insn->offset);
-
-		if (reloc) {
-			reloc->type = R_NONE;
-			elf_write_reloc(file->elf, reloc);
-		}
-
-		elf_write_insn(file->elf, insn->sec,
-			       insn->offset, insn->len,
-			       arch_nop_insn(insn->len));
-
-		insn->type = INSN_NOP;
-
-		list_add_tail(&insn->mcount_loc_node,
-			      &file->mcount_loc_list);
-	}
-
-	/*
-	 * Whatever stack impact regular CALLs have, should be undone
-	 * by the RETURN of the called function.
-	 *
-	 * Annotated intra-function calls retain the stack_ops but
-	 * are converted to JUMP, see read_intra_function_calls().
-	 */
-	remove_insn_ops(insn);
-}
-
-/*
- * Find the destination instructions for all jumps.
- */
-static int add_jump_destinations(struct objtool_file *file)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct stack_op *op, *tmp;
 
@@ -1304,22 +1212,6 @@ static void annotate_call_site(struct objtool_file *file,
 	if (!sym)
 		sym = reloc->sym;
 
-<<<<<<< HEAD
-			insn->retpoline_safe = true;
-			continue;
-		} else if (insn->func) {
-			/* internal or external sibling call (with reloc) */
-			add_call_dest(file, insn, reloc->sym, true);
-			continue;
-		} else if (reloc->sym->sec->idx) {
-			dest_sec = reloc->sym->sec;
-			dest_off = reloc->sym->sym.st_value +
-				   arch_dest_reloc_offset(reloc->addend);
-		} else {
-			/* non-func asm code jumping to another file */
-			continue;
-		}
-=======
 	/*
 	 * Alternative replacement code is just template code which is
 	 * sometimes copied to the original instruction. For now, don't
@@ -1328,7 +1220,6 @@ static void annotate_call_site(struct objtool_file *file,
 	 */
 	if (!strcmp(insn->sec->name, ".altinstr_replacement"))
 		return;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (sym->static_call_tramp) {
 		list_add_tail(&insn->call_node, &file->static_call_list);
@@ -1580,12 +1471,6 @@ static int add_jump_destinations(struct objtool_file *file)
 				insn->func->cfunc = jump_dest->func;
 				jump_dest->func->pfunc = insn->func;
 
-<<<<<<< HEAD
-			} else if (insn->jump_dest->func->pfunc != insn->func->pfunc &&
-				   insn->jump_dest->offset == insn->jump_dest->func->offset) {
-				/* internal sibling call (without reloc) */
-				add_call_dest(file, insn, insn->jump_dest->func, true);
-=======
 			} else if (!same_function(insn, jump_dest) &&
 				   is_first_func_insn(file, jump_dest)) {
 				/*
@@ -1594,7 +1479,6 @@ static int add_jump_destinations(struct objtool_file *file)
 				 */
 				add_call_dest(file, insn, jump_dest->func, true);
 				continue;
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 
@@ -1662,20 +1546,6 @@ static int add_call_destinations(struct objtool_file *file)
 			}
 
 			add_call_dest(file, insn, dest, false);
-<<<<<<< HEAD
-
-		} else if (arch_is_retpoline(reloc->sym)) {
-			/*
-			 * Retpoline calls are really dynamic calls in
-			 * disguise, so convert them accordingly.
-			 */
-			insn->type = INSN_CALL_DYNAMIC;
-			insn->retpoline_safe = true;
-
-			list_add_tail(&insn->call_node,
-				      &file->retpoline_call_list);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		} else if (reloc->sym->retpoline_thunk) {
 			add_retpoline_call(file, insn);

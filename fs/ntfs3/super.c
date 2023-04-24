@@ -672,11 +672,7 @@ static u32 true_sectors_per_clst(const struct NTFS_BOOT *boot)
 	if (boot->sectors_per_clusters <= 0x80)
 		return boot->sectors_per_clusters;
 	if (boot->sectors_per_clusters >= 0xf4) /* limit shift to 2MB max */
-<<<<<<< HEAD
-		return 1U << (0 - boot->sectors_per_clusters);
-=======
 		return 1U << -(s8)boot->sectors_per_clusters;
->>>>>>> origin/linux_6.1.15_upstream
 	return -EINVAL;
 }
 

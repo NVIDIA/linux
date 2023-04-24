@@ -298,10 +298,7 @@ struct iavf_adapter {
 #define IAVF_FLAG_REINIT_ITR_NEEDED		BIT(16)
 #define IAVF_FLAG_QUEUES_DISABLED		BIT(17)
 #define IAVF_FLAG_SETUP_NETDEV_FEATURES		BIT(18)
-<<<<<<< HEAD
-=======
 #define IAVF_FLAG_REINIT_MSIX_NEEDED		BIT(20)
->>>>>>> origin/linux_6.1.15_upstream
 /* duplicates for common code */
 #define IAVF_FLAG_DCB_ENABLED			0
 	/* flags for admin queue service task */
@@ -318,27 +315,6 @@ struct iavf_adapter {
 #define IAVF_FLAG_AQ_CONFIGURE_RSS		BIT_ULL(9) /* direct AQ config */
 #define IAVF_FLAG_AQ_GET_CONFIG			BIT_ULL(10)
 /* Newer style, RSS done by the PF so we can ignore hardware vagaries. */
-<<<<<<< HEAD
-#define IAVF_FLAG_AQ_GET_HENA			BIT(11)
-#define IAVF_FLAG_AQ_SET_HENA			BIT(12)
-#define IAVF_FLAG_AQ_SET_RSS_KEY		BIT(13)
-#define IAVF_FLAG_AQ_SET_RSS_LUT		BIT(14)
-#define IAVF_FLAG_AQ_REQUEST_PROMISC		BIT(15)
-#define IAVF_FLAG_AQ_RELEASE_PROMISC		BIT(16)
-#define IAVF_FLAG_AQ_REQUEST_ALLMULTI		BIT(17)
-#define IAVF_FLAG_AQ_RELEASE_ALLMULTI		BIT(18)
-#define IAVF_FLAG_AQ_ENABLE_VLAN_STRIPPING	BIT(19)
-#define IAVF_FLAG_AQ_DISABLE_VLAN_STRIPPING	BIT(20)
-#define IAVF_FLAG_AQ_ENABLE_CHANNELS		BIT(21)
-#define IAVF_FLAG_AQ_DISABLE_CHANNELS		BIT(22)
-#define IAVF_FLAG_AQ_ADD_CLOUD_FILTER		BIT(23)
-#define IAVF_FLAG_AQ_DEL_CLOUD_FILTER		BIT(24)
-#define IAVF_FLAG_AQ_ADD_FDIR_FILTER		BIT(25)
-#define IAVF_FLAG_AQ_DEL_FDIR_FILTER		BIT(26)
-#define IAVF_FLAG_AQ_ADD_ADV_RSS_CFG		BIT(27)
-#define IAVF_FLAG_AQ_DEL_ADV_RSS_CFG		BIT(28)
-#define IAVF_FLAG_AQ_REQUEST_STATS		BIT(29)
-=======
 #define IAVF_FLAG_AQ_GET_HENA			BIT_ULL(11)
 #define IAVF_FLAG_AQ_SET_HENA			BIT_ULL(12)
 #define IAVF_FLAG_AQ_SET_RSS_KEY		BIT_ULL(13)
@@ -382,7 +358,6 @@ struct iavf_adapter {
 #define IAVF_EXTENDED_CAPS				\
 	(IAVF_EXTENDED_CAP_SEND_VLAN_V2 |		\
 	 IAVF_EXTENDED_CAP_RECV_VLAN_V2)
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* OS defined structs */
 	struct net_device *netdev;

@@ -48,11 +48,8 @@ static const struct reg_sequence patch_list[] = {
 	{RT5682_SAR_IL_CMD_6, 0x0110},
 	{RT5682_CHARGE_PUMP_1, 0x0210},
 	{RT5682_HP_LOGIC_CTRL_2, 0x0007},
-<<<<<<< HEAD
-=======
 	{RT5682_SAR_IL_CMD_2, 0xac00},
 	{RT5682_CBJ_CTRL_7, 0x0104},
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 void rt5682_apply_patch_list(struct rt5682_priv *rt5682, struct device *dev)
@@ -1106,8 +1103,6 @@ void rt5682_jack_detect_handler(struct work_struct *work)
 				 &rt5682->jack_detect_work, msecs_to_jiffies(15));
 		return;
 	}
-<<<<<<< HEAD
-=======
 
 	if (rt5682->is_sdw) {
 		if (pm_runtime_status_suspended(rt5682->slave->dev.parent)) {
@@ -1119,7 +1114,6 @@ void rt5682_jack_detect_handler(struct work_struct *work)
 	}
 
 	dapm = snd_soc_component_get_dapm(rt5682->component);
->>>>>>> origin/linux_6.1.15_upstream
 
 	snd_soc_dapm_mutex_lock(dapm);
 	mutex_lock(&rt5682->calibrate_mutex);
@@ -2872,10 +2866,6 @@ int rt5682_register_dai_clks(struct rt5682_priv *rt5682)
 
 	for (i = 0; i < RT5682_DAI_NUM_CLKS; ++i) {
 		struct clk_init_data init = { };
-<<<<<<< HEAD
-		struct clk_parent_data parent_data;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		const struct clk_hw *parent;
 
 		dai_clk_hw = &rt5682->dai_clks_hw[i];
@@ -2884,15 +2874,8 @@ int rt5682_register_dai_clks(struct rt5682_priv *rt5682)
 		case RT5682_DAI_WCLK_IDX:
 			/* Make MCLK the parent of WCLK */
 			if (rt5682->mclk) {
-<<<<<<< HEAD
-				parent_data = (struct clk_parent_data){
-					.fw_name = "mclk",
-				};
-				init.parent_data = &parent_data;
-=======
 				parent = __clk_get_hw(rt5682->mclk);
 				init.parent_hws = &parent;
->>>>>>> origin/linux_6.1.15_upstream
 				init.num_parents = 1;
 			}
 			break;

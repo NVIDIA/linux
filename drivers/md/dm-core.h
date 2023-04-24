@@ -75,10 +75,6 @@ struct mapped_device {
 	struct gendisk *disk;
 	struct dax_device *dax_dev;
 
-<<<<<<< HEAD
-	unsigned long __percpu *pending_io;
-
-=======
 	wait_queue_head_t wait;
 	unsigned long __percpu *pending_io;
 
@@ -90,7 +86,6 @@ struct mapped_device {
 	 */
 	struct workqueue_struct *wq;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * A list of ios that arrived while we were suspended.
 	 */

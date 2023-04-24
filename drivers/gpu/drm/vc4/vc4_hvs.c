@@ -255,34 +255,7 @@ static void vc4_hvs_update_gamma_lut(struct vc4_hvs *hvs,
 	vc4_hvs_lut_load(hvs, vc4_crtc);
 }
 
-<<<<<<< HEAD
-u8 vc4_hvs_get_fifo_frame_count(struct drm_device *dev, unsigned int fifo)
-{
-	struct vc4_dev *vc4 = to_vc4_dev(dev);
-	u8 field = 0;
-
-	switch (fifo) {
-	case 0:
-		field = VC4_GET_FIELD(HVS_READ(SCALER_DISPSTAT1),
-				      SCALER_DISPSTAT1_FRCNT0);
-		break;
-	case 1:
-		field = VC4_GET_FIELD(HVS_READ(SCALER_DISPSTAT1),
-				      SCALER_DISPSTAT1_FRCNT1);
-		break;
-	case 2:
-		field = VC4_GET_FIELD(HVS_READ(SCALER_DISPSTAT2),
-				      SCALER_DISPSTAT2_FRCNT2);
-		break;
-	}
-
-	return field;
-}
-
-int vc4_hvs_get_fifo_from_output(struct drm_device *dev, unsigned int output)
-=======
 u8 vc4_hvs_get_fifo_frame_count(struct vc4_hvs *hvs, unsigned int fifo)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct drm_device *drm = &hvs->vc4->base;
 	u8 field = 0;

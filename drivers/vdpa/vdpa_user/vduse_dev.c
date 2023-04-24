@@ -673,15 +673,10 @@ static void vduse_vdpa_get_config(struct vdpa_device *vdpa, unsigned int offset,
 {
 	struct vduse_dev *dev = vdpa_to_vduse(vdpa);
 
-<<<<<<< HEAD
-	if (offset > dev->config_size ||
-	    len > dev->config_size - offset)
-=======
 	/* Initialize the buffer in case of partial copy. */
 	memset(buf, 0, len);
 
 	if (offset > dev->config_size)
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	if (len > dev->config_size - offset)

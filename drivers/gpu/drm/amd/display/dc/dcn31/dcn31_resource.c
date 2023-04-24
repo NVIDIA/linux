@@ -888,13 +888,8 @@ static const struct dc_debug_options debug_defaults_drv = {
 		}
 	},
 	.disable_z10 = true,
-<<<<<<< HEAD
-	.optimize_edp_link_rate = true,
-	.enable_sw_cntl_psr = true,
-=======
 	.enable_z9_disable_interface = true, /* Allow support for the PMFW interface for disable Z9*/
 	.dml_hostvm_override = DML_HOSTVM_OVERRIDE_FALSE,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct dc_debug_options debug_defaults_diags = {
@@ -1257,10 +1252,7 @@ static struct stream_encoder *dcn31_stream_encoder_create(
 		kfree(vpg);
 		kfree(afmt);
 		return NULL;
-<<<<<<< HEAD
-=======
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	dcn30_dio_stream_encoder_construct(enc1, ctx, ctx->dc_bios,
 					eng_id, vpg, afmt,

@@ -464,10 +464,6 @@ static unsigned int fill_remote_addresses_vec(struct mptcp_sock *msk, bool fullm
 	return i;
 }
 
-<<<<<<< HEAD
-static struct mptcp_pm_addr_entry *
-__lookup_addr(struct pm_nl_pernet *pernet, struct mptcp_addr_info *info)
-=======
 static void __mptcp_pm_send_ack(struct mptcp_sock *msk, struct mptcp_subflow_context *subflow,
 				bool prio, bool backup)
 {
@@ -514,18 +510,13 @@ __lookup_addr_by_id(struct pm_nl_pernet *pernet, unsigned int id)
 static struct mptcp_pm_addr_entry *
 __lookup_addr(struct pm_nl_pernet *pernet, const struct mptcp_addr_info *info,
 	      bool lookup_by_id)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct mptcp_pm_addr_entry *entry;
 
 	list_for_each_entry(entry, &pernet->local_addr_list, list) {
-<<<<<<< HEAD
-		if (addresses_equal(&entry->addr, info, true))
-=======
 		if ((!lookup_by_id &&
 		     mptcp_addresses_equal(&entry->addr, info, entry->addr.port)) ||
 		    (lookup_by_id && entry->addr.id == info->id))
->>>>>>> origin/linux_6.1.15_upstream
 			return entry;
 	}
 	return NULL;
@@ -703,10 +694,6 @@ static void mptcp_pm_nl_add_addr_received(struct mptcp_sock *msk)
 		 msk->pm.remote.family);
 
 	remote = msk->pm.remote;
-<<<<<<< HEAD
-	if (lookup_subflow_by_daddr(&msk->conn_list, &remote))
-		goto add_addr_echo;
-=======
 	mptcp_pm_announce_addr(msk, &remote, true);
 	mptcp_pm_nl_addr_send_ack(msk);
 
@@ -716,7 +703,6 @@ static void mptcp_pm_nl_add_addr_received(struct mptcp_sock *msk)
 	/* pick id 0 port, if none is provided the remote address */
 	if (!remote.port)
 		remote.port = sk->sk_dport;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* pick id 0 port, if none is provided the remote address */
 	if (!remote.port) {
@@ -738,17 +724,6 @@ static void mptcp_pm_nl_add_addr_received(struct mptcp_sock *msk)
 	for (i = 0; i < nr; i++)
 		__mptcp_subflow_connect(sk, &addrs[i], &remote);
 	spin_lock_bh(&msk->pm.lock);
-<<<<<<< HEAD
-
-	/* be sure to echo exactly the received address */
-	if (reset_port)
-		remote.port = 0;
-
-add_addr_echo:
-	mptcp_pm_announce_addr(msk, &remote, true);
-	mptcp_pm_nl_addr_send_ack(msk);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void mptcp_pm_nl_addr_send_ack(struct mptcp_sock *msk)
@@ -784,25 +759,11 @@ int mptcp_pm_nl_mp_prio_send_ack(struct mptcp_sock *msk,
 		if (!mptcp_addresses_equal(&local, addr, addr->port))
 			continue;
 
-<<<<<<< HEAD
-		if (subflow->backup != bkup)
-			msk->last_snd = NULL;
-		subflow->backup = bkup;
-		subflow->send_mp_prio = 1;
-		subflow->request_bkup = bkup;
-		__MPTCP_INC_STATS(sock_net(sk), MPTCP_MIB_MPPRIOTX);
-
-		spin_unlock_bh(&msk->pm.lock);
-		pr_debug("send ack for mp_prio");
-		mptcp_subflow_send_ack(ssk);
-		spin_lock_bh(&msk->pm.lock);
-=======
 		if (rem && rem->family != AF_UNSPEC) {
 			remote_address((struct sock_common *)ssk, &remote);
 			if (!mptcp_addresses_equal(&remote, rem, rem->port))
 				continue;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		__mptcp_pm_send_ack(msk, subflow, true, bkup);
 		return 0;
@@ -839,16 +800,10 @@ static void mptcp_pm_nl_rm_addr_or_subflow(struct mptcp_sock *msk,
 		return;
 
 	for (i = 0; i < rm_list->nr; i++) {
-<<<<<<< HEAD
-		bool removed = false;
-
-		list_for_each_entry_safe(subflow, tmp, &msk->conn_list, node) {
-=======
 		u8 rm_id = rm_list->ids[i];
 		bool removed = false;
 
 		mptcp_for_each_subflow_safe(msk, subflow, tmp) {
->>>>>>> origin/linux_6.1.15_upstream
 			struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
 			int how = RCV_SHUTDOWN | SEND_SHUTDOWN;
 			u8 id = subflow->local_id;
@@ -870,14 +825,6 @@ static void mptcp_pm_nl_rm_addr_or_subflow(struct mptcp_sock *msk,
 			spin_lock_bh(&msk->pm.lock);
 
 			removed = true;
-<<<<<<< HEAD
-			msk->pm.subflows--;
-			__MPTCP_INC_STATS(sock_net(sk), rm_type);
-		}
-		if (!removed)
-			continue;
-
-=======
 			__MPTCP_INC_STATS(sock_net(sk), rm_type);
 		}
 		if (rm_type == MPTCP_MIB_RMSUBFLOW)
@@ -888,7 +835,6 @@ static void mptcp_pm_nl_rm_addr_or_subflow(struct mptcp_sock *msk,
 		if (!mptcp_pm_is_kernel(msk))
 			continue;
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (rm_type == MPTCP_MIB_RMADDR) {
 			msk->pm.add_addr_accepted--;
 			WRITE_ONCE(msk->pm.accept_addr, true);
@@ -1961,23 +1907,6 @@ static int mptcp_nl_cmd_set_flags(struct sk_buff *skb, struct genl_info *info)
 			return -EOPNOTSUPP;
 	}
 
-<<<<<<< HEAD
-	spin_lock_bh(&pernet->lock);
-	entry = __lookup_addr(pernet, &addr.addr);
-	if (!entry) {
-		spin_unlock_bh(&pernet->lock);
-		return -EINVAL;
-	}
-
-	if (bkup)
-		entry->flags |= MPTCP_PM_ADDR_FLAG_BACKUP;
-	else
-		entry->flags &= ~MPTCP_PM_ADDR_FLAG_BACKUP;
-	addr = *entry;
-	spin_unlock_bh(&pernet->lock);
-
-	mptcp_nl_addr_backup(net, &addr.addr, bkup);
-=======
 	if (token)
 		return mptcp_userspace_pm_set_flags(sock_net(skb->sk),
 						    token, &addr, &remote, bkup);
@@ -2000,7 +1929,6 @@ static int mptcp_nl_cmd_set_flags(struct sk_buff *skb, struct genl_info *info)
 	spin_unlock_bh(&pernet->lock);
 
 	mptcp_nl_set_flags(net, &addr.addr, bkup, changed);
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

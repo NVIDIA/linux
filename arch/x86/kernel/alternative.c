@@ -1343,12 +1343,7 @@ static struct bp_patching_desc bp_desc;
 static __always_inline
 struct bp_patching_desc *try_get_desc(void)
 {
-<<<<<<< HEAD
-	/* rcu_dereference */
-	struct bp_patching_desc *desc = __READ_ONCE(*descp);
-=======
 	struct bp_patching_desc *desc = &bp_desc;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!arch_atomic_inc_not_zero(&desc->refs))
 		return NULL;
@@ -1445,13 +1440,10 @@ noinstr int poke_int3_handler(struct pt_regs *regs)
 	case JMP32_INSN_OPCODE:
 	case JMP8_INSN_OPCODE:
 		int3_emulate_jmp(regs, (long)ip + tp->disp);
-<<<<<<< HEAD
-=======
 		break;
 
 	case 0x70 ... 0x7f: /* Jcc */
 		int3_emulate_jcc(regs, tp->opcode & 0xf, (long)ip, tp->disp);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 
 	default:
@@ -1527,13 +1519,9 @@ static void text_poke_bp_batch(struct text_poke_loc *tp, unsigned int nr_entries
 	 * Second step: update all but the first byte of the patched range.
 	 */
 	for (do_sync = 0, i = 0; i < nr_entries; i++) {
-<<<<<<< HEAD
-		u8 old[POKE_MAX_OPCODE_SIZE] = { tp[i].old, };
-=======
 		u8 old[POKE_MAX_OPCODE_SIZE+1] = { tp[i].old, };
 		u8 _new[POKE_MAX_OPCODE_SIZE+1];
 		const u8 *new = tp[i].text;
->>>>>>> origin/linux_6.1.15_upstream
 		int len = tp[i].len;
 
 		if (len - INT3_INSN_SIZE > 0) {
@@ -1621,11 +1609,7 @@ static void text_poke_loc_init(struct text_poke_loc *tp, void *addr,
 			       const void *opcode, size_t len, const void *emulate)
 {
 	struct insn insn;
-<<<<<<< HEAD
-	int ret, i;
-=======
 	int ret, i = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (len == 6)
 		i = 1;
@@ -1688,10 +1672,7 @@ static void text_poke_loc_init(struct text_poke_loc *tp, void *addr,
 	case CALL_INSN_OPCODE:
 	case JMP32_INSN_OPCODE:
 	case JMP8_INSN_OPCODE:
-<<<<<<< HEAD
-=======
 	case 0x70 ... 0x7f: /* Jcc */
->>>>>>> origin/linux_6.1.15_upstream
 		tp->disp = insn.immediate.value;
 		break;
 

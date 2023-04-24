@@ -611,13 +611,6 @@ static int virtio_vsock_vqs_init(struct virtio_vsock *vsock)
 	vsock->event_run = true;
 	mutex_unlock(&vsock->event_lock);
 
-<<<<<<< HEAD
-	rcu_assign_pointer(the_virtio_vsock, vsock);
-
-	mutex_unlock(&the_virtio_vsock_mutex);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -626,17 +619,7 @@ static void virtio_vsock_vqs_del(struct virtio_vsock *vsock)
 	struct virtio_device *vdev = vsock->vdev;
 	struct virtio_vsock_pkt *pkt;
 
-<<<<<<< HEAD
-	mutex_lock(&the_virtio_vsock_mutex);
-
-	vdev->priv = NULL;
-	rcu_assign_pointer(the_virtio_vsock, NULL);
-	synchronize_rcu();
-
-	/* Reset all connected sockets when the device disappear */
-=======
 	/* Reset all connected sockets when the VQs disappear */
->>>>>>> origin/linux_6.1.15_upstream
 	vsock_for_each_connected_socket(&virtio_transport.transport,
 					virtio_vsock_reset_sock);
 

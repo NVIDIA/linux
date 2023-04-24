@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-<<<<<<< HEAD
-#include <linux/genhd.h>
-=======
 #include <linux/blkdev.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/slab.h>
 
 struct bd_holder_disk {

@@ -9,17 +9,12 @@
 #include <objtool/builtin.h>
 #include <objtool/objtool.h>
 
-<<<<<<< HEAD
-bool no_fp, no_unreachable, retpoline, module, backtrace, uaccess, stats,
-     validate_dup, vmlinux, mcount, noinstr, backup, sls;
-=======
 #define ERROR(format, ...)				\
 	fprintf(stderr,					\
 		"error: objtool: " format "\n",		\
 		##__VA_ARGS__)
 
 struct opts opts;
->>>>>>> origin/linux_6.1.15_upstream
 
 static const char * const check_usage[] = {
 	"objtool <actions> [<options>] file.o",
@@ -66,21 +61,6 @@ static int parse_hacks(const struct option *opt, const char *str, int unset)
 }
 
 const struct option check_options[] = {
-<<<<<<< HEAD
-	OPT_BOOLEAN('f', "no-fp", &no_fp, "Skip frame pointer validation"),
-	OPT_BOOLEAN('u', "no-unreachable", &no_unreachable, "Skip 'unreachable instruction' warnings"),
-	OPT_BOOLEAN('r', "retpoline", &retpoline, "Validate retpoline assumptions"),
-	OPT_BOOLEAN('m', "module", &module, "Indicates the object will be part of a kernel module"),
-	OPT_BOOLEAN('b', "backtrace", &backtrace, "unwind on error"),
-	OPT_BOOLEAN('a', "uaccess", &uaccess, "enable uaccess checking"),
-	OPT_BOOLEAN('s', "stats", &stats, "print statistics"),
-	OPT_BOOLEAN('d', "duplicate", &validate_dup, "duplicate validation for vmlinux.o"),
-	OPT_BOOLEAN('n', "noinstr", &noinstr, "noinstr validation for vmlinux.o"),
-	OPT_BOOLEAN('l', "vmlinux", &vmlinux, "vmlinux.o validation"),
-	OPT_BOOLEAN('M', "mcount", &mcount, "generate __mcount_loc"),
-	OPT_BOOLEAN('B', "backup", &backup, "create .orig files before modification"),
-	OPT_BOOLEAN('S', "sls", &sls, "validate straight-line-speculation"),
-=======
 	OPT_GROUP("Actions:"),
 	OPT_CALLBACK_OPTARG('h', "hacks", NULL, NULL, "jump_label,noinstr", "patch toolchain bugs/limitations", parse_hacks),
 	OPT_BOOLEAN('i', "ibt", &opts.ibt, "validate and annotate IBT"),
@@ -106,7 +86,6 @@ const struct option check_options[] = {
 	OPT_BOOLEAN(0, "sec-address", &opts.sec_address, "print section addresses in warnings"),
 	OPT_BOOLEAN(0, "stats", &opts.stats, "print statistics"),
 
->>>>>>> origin/linux_6.1.15_upstream
 	OPT_END(),
 };
 

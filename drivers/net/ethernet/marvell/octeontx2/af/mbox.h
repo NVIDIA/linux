@@ -169,18 +169,12 @@ M(CGX_GET_PHY_FEC_STATS, 0x219, cgx_get_phy_fec_stats, msg_req, msg_rsp) \
 M(CGX_FEATURES_GET,	0x21B, cgx_features_get, msg_req,		\
 			       cgx_features_info_msg)			\
 M(RPM_STATS,		0x21C, rpm_stats, msg_req, rpm_stats_rsp)	\
-<<<<<<< HEAD
-M(CGX_MAC_ADDR_RESET,	0x21D, cgx_mac_addr_reset, msg_req, msg_rsp)	\
-M(CGX_MAC_ADDR_UPDATE,	0x21E, cgx_mac_addr_update, cgx_mac_addr_update_req, \
-			       msg_rsp)					\
-=======
 M(CGX_MAC_ADDR_RESET,	0x21D, cgx_mac_addr_reset, cgx_mac_addr_reset_req, \
 							msg_rsp) \
 M(CGX_MAC_ADDR_UPDATE,	0x21E, cgx_mac_addr_update, cgx_mac_addr_update_req, \
 						    cgx_mac_addr_update_rsp) \
 M(CGX_PRIO_FLOW_CTRL_CFG, 0x21F, cgx_prio_flow_ctrl_cfg, cgx_pfc_cfg,  \
 				 cgx_pfc_rsp)                               \
->>>>>>> origin/linux_6.1.15_upstream
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc,				\
 				npa_lf_alloc_req, npa_lf_alloc_rsp)	\
@@ -687,8 +681,6 @@ struct rpm_stats_rsp {
 	u64 tx_stats[RPM_TX_STATS_COUNT];
 };
 
-<<<<<<< HEAD
-=======
 struct cgx_pfc_cfg {
 	struct mbox_msghdr hdr;
 	u8 rx_pause;
@@ -704,7 +696,6 @@ struct cgx_pfc_rsp {
 
  /* NPA mbox message formats */
 
->>>>>>> origin/linux_6.1.15_upstream
 struct npc_set_pkind {
 	struct mbox_msghdr hdr;
 #define OTX2_PRIV_FLAGS_DEFAULT  BIT_ULL(0)

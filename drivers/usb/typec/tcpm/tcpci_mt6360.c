@@ -14,11 +14,6 @@
 #include <linux/usb/tcpci.h>
 #include <linux/usb/tcpm.h>
 
-<<<<<<< HEAD
-#include "tcpci.h"
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #define MT6360_REG_PHYCTRL1	0x80
 #define MT6360_REG_PHYCTRL3	0x82
 #define MT6360_REG_PHYCTRL7	0x86

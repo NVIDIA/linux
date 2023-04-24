@@ -505,12 +505,8 @@ static int tls_do_encryption(struct sock *sk,
 	memcpy(&rec->iv_data[iv_offset], tls_ctx->tx.iv,
 	       prot->iv_size + prot->salt_size);
 
-<<<<<<< HEAD
-	xor_iv_with_seq(prot, rec->iv_data + iv_offset, tls_ctx->tx.rec_seq);
-=======
 	tls_xor_iv_with_seq(prot, rec->iv_data + iv_offset,
 			    tls_ctx->tx.rec_seq);
->>>>>>> origin/linux_6.1.15_upstream
 
 	sge->offset += prot->prepend_size;
 	sge->length -= prot->prepend_size;
@@ -1516,15 +1512,6 @@ static int tls_decrypt_sg(struct sock *sk, struct iov_iter *out_iov,
 
 	/* Prepare IV */
 	if (prot->version == TLS_1_3_VERSION ||
-<<<<<<< HEAD
-	    prot->cipher_type == TLS_CIPHER_CHACHA20_POLY1305)
-		memcpy(iv + iv_offset, tls_ctx->rx.iv,
-		       prot->iv_size + prot->salt_size);
-	else
-		memcpy(iv + iv_offset, tls_ctx->rx.iv, prot->salt_size);
-
-	xor_iv_with_seq(prot, iv + iv_offset, tls_ctx->rx.rec_seq);
-=======
 	    prot->cipher_type == TLS_CIPHER_CHACHA20_POLY1305) {
 		memcpy(&dctx->iv[iv_offset], tls_ctx->rx.iv,
 		       prot->iv_size + prot->salt_size);
@@ -1537,7 +1524,6 @@ static int tls_decrypt_sg(struct sock *sk, struct iov_iter *out_iov,
 		memcpy(&dctx->iv[iv_offset], tls_ctx->rx.iv, prot->salt_size);
 	}
 	tls_xor_iv_with_seq(prot, &dctx->iv[iv_offset], tls_ctx->rx.rec_seq);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Prepare AAD */
 	tls_make_aad(dctx->aad, rxm->full_len - prot->overhead_size +
@@ -2147,27 +2133,9 @@ ssize_t tls_sw_splice_read(struct socket *sock,  loff_t *ppos,
 	struct tls_msg *tlm;
 	struct sk_buff *skb;
 	ssize_t copied = 0;
-<<<<<<< HEAD
-	bool from_queue;
-	int err = 0;
-	long timeo;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	int chunk;
 	int err;
 
-<<<<<<< HEAD
-	from_queue = !skb_queue_empty(&ctx->rx_list);
-	if (from_queue) {
-		skb = __skb_dequeue(&ctx->rx_list);
-	} else {
-		skb = tls_wait_data(sk, NULL, flags & SPLICE_F_NONBLOCK, timeo,
-				    &err);
-		if (!skb)
-			goto splice_read_end;
-
-		err = decrypt_skb_update(sk, skb, NULL, &chunk, &zc, false);
-=======
 	err = tls_rx_reader_lock(sk, ctx, flags & SPLICE_F_NONBLOCK);
 	if (err < 0)
 		return err;
@@ -2185,27 +2153,14 @@ ssize_t tls_sw_splice_read(struct socket *sock,  loff_t *ppos,
 		memset(&darg.inargs, 0, sizeof(darg.inargs));
 
 		err = tls_rx_one_record(sk, NULL, &darg);
->>>>>>> origin/linux_6.1.15_upstream
 		if (err < 0) {
 			tls_err_abort(sk, -EBADMSG);
 			goto splice_read_end;
 		}
-<<<<<<< HEAD
-	}
-
-	/* splice does not support reading control messages */
-	if (ctx->control != TLS_RECORD_TYPE_DATA) {
-		err = -EINVAL;
-		goto splice_read_end;
-	}
-
-=======
-
 		tls_rx_rec_done(ctx);
 		skb = darg.skb;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	rxm = strp_msg(skb);
 	tlm = tls_msg(skb);
 
@@ -2226,21 +2181,7 @@ ssize_t tls_sw_splice_read(struct socket *sock,  loff_t *ppos,
 		goto splice_requeue;
 	}
 
-<<<<<<< HEAD
-	if (!from_queue) {
-		ctx->recv_pkt = NULL;
-		__strp_unpause(&ctx->strp);
-	}
-	if (chunk < rxm->full_len) {
-		__skb_queue_head(&ctx->rx_list, skb);
-		rxm->offset += len;
-		rxm->full_len -= len;
-	} else {
-		consume_skb(skb);
-	}
-=======
 	consume_skb(skb);
->>>>>>> origin/linux_6.1.15_upstream
 
 splice_read_end:
 	tls_rx_reader_unlock(sk, ctx);

@@ -195,10 +195,6 @@
 			#dma-cells = <1>;
 			qcom,ee = <1>;
 			qcom,controlled-remotely;
-<<<<<<< HEAD
-			qcom,config-pipe-trust-reg = <0>;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		};
 
 		crypto: crypto@73a000 {

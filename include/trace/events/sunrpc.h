@@ -1854,11 +1854,7 @@ TRACE_EVENT(svc_xprt_create_err,
 		__entry->error = PTR_ERR(xprt);
 		__assign_str(program, program);
 		__assign_str(protocol, protocol);
-<<<<<<< HEAD
-		memcpy(__entry->addr, sap, min(salen, sizeof(__entry->addr)));
-=======
 		__assign_sockaddr(addr, sap, salen);
->>>>>>> origin/linux_6.1.15_upstream
 	),
 
 	TP_printk("addr=%pISpc program=%s protocol=%s error=%ld",
@@ -2043,32 +2039,17 @@ DECLARE_EVENT_CLASS(svc_deferred_event,
 	TP_STRUCT__entry(
 		__field(const void *, dr)
 		__field(u32, xid)
-<<<<<<< HEAD
-		__array(__u8, addr, INET6_ADDRSTRLEN + 10)
-=======
 		__sockaddr(addr, dr->addrlen)
->>>>>>> origin/linux_6.1.15_upstream
 	),
 
 	TP_fast_assign(
 		__entry->dr = dr;
-<<<<<<< HEAD
-		__entry->xid = be32_to_cpu(*(__be32 *)(dr->args +
-						       (dr->xprt_hlen>>2)));
-		snprintf(__entry->addr, sizeof(__entry->addr) - 1,
-			 "%pISpc", (struct sockaddr *)&dr->addr);
-	),
-
-	TP_printk("addr=%s dr=%p xid=0x%08x", __entry->addr, __entry->dr,
-		__entry->xid)
-=======
 		__entry->xid = be32_to_cpu(*(__be32 *)dr->args);
 		__assign_sockaddr(addr, &dr->addr, dr->addrlen);
 	),
 
 	TP_printk("addr=%pISpc dr=%p xid=0x%08x", __get_sockaddr(addr),
 		__entry->dr, __entry->xid)
->>>>>>> origin/linux_6.1.15_upstream
 );
 
 #define DEFINE_SVC_DEFERRED_EVENT(name) \

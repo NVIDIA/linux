@@ -217,10 +217,7 @@ static int brcmf_init_nvram_parser(struct nvram_parser *nvp,
 		size = data_len;
 	/* Add space for properties we may add */
 	size += strlen(BRCMF_FW_DEFAULT_BOARDREV) + 1;
-<<<<<<< HEAD
-=======
 	size += BRCMF_FW_MACADDR_LEN + 1;
->>>>>>> origin/linux_6.1.15_upstream
 	/* Alloc for extra 0 byte + roundup by 4 + length field */
 	size += 1 + 3 + sizeof(u32);
 	nvp->nvram = kzalloc(size, GFP_KERNEL);
@@ -773,15 +770,9 @@ int brcmf_fw_get_firmwares(struct device *dev, struct brcmf_fw_request *req,
 	fwctx->done = fw_cb;
 
 	/* First try alternative board-specific path if any */
-<<<<<<< HEAD
-	if (fwctx->req->board_type)
-		alt_path = brcm_alt_fw_path(first->path,
-					    fwctx->req->board_type);
-=======
 	if (fwctx->req->board_types[0])
 		alt_path = brcm_alt_fw_path(first->path,
 					    fwctx->req->board_types[0]);
->>>>>>> origin/linux_6.1.15_upstream
 	if (alt_path) {
 		fwctx->board_index++;
 		ret = request_firmware_nowait(THIS_MODULE, true, alt_path,

@@ -8,25 +8,6 @@
 struct task_struct;
 struct pt_regs;
 
-<<<<<<< HEAD
-#ifdef CONFIG_STACKTRACE
-void stack_trace_print(const unsigned long *trace, unsigned int nr_entries,
-		       int spaces);
-int stack_trace_snprint(char *buf, size_t size, const unsigned long *entries,
-			unsigned int nr_entries, int spaces);
-unsigned int stack_trace_save(unsigned long *store, unsigned int size,
-			      unsigned int skipnr);
-unsigned int stack_trace_save_tsk(struct task_struct *task,
-				  unsigned long *store, unsigned int size,
-				  unsigned int skipnr);
-unsigned int stack_trace_save_regs(struct pt_regs *regs, unsigned long *store,
-				   unsigned int size, unsigned int skipnr);
-unsigned int stack_trace_save_user(unsigned long *store, unsigned int size);
-unsigned int filter_irq_stacks(unsigned long *entries, unsigned int nr_entries);
-
-/* Internal interfaces. Do not use in generic code */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_ARCH_STACKWALK
 
 /**

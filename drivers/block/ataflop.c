@@ -2021,14 +2021,6 @@ static void ataflop_probe(dev_t dev)
 
 	if (drive >= FD_MAX_UNITS || type >= NUM_DISK_MINORS)
 		return;
-<<<<<<< HEAD
-	if (!unit[drive].disk[type]) {
-		if (ataflop_alloc_disk(drive, type) == 0) {
-			add_disk(unit[drive].disk[type]);
-			unit[drive].registered[type] = true;
-		}
-	}
-=======
 	if (unit[drive].disk[type])
 		return;
 	if (ataflop_alloc_disk(drive, type))
@@ -2041,7 +2033,6 @@ static void ataflop_probe(dev_t dev)
 cleanup_disk:
 	put_disk(unit[drive].disk[type]);
 	unit[drive].disk[type] = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void atari_floppy_cleanup(void)
@@ -2054,10 +2045,6 @@ static void atari_floppy_cleanup(void)
 			if (!unit[i].disk[type])
 				continue;
 			del_gendisk(unit[i].disk[type]);
-<<<<<<< HEAD
-			blk_cleanup_queue(unit[i].disk[type]->queue);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			put_disk(unit[i].disk[type]);
 		}
 		blk_mq_free_tag_set(&unit[i].tag_set);
@@ -2076,11 +2063,7 @@ static void atari_cleanup_floppy_disk(struct atari_floppy_struct *fs)
 			continue;
 		if (fs->registered[type])
 			del_gendisk(fs->disk[type]);
-<<<<<<< HEAD
-		blk_cleanup_disk(fs->disk[type]);
-=======
 		put_disk(fs->disk[type]);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	blk_mq_free_tag_set(&fs->tag_set);
 }
@@ -2138,13 +2121,9 @@ static int __init atari_floppy_init (void)
 	for (i = 0; i < FD_MAX_UNITS; i++) {
 		unit[i].track = -1;
 		unit[i].flags = 0;
-<<<<<<< HEAD
-		add_disk(unit[i].disk[0]);
-=======
 		ret = add_disk(unit[i].disk[0]);
 		if (ret)
 			goto err_out_dma;
->>>>>>> origin/linux_6.1.15_upstream
 		unit[i].registered[0] = true;
 	}
 

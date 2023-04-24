@@ -2281,11 +2281,7 @@ static struct blk_mq_hw_ctx *blk_mq_get_sq_hctx(struct request_queue *q)
 	 * just causes lock contention inside the scheduler and pointless cache
 	 * bouncing.
 	 */
-<<<<<<< HEAD
-	struct blk_mq_hw_ctx *hctx = blk_mq_map_queue(q, 0, ctx);
-=======
 	struct blk_mq_hw_ctx *hctx = ctx->hctxs[HCTX_TYPE_DEFAULT];
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!blk_mq_hctx_stopped(hctx))
 		return hctx;
@@ -2896,25 +2892,12 @@ static inline struct request *blk_mq_get_cached_request(struct request_queue *q,
 	return rq;
 }
 
-<<<<<<< HEAD
-/*
- * Allow 2x BLK_MAX_REQUEST_COUNT requests on plug queue for multiple
- * queues. This is important for md arrays to benefit from merging
- * requests.
- */
-static inline unsigned short blk_plug_max_rq_count(struct blk_plug *plug)
-{
-	if (plug->multiple_queues)
-		return BLK_MAX_REQUEST_COUNT * 2;
-	return BLK_MAX_REQUEST_COUNT;
-=======
 static void bio_set_ioprio(struct bio *bio)
 {
 	/* Nobody set ioprio so far? Initialize it based on task's nice value */
 	if (IOPRIO_PRIO_CLASS(bio->bi_ioprio) == IOPRIO_CLASS_NONE)
 		bio->bi_ioprio = get_current_ioprio();
 	blkcg_set_ioprio(bio);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -4925,11 +4908,7 @@ void blk_mq_cancel_work_sync(struct request_queue *q)
 {
 	if (queue_is_mq(q)) {
 		struct blk_mq_hw_ctx *hctx;
-<<<<<<< HEAD
-		int i;
-=======
 		unsigned long i;
->>>>>>> origin/linux_6.1.15_upstream
 
 		cancel_delayed_work_sync(&q->requeue_work);
 

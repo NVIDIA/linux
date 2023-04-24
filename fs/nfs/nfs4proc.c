@@ -3107,19 +3107,11 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
 	}
 
 out:
-<<<<<<< HEAD
-	if (opendata->lgp) {
-		nfs4_lgopen_release(opendata->lgp);
-		opendata->lgp = NULL;
-	}
-	if (!opendata->cancelled)
-=======
 	if (!opendata->cancelled) {
 		if (opendata->lgp) {
 			nfs4_lgopen_release(opendata->lgp);
 			opendata->lgp = NULL;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		nfs4_sequence_free_slot(&opendata->o_res.seq_res);
 	}
 	return ret;
@@ -3961,8 +3953,6 @@ int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
 	return err;
 }
 
-<<<<<<< HEAD
-=======
 static void test_fs_location_for_trunking(struct nfs4_fs_location *location,
 					  struct nfs_client *clp,
 					  struct nfs_server *server)
@@ -4013,7 +4003,6 @@ static void test_fs_location_for_trunking(struct nfs4_fs_location *location,
 	}
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static int _nfs4_discover_trunking(struct nfs_server *server,
 				   struct nfs_fh *fhandle)
 {
@@ -4023,11 +4012,7 @@ static int _nfs4_discover_trunking(struct nfs_server *server,
 	struct nfs_client *clp = server->nfs_client;
 	const struct nfs4_state_maintenance_ops *ops =
 		clp->cl_mvops->state_renewal_ops;
-<<<<<<< HEAD
-	int status = -ENOMEM;
-=======
 	int status = -ENOMEM, i;
->>>>>>> origin/linux_6.1.15_upstream
 
 	cred = ops->get_state_renewal_cred(clp);
 	if (cred == NULL) {
@@ -4037,11 +4022,6 @@ static int _nfs4_discover_trunking(struct nfs_server *server,
 	}
 
 	page = alloc_page(GFP_KERNEL);
-<<<<<<< HEAD
-	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
-	if (page == NULL || locations == NULL)
-		goto out;
-=======
 	if (!page)
 		goto out_put_cred;
 	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
@@ -4050,18 +4030,10 @@ static int _nfs4_discover_trunking(struct nfs_server *server,
 	locations->fattr = nfs_alloc_fattr();
 	if (!locations->fattr)
 		goto out_free_2;
->>>>>>> origin/linux_6.1.15_upstream
 
 	status = nfs4_proc_get_locations(server, fhandle, locations, page,
 					 cred);
 	if (status)
-<<<<<<< HEAD
-		goto out;
-out:
-	if (page)
-		__free_page(page);
-	kfree(locations);
-=======
 		goto out_free_3;
 
 	for (i = 0; i < locations->nlocations; i++)
@@ -4075,7 +4047,6 @@ out_free:
 	__free_page(page);
 out_put_cred:
 	put_cred(cred);
->>>>>>> origin/linux_6.1.15_upstream
 	return status;
 }
 
@@ -10718,11 +10689,8 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
 	.create_server	= nfs4_create_server,
 	.clone_server	= nfs_clone_server,
 	.discover_trunking = nfs4_discover_trunking,
-<<<<<<< HEAD
-=======
 	.enable_swap	= nfs4_enable_swap,
 	.disable_swap	= nfs4_disable_swap,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {

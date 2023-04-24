@@ -623,11 +623,7 @@ static struct Qdisc_ops mqprio_qdisc_ops __read_mostly = {
 	.init		= mqprio_init,
 	.destroy	= mqprio_destroy,
 	.attach		= mqprio_attach,
-<<<<<<< HEAD
-	.change_real_num_tx = mqprio_change_real_num_tx,
-=======
 	.change_real_num_tx = mq_change_real_num_tx,
->>>>>>> origin/linux_6.1.15_upstream
 	.dump		= mqprio_dump,
 	.owner		= THIS_MODULE,
 };

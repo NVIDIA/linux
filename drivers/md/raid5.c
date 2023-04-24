@@ -2958,13 +2958,8 @@ static void raid5_error(struct mddev *mddev, struct md_rdev *rdev)
 	unsigned long flags;
 	pr_debug("raid456: error called\n");
 
-<<<<<<< HEAD
-	pr_crit("md/raid:%s: Disk failure on %s, disabling device.\n",
-		mdname(mddev), bdevname(rdev->bdev, b));
-=======
 	pr_crit("md/raid:%s: Disk failure on %pg, disabling device.\n",
 		mdname(mddev), rdev->bdev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock_irqsave(&conf->device_lock, flags);
 	set_bit(Faulty, &rdev->flags);

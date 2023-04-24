@@ -1305,13 +1305,8 @@ static void ubifs_invalidate_folio(struct folio *folio, size_t offset,
 		release_existing_page_budget(c);
 
 	atomic_long_dec(&c->dirty_pg_cnt);
-<<<<<<< HEAD
-	detach_page_private(page);
-	ClearPageChecked(page);
-=======
 	folio_detach_private(folio);
 	folio_clear_checked(folio);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int ubifs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
@@ -1468,32 +1463,7 @@ static bool ubifs_dirty_folio(struct address_space *mapping,
 
 static bool ubifs_release_folio(struct folio *folio, gfp_t unused_gfp_flags)
 {
-<<<<<<< HEAD
-	int rc;
-
-	rc = migrate_page_move_mapping(mapping, newpage, page, 0);
-	if (rc != MIGRATEPAGE_SUCCESS)
-		return rc;
-
-	if (PagePrivate(page)) {
-		detach_page_private(page);
-		attach_page_private(newpage, (void *)1);
-	}
-
-	if (mode != MIGRATE_SYNC_NO_COPY)
-		migrate_page_copy(newpage, page);
-	else
-		migrate_page_states(newpage, page);
-	return MIGRATEPAGE_SUCCESS;
-}
-#endif
-
-static int ubifs_releasepage(struct page *page, gfp_t unused_gfp_flags)
-{
-	struct inode *inode = page->mapping->host;
-=======
 	struct inode *inode = folio->mapping->host;
->>>>>>> origin/linux_6.1.15_upstream
 	struct ubifs_info *c = inode->i_sb->s_fs_info;
 
 	/*
@@ -1504,15 +1474,9 @@ static int ubifs_releasepage(struct page *page, gfp_t unused_gfp_flags)
 		return false;
 	ubifs_assert(c, folio_test_private(folio));
 	ubifs_assert(c, 0);
-<<<<<<< HEAD
-	detach_page_private(page);
-	ClearPageChecked(page);
-	return 1;
-=======
 	folio_detach_private(folio);
 	folio_clear_checked(folio);
 	return true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*

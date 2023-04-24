@@ -749,21 +749,13 @@ static int vdpa_nl_cmd_dev_get_doit(struct sk_buff *skb, struct genl_info *info)
 
 	err = genlmsg_reply(msg, info);
 	put_device(dev);
-<<<<<<< HEAD
-	mutex_unlock(&vdpa_dev_mutex);
-=======
 	up_read(&vdpa_dev_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	return err;
 
 mdev_err:
 	put_device(dev);
 err:
-<<<<<<< HEAD
-	mutex_unlock(&vdpa_dev_mutex);
-=======
 	up_read(&vdpa_dev_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	nlmsg_free(msg);
 	return err;
 }

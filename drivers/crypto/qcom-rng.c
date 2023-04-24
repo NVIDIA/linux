@@ -9,10 +9,7 @@
 #include <linux/crypto.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
-<<<<<<< HEAD
-=======
 #include <linux/kernel.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>

@@ -100,23 +100,9 @@ mt7921_tx_stats_show(struct seq_file *file, void *data)
 	int i;
 
 	mt7921_mutex_acquire(dev);
-<<<<<<< HEAD
-
-	mt7921_ampdu_stat_read_phy(&dev->phy, file);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	mt7921_ampdu_stat_read_phy(phy, file);
 
-<<<<<<< HEAD
-	mt7921_mutex_release(dev);
-
-	for (i = 0; i < ARRAY_SIZE(stat); i++) {
-		seq_printf(file, "AMSDU pack count of %d MSDU in TXD: 0x%x ",
-			   i + 1, stat[i]);
-		if (n != 0)
-			seq_printf(file, "(%d%%)\n", stat[i] * 100 / n);
-=======
 	seq_puts(file, "Tx MSDU stat:\n");
 	for (i = 0; i < ARRAY_SIZE(mib->tx_amsdu); i++) {
 		seq_printf(file, "AMSDU pack count of %d MSDU in TXD: %8d ",
@@ -124,7 +110,6 @@ mt7921_tx_stats_show(struct seq_file *file, void *data)
 		if (mib->tx_amsdu_cnt)
 			seq_printf(file, "(%3d%%)\n",
 				   mib->tx_amsdu[i] * 100 / mib->tx_amsdu_cnt);
->>>>>>> origin/linux_6.1.15_upstream
 		else
 			seq_puts(file, "\n");
 	}
@@ -445,11 +430,7 @@ int mt7921_init_debugfs(struct mt7921_dev *dev)
 {
 	struct dentry *dir;
 
-<<<<<<< HEAD
-	dir = mt76_register_debugfs_fops(&dev->mt76, &fops_regval);
-=======
 	dir = mt76_register_debugfs_fops(&dev->mphy, &fops_regval);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!dir)
 		return -ENOMEM;
 

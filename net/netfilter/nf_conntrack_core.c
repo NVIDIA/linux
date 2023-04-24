@@ -67,10 +67,7 @@ struct conntrack_gc_work {
 	struct delayed_work	dwork;
 	u32			next_bucket;
 	u32			avg_timeout;
-<<<<<<< HEAD
-=======
 	u32			count;
->>>>>>> origin/linux_6.1.15_upstream
 	u32			start_time;
 	bool			exiting;
 	bool			early_drop;
@@ -89,19 +86,12 @@ static DEFINE_MUTEX(nf_conntrack_mutex);
 /* clamp timeouts to this value (TCP unacked) */
 #define GC_SCAN_INTERVAL_CLAMP	(300ul * HZ)
 
-<<<<<<< HEAD
-/* large initial bias so that we don't scan often just because we have
- * three entries with a 1s timeout.
- */
-#define GC_SCAN_INTERVAL_INIT	INT_MAX
-=======
 /* Initial bias pretending we have 100 entries at the upper bound so we don't
  * wakeup often just because we have three entries with a 1s timeout while still
  * allowing non-idle machines to wakeup more often when needed.
  */
 #define GC_SCAN_INITIAL_COUNT	100
 #define GC_SCAN_INTERVAL_INIT	GC_SCAN_INTERVAL_MAX
->>>>>>> origin/linux_6.1.15_upstream
 
 #define GC_SCAN_MAX_DURATION	msecs_to_jiffies(10)
 #define GC_SCAN_EXPIRED_MAX	(64000u / HZ)
@@ -809,12 +799,9 @@ __nf_conntrack_find_get(struct net *net, const struct nf_conntrack_zone *zone,
 		 */
 		ct = nf_ct_tuplehash_to_ctrack(h);
 		if (likely(refcount_inc_not_zero(&ct->ct_general.use))) {
-<<<<<<< HEAD
-=======
 			/* re-check key after refcount */
 			smp_acquire__after_ctrl_dep();
 
->>>>>>> origin/linux_6.1.15_upstream
 			if (likely(nf_ct_key_equal(h, tuple, zone, net)))
 				goto found;
 
@@ -1002,10 +989,6 @@ static void __nf_conntrack_insert_prepare(struct nf_conn *ct)
 	struct nf_conn_tstamp *tstamp;
 
 	refcount_inc(&ct->ct_general.use);
-<<<<<<< HEAD
-	ct->status |= IPS_CONFIRMED;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* set conntrack timestamp, if enabled. */
 	tstamp = nf_conn_tstamp_find(ct);
@@ -1034,10 +1017,6 @@ static int __nf_ct_resolve_clash(struct sk_buff *skb,
 		nf_conntrack_get(&ct->ct_general);
 
 		nf_ct_acct_merge(ct, ctinfo, loser_ct);
-<<<<<<< HEAD
-		nf_ct_add_to_dying_list(loser_ct);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		nf_ct_put(loser_ct);
 		nf_ct_set(skb, ct, ctinfo);
 
@@ -1490,10 +1469,7 @@ static void gc_worker(struct work_struct *work)
 	unsigned int expired_count = 0;
 	unsigned long next_run;
 	s32 delta_time;
-<<<<<<< HEAD
-=======
 	long count;
->>>>>>> origin/linux_6.1.15_upstream
 
 	gc_work = container_of(work, struct conntrack_gc_work, dwork.work);
 
@@ -1503,18 +1479,12 @@ static void gc_worker(struct work_struct *work)
 
 	if (i == 0) {
 		gc_work->avg_timeout = GC_SCAN_INTERVAL_INIT;
-<<<<<<< HEAD
-=======
 		gc_work->count = GC_SCAN_INITIAL_COUNT;
->>>>>>> origin/linux_6.1.15_upstream
 		gc_work->start_time = start_time;
 	}
 
 	next_run = gc_work->avg_timeout;
-<<<<<<< HEAD
-=======
 	count = gc_work->count;
->>>>>>> origin/linux_6.1.15_upstream
 
 	end_time = start_time + GC_SCAN_MAX_DURATION;
 
@@ -1550,10 +1520,7 @@ static void gc_worker(struct work_struct *work)
 
 				gc_work->next_bucket = i;
 				gc_work->avg_timeout = next_run;
-<<<<<<< HEAD
-=======
 				gc_work->count = count;
->>>>>>> origin/linux_6.1.15_upstream
 
 				delta_time = nfct_time_stamp - gc_work->start_time;
 
@@ -1569,13 +1536,8 @@ static void gc_worker(struct work_struct *work)
 			}
 
 			expires = clamp(nf_ct_expires(tmp), GC_SCAN_INTERVAL_MIN, GC_SCAN_INTERVAL_CLAMP);
-<<<<<<< HEAD
-			next_run += expires;
-			next_run /= 2u;
-=======
 			expires = (expires - (long)next_run) / ++count;
 			next_run += expires;
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (nf_conntrack_max95 == 0 || gc_worker_skip_ct(tmp))
 				continue;
@@ -1616,10 +1578,7 @@ static void gc_worker(struct work_struct *work)
 		delta_time = nfct_time_stamp - end_time;
 		if (delta_time > 0 && i < hashsz) {
 			gc_work->avg_timeout = next_run;
-<<<<<<< HEAD
-=======
 			gc_work->count = count;
->>>>>>> origin/linux_6.1.15_upstream
 			gc_work->next_bucket = i;
 			next_run = 0;
 			goto early_exit;
@@ -1726,8 +1685,6 @@ void nf_conntrack_free(struct nf_conn *ct)
 	 * the golden rule for SLAB_TYPESAFE_BY_RCU
 	 */
 	WARN_ON(refcount_read(&ct->ct_general.use) != 0);
-<<<<<<< HEAD
-=======
 
 	if (ct->status & IPS_SRC_NAT_DONE) {
 		const struct nf_nat_hook *nat_hook;
@@ -1738,7 +1695,6 @@ void nf_conntrack_free(struct nf_conn *ct)
 			nat_hook->remove_nat_bysrc(ct);
 		rcu_read_unlock();
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	kfree(ct->ext);
 	kmem_cache_free(nf_conntrack_cachep, ct);
@@ -1838,11 +1794,6 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 	if (!exp && tmpl)
 		__nf_ct_try_assign_helper(ct, tmpl, GFP_ATOMIC);
 
-<<<<<<< HEAD
-	/* Now it is inserted into the unconfirmed list, set refcount to 1. */
-	refcount_set(&ct->ct_general.use, 1);
-	nf_ct_add_to_unconfirmed_list(ct);
-=======
 	/* Other CPU might have obtained a pointer to this object before it was
 	 * released.  Because refcount is 0, refcount_inc_not_zero() will fail.
 	 *
@@ -1852,7 +1803,6 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 	 * in the hash table, but its not (anymore).
 	 */
 	smp_wmb();
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Now it is going to be associated with an sk_buff, set refcount to 1. */
 	refcount_set(&ct->ct_general.use, 1);

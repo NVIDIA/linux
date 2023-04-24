@@ -2572,27 +2572,8 @@ static int mt7531_rgmii_setup(struct mt7530_priv *priv, u32 port,
 	return 0;
 }
 
-<<<<<<< HEAD
-static void mt7531_sgmii_validate(struct mt7530_priv *priv, int port,
-				  unsigned long *supported)
-{
-	/* Port5 supports ethier RGMII or SGMII.
-	 * Port6 supports SGMII only.
-	 */
-	if (port == 6) {
-		phylink_set(supported, 2500baseX_Full);
-		phylink_set(supported, 2500baseT_Full);
-	}
-}
-
-static void
-mt7531_sgmii_link_up_force(struct dsa_switch *ds, int port,
-			   unsigned int mode, phy_interface_t interface,
-			   int speed, int duplex)
-=======
 static void mt7531_pcs_link_up(struct phylink_pcs *pcs, unsigned int mode,
 			       phy_interface_t interface, int speed, int duplex)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct mt7530_priv *priv = pcs_to_mt753x_pcs(pcs)->priv;
 	int port = pcs_to_mt753x_pcs(pcs)->port;
@@ -2941,63 +2922,17 @@ mt7531_cpu_port_config(struct dsa_switch *ds, int port)
 	return 0;
 }
 
-<<<<<<< HEAD
-static void
-mt7530_mac_port_validate(struct dsa_switch *ds, int port,
-			 unsigned long *supported)
-{
-}
-
-static void mt7531_mac_port_validate(struct dsa_switch *ds, int port,
-				     unsigned long *supported)
-{
-	struct mt7530_priv *priv = ds->priv;
-
-	mt7531_sgmii_validate(priv, port, supported);
-}
-
-static void
-mt753x_phylink_validate(struct dsa_switch *ds, int port,
-			unsigned long *supported,
-			struct phylink_link_state *state)
-=======
 static void mt753x_phylink_get_caps(struct dsa_switch *ds, int port,
 				    struct phylink_config *config)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct mt7530_priv *priv = ds->priv;
 
-<<<<<<< HEAD
-	if (state->interface != PHY_INTERFACE_MODE_NA &&
-	    !mt753x_phy_mode_supported(ds, port, state)) {
-		linkmode_zero(supported);
-		return;
-	}
-
-	phylink_set_port_modes(mask);
-
-	if (state->interface != PHY_INTERFACE_MODE_TRGMII &&
-	    !phy_interface_mode_is_8023z(state->interface)) {
-		phylink_set(mask, 10baseT_Half);
-		phylink_set(mask, 10baseT_Full);
-		phylink_set(mask, 100baseT_Half);
-		phylink_set(mask, 100baseT_Full);
-		phylink_set(mask, Autoneg);
-	}
-
-	/* This switch only supports 1G full-duplex. */
-	if (state->interface != PHY_INTERFACE_MODE_MII) {
-		phylink_set(mask, 1000baseT_Full);
-		phylink_set(mask, 1000baseX_Full);
-	}
-=======
 	/* This switch only supports full-duplex at 1Gbps */
 	config->mac_capabilities = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
 				   MAC_10 | MAC_100 | MAC_1000FD;
 
 	if ((priv->id == ID_MT7531) && mt753x_is_mac_port(port))
 		config->mac_capabilities |= MAC_2500FD;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* This driver does not make use of the speed, duplex, pause or the
 	 * advertisement in its mac_config, so it is safe to mark this driver

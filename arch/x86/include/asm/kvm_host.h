@@ -1646,11 +1646,8 @@ struct kvm_x86_ops {
 
 struct kvm_x86_nested_ops {
 	void (*leave_nested)(struct kvm_vcpu *vcpu);
-<<<<<<< HEAD
-=======
 	bool (*is_exception_vmexit)(struct kvm_vcpu *vcpu, u8 vector,
 				    u32 error_code);
->>>>>>> origin/linux_6.1.15_upstream
 	int (*check_events)(struct kvm_vcpu *vcpu);
 	bool (*has_events)(struct kvm_vcpu *vcpu);
 	void (*triple_fault)(struct kvm_vcpu *vcpu);
@@ -1673,11 +1670,7 @@ struct kvm_x86_init_ops {
 	int (*disabled_by_bios)(void);
 	int (*check_processor_compatibility)(void);
 	int (*hardware_setup)(void);
-<<<<<<< HEAD
-	bool (*intel_pt_intr_in_guest)(void);
-=======
 	unsigned int (*handle_intel_pt_intr)(void);
->>>>>>> origin/linux_6.1.15_upstream
 
 	struct kvm_x86_ops *runtime_ops;
 	struct kvm_pmu_ops *pmu_ops;
@@ -1721,14 +1714,10 @@ static inline int kvm_arch_flush_remote_tlb(struct kvm *kvm)
 		return -ENOTSUPP;
 }
 
-<<<<<<< HEAD
-void kvm_mmu_x86_module_init(void);
-=======
 #define kvm_arch_pmi_in_guest(vcpu) \
 	((vcpu) && (vcpu)->arch.handling_intr_from_guest)
 
 void __init kvm_mmu_x86_module_init(void);
->>>>>>> origin/linux_6.1.15_upstream
 int kvm_mmu_vendor_module_init(void);
 void kvm_mmu_vendor_module_exit(void);
 

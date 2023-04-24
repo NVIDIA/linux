@@ -740,9 +740,6 @@ static int add_memory_block(unsigned long block_id, unsigned long state,
 	mem->nr_vmemmap_pages = nr_vmemmap_pages;
 	INIT_LIST_HEAD(&mem->group_next);
 
-<<<<<<< HEAD
-	ret = register_memory(mem);
-=======
 #ifndef CONFIG_NUMA
 	if (state == MEM_ONLINE)
 		/*
@@ -755,7 +752,6 @@ static int add_memory_block(unsigned long block_id, unsigned long state,
 #endif /* CONFIG_NUMA */
 
 	ret = __add_memory_block(mem);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		return ret;
 

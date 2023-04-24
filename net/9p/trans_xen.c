@@ -363,11 +363,7 @@ static int xen_9pfs_front_alloc_dataring(struct xenbus_device *dev,
 out:
 	if (bytes) {
 		for (i--; i >= 0; i--)
-<<<<<<< HEAD
-			gnttab_end_foreign_access(ring->intf->ref[i], 0, 0);
-=======
 			gnttab_end_foreign_access(ring->intf->ref[i], NULL);
->>>>>>> origin/linux_6.1.15_upstream
 		free_pages_exact(bytes, 1UL << (order + XEN_PAGE_SHIFT));
 	}
 	gnttab_end_foreign_access(ring->ref, NULL);

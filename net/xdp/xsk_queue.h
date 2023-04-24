@@ -205,14 +205,11 @@ static inline bool xskq_cons_read_desc(struct xsk_queue *q,
 	return false;
 }
 
-<<<<<<< HEAD
-=======
 static inline void xskq_cons_release_n(struct xsk_queue *q, u32 cnt)
 {
 	q->cached_cons += cnt;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static inline u32 xskq_cons_read_desc_batch(struct xsk_queue *q, struct xsk_buff_pool *pool,
 					    u32 max)
 {

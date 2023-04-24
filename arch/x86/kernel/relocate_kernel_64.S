@@ -106,13 +106,9 @@ SYM_CODE_START_NOALIGN(relocate_kernel)
 	/* jump to identity mapped page */
 	addq	$(identity_mapped - relocate_kernel), %r8
 	pushq	%r8
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(relocate_kernel)
 
 SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
@@ -207,13 +203,9 @@ SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
 	xorl	%r14d, %r14d
 	xorl	%r15d, %r15d
 
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 
 1:
 	popq	%rdx
@@ -232,13 +224,9 @@ SYM_CODE_START_LOCAL_NOALIGN(identity_mapped)
 	call	swap_pages
 	movq	$virtual_mapped, %rax
 	pushq	%rax
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(identity_mapped)
 
 SYM_CODE_START_LOCAL_NOALIGN(virtual_mapped)
@@ -260,13 +248,9 @@ SYM_CODE_START_LOCAL_NOALIGN(virtual_mapped)
 	popq	%r12
 	popq	%rbp
 	popq	%rbx
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(virtual_mapped)
 
 	/* Do the copies */
@@ -323,13 +307,9 @@ SYM_CODE_START_LOCAL_NOALIGN(swap_pages)
 	lea	PAGE_SIZE(%rax), %rsi
 	jmp	0b
 3:
-<<<<<<< HEAD
-	RET
-=======
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_CODE_END(swap_pages)
 
 	.globl kexec_control_code_size

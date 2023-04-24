@@ -16,12 +16,7 @@ SYNOPSIS
 
 	**bpftool** [*OPTIONS*] **map** *COMMAND*
 
-<<<<<<< HEAD
-	*OPTIONS* := { { **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } |
-	{ **-f** | **--bpffs** } | { **-n** | **--nomount** } }
-=======
 	*OPTIONS* := { |COMMON_OPTIONS| | { **-f** | **--bpffs** } | { **-n** | **--nomount** } }
->>>>>>> origin/linux_6.1.15_upstream
 
 	*COMMANDS* :=
 	{ **show** | **list** | **create** | **dump** | **update** | **lookup** | **getnext** |

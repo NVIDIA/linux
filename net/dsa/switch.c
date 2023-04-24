@@ -221,11 +221,7 @@ static int dsa_port_do_mdb_del(struct dsa_port *dp,
 	err = ds->ops->port_mdb_del(ds, port, mdb, db);
 	if (err) {
 		refcount_set(&a->refcount, 1);
-<<<<<<< HEAD
-		return err;
-=======
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	list_del(&a->list);
@@ -307,9 +303,6 @@ static int dsa_port_do_fdb_del(struct dsa_port *dp, const unsigned char *addr,
 	err = ds->ops->port_fdb_del(ds, port, addr, vid, db);
 	if (err) {
 		refcount_set(&a->refcount, 1);
-<<<<<<< HEAD
-		return err;
-=======
 		goto out;
 	}
 
@@ -383,7 +376,6 @@ static int dsa_switch_do_lag_fdb_del(struct dsa_switch *ds, struct dsa_lag *lag,
 	if (err) {
 		refcount_set(&a->refcount, 1);
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	list_del(&a->list);
@@ -897,12 +889,7 @@ static int
 dsa_switch_disconnect_tag_proto(struct dsa_switch *ds,
 				struct dsa_notifier_tag_proto_info *info)
 {
-<<<<<<< HEAD
-	if (!ds->ops->port_mrp_add_ring_role)
-		return -EOPNOTSUPP;
-=======
 	const struct dsa_device_ops *tag_ops = info->tag_ops;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Notify the tagger about the disconnection from this switch */
 	if (tag_ops->disconnect && ds->tagger_data)
@@ -918,13 +905,8 @@ static int
 dsa_switch_master_state_change(struct dsa_switch *ds,
 			       struct dsa_notifier_master_state_info *info)
 {
-<<<<<<< HEAD
-	if (!ds->ops->port_mrp_del_ring_role)
-		return -EOPNOTSUPP;
-=======
 	if (!ds->ops->master_state_change)
 		return 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ds->ops->master_state_change(ds, info->master, info->operational);
 

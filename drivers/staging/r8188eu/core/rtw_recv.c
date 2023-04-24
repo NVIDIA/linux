@@ -1910,12 +1910,7 @@ static int recv_func(struct adapter *padapter, struct recv_frame *rframe)
 	    psecuritypriv->busetkipkey) {
 		struct recv_frame *pending_frame;
 
-<<<<<<< HEAD
-		while ((pending_frame = rtw_alloc_recvframe(&padapter->recvpriv.uc_swdec_pending_queue))) {
-			cnt++;
-=======
 		while ((pending_frame = rtw_alloc_recvframe(&padapter->recvpriv.uc_swdec_pending_queue)))
->>>>>>> origin/linux_6.1.15_upstream
 			recv_func_posthandle(padapter, pending_frame);
 	}
 

@@ -176,26 +176,7 @@ static int hyperv_vmbus_remove(struct hv_device *hdev)
 	vmbus_close(hdev->channel);
 	hv_set_drvdata(hdev, NULL);
 
-<<<<<<< HEAD
-	/*
-	 * Free allocated MMIO memory only on Gen2 VMs.
-	 * On Gen1 VMs, release the PCI device
-	 */
-	if (efi_enabled(EFI_BOOT)) {
-		vmbus_free_mmio(hv->mem->start, hv->fb_size);
-	} else {
-		pdev = pci_get_device(PCI_VENDOR_ID_MICROSOFT,
-				      PCI_DEVICE_ID_HYPERV_VIDEO, NULL);
-		if (!pdev) {
-			drm_err(dev, "Unable to find PCI Hyper-V video\n");
-			return -ENODEV;
-		}
-		pci_release_region(pdev, 0);
-		pci_dev_put(pdev);
-	}
-=======
 	vmbus_free_mmio(hv->mem->start, hv->fb_size);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

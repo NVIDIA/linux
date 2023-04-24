@@ -1057,16 +1057,7 @@ int rpc_malloc(struct rpc_task *task)
 	struct rpc_rqst *rqst = task->tk_rqstp;
 	size_t size = rqst->rq_callsize + rqst->rq_rcvsize;
 	struct rpc_buffer *buf;
-<<<<<<< HEAD
-	gfp_t gfp = GFP_NOFS;
-
-	if (RPC_IS_ASYNC(task))
-		gfp = GFP_NOWAIT | __GFP_NOWARN;
-	if (RPC_IS_SWAPPER(task))
-		gfp |= __GFP_MEMALLOC;
-=======
 	gfp_t gfp = rpc_task_gfp_mask();
->>>>>>> origin/linux_6.1.15_upstream
 
 	size += sizeof(struct rpc_buffer);
 	if (size <= RPC_BUFFER_MAXSIZE) {

@@ -613,11 +613,7 @@
 		};
 
 		codec {
-<<<<<<< HEAD
-			sound-dai =  <&wcd9340 2>;
-=======
 			sound-dai = <&wcd9340 2>;
->>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 };

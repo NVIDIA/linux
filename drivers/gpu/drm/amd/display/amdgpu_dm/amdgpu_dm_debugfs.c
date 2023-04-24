@@ -250,10 +250,7 @@ static ssize_t dp_link_settings_write(struct file *f, const char __user *buf,
 {
 	struct amdgpu_dm_connector *connector = file_inode(f)->i_private;
 	struct dc_link *link = connector->dc_link;
-<<<<<<< HEAD
-=======
 	struct amdgpu_device *adev = drm_to_adev(connector->base.dev);
->>>>>>> origin/linux_6.1.15_upstream
 	struct dc *dc = (struct dc *)link->dc;
 	struct dc_link_settings prefer_link_settings;
 	char *wr_buf = NULL;
@@ -325,13 +322,9 @@ static ssize_t dp_link_settings_write(struct file *f, const char __user *buf,
 	prefer_link_settings.lane_count = param[0];
 	prefer_link_settings.link_rate = param[1];
 
-<<<<<<< HEAD
-	dc_link_set_preferred_training_settings(dc, &prefer_link_settings, NULL, link, true);
-=======
 	mutex_lock(&adev->dm.dc_lock);
 	dc_link_set_preferred_training_settings(dc, &prefer_link_settings, NULL, link, false);
 	mutex_unlock(&adev->dm.dc_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	kfree(wr_buf);
 	return size;

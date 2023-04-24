@@ -678,14 +678,11 @@ static int apple_input_configured(struct hid_device *hdev,
 	if ((asc->quirks & APPLE_HAS_FN) && !asc->fn_found) {
 		hid_info(hdev, "Fn key not found (Apple Wireless Keyboard clone?), disabling Fn key handling\n");
 		asc->quirks &= ~APPLE_HAS_FN;
-<<<<<<< HEAD
-=======
 	}
 
 	if (apple_is_non_apple_keyboard(hdev)) {
 		hid_info(hdev, "Non-apple keyboard detected; function keys will default to fnmode=2 behavior\n");
 		asc->quirks |= APPLE_IS_NON_APPLE;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;

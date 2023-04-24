@@ -500,11 +500,6 @@ handle_error:
 
 		record = ctx->open_record;
 
-<<<<<<< HEAD
-		if (copy) {
-			rc = tls_device_copy_data(page_address(pfrag->page) +
-						  pfrag->offset, copy, msg_iter);
-=======
 		copy = min_t(size_t, size, max_open_record_len - record->len);
 		if (copy && zc_page) {
 			struct page_frag zc_pfrag;
@@ -519,7 +514,6 @@ handle_error:
 			rc = tls_device_copy_data(page_address(pfrag->page) +
 						  pfrag->offset, copy,
 						  iter_offset.msg_iter);
->>>>>>> origin/linux_6.1.15_upstream
 			if (rc)
 				goto handle_error;
 			tls_append_frag(record, pfrag, copy);
@@ -1422,10 +1416,6 @@ static int tls_device_down(struct net_device *netdev)
 		 * by tls_device_free_ctx. rx_conf and tx_conf stay in TLS_HW.
 		 * Now release the ref taken above.
 		 */
-<<<<<<< HEAD
-		if (refcount_dec_and_test(&ctx->refcount))
-			tls_device_free_ctx(ctx);
-=======
 		if (refcount_dec_and_test(&ctx->refcount)) {
 			/* sk_destruct ran after tls_device_down took a ref, and
 			 * it returned early. Complete the destruction here.
@@ -1433,7 +1423,6 @@ static int tls_device_down(struct net_device *netdev)
 			list_del(&ctx->list);
 			tls_device_free_ctx(ctx);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	up_write(&device_offload_lock);

@@ -437,11 +437,7 @@ err_exit:
 
 static int aq_pm_freeze(struct device *dev)
 {
-<<<<<<< HEAD
-	return aq_suspend_common(dev, true);
-=======
 	return aq_suspend_common(dev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int aq_pm_suspend_poweroff(struct device *dev)
@@ -451,11 +447,7 @@ static int aq_pm_suspend_poweroff(struct device *dev)
 
 static int aq_pm_thaw(struct device *dev)
 {
-<<<<<<< HEAD
-	return atl_resume_common(dev, true);
-=======
 	return atl_resume_common(dev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int aq_pm_resume_restore(struct device *dev)

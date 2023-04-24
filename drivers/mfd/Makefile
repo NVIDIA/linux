@@ -219,11 +219,6 @@ obj-$(CONFIG_MFD_INTEL_LPSS)	+= intel-lpss.o
 obj-$(CONFIG_MFD_INTEL_LPSS_PCI)	+= intel-lpss-pci.o
 obj-$(CONFIG_MFD_INTEL_LPSS_ACPI)	+= intel-lpss-acpi.o
 obj-$(CONFIG_MFD_INTEL_PMC_BXT)	+= intel_pmc_bxt.o
-<<<<<<< HEAD
-obj-$(CONFIG_MFD_INTEL_PMT)	+= intel_pmt.o
-obj-$(CONFIG_MFD_INTEL_PECI_CLIENT)	+= intel-peci-client.o
-=======
->>>>>>> origin/linux_6.1.15_upstream
 obj-$(CONFIG_MFD_PALMAS)	+= palmas.o
 obj-$(CONFIG_MFD_VIPERBOARD)    += viperboard.o
 obj-$(CONFIG_MFD_NTXEC)		+= ntxec.o

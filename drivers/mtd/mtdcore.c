@@ -795,10 +795,7 @@ int del_mtd_device(struct mtd_info *mtd)
 		       mtd->index, mtd->name, mtd->usecount);
 		ret = -EBUSY;
 	} else {
-<<<<<<< HEAD
-=======
 		mtd_of_node = mtd_get_of_node(mtd);
->>>>>>> origin/linux_6.1.15_upstream
 		debugfs_remove_recursive(mtd->dbg.dfs_dir);
 
 		/* Try to remove the NVMEM provider */

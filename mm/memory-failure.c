@@ -1326,11 +1326,7 @@ try_again:
 	}
 out:
 	if (ret == -EIO)
-<<<<<<< HEAD
-		pr_err("Memory failure: %#lx: unhandlable page.\n", page_to_pfn(p));
-=======
 		pr_err("%#lx: unhandlable page.\n", page_to_pfn(p));
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -1855,38 +1851,10 @@ retry:
 			res = kill_accessing_process(current, page_to_pfn(head), flags);
 		}
 		return res;
-<<<<<<< HEAD
-	}
-
-	num_poisoned_pages_inc();
-
-	if (!(flags & MF_COUNT_INCREASED)) {
-		res = get_hwpoison_page(p, flags);
-		if (!res) {
-			lock_page(head);
-			if (hwpoison_filter(p)) {
-				if (TestClearPageHWPoison(head))
-					num_poisoned_pages_dec();
-				unlock_page(head);
-				return 0;
-			}
-			unlock_page(head);
-			res = MF_FAILED;
-			if (__page_handle_poison(p)) {
-				page_ref_inc(p);
-				res = MF_RECOVERED;
-			}
-			action_result(pfn, MF_MSG_FREE_HUGE, res);
-			return res == MF_RECOVERED ? 0 : -EBUSY;
-		} else if (res < 0) {
-			action_result(pfn, MF_MSG_UNKNOWN, MF_IGNORED);
-			return -EBUSY;
-=======
 	} else if (res == -EBUSY) {
 		if (!(flags & MF_NO_RETRY)) {
 			flags |= MF_NO_RETRY;
 			goto retry;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		action_result(pfn, MF_MSG_UNKNOWN, MF_IGNORED);
 		return res;

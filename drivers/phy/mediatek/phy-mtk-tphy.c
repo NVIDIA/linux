@@ -130,10 +130,6 @@
 
 #define U3P_U3_PHYA_REG0	0x000
 #define P3A_RG_IEXT_INTR		GENMASK(15, 10)
-<<<<<<< HEAD
-#define P3A_RG_IEXT_INTR_VAL(x)		((0x3f & (x)) << 10)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #define P3A_RG_CLKDRV_OFF		GENMASK(3, 2)
 
 #define U3P_U3_PHYA_REG1	0x004
@@ -982,49 +978,12 @@ static void phy_efuse_set(struct mtk_phy_instance *instance)
 	struct device *dev = &instance->phy->dev;
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
 	struct u3phy_banks *u3_banks = &instance->u3_banks;
-<<<<<<< HEAD
-	u32 tmp;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!instance->efuse_sw_en)
 		return;
 
 	switch (instance->type) {
 	case PHY_TYPE_USB2:
-<<<<<<< HEAD
-		tmp = readl(u2_banks->misc + U3P_MISC_REG1);
-		tmp |= MR1_EFUSE_AUTO_LOAD_DIS;
-		writel(tmp, u2_banks->misc + U3P_MISC_REG1);
-
-		tmp = readl(u2_banks->com + U3P_USBPHYACR1);
-		tmp &= ~PA1_RG_INTR_CAL;
-		tmp |= PA1_RG_INTR_CAL_VAL(instance->efuse_intr);
-		writel(tmp, u2_banks->com + U3P_USBPHYACR1);
-		break;
-	case PHY_TYPE_USB3:
-	case PHY_TYPE_PCIE:
-		tmp = readl(u3_banks->phyd + U3P_U3_PHYD_RSV);
-		tmp |= P3D_RG_EFUSE_AUTO_LOAD_DIS;
-		writel(tmp, u3_banks->phyd + U3P_U3_PHYD_RSV);
-
-		tmp = readl(u3_banks->phyd + U3P_U3_PHYD_IMPCAL0);
-		tmp &= ~P3D_RG_TX_IMPEL;
-		tmp |= P3D_RG_TX_IMPEL_VAL(instance->efuse_tx_imp);
-		tmp |= P3D_RG_FORCE_TX_IMPEL;
-		writel(tmp, u3_banks->phyd + U3P_U3_PHYD_IMPCAL0);
-
-		tmp = readl(u3_banks->phyd + U3P_U3_PHYD_IMPCAL1);
-		tmp &= ~P3D_RG_RX_IMPEL;
-		tmp |= P3D_RG_RX_IMPEL_VAL(instance->efuse_rx_imp);
-		tmp |= P3D_RG_FORCE_RX_IMPEL;
-		writel(tmp, u3_banks->phyd + U3P_U3_PHYD_IMPCAL1);
-
-		tmp = readl(u3_banks->phya + U3P_U3_PHYA_REG0);
-		tmp &= ~P3A_RG_IEXT_INTR;
-		tmp |= P3A_RG_IEXT_INTR_VAL(instance->efuse_intr);
-		writel(tmp, u3_banks->phya + U3P_U3_PHYA_REG0);
-=======
 		mtk_phy_set_bits(u2_banks->misc + U3P_MISC_REG1, MR1_EFUSE_AUTO_LOAD_DIS);
 
 		mtk_phy_update_field(u2_banks->com + U3P_USBPHYACR1, PA1_RG_INTR_CAL,
@@ -1044,7 +1003,6 @@ static void phy_efuse_set(struct mtk_phy_instance *instance)
 
 		mtk_phy_update_field(u3_banks->phya + U3P_U3_PHYA_REG0, P3A_RG_IEXT_INTR,
 				    instance->efuse_intr);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	default:
 		dev_warn(dev, "no sw efuse for type %d\n", instance->type);

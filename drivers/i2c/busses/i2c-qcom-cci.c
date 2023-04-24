@@ -556,14 +556,6 @@ static int cci_probe(struct platform_device *pdev)
 			continue;
 		}
 
-<<<<<<< HEAD
-		cci->master[idx].adap.quirks = &cci->data->quirks;
-		cci->master[idx].adap.algo = &cci_algo;
-		cci->master[idx].adap.dev.parent = dev;
-		cci->master[idx].adap.dev.of_node = of_node_get(child);
-		cci->master[idx].master = idx;
-		cci->master[idx].cci = cci;
-=======
 		master = &cci->master[idx];
 		master->adap.quirks = &cci->data->quirks;
 		master->adap.algo = &cci_algo;
@@ -571,7 +563,6 @@ static int cci_probe(struct platform_device *pdev)
 		master->adap.dev.of_node = of_node_get(child);
 		master->master = idx;
 		master->cci = cci;
->>>>>>> origin/linux_6.1.15_upstream
 
 		i2c_set_adapdata(&master->adap, master);
 		snprintf(master->adap.name, sizeof(master->adap.name), "Qualcomm-CCI");
@@ -667,12 +658,9 @@ static int cci_probe(struct platform_device *pdev)
 	return 0;
 
 error_i2c:
-<<<<<<< HEAD
-=======
 	pm_runtime_disable(dev);
 	pm_runtime_dont_use_autosuspend(dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	for (--i ; i >= 0; i--) {
 		if (cci->master[i].cci) {
 			i2c_del_adapter(&cci->master[i].adap);

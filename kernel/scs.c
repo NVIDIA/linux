@@ -82,11 +82,7 @@ void scs_free(void *s)
 		if (this_cpu_cmpxchg(scs_cache[i], 0, s) == NULL)
 			return;
 
-<<<<<<< HEAD
-	kasan_unpoison_vmalloc(s, SCS_SIZE);
-=======
 	kasan_unpoison_vmalloc(s, SCS_SIZE, KASAN_VMALLOC_PROT_NORMAL);
->>>>>>> origin/linux_6.1.15_upstream
 	vfree_atomic(s);
 }
 

@@ -295,16 +295,6 @@ static void dsi_mgr_bridge_power_on(struct drm_bridge *bridge)
 	/*
 	 * Enable before preparing the panel, disable after unpreparing, so
 	 * that the panel can communicate over the DSI link.
-<<<<<<< HEAD
-	 */
-	msm_dsi_host_enable_irq(host);
-	if (is_bonded_dsi && msm_dsi1)
-		msm_dsi_host_enable_irq(msm_dsi1->host);
-
-	/* Always call panel functions once, because even for dual panels,
-	 * there is only one drm_panel instance.
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	 */
 	msm_dsi_host_enable_irq(host);
 	if (is_bonded_dsi && msm_dsi1)
@@ -359,24 +349,7 @@ static void dsi_mgr_bridge_pre_enable(struct drm_bridge *bridge)
 host1_en_fail:
 	msm_dsi_host_disable(host);
 host_en_fail:
-<<<<<<< HEAD
-	if (panel)
-		drm_panel_unprepare(panel);
-panel_prep_fail:
-	msm_dsi_host_disable_irq(host);
-	if (is_bonded_dsi && msm_dsi1)
-		msm_dsi_host_disable_irq(msm_dsi1->host);
 
-	if (is_bonded_dsi && msm_dsi1)
-		msm_dsi_host_power_off(msm_dsi1->host);
-host1_on_fail:
-	msm_dsi_host_power_off(host);
-host_on_fail:
-	dsi_mgr_phy_disable(id);
-phy_en_fail:
-=======
-
->>>>>>> origin/linux_6.1.15_upstream
 	return;
 }
 
@@ -492,56 +465,6 @@ static const struct drm_bridge_funcs dsi_mgr_bridge_funcs = {
 	.mode_valid = dsi_mgr_bridge_mode_valid,
 };
 
-<<<<<<< HEAD
-/* initialize connector when we're connected to a drm_panel */
-struct drm_connector *msm_dsi_manager_connector_init(u8 id)
-{
-	struct msm_dsi *msm_dsi = dsi_mgr_get_dsi(id);
-	struct drm_connector *connector = NULL;
-	struct dsi_connector *dsi_connector;
-	int ret;
-
-	dsi_connector = kzalloc(sizeof(*dsi_connector), GFP_KERNEL);
-	if (!dsi_connector)
-		return ERR_PTR(-ENOMEM);
-
-	dsi_connector->id = id;
-
-	connector = &dsi_connector->base;
-
-	ret = drm_connector_init(msm_dsi->dev, connector,
-			&dsi_mgr_connector_funcs, DRM_MODE_CONNECTOR_DSI);
-	if (ret)
-		return ERR_PTR(ret);
-
-	drm_connector_helper_add(connector, &dsi_mgr_conn_helper_funcs);
-
-	/* Enable HPD to let hpd event is handled
-	 * when panel is attached to the host.
-	 */
-	connector->polled = DRM_CONNECTOR_POLL_HPD;
-
-	/* Display driver doesn't support interlace now. */
-	connector->interlace_allowed = 0;
-	connector->doublescan_allowed = 0;
-
-	drm_connector_attach_encoder(connector, msm_dsi->encoder);
-
-	ret = msm_dsi_manager_panel_init(connector, id);
-	if (ret) {
-		DRM_DEV_ERROR(msm_dsi->dev->dev, "init panel failed %d\n", ret);
-		goto fail;
-	}
-
-	return connector;
-
-fail:
-	connector->funcs->destroy(connector);
-	return ERR_PTR(ret);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /* initialize bridge */
 struct drm_bridge *msm_dsi_manager_bridge_init(u8 id)
 {

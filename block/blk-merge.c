@@ -8,10 +8,7 @@
 #include <linux/blkdev.h>
 #include <linux/blk-integrity.h>
 #include <linux/scatterlist.h>
-<<<<<<< HEAD
-=======
 #include <linux/part_stat.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/blk-cgroup.h>
 
 #include <trace/events/block.h>

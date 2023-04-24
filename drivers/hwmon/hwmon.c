@@ -227,13 +227,8 @@ static int hwmon_thermal_add_sensor(struct device *dev, int index)
 	tdata->dev = dev;
 	tdata->index = index;
 
-<<<<<<< HEAD
-	tzd = devm_thermal_zone_of_sensor_register(dev, index, tdata,
-						   &hwmon_thermal_ops);
-=======
 	tzd = devm_thermal_of_zone_register(dev, index, tdata,
 					    &hwmon_thermal_ops);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(tzd)) {
 		if (PTR_ERR(tzd) != -ENODEV)
 			return PTR_ERR(tzd);

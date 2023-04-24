@@ -162,11 +162,7 @@ enum dpu_enc_rc_states {
  * @vsync_event_work:		worker to handle vsync event for autorefresh
  * @topology:                   topology of the display
  * @idle_timeout:		idle timeout duration in milliseconds
-<<<<<<< HEAD
- * @dp:				msm_dp pointer, for DP encoders
-=======
  * @dsc:			drm_dsc_config pointer, for DSC-enabled encoders
->>>>>>> origin/linux_6.1.15_upstream
  */
 struct dpu_encoder_virt {
 	struct drm_encoder base;
@@ -209,14 +205,10 @@ struct dpu_encoder_virt {
 
 	u32 idle_timeout;
 
-<<<<<<< HEAD
-	struct msm_dp *dp;
-=======
 	bool wide_bus_en;
 
 	/* DSC configuration */
 	struct drm_dsc_config *dsc;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #define to_dpu_encoder_virt(x) container_of(x, struct dpu_encoder_virt, base)
@@ -1059,28 +1051,6 @@ static void dpu_encoder_virt_atomic_mode_set(struct drm_encoder *drm_enc,
 
 	trace_dpu_enc_mode_set(DRMID(drm_enc));
 
-<<<<<<< HEAD
-	if (drm_enc->encoder_type == DRM_MODE_ENCODER_TMDS)
-		msm_dp_display_mode_set(dpu_enc->dp, drm_enc, mode, adj_mode);
-
-	list_for_each_entry(conn_iter, connector_list, head)
-		if (conn_iter->encoder == drm_enc)
-			conn = conn_iter;
-
-	if (!conn) {
-		DPU_ERROR_ENC(dpu_enc, "failed to find attached connector\n");
-		return;
-	} else if (!conn->state) {
-		DPU_ERROR_ENC(dpu_enc, "invalid connector state\n");
-		return;
-	}
-
-	drm_for_each_crtc(drm_crtc, drm_enc->dev)
-		if (drm_crtc->state->encoder_mask & drm_encoder_mask(drm_enc))
-			break;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/* Query resource that have been reserved in atomic check step. */
 	num_pp = dpu_rm_get_assigned_resources(&dpu_kms->rm, global_state,
 		drm_enc->base.id, DPU_HW_BLK_PINGPONG, hw_pp,
@@ -1233,17 +1203,6 @@ static void dpu_encoder_virt_enable(struct drm_encoder *drm_enc)
 
 	_dpu_encoder_virt_enable_helper(drm_enc);
 
-<<<<<<< HEAD
-	if (drm_enc->encoder_type == DRM_MODE_ENCODER_TMDS) {
-		ret = msm_dp_display_enable(dpu_enc->dp, drm_enc);
-		if (ret) {
-			DPU_ERROR_ENC(dpu_enc, "dp display enable failed: %d\n",
-				ret);
-			goto out;
-		}
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	dpu_enc->enabled = true;
 
 out:
@@ -1266,14 +1225,6 @@ static void dpu_encoder_virt_disable(struct drm_encoder *drm_enc)
 	/* wait for idle */
 	dpu_encoder_wait_for_event(drm_enc, MSM_ENC_TX_COMPLETE);
 
-<<<<<<< HEAD
-	if (drm_enc->encoder_type == DRM_MODE_ENCODER_TMDS) {
-		if (msm_dp_display_pre_disable(dpu_enc->dp, drm_enc))
-			DPU_ERROR_ENC(dpu_enc, "dp display push idle failed\n");
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	dpu_encoder_resource_control(drm_enc, DPU_ENC_RC_EVENT_PRE_STOP);
 
 	for (i = 0; i < dpu_enc->num_phys_encs; i++) {
@@ -1296,14 +1247,6 @@ static void dpu_encoder_virt_disable(struct drm_encoder *drm_enc)
 
 	DPU_DEBUG_ENC(dpu_enc, "encoder disabled\n");
 
-<<<<<<< HEAD
-	if (drm_enc->encoder_type == DRM_MODE_ENCODER_TMDS) {
-		if (msm_dp_display_disable(dpu_enc->dp, drm_enc))
-			DPU_ERROR_ENC(dpu_enc, "dp display disable failed\n");
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&dpu_enc->enc_lock);
 }
 
@@ -2486,12 +2429,8 @@ int dpu_encoder_setup(struct drm_device *dev, struct drm_encoder *enc,
 				dpu_encoder_vsync_event_handler,
 				0);
 	else if (disp_info->intf_type == DRM_MODE_ENCODER_TMDS)
-<<<<<<< HEAD
-		dpu_enc->dp = priv->dp;
-=======
 		dpu_enc->wide_bus_en = msm_dp_wide_bus_available(
 				priv->dp[disp_info->h_tile_instance[0]]);
->>>>>>> origin/linux_6.1.15_upstream
 
 	INIT_DELAYED_WORK(&dpu_enc->delayed_off_work,
 			dpu_encoder_off_work);

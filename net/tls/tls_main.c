@@ -804,13 +804,10 @@ static int do_tls_setsockopt_conf(struct sock *sk, sockptr_t optval,
 	if (tx) {
 		ctx->sk_write_space = sk->sk_write_space;
 		sk->sk_write_space = tls_write_space;
-<<<<<<< HEAD
-=======
 	} else {
 		struct tls_sw_context_rx *rx_ctx = tls_sw_ctx_rx(ctx);
 
 		tls_strp_check_rcv(&rx_ctx->strp);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return 0;
 
@@ -1227,9 +1224,6 @@ static int __init tls_register(void)
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	tls_device_init();
-=======
 	err = tls_strp_dev_init();
 	if (err)
 		goto err_pernet;
@@ -1238,7 +1232,6 @@ static int __init tls_register(void)
 	if (err)
 		goto err_strp;
 
->>>>>>> origin/linux_6.1.15_upstream
 	tcp_register_ulp(&tcp_tls_ulp_ops);
 
 	return 0;

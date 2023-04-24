@@ -444,12 +444,8 @@ static int __sev_platform_init_locked(int *error)
 {
 	struct psp_device *psp = psp_master;
 	struct sev_device *sev;
-<<<<<<< HEAD
-	int psp_ret = -1, rc = 0;
-=======
 	int rc = 0, psp_ret = -1;
 	int (*init_function)(int *error);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!psp || !psp->sev_data)
 		return -ENODEV;
@@ -483,24 +479,6 @@ static int __sev_platform_init_locked(int *error)
 	if (error)
 		*error = psp_ret;
 
-<<<<<<< HEAD
-	rc = __sev_do_cmd_locked(SEV_CMD_INIT, &data, &psp_ret);
-	if (rc && psp_ret == SEV_RET_SECURE_DATA_INVALID) {
-		/*
-		 * Initialization command returned an integrity check failure
-		 * status code, meaning that firmware load and validation of SEV
-		 * related persistent data has failed. Retrying the
-		 * initialization function should succeed by replacing the state
-		 * with a reset state.
-		 */
-		dev_dbg(sev->dev, "SEV: retrying INIT command");
-		rc = __sev_do_cmd_locked(SEV_CMD_INIT, &data, &psp_ret);
-	}
-	if (error)
-		*error = psp_ret;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (rc)
 		return rc;
 
@@ -1353,14 +1331,7 @@ void sev_pci_init(void)
 		dev_warn(sev->dev,
 			 "SEV: TMR allocation failed, SEV-ES support unavailable\n");
 
-<<<<<<< HEAD
-	/* Initialize the platform */
-	rc = sev_platform_init(&error);
-	if (rc) {
-		dev_err(sev->dev, "SEV: failed to INIT error %#x\n", error);
-=======
 	if (!psp_init_on_probe)
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	/* Initialize the platform */

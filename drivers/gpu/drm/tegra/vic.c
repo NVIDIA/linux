@@ -253,15 +253,10 @@ static int vic_load_firmware(struct vic *vic)
 
 	if (!client->group) {
 		virt = dma_alloc_coherent(vic->dev, size, &iova, GFP_KERNEL);
-<<<<<<< HEAD
-		if (!virt)
-			return -ENOMEM;
-=======
 		if (!virt) {
 			err = -ENOMEM;
 			goto unlock;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		virt = tegra_drm_alloc(tegra, size, &iova);
 		if (IS_ERR(virt)) {

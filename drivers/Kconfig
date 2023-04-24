@@ -237,10 +237,6 @@ source "drivers/most/Kconfig"
 
 source "drivers/peci/Kconfig"
 
-<<<<<<< HEAD
-source "drivers/jtag/Kconfig"
-=======
 source "drivers/hte/Kconfig"
 
->>>>>>> origin/linux_6.1.15_upstream
 endmenu

@@ -84,13 +84,10 @@ void framebuffer_release(struct fb_info *info)
 	if (WARN_ON(refcount_read(&info->count)))
 		return;
 
-<<<<<<< HEAD
-=======
 #if IS_ENABLED(CONFIG_FB_BACKLIGHT)
 	mutex_destroy(&info->bl_curve_mutex);
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 	kfree(info->apertures);
 	kfree(info);
 }

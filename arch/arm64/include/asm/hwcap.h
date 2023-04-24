@@ -108,8 +108,6 @@
 #define KERNEL_HWCAP_ECV		__khwcap2_feature(ECV)
 #define KERNEL_HWCAP_AFP		__khwcap2_feature(AFP)
 #define KERNEL_HWCAP_RPRES		__khwcap2_feature(RPRES)
-<<<<<<< HEAD
-=======
 #define KERNEL_HWCAP_MTE3		__khwcap2_feature(MTE3)
 #define KERNEL_HWCAP_SME		__khwcap2_feature(SME)
 #define KERNEL_HWCAP_SME_I16I64		__khwcap2_feature(SME_I16I64)
@@ -122,7 +120,6 @@
 #define KERNEL_HWCAP_WFXT		__khwcap2_feature(WFXT)
 #define KERNEL_HWCAP_EBF16		__khwcap2_feature(EBF16)
 #define KERNEL_HWCAP_SVE_EBF16		__khwcap2_feature(SVE_EBF16)
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * This yields a mask that user programs can use to figure out what

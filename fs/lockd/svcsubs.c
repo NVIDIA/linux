@@ -184,13 +184,6 @@ static int nlm_unlock_files(struct nlm_file *file, const struct file_lock *fl)
 	lock.fl_type  = F_UNLCK;
 	lock.fl_start = 0;
 	lock.fl_end   = OFFSET_MAX;
-<<<<<<< HEAD
-	if (file->f_file[O_RDONLY] &&
-	    vfs_lock_file(file->f_file[O_RDONLY], F_SETLK, &lock, NULL))
-		goto out_err;
-	if (file->f_file[O_WRONLY] &&
-	    vfs_lock_file(file->f_file[O_WRONLY], F_SETLK, &lock, NULL))
-=======
 	lock.fl_owner = fl->fl_owner;
 	lock.fl_pid   = fl->fl_pid;
 	lock.fl_flags = FL_POSIX;
@@ -200,7 +193,6 @@ static int nlm_unlock_files(struct nlm_file *file, const struct file_lock *fl)
 		goto out_err;
 	lock.fl_file = file->f_file[O_WRONLY];
 	if (lock.fl_file && vfs_lock_file(lock.fl_file, F_SETLK, &lock, NULL))
->>>>>>> origin/linux_6.1.15_upstream
 		goto out_err;
 	return 0;
 out_err:

@@ -422,11 +422,7 @@ static inline int create_stub(const Elf64_Shdr *sechdrs,
 	if (is_mprofile_ftrace_call(name))
 		return create_ftrace_stub(entry, addr, me);
 
-<<<<<<< HEAD
-	for (i = 0; i < sizeof(ppc64_stub_insns) / sizeof(u32); i++) {
-=======
 	for (i = 0; i < ARRAY_SIZE(ppc64_stub_insns); i++) {
->>>>>>> origin/linux_6.1.15_upstream
 		if (patch_instruction(&entry->jump[i],
 				      ppc_inst(ppc64_stub_insns[i])))
 			return 0;
@@ -657,12 +653,7 @@ int apply_relocate_add(Elf64_Shdr *sechdrs,
 			}
 
 			/* Only replace bits 2 through 26 */
-<<<<<<< HEAD
-			value = (*(uint32_t *)location & ~0x03fffffc)
-				| (value & 0x03fffffc);
-=======
 			value = (*(uint32_t *)location & ~PPC_LI_MASK) | PPC_LI(value);
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (patch_instruction((u32 *)location, ppc_inst(value)))
 				return -EFAULT;

@@ -5563,20 +5563,8 @@ static void md_kobj_release(struct kobject *ko)
 	if (mddev->sysfs_level)
 		sysfs_put(mddev->sysfs_level);
 
-<<<<<<< HEAD
-	if (mddev->gendisk) {
-		del_gendisk(mddev->gendisk);
-		blk_cleanup_disk(mddev->gendisk);
-	}
-	percpu_ref_exit(&mddev->writes_pending);
-
-	bioset_exit(&mddev->bio_set);
-	bioset_exit(&mddev->sync_set);
-	kfree(mddev);
-=======
 	del_gendisk(mddev->gendisk);
 	put_disk(mddev->gendisk);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct sysfs_ops md_sysfs_ops = {

@@ -499,57 +499,10 @@ int ath11k_mhi_suspend(struct ath11k_pci *ab_pci)
 	struct ath11k_base *ab = ab_pci->ab;
 	int ret;
 
-<<<<<<< HEAD
-	ret = ath11k_mhi_check_state_bit(ab_pci, mhi_state);
-	if (ret)
-		goto out;
-
-	ath11k_dbg(ab, ATH11K_DBG_PCI, "setting mhi state: %s(%d)\n",
-		   ath11k_mhi_state_to_str(mhi_state), mhi_state);
-
-	switch (mhi_state) {
-	case ATH11K_MHI_INIT:
-		ret = mhi_prepare_for_power_up(ab_pci->mhi_ctrl);
-		break;
-	case ATH11K_MHI_DEINIT:
-		mhi_unprepare_after_power_down(ab_pci->mhi_ctrl);
-		ret = 0;
-		break;
-	case ATH11K_MHI_POWER_ON:
-		ret = mhi_sync_power_up(ab_pci->mhi_ctrl);
-		break;
-	case ATH11K_MHI_POWER_OFF:
-		mhi_power_down(ab_pci->mhi_ctrl, true);
-		ret = 0;
-		break;
-	case ATH11K_MHI_FORCE_POWER_OFF:
-		mhi_power_down(ab_pci->mhi_ctrl, false);
-		ret = 0;
-		break;
-	case ATH11K_MHI_SUSPEND:
-		ret = mhi_pm_suspend(ab_pci->mhi_ctrl);
-		break;
-	case ATH11K_MHI_RESUME:
-		/* Do force MHI resume as some devices like QCA6390, WCN6855
-		 * are not in M3 state but they are functional. So just ignore
-		 * the MHI state while resuming.
-		 */
-		ret = mhi_pm_resume_force(ab_pci->mhi_ctrl);
-		break;
-	case ATH11K_MHI_TRIGGER_RDDM:
-		ret = mhi_force_rddm_mode(ab_pci->mhi_ctrl);
-		break;
-	case ATH11K_MHI_RDDM_DONE:
-		break;
-	default:
-		ath11k_err(ab, "unhandled MHI state (%d)\n", mhi_state);
-		ret = -EINVAL;
-=======
 	ret = mhi_pm_suspend(ab_pci->mhi_ctrl);
 	if (ret) {
 		ath11k_warn(ab, "failed to suspend mhi: %d", ret);
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;

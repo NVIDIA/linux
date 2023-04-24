@@ -110,10 +110,6 @@ struct mlx5e_tc_flow {
 	struct rcu_head rcu_head;
 	struct completion init_done;
 	struct completion del_hw_done;
-<<<<<<< HEAD
-	int tunnel_id; /* the mapped tunnel id of this flow */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct mlx5_flow_attr *attr;
 	struct list_head attrs;
 	u32 chain_mapping;

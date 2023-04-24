@@ -130,10 +130,6 @@
 		dailink_master: simple-audio-card,codec {
 			clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_DIV>;
 			sound-dai = <&codec>;
-<<<<<<< HEAD
-			clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_DIV>;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 };
@@ -398,13 +394,8 @@
 
 	codec: sgtl5000@a {
 		#sound-dai-cells = <0>;
-<<<<<<< HEAD
-		reg = <0x0a>;
-		clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_DIV>;
-=======
 		clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_DIV>;
 		compatible = "fsl,sgtl5000";
->>>>>>> origin/linux_6.1.15_upstream
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_sai1_mclk>;
 		reg = <0xa>;

@@ -564,39 +564,16 @@ int st_sensors_read_info_raw(struct iio_dev *indio_dev,
 	err = st_sensors_set_enable(indio_dev, true);
 	if (err < 0)
 		goto out;
-<<<<<<< HEAD
-	} else {
-		mutex_lock(&sdata->odr_lock);
-		err = st_sensors_set_enable(indio_dev, true);
-		if (err < 0) {
-			mutex_unlock(&sdata->odr_lock);
-			goto out;
-		}
-
-		msleep((sdata->sensor_settings->bootime * 1000) / sdata->odr);
-		err = st_sensors_read_axis_data(indio_dev, ch, val);
-		if (err < 0) {
-			mutex_unlock(&sdata->odr_lock);
-			goto out;
-		}
-=======
 
 	msleep((sdata->sensor_settings->bootime * 1000) / sdata->odr);
 	err = st_sensors_read_axis_data(indio_dev, ch, val);
 	if (err < 0)
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 
 	*val = *val >> ch->scan_type.shift;
 
 	err = st_sensors_set_enable(indio_dev, false);
 
-<<<<<<< HEAD
-		err = st_sensors_set_enable(indio_dev, false);
-		mutex_unlock(&sdata->odr_lock);
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	mutex_unlock(&sdata->odr_lock);
 	iio_device_release_direct_mode(indio_dev);

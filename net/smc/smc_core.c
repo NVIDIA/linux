@@ -1248,19 +1248,6 @@ static void __smcr_link_clear(struct smc_link *lnk)
 	struct smc_link_group *lgr = lnk->lgr;
 	struct smc_ib_device *smcibdev;
 
-<<<<<<< HEAD
-	if (!lnk->lgr || lnk->state == SMC_LNK_UNUSED)
-		return;
-	lnk->peer_qpn = 0;
-	smc_llc_link_clear(lnk, log);
-	smcr_buf_unmap_lgr(lnk);
-	smcr_rtoken_clear_link(lnk);
-	smc_ib_modify_qp_error(lnk);
-	smc_wr_free_link(lnk);
-	smc_ib_destroy_queue_pair(lnk);
-	smc_ib_dealloc_protection_domain(lnk);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	smc_wr_free_link_mem(lnk);
 	smc_ibdev_cnt_dec(lnk);
 	put_device(&lnk->smcibdev->ibdev->dev);

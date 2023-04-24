@@ -686,16 +686,10 @@ static void ipa_endpoint_init_hdr_ext(struct ipa_endpoint *endpoint)
 	const struct ipa_reg *reg;
 	u32 val = 0;
 
-<<<<<<< HEAD
-	if (endpoint->data->qmap) {
-		/* We have a header, so we must specify its endianness */
-		val |= HDR_ENDIANNESS_FMASK;	/* big endian */
-=======
 	reg = ipa_reg(ipa, ENDP_INIT_HDR_EXT);
 	if (endpoint->config.qmap) {
 		/* We have a header, so we must specify its endianness */
 		val |= ipa_reg_bit(reg, HDR_ENDIANNESS);	/* big endian */
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* A QMAP header contains a 6 bit pad field at offset 0.
 		 * The RMNet driver assumes this field is meaningful in
@@ -705,15 +699,9 @@ static void ipa_endpoint_init_hdr_ext(struct ipa_endpoint *endpoint)
 		 * (although 0) should be ignored.
 		 */
 		if (!endpoint->toward_ipa) {
-<<<<<<< HEAD
-			val |= HDR_TOTAL_LEN_OR_PAD_VALID_FMASK;
-			/* HDR_TOTAL_LEN_OR_PAD is 0 (pad, not total_len) */
-			val |= HDR_PAYLOAD_LEN_INC_PADDING_FMASK;
-=======
 			val |= ipa_reg_bit(reg, HDR_TOTAL_LEN_OR_PAD_VALID);
 			/* HDR_TOTAL_LEN_OR_PAD is 0 (pad, not total_len) */
 			val |= ipa_reg_bit(reg, HDR_PAYLOAD_LEN_INC_PADDING);
->>>>>>> origin/linux_6.1.15_upstream
 			/* HDR_TOTAL_LEN_OR_PAD_OFFSET is 0 */
 		}
 	}
@@ -859,42 +847,26 @@ static void ipa_endpoint_init_aggr(struct ipa_endpoint *endpoint)
 	reg = ipa_reg(ipa, ENDP_INIT_AGGR);
 	if (endpoint->config.aggregation) {
 		if (!endpoint->toward_ipa) {
-<<<<<<< HEAD
-			u32 buffer_size;
-			bool close_eof;
-=======
 			const struct ipa_endpoint_rx *rx_config;
 			u32 buffer_size;
->>>>>>> origin/linux_6.1.15_upstream
 			u32 limit;
 
 			rx_config = &endpoint->config.rx;
 			val |= ipa_reg_encode(reg, AGGR_EN, IPA_ENABLE_AGGR);
 			val |= ipa_reg_encode(reg, AGGR_TYPE, IPA_GENERIC);
 
-<<<<<<< HEAD
-			buffer_size = IPA_RX_BUFFER_SIZE - NET_SKB_PAD;
-			limit = ipa_aggr_size_kb(buffer_size);
-			val |= aggr_byte_limit_encoded(version, limit);
-=======
 			buffer_size = rx_config->buffer_size;
 			limit = ipa_aggr_size_kb(buffer_size - NET_SKB_PAD,
 						 rx_config->aggr_hard_limit);
 			val |= ipa_reg_encode(reg, BYTE_LIMIT, limit);
->>>>>>> origin/linux_6.1.15_upstream
 
 			limit = rx_config->aggr_time_limit;
 			val |= aggr_time_limit_encode(ipa, reg, limit);
 
 			/* AGGR_PKT_LIMIT is 0 (unlimited) */
 
-<<<<<<< HEAD
-			close_eof = endpoint->data->rx.aggr_close_eof;
-			val |= aggr_sw_eof_active_encoded(version, close_eof);
-=======
 			if (rx_config->aggr_close_eof)
 				val |= ipa_reg_bit(reg, SW_EOF_ACTIVE);
->>>>>>> origin/linux_6.1.15_upstream
 		} else {
 			val |= ipa_reg_encode(reg, AGGR_EN, IPA_ENABLE_DEAGGR);
 			val |= ipa_reg_encode(reg, AGGR_TYPE, IPA_QCMAP);
@@ -995,16 +967,10 @@ static void ipa_endpoint_init_hol_block_timer(struct ipa_endpoint *endpoint,
 	u32 val;
 
 	/* This should only be changed when HOL_BLOCK_EN is disabled */
-<<<<<<< HEAD
-	offset = IPA_REG_ENDP_INIT_HOL_BLOCK_TIMER_N_OFFSET(endpoint_id);
-	val = hol_block_timer_val(ipa, microseconds);
-	iowrite32(val, ipa->reg_virt + offset);
-=======
 	reg = ipa_reg(ipa, ENDP_INIT_HOL_BLOCK_TIMER);
 	val = hol_block_timer_encode(ipa, reg, microseconds);
 
 	iowrite32(val, ipa->reg_virt + ipa_reg_n_offset(reg, endpoint_id));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void
@@ -1016,14 +982,6 @@ ipa_endpoint_init_hol_block_en(struct ipa_endpoint *endpoint, bool enable)
 	u32 offset;
 	u32 val;
 
-<<<<<<< HEAD
-	val = enable ? HOL_BLOCK_EN_FMASK : 0;
-	offset = IPA_REG_ENDP_INIT_HOL_BLOCK_EN_N_OFFSET(endpoint_id);
-	iowrite32(val, endpoint->ipa->reg_virt + offset);
-	/* When enabling, the register must be written twice for IPA v4.5+ */
-	if (enable && endpoint->ipa->version >= IPA_VERSION_4_5)
-		iowrite32(val, endpoint->ipa->reg_virt + offset);
-=======
 	reg = ipa_reg(ipa, ENDP_INIT_HOL_BLOCK_EN);
 	offset = ipa_reg_n_offset(reg, endpoint_id);
 	val = enable ? ipa_reg_bit(reg, HOL_BLOCK_EN) : 0;
@@ -1046,7 +1004,6 @@ static void ipa_endpoint_init_hol_block_enable(struct ipa_endpoint *endpoint,
 static void ipa_endpoint_init_hol_block_disable(struct ipa_endpoint *endpoint)
 {
 	ipa_endpoint_init_hol_block_en(endpoint, false);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void ipa_endpoint_modem_hol_block_clear_all(struct ipa *ipa)
@@ -1059,14 +1016,8 @@ void ipa_endpoint_modem_hol_block_clear_all(struct ipa *ipa)
 		if (endpoint->toward_ipa || endpoint->ee_id != GSI_EE_MODEM)
 			continue;
 
-<<<<<<< HEAD
-		ipa_endpoint_init_hol_block_enable(endpoint, false);
-		ipa_endpoint_init_hol_block_timer(endpoint, 0);
-		ipa_endpoint_init_hol_block_enable(endpoint, true);
-=======
 		ipa_endpoint_init_hol_block_disable(endpoint);
 		ipa_endpoint_init_hol_block_enable(endpoint, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -1218,28 +1169,9 @@ static int ipa_endpoint_replenish_one(struct ipa_endpoint *endpoint,
 
 	ret = gsi_trans_page_add(trans, page, len, offset);
 	if (ret)
-<<<<<<< HEAD
-		goto err_trans_free;
-	trans->data = page;	/* transaction owns page now */
-
-	if (++endpoint->replenish_ready == IPA_REPLENISH_BATCH) {
-		doorbell = true;
-		endpoint->replenish_ready = 0;
-	}
-
-	gsi_trans_commit(trans, doorbell);
-
-	return 0;
-
-err_trans_free:
-	gsi_trans_free(trans);
-err_free_pages:
-	put_page(page);
-=======
 		put_page(page);
 	else
 		trans->data = page;	/* transaction owns page now */
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -1257,38 +1189,11 @@ err_free_pages:
  */
 static void ipa_endpoint_replenish(struct ipa_endpoint *endpoint)
 {
-<<<<<<< HEAD
-	struct gsi *gsi;
-	u32 backlog;
-	int delta;
-
-	if (!test_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags)) {
-		if (add_one)
-			atomic_inc(&endpoint->replenish_saved);
-=======
 	struct gsi_trans *trans;
 
 	if (!test_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
-<<<<<<< HEAD
-	/* If already active, just update the backlog */
-	if (test_and_set_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags)) {
-		if (add_one)
-			atomic_inc(&endpoint->replenish_backlog);
-		return;
-	}
-
-	while (atomic_dec_not_zero(&endpoint->replenish_backlog))
-		if (ipa_endpoint_replenish_one(endpoint))
-			goto try_again_later;
-
-	clear_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags);
-
-	if (add_one)
-		atomic_inc(&endpoint->replenish_backlog);
-=======
 	/* Skip it if it's already active */
 	if (test_and_set_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags))
 		return;
@@ -1306,21 +1211,12 @@ static void ipa_endpoint_replenish(struct ipa_endpoint *endpoint)
 	}
 
 	clear_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return;
 
 try_again_later:
-<<<<<<< HEAD
-	clear_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags);
-
-	/* The last one didn't succeed, so fix the backlog */
-	delta = add_one ? 2 : 1;
-	backlog = atomic_add_return(delta, &endpoint->replenish_backlog);
-=======
 	gsi_trans_free(trans);
 	clear_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Whenever a receive buffer transaction completes we'll try to
 	 * replenish again.  It's unlikely, but if we fail to supply even
@@ -1335,17 +1231,7 @@ try_again_later:
 
 static void ipa_endpoint_replenish_enable(struct ipa_endpoint *endpoint)
 {
-<<<<<<< HEAD
-	struct gsi *gsi = &endpoint->ipa->gsi;
-	u32 max_backlog;
-	u32 saved;
-
 	set_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags);
-	while ((saved = atomic_xchg(&endpoint->replenish_saved, 0)))
-		atomic_add(saved, &endpoint->replenish_backlog);
-=======
-	set_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Start replenishing if hardware currently has no buffers */
 	if (gsi_channel_trans_idle(&endpoint->ipa->gsi, endpoint->channel_id))
@@ -1354,15 +1240,7 @@ static void ipa_endpoint_replenish_enable(struct ipa_endpoint *endpoint)
 
 static void ipa_endpoint_replenish_disable(struct ipa_endpoint *endpoint)
 {
-<<<<<<< HEAD
-	u32 backlog;
-
 	clear_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags);
-	while ((backlog = atomic_xchg(&endpoint->replenish_backlog, 0)))
-		atomic_add(backlog, &endpoint->replenish_saved);
-=======
-	clear_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void ipa_endpoint_replenish_work(struct work_struct *work)
@@ -1913,12 +1791,6 @@ static void ipa_endpoint_setup_one(struct ipa_endpoint *endpoint)
 		 */
 		clear_bit(IPA_REPLENISH_ENABLED, endpoint->replenish_flags);
 		clear_bit(IPA_REPLENISH_ACTIVE, endpoint->replenish_flags);
-<<<<<<< HEAD
-		atomic_set(&endpoint->replenish_saved,
-			   gsi_channel_tre_max(gsi, endpoint->channel_id));
-		atomic_set(&endpoint->replenish_backlog, 0);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		INIT_DELAYED_WORK(&endpoint->replenish_work,
 				  ipa_endpoint_replenish_work);
 	}

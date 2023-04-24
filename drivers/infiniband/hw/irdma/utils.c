@@ -2241,11 +2241,7 @@ int irdma_prm_add_pble_mem(struct irdma_pble_prm *pprm,
 
 	pchunk->bitmapbuf = bitmap_zalloc(sizeofbitmap, GFP_KERNEL);
 	if (!pchunk->bitmapbuf)
-<<<<<<< HEAD
-		return IRDMA_ERR_NO_MEMORY;
-=======
 		return -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 
 	pchunk->sizeofbitmap = sizeofbitmap;
 	/* each pble is 8 bytes hence shift by 3 */
@@ -2506,8 +2502,6 @@ bool irdma_cq_empty(struct irdma_cq *iwcq)
 
 	return polarity != ukcq->polarity;
 }
-<<<<<<< HEAD
-=======
 
 void irdma_remove_cmpls_list(struct irdma_cq *iwcq)
 {
@@ -2657,4 +2651,3 @@ void irdma_generate_flush_completions(struct irdma_qp *iwqp)
 				 msecs_to_jiffies(IRDMA_FLUSH_DELAY_MS));
 	}
 }
->>>>>>> origin/linux_6.1.15_upstream

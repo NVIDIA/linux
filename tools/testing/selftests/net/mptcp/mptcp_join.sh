@@ -780,13 +780,8 @@ do_transfer()
 	if [ "$test_link_fail" -gt 1 ];then
 		timeout ${timeout_test} \
 			ip netns exec ${listener_ns} \
-<<<<<<< HEAD
-				$mptcp_connect -t ${timeout_poll} -l -p $port -s ${srv_proto} \
-					${local_addr} < "$sinfail" > "$sout" &
-=======
 				./mptcp_connect -t ${timeout_poll} -l -p $port -s ${srv_proto} \
 					$extra_srv_args ${local_addr} < "$sinfail" > "$sout" &
->>>>>>> origin/linux_6.1.15_upstream
 	else
 		timeout ${timeout_test} \
 			ip netns exec ${listener_ns} \
@@ -1366,14 +1361,11 @@ chk_join_nr()
 	local count
 	local dump_stats
 	local with_cookie
-<<<<<<< HEAD
-=======
 	local title="${TEST_NAME}"
 
 	if [ "${corrupted_pkts}" -gt 0 ]; then
 		title+=": ${corrupted_pkts} corrupted pkts"
 	fi
->>>>>>> origin/linux_6.1.15_upstream
 
 	printf "%03u %-36s %s" "${TEST_COUNT}" "${title}" "syn"
 	count=$(ip netns exec $ns1 nstat -as | grep MPTcpExtMPJoinSynRx | awk '{print $2}')
@@ -1387,13 +1379,8 @@ chk_join_nr()
 	fi
 
 	echo -n " - synack"
-<<<<<<< HEAD
-	with_cookie=`ip netns exec $ns2 sysctl -n net.ipv4.tcp_syncookies`
-	count=`ip netns exec $ns2 nstat -as | grep MPTcpExtMPJoinSynAckRx | awk '{print $2}'`
-=======
 	with_cookie=$(ip netns exec $ns2 sysctl -n net.ipv4.tcp_syncookies)
 	count=$(ip netns exec $ns2 nstat -as | grep MPTcpExtMPJoinSynAckRx | awk '{print $2}')
->>>>>>> origin/linux_6.1.15_upstream
 	[ -z "$count" ] && count=0
 	if [ "$count" != "$syn_ack_nr" ]; then
 		# simult connections exceeding the limit with cookie enabled could go up to
@@ -1403,11 +1390,7 @@ chk_join_nr()
 			echo -n "[ ok ]"
 		else
 			echo "[fail] got $count JOIN[s] synack expected $syn_ack_nr"
-<<<<<<< HEAD
-			ret=1
-=======
 			fail_test
->>>>>>> origin/linux_6.1.15_upstream
 			dump_stats=1
 		fi
 	else
@@ -2334,14 +2317,6 @@ add_tests()
 ipv6_tests()
 {
 	# subflow IPv6
-<<<<<<< HEAD
-	reset
-	ip netns exec $ns1 ./pm_nl_ctl limits 0 1
-	ip netns exec $ns2 ./pm_nl_ctl limits 0 1
-	ip netns exec $ns2 ./pm_nl_ctl add dead:beef:3::2 dev ns2eth3 flags subflow
-	run_tests $ns1 $ns2 dead:beef:1::1 0 0 0 slow
-	chk_join_nr "single subflow IPv6" 1 1 1
-=======
 	if reset "single subflow IPv6"; then
 		pm_nl_set_limits $ns1 0 1
 		pm_nl_set_limits $ns2 0 1
@@ -2349,7 +2324,6 @@ ipv6_tests()
 		run_tests $ns1 $ns2 dead:beef:1::1 0 0 0 slow
 		chk_join_nr 1 1 1
 	fi
->>>>>>> origin/linux_6.1.15_upstream
 
 	# add_address, unused IPv6
 	if reset "unused signal address IPv6"; then
@@ -2381,17 +2355,6 @@ ipv6_tests()
 	fi
 
 	# subflow and signal IPv6, remove
-<<<<<<< HEAD
-	reset
-	ip netns exec $ns1 ./pm_nl_ctl limits 0 2
-	ip netns exec $ns1 ./pm_nl_ctl add dead:beef:2::1 flags signal
-	ip netns exec $ns2 ./pm_nl_ctl limits 1 2
-	ip netns exec $ns2 ./pm_nl_ctl add dead:beef:3::2 dev ns2eth3 flags subflow
-	run_tests $ns1 $ns2 dead:beef:1::1 0 -1 -1 slow
-	chk_join_nr "remove subflow and signal IPv6" 2 2 2
-	chk_add_nr 1 1
-	chk_rm_nr 1 1
-=======
 	if reset "remove subflow and signal IPv6"; then
 		pm_nl_set_limits $ns1 0 2
 		pm_nl_add_endpoint $ns1 dead:beef:2::1 flags signal
@@ -2402,7 +2365,6 @@ ipv6_tests()
 		chk_add_nr 1 1
 		chk_rm_nr 1 1
 	fi
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 v4mapped_tests()

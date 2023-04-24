@@ -1599,7 +1599,6 @@ static struct mlx5_flow_rule *find_flow_rule(struct fs_fte *fte,
 
 static bool check_conflicting_actions_vlan(const struct mlx5_fs_vlan *vlan0,
 					   const struct mlx5_fs_vlan *vlan1)
-<<<<<<< HEAD
 {
 	return vlan0->ethtype != vlan1->ethtype ||
 	       vlan0->vid != vlan1->vid ||
@@ -1609,17 +1608,6 @@ static bool check_conflicting_actions_vlan(const struct mlx5_fs_vlan *vlan0,
 static bool check_conflicting_actions(const struct mlx5_flow_act *act1,
 				      const struct mlx5_flow_act *act2)
 {
-=======
-{
-	return vlan0->ethtype != vlan1->ethtype ||
-	       vlan0->vid != vlan1->vid ||
-	       vlan0->prio != vlan1->prio;
-}
-
-static bool check_conflicting_actions(const struct mlx5_flow_act *act1,
-				      const struct mlx5_flow_act *act2)
-{
->>>>>>> origin/linux_6.1.15_upstream
 	u32 action1 = act1->action;
 	u32 action2 = act2->action;
 	u32 xored_actions;
@@ -2150,11 +2138,7 @@ void mlx5_del_flow_rules(struct mlx5_flow_handle *handle)
 	for (i = handle->num_rules - 1; i >= 0; i--)
 		tree_remove_node(&handle->rule[i]->node, true);
 	if (list_empty(&fte->node.children)) {
-<<<<<<< HEAD
-		del_hw_fte(&fte->node);
-=======
 		fte->node.del_hw_func(&fte->node);
->>>>>>> origin/linux_6.1.15_upstream
 		/* Avoid double call to del_hw_fte */
 		fte->node.del_hw_func = NULL;
 		up_write_ref_node(&fte->node, false);

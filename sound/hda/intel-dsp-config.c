@@ -32,16 +32,12 @@ struct config_entry {
 	u16 device;
 	u8 acpi_hid[ACPI_ID_LEN];
 	const struct dmi_system_id *dmi_table;
-<<<<<<< HEAD
-	u8 codec_hid[ACPI_ID_LEN];
-=======
 	const struct snd_soc_acpi_codecs *codec_hid;
 };
 
 static const struct snd_soc_acpi_codecs __maybe_unused essx_83x6 = {
 	.num_codecs = 3,
 	.codecs = { "ESSX8316", "ESSX8326", "ESSX8336"},
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /*
@@ -87,11 +83,7 @@ static const struct config_entry config_table[] = {
 	{
 		.flags = FLAG_SOF,
 		.device = 0x5a98,
-<<<<<<< HEAD
-		.codec_hid = "ESSX8336",
-=======
 		.codec_hid =  &essx_83x6,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_INTEL_APL)
@@ -177,11 +169,7 @@ static const struct config_entry config_table[] = {
 	{
 		.flags = FLAG_SOF,
 		.device = 0x3198,
-<<<<<<< HEAD
-		.codec_hid = "ESSX8336",
-=======
 		.codec_hid =  &essx_83x6,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 #endif
 
@@ -353,18 +341,11 @@ static const struct config_entry config_table[] = {
 	},
 #endif
 
-<<<<<<< HEAD
-/* JasperLake */
-=======
 /* Jasper Lake */
->>>>>>> origin/linux_6.1.15_upstream
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_JASPERLAKE)
 	{
 		.flags = FLAG_SOF,
 		.device = 0x4dc8,
-<<<<<<< HEAD
-		.codec_hid = "ESSX8336",
-=======
 		.dmi_table = (const struct dmi_system_id []) {
 			{
 				.ident = "Google Chromebooks",
@@ -383,7 +364,6 @@ static const struct config_entry config_table[] = {
 	{
 		.flags = FLAG_SOF | FLAG_SOF_ONLY_IF_DMIC,
 		.device = 0x4dc8,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 #endif
 
@@ -520,10 +500,6 @@ static const struct config_entry *snd_intel_dsp_find_config
 			continue;
 		if (table->dmi_table && !dmi_check_system(table->dmi_table))
 			continue;
-<<<<<<< HEAD
-		if (table->codec_hid[0] && !acpi_dev_present(table->codec_hid, NULL, -1))
-			continue;
-=======
 		if (table->codec_hid) {
 			int i;
 
@@ -533,7 +509,6 @@ static const struct config_entry *snd_intel_dsp_find_config
 			if (i == table->codec_hid->num_codecs)
 				continue;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		return table;
 	}
 	return NULL;

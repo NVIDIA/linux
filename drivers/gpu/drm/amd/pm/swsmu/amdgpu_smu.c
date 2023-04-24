@@ -1631,9 +1631,6 @@ static int smu_suspend(void *handle)
 
 	smu->watermarks_bitmap &= ~(WATERMARKS_LOADED);
 
-<<<<<<< HEAD
-	smu_set_gfx_cgpg(&adev->smu, false);
-=======
 	smu_set_gfx_cgpg(smu, false);
 
 	/*
@@ -1643,7 +1640,6 @@ static int smu_suspend(void *handle)
 	ret = smu_get_entrycount_gfxoff(smu, &count);
 	if (!ret)
 		adev->gfx.gfx_off_entrycount = count;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -1674,11 +1670,7 @@ static int smu_resume(void *handle)
 		return ret;
 	}
 
-<<<<<<< HEAD
-	smu_set_gfx_cgpg(&adev->smu, true);
-=======
 	smu_set_gfx_cgpg(smu, true);
->>>>>>> origin/linux_6.1.15_upstream
 
 	smu->disable_uclk_switch = 0;
 

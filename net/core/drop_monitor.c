@@ -279,29 +279,15 @@ static void trace_napi_poll_hit(void *ignore, struct napi_struct *napi,
 		return;
 
 	rcu_read_lock();
-<<<<<<< HEAD
-	list_for_each_entry_rcu(new_stat, &hw_stats_list, list) {
-		struct net_device *dev;
-
-=======
 	stat = rcu_dereference(dev->dm_private);
 	if (stat) {
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * only add a note to our monitor buffer if:
 		 * 1) its after the last_rx delta
 		 * 2) our rx_dropped count has gone up
 		 */
-<<<<<<< HEAD
-		/* Paired with WRITE_ONCE() in dropmon_net_event() */
-		dev = READ_ONCE(new_stat->dev);
-		if ((dev == napi->dev)  &&
-		    (time_after(jiffies, new_stat->last_rx + dm_hw_check_delta)) &&
-		    (napi->dev->stats.rx_dropped != new_stat->last_drop_val)) {
-=======
 		if (time_after(jiffies, stat->last_rx + dm_hw_check_delta) &&
 		    (dev->stats.rx_dropped != stat->last_drop_val)) {
->>>>>>> origin/linux_6.1.15_upstream
 			trace_drop_common(NULL, NULL);
 			stat->last_drop_val = dev->stats.rx_dropped;
 			stat->last_rx = jiffies;
@@ -1588,26 +1574,10 @@ static int dropmon_net_event(struct notifier_block *ev_block,
 
 		break;
 	case NETDEV_UNREGISTER:
-<<<<<<< HEAD
-		mutex_lock(&net_dm_mutex);
-		list_for_each_entry_safe(new_stat, tmp, &hw_stats_list, list) {
-			if (new_stat->dev == dev) {
-
-				/* Paired with READ_ONCE() in trace_napi_poll_hit() */
-				WRITE_ONCE(new_stat->dev, NULL);
-
-				if (trace_state == TRACE_OFF) {
-					list_del_rcu(&new_stat->list);
-					kfree_rcu(new_stat, rcu);
-					break;
-				}
-			}
-=======
 		stat = rtnl_dereference(dev->dm_private);
 		if (stat) {
 			rcu_assign_pointer(dev->dm_private, NULL);
 			kfree_rcu(stat, rcu);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	}

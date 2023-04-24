@@ -863,22 +863,14 @@ static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
 	priv->phy_addr = ret;
 	priv->embd_phy = ((priv->phy_addr & 0x1f) == AX_EMBD_PHY_ADDR);
 
-<<<<<<< HEAD
-	ret = asix_read_cmd(dev, AX_CMD_STATMNGSTS_REG, 0, 0, 1, &chipcode, 0);
-=======
 	ret = asix_read_cmd(dev, AX_CMD_STATMNGSTS_REG, 0, 0, 1,
 			    &priv->chipcode, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret < 0) {
 		netdev_dbg(dev->net, "Failed to read STATMNGSTS_REG: %d\n", ret);
 		return ret;
 	}
 
-<<<<<<< HEAD
-	chipcode &= AX_CHIPCODE_MASK;
-=======
 	priv->chipcode &= AX_CHIPCODE_MASK;
->>>>>>> origin/linux_6.1.15_upstream
 
 	priv->resume = ax88772_resume;
 	priv->suspend = ax88772_suspend;
@@ -922,11 +914,7 @@ static int ax88772_stop(struct usbnet *dev)
 {
 	struct asix_common_private *priv = dev->driver_priv;
 
-<<<<<<< HEAD
-	phy_stop(priv->phydev);
-=======
 	phylink_stop(priv->phylink);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

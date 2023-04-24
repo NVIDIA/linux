@@ -441,9 +441,6 @@
 						     "sata1", "sata2";
 			};
 
-<<<<<<< HEAD
-			syscon@180 {
-=======
 			usb2_phy: phy@164 {
 				compatible = "brcm,ns-usb2-phy";
 				reg = <0x164 0x4>;
@@ -454,7 +451,6 @@
 			};
 
 			cru_clkset: syscon@180 {
->>>>>>> origin/linux_6.1.15_upstream
 				compatible = "brcm,cru-clkset", "syscon";
 				reg = <0x180 0x4>;
 			};

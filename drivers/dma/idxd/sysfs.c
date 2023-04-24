@@ -110,8 +110,6 @@ static void idxd_set_free_rdbufs(struct idxd_device *idxd)
 	}
 
 	idxd->nr_rdbufs = idxd->max_rdbufs - rdbufs;
-<<<<<<< HEAD
-=======
 }
 
 static ssize_t group_read_buffers_reserved_show(struct device *dev,
@@ -121,21 +119,14 @@ static ssize_t group_read_buffers_reserved_show(struct device *dev,
 	struct idxd_group *group = confdev_to_group(dev);
 
 	return sysfs_emit(buf, "%u\n", group->rdbufs_reserved);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t group_tokens_reserved_show(struct device *dev,
 					  struct device_attribute *attr,
 					  char *buf)
 {
-<<<<<<< HEAD
-	struct idxd_group *group = confdev_to_group(dev);
-
-	return sysfs_emit(buf, "%u\n", group->rdbufs_reserved);
-=======
 	dev_warn_once(dev, "attribute deprecated, see read_buffers_reserved.\n");
 	return group_read_buffers_reserved_show(dev, attr, buf);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t group_read_buffers_reserved_store(struct device *dev,
@@ -200,14 +191,8 @@ static ssize_t group_tokens_allowed_show(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
 {
-<<<<<<< HEAD
-	struct idxd_group *group = confdev_to_group(dev);
-
-	return sysfs_emit(buf, "%u\n", group->rdbufs_allowed);
-=======
 	dev_warn_once(dev, "attribute deprecated, see read_buffers_allowed.\n");
 	return group_read_buffers_allowed_show(dev, attr, buf);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t group_read_buffers_allowed_store(struct device *dev,
@@ -269,14 +254,8 @@ static ssize_t group_use_token_limit_show(struct device *dev,
 					  struct device_attribute *attr,
 					  char *buf)
 {
-<<<<<<< HEAD
-	struct idxd_group *group = confdev_to_group(dev);
-
-	return sysfs_emit(buf, "%u\n", group->use_rdbuf_limit);
-=======
 	dev_warn_once(dev, "attribute deprecated, see use_read_buffer_limit.\n");
 	return group_use_read_buffer_limit_show(dev, attr, buf);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t group_use_read_buffer_limit_store(struct device *dev,
@@ -1508,24 +1487,14 @@ static ssize_t read_buffer_limit_show(struct device *dev,
 {
 	struct idxd_device *idxd = confdev_to_idxd(dev);
 
-<<<<<<< HEAD
-	return sysfs_emit(buf, "%u\n", idxd->max_rdbufs);
-=======
 	return sysfs_emit(buf, "%u\n", idxd->rdbuf_limit);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t token_limit_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-<<<<<<< HEAD
-	struct idxd_device *idxd = confdev_to_idxd(dev);
-
-	return sysfs_emit(buf, "%u\n", idxd->rdbuf_limit);
-=======
 	dev_warn_once(dev, "attribute deprecated, see read_buffer_limit.\n");
 	return read_buffer_limit_show(dev, attr, buf);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t read_buffer_limit_store(struct device *dev,

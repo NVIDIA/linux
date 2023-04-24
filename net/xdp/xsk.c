@@ -355,11 +355,7 @@ static u32 xsk_tx_peek_release_fallback(struct xsk_buff_pool *pool, u32 max_entr
 	return nb_pkts;
 }
 
-<<<<<<< HEAD
-u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 max_entries)
-=======
 u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 nb_pkts)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct xdp_sock *xs;
 
@@ -367,11 +363,7 @@ u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 nb_pkts)
 	if (!list_is_singular(&pool->xsk_tx_list)) {
 		/* Fallback to the non-batched version */
 		rcu_read_unlock();
-<<<<<<< HEAD
-		return xsk_tx_peek_release_fallback(pool, max_entries);
-=======
 		return xsk_tx_peek_release_fallback(pool, nb_pkts);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	xs = list_first_or_null_rcu(&pool->xsk_tx_list, struct xdp_sock, tx_list);
@@ -380,16 +372,7 @@ u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 nb_pkts)
 		goto out;
 	}
 
-<<<<<<< HEAD
-	max_entries = xskq_cons_nb_entries(xs->tx, max_entries);
-	nb_pkts = xskq_cons_read_desc_batch(xs->tx, pool, max_entries);
-	if (!nb_pkts) {
-		xs->tx->queue_empty_descs++;
-		goto out;
-	}
-=======
 	nb_pkts = xskq_cons_nb_entries(xs->tx, nb_pkts);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* This is the backpressure mechanism for the Tx path. Try to
 	 * reserve space in the completion queue for all packets, but
@@ -397,13 +380,6 @@ u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 nb_pkts)
 	 * packets. This avoids having to implement any buffering in
 	 * the Tx path.
 	 */
-<<<<<<< HEAD
-	nb_pkts = xskq_prod_reserve_addr_batch(pool->cq, pool->tx_descs, nb_pkts);
-	if (!nb_pkts)
-		goto out;
-
-	xskq_cons_release_n(xs->tx, max_entries);
-=======
 	nb_pkts = xskq_prod_nb_free(pool->cq, nb_pkts);
 	if (!nb_pkts)
 		goto out;
@@ -414,7 +390,6 @@ u32 xsk_tx_peek_release_desc_batch(struct xsk_buff_pool *pool, u32 nb_pkts)
 		goto out;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	__xskq_cons_release(xs->tx);
 	xskq_prod_write_addr_batch(pool->cq, pool->tx_descs, nb_pkts);
 	xs->sk.sk_write_space(&xs->sk);

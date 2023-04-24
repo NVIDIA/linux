@@ -688,8 +688,6 @@ static void stm32_usart_transmit_chars(struct uart_port *port)
 	struct circ_buf *xmit = &port->state->xmit;
 	u32 isr;
 	int ret;
-<<<<<<< HEAD
-=======
 
 	if (!stm32_port->hw_flow_control &&
 	    port->rs485.flags & SER_RS485_ENABLED) {
@@ -697,7 +695,6 @@ static void stm32_usart_transmit_chars(struct uart_port *port)
 		stm32_usart_tc_interrupt_disable(port);
 		stm32_usart_rs485_rts_enable(port);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (port->x_char) {
 		if (stm32_usart_tx_dma_started(stm32_port) &&
@@ -865,12 +862,8 @@ static void stm32_usart_start_tx(struct uart_port *port)
 {
 	struct circ_buf *xmit = &port->state->xmit;
 
-<<<<<<< HEAD
-	if (uart_circ_empty(xmit) && !port->x_char)
-=======
 	if (uart_circ_empty(xmit) && !port->x_char) {
 		stm32_usart_rs485_rts_disable(port);
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 
@@ -1047,18 +1040,11 @@ static void stm32_usart_shutdown(struct uart_port *port)
 	u32 val, isr;
 	int ret;
 
-<<<<<<< HEAD
-	if (stm32_port->tx_dma_busy) {
-		dmaengine_terminate_async(stm32_port->tx_ch);
-		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-	}
-=======
 	if (stm32_usart_tx_dma_enabled(stm32_port))
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 
 	if (stm32_usart_tx_dma_started(stm32_port))
 		stm32_usart_tx_dma_terminate(stm32_port);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Disable modem control interrupts */
 	stm32_usart_disable_ms(port);

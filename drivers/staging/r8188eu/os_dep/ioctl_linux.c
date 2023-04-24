@@ -3715,14 +3715,8 @@ static const struct iw_priv_args rtw_private_args[] = {
 static iw_handler rtw_private_handler[] = {
 	NULL,				/* 0x00 */
 	NULL,				/* 0x01 */
-<<<<<<< HEAD
-rtw_drvext_hdl,				/* 0x02 */
-rtw_mp_ioctl_hdl,			/* 0x03 */
-
-=======
 	NULL,				/* 0x02 */
 NULL,					/* 0x03 */
->>>>>>> origin/linux_6.1.15_upstream
 /*  for MM DTV platform */
 	rtw_get_ap_info,		/* 0x04 */
 

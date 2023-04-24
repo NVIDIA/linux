@@ -9,10 +9,7 @@
 struct mlx5e_xsk_param {
 	u16 headroom;
 	u16 chunk_size;
-<<<<<<< HEAD
-=======
 	bool unaligned;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct mlx5e_cq_param {

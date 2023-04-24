@@ -2231,12 +2231,6 @@ static int mlx4_ib_alloc_diag_counters(struct mlx4_ib_dev *ibdev)
 		if (i && !per_port) {
 			ib_set_device_ops(&ibdev->ib_dev,
 					  &mlx4_ib_hw_stats_ops1);
-<<<<<<< HEAD
-
-			return 0;
-		}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 			return 0;
 		}

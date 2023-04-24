@@ -838,11 +838,7 @@ static unsigned int handle_tx(struct eg20t_port *priv)
 	fifo_size = max(priv->fifo_size, 1);
 	tx_empty = 1;
 	if (port->x_char) {
-<<<<<<< HEAD
-		pch_uart_hal_write(priv, &port->x_char, 1);
-=======
 		iowrite8(port->x_char, priv->membase + PCH_UART_THR);
->>>>>>> origin/linux_6.1.15_upstream
 		port->icount.tx++;
 		port->x_char = 0;
 		tx_empty = 0;
@@ -900,11 +896,7 @@ static unsigned int dma_handle_tx(struct eg20t_port *priv)
 	fifo_size = max(priv->fifo_size, 1);
 
 	if (port->x_char) {
-<<<<<<< HEAD
-		pch_uart_hal_write(priv, &port->x_char, 1);
-=======
 		iowrite8(port->x_char, priv->membase + PCH_UART_THR);
->>>>>>> origin/linux_6.1.15_upstream
 		port->icount.tx++;
 		port->x_char = 0;
 		fifo_size--;

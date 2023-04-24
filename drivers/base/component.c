@@ -242,11 +242,7 @@ static int try_to_bring_up_aggregate_device(struct aggregate_device *adev,
 		return 0;
 	}
 
-<<<<<<< HEAD
-	if (!devres_open_group(master->parent, master, GFP_KERNEL))
-=======
 	if (!devres_open_group(adev->parent, adev, GFP_KERNEL))
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENOMEM;
 
 	/* Found all components */
@@ -258,13 +254,8 @@ static int try_to_bring_up_aggregate_device(struct aggregate_device *adev,
 		return ret;
 	}
 
-<<<<<<< HEAD
-	devres_close_group(master->parent, NULL);
-	master->bound = true;
-=======
 	devres_close_group(adev->parent, NULL);
 	adev->bound = true;
->>>>>>> origin/linux_6.1.15_upstream
 	return 1;
 }
 
@@ -286,17 +277,10 @@ static int try_to_bring_up_masters(struct component *component)
 
 static void take_down_aggregate_device(struct aggregate_device *adev)
 {
-<<<<<<< HEAD
-	if (master->bound) {
-		master->ops->unbind(master->parent);
-		devres_release_group(master->parent, master);
-		master->bound = false;
-=======
 	if (adev->bound) {
 		adev->ops->unbind(adev->parent);
 		devres_release_group(adev->parent, adev);
 		adev->bound = false;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

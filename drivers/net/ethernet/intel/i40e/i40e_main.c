@@ -858,10 +858,6 @@ static void i40e_update_vsi_stats(struct i40e_vsi *vsi)
 	struct i40e_eth_stats *es;     /* device's eth stats */
 	u64 tx_restart, tx_busy;
 	struct i40e_ring *p;
-<<<<<<< HEAD
-	u64 rx_page, rx_buf;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u64 bytes, packets;
 	unsigned int start;
 	u64 tx_linearize;
@@ -2040,21 +2036,15 @@ static void i40e_vsi_setup_queue_map(struct i40e_vsi *vsi,
 		 * non-zero req_queue_pairs says that user requested a new
 		 * queue count via ethtool's set_channels, so use this
 		 * value for queues distribution across traffic classes
-<<<<<<< HEAD
-=======
 		 * We need at least one queue pair for the interface
 		 * to be usable as we see in else statement.
->>>>>>> origin/linux_6.1.15_upstream
 		 */
 		if (vsi->req_queue_pairs > 0)
 			vsi->num_queue_pairs = vsi->req_queue_pairs;
 		else if (pf->flags & I40E_FLAG_MSIX_ENABLED)
 			vsi->num_queue_pairs = pf->num_lan_msix;
-<<<<<<< HEAD
-=======
 		else
 			vsi->num_queue_pairs = 1;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* Number of queues per enabled TC */
@@ -2621,12 +2611,6 @@ int i40e_sync_vsi_filters(struct i40e_vsi *vsi)
 				vlan_filters++;
 		}
 
-<<<<<<< HEAD
-		retval = i40e_correct_mac_vlan_filters(vsi,
-						       &tmp_add_list,
-						       &tmp_del_list,
-						       vlan_filters);
-=======
 		if (vsi->type != I40E_VSI_SRIOV)
 			retval = i40e_correct_mac_vlan_filters
 				(vsi, &tmp_add_list, &tmp_del_list,
@@ -2635,7 +2619,6 @@ int i40e_sync_vsi_filters(struct i40e_vsi *vsi)
 			retval = i40e_correct_vf_mac_vlan_filters
 				(vsi, &tmp_add_list, &tmp_del_list,
 				 vlan_filters, pf->vf[vsi->vf_id].trusted);
->>>>>>> origin/linux_6.1.15_upstream
 
 		hlist_for_each_entry(new, &tmp_add_list, hlist)
 			netdev_hw_addr_refcnt(new->f, vsi->netdev, 1);
@@ -6583,11 +6566,7 @@ int i40e_create_queue_channel(struct i40e_vsi *vsi,
 		pf->flags |= I40E_FLAG_VEB_MODE_ENABLED;
 
 		if (vsi->type == I40E_VSI_MAIN) {
-<<<<<<< HEAD
-			if (pf->flags & I40E_FLAG_TC_MQPRIO)
-=======
 			if (i40e_is_tc_mqprio_enabled(pf))
->>>>>>> origin/linux_6.1.15_upstream
 				i40e_do_reset(pf, I40E_PF_RESET_FLAG, true);
 			else
 				i40e_do_reset_safe(pf, I40E_PF_RESET_FLAG);
@@ -8261,11 +8240,7 @@ config_tc:
 		 "Setup channel (id:%u) utilizing num_queues %d\n",
 		 vsi->seid, vsi->tc_config.tc_info[0].qcount);
 
-<<<<<<< HEAD
-	if (pf->flags & I40E_FLAG_TC_MQPRIO) {
-=======
 	if (i40e_is_tc_mqprio_enabled(pf)) {
->>>>>>> origin/linux_6.1.15_upstream
 		if (vsi->mqprio_qopt.max_rate[0]) {
 			u64 max_tx_rate = i40e_bw_bytes_to_mbits(vsi,
 						  vsi->mqprio_qopt.max_rate[0]);

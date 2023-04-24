@@ -35,11 +35,8 @@
 #define BYTE_FRAME		0x7e
 #define BYTE_ESC		0x7d
 
-<<<<<<< HEAD
-=======
 #define FCS_INIT		0xffff
 
->>>>>>> origin/linux_6.1.15_upstream
 static DEFINE_IDA(mctp_serial_ida);
 
 enum mctp_serial_state {
@@ -128,11 +125,7 @@ static void mctp_serial_tx_work(struct work_struct *work)
 		buf[2] = dev->txlen;
 
 		if (!dev->txpos)
-<<<<<<< HEAD
-			dev->txfcs = crc_ccitt(0, buf + 1, 2);
-=======
 			dev->txfcs = crc_ccitt(FCS_INIT, buf + 1, 2);
->>>>>>> origin/linux_6.1.15_upstream
 
 		txlen = write_chunk(dev, buf + dev->txpos, 3 - dev->txpos);
 		if (txlen <= 0) {
@@ -295,11 +288,7 @@ static void mctp_serial_rx(struct mctp_serial *dev)
 	cb = __mctp_cb(skb);
 	cb->halen = 0;
 
-<<<<<<< HEAD
-	netif_rx_ni(skb);
-=======
 	netif_rx(skb);
->>>>>>> origin/linux_6.1.15_upstream
 	dev->netdev->stats.rx_packets++;
 	dev->netdev->stats.rx_bytes += dev->rxlen;
 }
@@ -316,11 +305,7 @@ static void mctp_serial_push_header(struct mctp_serial *dev, unsigned char c)
 	case 1:
 		if (c == MCTP_SERIAL_VERSION) {
 			dev->rxpos++;
-<<<<<<< HEAD
-			dev->rxfcs = crc_ccitt_byte(0, c);
-=======
 			dev->rxfcs = crc_ccitt_byte(FCS_INIT, c);
->>>>>>> origin/linux_6.1.15_upstream
 		} else {
 			dev->rxstate = STATE_ERR;
 		}

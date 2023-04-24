@@ -20,17 +20,10 @@ struct fsl_soc_die_attr {
 	u32	mask;
 };
 
-<<<<<<< HEAD
-static struct guts *guts;
-static struct soc_device_attribute soc_dev_attr;
-static struct soc_device *soc_dev;
-
-=======
 struct fsl_soc_data {
 	const char *sfp_compat;
 	u32 uid_offset;
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 /* SoC die attribute definition for QorIQ platform */
 static const struct fsl_soc_die_attr fsl_soc_die[] = {
@@ -124,57 +117,18 @@ static const struct fsl_soc_die_attr *fsl_soc_die_match(
 
 static u64 fsl_guts_get_soc_uid(const char *compat, unsigned int offset)
 {
-<<<<<<< HEAD
-	struct device_node *root, *np = pdev->dev.of_node;
-	struct device *dev = &pdev->dev;
-	struct resource *res;
-	const struct fsl_soc_die_attr *soc_die;
-	const char *machine;
-	u32 svr;
-
-	/* Initialize guts */
-	guts = devm_kzalloc(dev, sizeof(*guts), GFP_KERNEL);
-	if (!guts)
-		return -ENOMEM;
-
-	guts->little_endian = of_property_read_bool(np, "little-endian");
-=======
 	struct device_node *np;
 	void __iomem *sfp_base;
 	u64 uid;
->>>>>>> origin/linux_6.1.15_upstream
 
 	np = of_find_compatible_node(NULL, NULL, compat);
 	if (!np)
 		return 0;
 
-<<<<<<< HEAD
-	/* Register soc device */
-	root = of_find_node_by_path("/");
-	if (of_property_read_string(root, "model", &machine))
-		of_property_read_string_index(root, "compatible", 0, &machine);
-	if (machine) {
-		soc_dev_attr.machine = devm_kstrdup(dev, machine, GFP_KERNEL);
-		if (!soc_dev_attr.machine) {
-			of_node_put(root);
-			return -ENOMEM;
-		}
-	}
-	of_node_put(root);
-
-	svr = fsl_guts_get_svr();
-	soc_die = fsl_soc_die_match(svr, fsl_soc_die);
-	if (soc_die) {
-		soc_dev_attr.family = devm_kasprintf(dev, GFP_KERNEL,
-						     "QorIQ %s", soc_die->die);
-	} else {
-		soc_dev_attr.family = devm_kasprintf(dev, GFP_KERNEL, "QorIQ");
-=======
 	sfp_base = of_iomap(np, 0);
 	if (!sfp_base) {
 		of_node_put(np);
 		return 0;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	uid = ioread32(sfp_base + offset);
@@ -184,14 +138,7 @@ static u64 fsl_guts_get_soc_uid(const char *compat, unsigned int offset)
 	iounmap(sfp_base);
 	of_node_put(np);
 
-<<<<<<< HEAD
-static int fsl_guts_remove(struct platform_device *dev)
-{
-	soc_device_unregister(soc_dev);
-	return 0;
-=======
 	return uid;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct fsl_soc_data ls1028a_data = {

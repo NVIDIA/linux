@@ -446,11 +446,7 @@ static void fixup_quirks(struct mtd_info *mtd)
 	struct map_info *map = mtd->priv;
 	struct cfi_private *cfi = map->fldrv_priv;
 
-<<<<<<< HEAD
-	if (cfi->mfr == CFI_MFR_AMD && cfi->id == 0x0c01)
-=======
 	if (cfi->mfr == CFI_MFR_AMD && cfi->id == S29GL064N_MN12)
->>>>>>> origin/linux_6.1.15_upstream
 		cfi->quirks |= CFI_QUIRK_DQ_TRUE_DATA;
 }
 
@@ -836,42 +832,6 @@ static struct mtd_info *cfi_amdstd_setup(struct mtd_info *mtd)
  */
 static int __xipram chip_ready(struct map_info *map, struct flchip *chip,
 			       unsigned long addr, map_word *expected)
-<<<<<<< HEAD
-{
-	struct cfi_private *cfi = map->fldrv_priv;
-	map_word d, t;
-	int ret;
-
-	if (cfi_use_status_reg(cfi)) {
-		map_word ready = CMD(CFI_SR_DRB);
-		/*
-		 * For chips that support status register, check device
-		 * ready bit
-		 */
-		cfi_send_gen_cmd(0x70, cfi->addr_unlock1, chip->start, map, cfi,
-				 cfi->device_type, NULL);
-		t = map_read(map, addr);
-
-		return map_word_andequal(map, t, ready, ready);
-	}
-
-	d = map_read(map, addr);
-	t = map_read(map, addr);
-
-	ret = map_word_equal(map, d, t);
-
-	if (!ret || !expected)
-		return ret;
-
-	return map_word_equal(map, t, *expected);
-}
-
-static int __xipram chip_good(struct map_info *map, struct flchip *chip,
-			      unsigned long addr, map_word *expected)
-{
-	struct cfi_private *cfi = map->fldrv_priv;
-	map_word *datum = expected;
-=======
 {
 	struct cfi_private *cfi = map->fldrv_priv;
 	map_word oldd, curd;
@@ -889,13 +849,10 @@ static int __xipram chip_good(struct map_info *map, struct flchip *chip,
 
 		return map_word_andequal(map, curd, ready, ready);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (cfi->quirks & CFI_QUIRK_DQ_TRUE_DATA)
 		datum = NULL;
 
-<<<<<<< HEAD
-=======
 	ret = map_word_equal(map, oldd, curd);
 
 	if (!ret || !expected)
@@ -913,7 +870,6 @@ static int __xipram chip_good(struct map_info *map, struct flchip *chip,
 	if (cfi->quirks & CFI_QUIRK_DQ_TRUE_DATA)
 		datum = NULL;
 
->>>>>>> origin/linux_6.1.15_upstream
 	return chip_ready(map, chip, addr, datum);
 }
 

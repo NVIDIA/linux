@@ -81,17 +81,10 @@ hda_link_stream_assign(struct hdac_bus *bus,
 	}
 
 	spin_lock_irq(&bus->reg_lock);
-<<<<<<< HEAD
-	list_for_each_entry(stream, &bus->stream_list, list) {
-		struct hdac_ext_stream *hstream =
-			stream_to_hdac_ext_stream(stream);
-		if (stream->direction != substream->stream)
-=======
 	list_for_each_entry(hstream, &bus->stream_list, list) {
 		struct hdac_ext_stream *hext_stream =
 			stream_to_hdac_ext_stream(hstream);
 		if (hstream->direction != substream->stream)
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 
 		hda_stream = hstream_to_sof_hda_stream(hext_stream);
@@ -133,17 +126,8 @@ hda_link_stream_assign(struct hdac_bus *bus,
 	}
 
 	if (res) {
-<<<<<<< HEAD
-		/*
-		 * Decouple host and link DMA. The decoupled flag
-		 * is updated in snd_hdac_ext_stream_decouple().
-		 */
-		if (!res->decoupled)
-			snd_hdac_ext_stream_decouple_locked(bus, res, true);
-=======
 		/* Make sure that host and link DMA is decoupled. */
 		snd_hdac_ext_stream_decouple_locked(bus, res, true);
->>>>>>> origin/linux_6.1.15_upstream
 
 		res->link_locked = 1;
 		res->link_substream = substream;

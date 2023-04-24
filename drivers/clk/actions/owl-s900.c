@@ -140,11 +140,7 @@ static struct clk_div_table rmii_ref_div_table[] = {
 
 static struct clk_div_table usb3_mac_div_table[] = {
 	{ 1, 2 }, { 2, 3 }, { 3, 4 },
-<<<<<<< HEAD
-	{ 0, 0 }
-=======
 	{ /* sentinel */ }
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static struct clk_div_table i2s_div_table[] = {

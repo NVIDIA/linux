@@ -14986,13 +14986,6 @@ static struct tail_call_test tail_call_tests[] = {
 			BPF_LDX_MEM(BPF_W, R2, R1, 0),
 			BPF_ALU64_IMM(BPF_ADD, R2, 1),
 			BPF_STX_MEM(BPF_W, R1, R2, 0),
-<<<<<<< HEAD
-			TAIL_CALL(0),
-			BPF_EXIT_INSN(),
-		},
-		.flags = FLAG_NEED_STATE | FLAG_RESULT_IN_STATE,
-		.result = (MAX_TAIL_CALL_CNT + 1 + 1) * MAX_TESTRUNS,
-=======
 			TAIL_CALL(0),
 			BPF_EXIT_INSN(),
 		},
@@ -15020,7 +15013,6 @@ static struct tail_call_test tail_call_tests[] = {
 		.stack_depth = 8,
 		.flags = FLAG_NEED_STATE | FLAG_RESULT_IN_STATE,
 		.result = (MAX_TAIL_CALL_CNT + 1) * MAX_TESTRUNS,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	{
 		"Tail call error path, NULL target",

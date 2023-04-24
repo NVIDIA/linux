@@ -79,11 +79,7 @@ static int gdm_lte_rx(struct sk_buff *skb, struct nic *nic, int nic_type)
 	int ret, len;
 
 	len = skb->len + ETH_HLEN;
-<<<<<<< HEAD
-	ret = netif_rx_ni(skb);
-=======
 	ret = netif_rx(skb);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret == NET_RX_DROP) {
 		nic->stats.rx_dropped++;
 	} else {

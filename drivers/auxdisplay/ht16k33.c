@@ -724,10 +724,6 @@ static int ht16k33_seg_probe(struct device *dev, struct ht16k33_priv *priv,
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	ht16k33_fb_queue(priv);
-	return 0;
-=======
 	err = linedisp_register(&seg->linedisp, dev, 4, seg->curr,
 				ht16k33_linedisp_update);
 	if (err)
@@ -783,7 +779,6 @@ static int ht16k33_probe(struct i2c_client *client)
 	err = ht16k33_led_probe(dev, &priv->led, dft_brightness);
 	if (err)
 		return err;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Keypad */
 	if (client->irq > 0) {

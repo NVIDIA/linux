@@ -589,8 +589,6 @@ bool __init blake2s_selftest(void)
 		}
 	}
 
-<<<<<<< HEAD
-=======
 	for (i = 0; i < 32; ++i) {
 		enum { TEST_ALIGNMENT = 16 };
 		u8 unaligned_block[BLAKE2S_BLOCK_SIZE + TEST_ALIGNMENT - 1]
@@ -630,6 +628,5 @@ bool __init blake2s_selftest(void)
 		}
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return success;
 }

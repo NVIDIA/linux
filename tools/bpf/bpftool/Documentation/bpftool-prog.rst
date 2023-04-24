@@ -16,11 +16,7 @@ SYNOPSIS
 
 	**bpftool** [*OPTIONS*] **prog** *COMMAND*
 
-<<<<<<< HEAD
-	*OPTIONS* := { { **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } |
-=======
 	*OPTIONS* := { |COMMON_OPTIONS| |
->>>>>>> origin/linux_6.1.15_upstream
 	{ **-f** | **--bpffs** } | { **-m** | **--mapcompat** } | { **-n** | **--nomount** } |
 	{ **-L** | **--use-loader** } }
 

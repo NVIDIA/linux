@@ -107,10 +107,7 @@ static void ifb_ri_tasklet(struct tasklet_struct *t)
 #ifdef CONFIG_NET_CLS_ACT
 		skb->tc_skip_classify = 1;
 #endif
-<<<<<<< HEAD
-=======
 		nf_skip_egress(skb, true);
->>>>>>> origin/linux_6.1.15_upstream
 
 		ifb_update_q_stats(&txp->tx_stats, skb->len);
 

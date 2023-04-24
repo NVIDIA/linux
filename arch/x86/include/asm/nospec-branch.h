@@ -138,14 +138,8 @@
  */
 .macro JMP_NOSPEC reg:req
 #ifdef CONFIG_RETPOLINE
-<<<<<<< HEAD
-	ALTERNATIVE_2 __stringify(ANNOTATE_RETPOLINE_SAFE; jmp *%\reg), \
-		      __stringify(jmp __x86_indirect_thunk_\reg), X86_FEATURE_RETPOLINE, \
-		      __stringify(lfence; ANNOTATE_RETPOLINE_SAFE; jmp *%\reg), X86_FEATURE_RETPOLINE_LFENCE
-=======
 	__CS_PREFIX \reg
 	jmp	__x86_indirect_thunk_\reg
->>>>>>> origin/linux_6.1.15_upstream
 #else
 	jmp	*%\reg
 	int3
@@ -154,14 +148,8 @@
 
 .macro CALL_NOSPEC reg:req
 #ifdef CONFIG_RETPOLINE
-<<<<<<< HEAD
-	ALTERNATIVE_2 __stringify(ANNOTATE_RETPOLINE_SAFE; call *%\reg), \
-		      __stringify(call __x86_indirect_thunk_\reg), X86_FEATURE_RETPOLINE, \
-		      __stringify(lfence; ANNOTATE_RETPOLINE_SAFE; call *%\reg), X86_FEATURE_RETPOLINE_LFENCE
-=======
 	__CS_PREFIX \reg
 	call	__x86_indirect_thunk_\reg
->>>>>>> origin/linux_6.1.15_upstream
 #else
 	call	*%\reg
 #endif
@@ -289,10 +277,7 @@ enum spectre_v2_mitigation {
 	SPECTRE_V2_EIBRS,
 	SPECTRE_V2_EIBRS_RETPOLINE,
 	SPECTRE_V2_EIBRS_LFENCE,
-<<<<<<< HEAD
-=======
 	SPECTRE_V2_IBRS,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /* The indirect branch speculation control variants */

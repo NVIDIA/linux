@@ -1597,11 +1597,8 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_ktime_get_ns_proto;
 	case BPF_FUNC_ktime_get_boot_ns:
 		return &bpf_ktime_get_boot_ns_proto;
-<<<<<<< HEAD
-=======
 	case BPF_FUNC_ktime_get_tai_ns:
 		return &bpf_ktime_get_tai_ns_proto;
->>>>>>> origin/linux_6.1.15_upstream
 	case BPF_FUNC_ringbuf_output:
 		return &bpf_ringbuf_output_proto;
 	case BPF_FUNC_ringbuf_reserve:

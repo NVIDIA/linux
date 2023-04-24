@@ -1277,13 +1277,10 @@ static int cec_config_log_addr(struct cec_adapter *adap,
 		 * and the adapter was unconfigured, so bail out.
 		 */
 		if (adap->phys_addr == CEC_PHYS_ADDR_INVALID)
-<<<<<<< HEAD
-=======
 			return -EINTR;
 
 		/* Also bail out if the PA changed while configuring. */
 		if (adap->must_reconfigure)
->>>>>>> origin/linux_6.1.15_upstream
 			return -EINTR;
 
 		if (err)
@@ -1546,10 +1543,7 @@ unconfigure:
 		las->log_addr[i] = CEC_LOG_ADDR_INVALID;
 	cec_adap_unconfigure(adap);
 	adap->is_configuring = false;
-<<<<<<< HEAD
-=======
 	adap->must_reconfigure = false;
->>>>>>> origin/linux_6.1.15_upstream
 	adap->kthread_config = NULL;
 	complete(&adap->config_completion);
 	mutex_unlock(&adap->lock);
@@ -1657,51 +1651,12 @@ void __cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr, bool block)
 		adap->phys_addr = CEC_PHYS_ADDR_INVALID;
 		cec_post_state_event(adap);
 		cec_adap_unconfigure(adap);
-<<<<<<< HEAD
-		/* Disabling monitor all mode should always succeed */
-		if (adap->monitor_all_cnt)
-			WARN_ON(call_op(adap, adap_monitor_all_enable, false));
-		/* serialize adap_enable */
-		mutex_lock(&adap->devnode.lock);
-		if (adap->needs_hpd || list_empty(&adap->devnode.fhs)) {
-			WARN_ON(adap->ops->adap_enable(adap, false));
-			adap->transmit_in_progress = false;
-			wake_up_interruptible(&adap->kthread_waitq);
-		}
-		mutex_unlock(&adap->devnode.lock);
-		if (phys_addr == CEC_PHYS_ADDR_INVALID)
-=======
 		if (becomes_invalid) {
 			cec_adap_enable(adap);
->>>>>>> origin/linux_6.1.15_upstream
 			return;
 		}
 	}
 
-<<<<<<< HEAD
-	/* serialize adap_enable */
-	mutex_lock(&adap->devnode.lock);
-	adap->last_initiator = 0xff;
-	adap->transmit_in_progress = false;
-
-	if (adap->needs_hpd || list_empty(&adap->devnode.fhs)) {
-		if (adap->ops->adap_enable(adap, true)) {
-			mutex_unlock(&adap->devnode.lock);
-			return;
-		}
-	}
-
-	if (adap->monitor_all_cnt &&
-	    call_op(adap, adap_monitor_all_enable, true)) {
-		if (adap->needs_hpd || list_empty(&adap->devnode.fhs))
-			WARN_ON(adap->ops->adap_enable(adap, false));
-		mutex_unlock(&adap->devnode.lock);
-		return;
-	}
-	mutex_unlock(&adap->devnode.lock);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	adap->phys_addr = phys_addr;
 	if (is_invalid)
 		cec_adap_enable(adap);

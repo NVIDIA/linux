@@ -88,11 +88,6 @@ void (*mach_sched_init) (void) __initdata = NULL;
 void (*mach_init_IRQ) (void) __initdata = NULL;
 void (*mach_get_model) (char *model);
 void (*mach_get_hardware_list) (struct seq_file *m);
-<<<<<<< HEAD
-unsigned int (*mach_get_ss)(void);
-EXPORT_SYMBOL(mach_get_ss);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 void (*mach_reset)( void );
 void (*mach_halt)( void );
 #ifdef CONFIG_HEARTBEAT

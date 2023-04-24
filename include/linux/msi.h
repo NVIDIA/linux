@@ -155,42 +155,6 @@ struct msi_desc {
 	void (*write_msi_msg)(struct msi_desc *entry, void *data);
 	void *write_msi_msg_data;
 
-<<<<<<< HEAD
-	union {
-		/* PCI MSI/X specific data */
-		struct {
-			union {
-				u32 msi_mask;
-				u32 msix_ctrl;
-			};
-			struct {
-				u8	is_msix		: 1;
-				u8	multiple	: 3;
-				u8	multi_cap	: 3;
-				u8	can_mask	: 1;
-				u8	is_64		: 1;
-				u8	is_virtual	: 1;
-				u16	entry_nr;
-				unsigned default_irq;
-			} msi_attrib;
-			union {
-				u8	mask_pos;
-				void __iomem *mask_base;
-			};
-		};
-
-		/*
-		 * Non PCI variants add their data structure here. New
-		 * entries need to use a named structure. We want
-		 * proper name spaces for this. The PCI part is
-		 * anonymous for now as it would require an immediate
-		 * tree wide cleanup.
-		 */
-		struct platform_msi_desc platform;
-		struct fsl_mc_msi_desc fsl_mc;
-		struct ti_sci_inta_msi_desc inta;
-	};
-=======
 	u16				msi_index;
 	struct pci_msi_desc		pci;
 };
@@ -205,7 +169,6 @@ enum msi_desc_filter {
 	MSI_DESC_NOTASSOCIATED,
 	/* Descriptors which have an interrupt associated */
 	MSI_DESC_ASSOCIATED,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /**

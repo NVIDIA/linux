@@ -32,11 +32,7 @@
 #include "meson_plane.h"
 #include "meson_osd_afbcd.h"
 #include "meson_registers.h"
-<<<<<<< HEAD
-#include "meson_venc_cvbs.h"
-=======
 #include "meson_encoder_cvbs.h"
->>>>>>> origin/linux_6.1.15_upstream
 #include "meson_encoder_hdmi.h"
 #include "meson_viu.h"
 #include "meson_vpp.h"
@@ -395,14 +391,11 @@ static void meson_drv_unbind(struct device *dev)
 	free_irq(priv->vsync_irq, drm);
 	drm_dev_put(drm);
 
-<<<<<<< HEAD
-=======
 	meson_encoder_hdmi_remove(priv);
 	meson_encoder_cvbs_remove(priv);
 
 	component_unbind_all(dev, drm);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (priv->afbcd.ops)
 		priv->afbcd.ops->exit(priv);
 }

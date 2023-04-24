@@ -1150,14 +1150,9 @@ static unsigned gmc_v9_0_get_vbios_fb_size(struct amdgpu_device *adev)
 	} else {
 		u32 viewport;
 
-<<<<<<< HEAD
-		switch (adev->asic_type) {
-		case CHIP_RAVEN:
-=======
 		switch (adev->ip_versions[DCE_HWIP][0]) {
 		case IP_VERSION(1, 0, 0):
 		case IP_VERSION(1, 0, 1):
->>>>>>> origin/linux_6.1.15_upstream
 			viewport = RREG32_SOC15(DCE, 0, mmHUBP0_DCSURF_PRI_VIEWPORT_DIMENSION);
 			size = (REG_GET_FIELD(viewport,
 					      HUBP0_DCSURF_PRI_VIEWPORT_DIMENSION, PRI_VIEWPORT_HEIGHT) *
@@ -1165,11 +1160,7 @@ static unsigned gmc_v9_0_get_vbios_fb_size(struct amdgpu_device *adev)
 					      HUBP0_DCSURF_PRI_VIEWPORT_DIMENSION, PRI_VIEWPORT_WIDTH) *
 				4);
 			break;
-<<<<<<< HEAD
-		case CHIP_RENOIR:
-=======
 		case IP_VERSION(2, 1, 0):
->>>>>>> origin/linux_6.1.15_upstream
 			viewport = RREG32_SOC15(DCE, 0, mmHUBP0_DCSURF_PRI_VIEWPORT_DIMENSION_DCN2);
 			size = (REG_GET_FIELD(viewport,
 					      HUBP0_DCSURF_PRI_VIEWPORT_DIMENSION, PRI_VIEWPORT_HEIGHT) *
@@ -1177,12 +1168,6 @@ static unsigned gmc_v9_0_get_vbios_fb_size(struct amdgpu_device *adev)
 					      HUBP0_DCSURF_PRI_VIEWPORT_DIMENSION, PRI_VIEWPORT_WIDTH) *
 				4);
 			break;
-<<<<<<< HEAD
-		case CHIP_VEGA10:
-		case CHIP_VEGA12:
-		case CHIP_VEGA20:
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		default:
 			viewport = RREG32_SOC15(DCE, 0, mmSCL0_VIEWPORT_SIZE);
 			size = (REG_GET_FIELD(viewport, SCL0_VIEWPORT_SIZE, VIEWPORT_HEIGHT) *
@@ -1811,18 +1796,7 @@ static int gmc_v9_0_gart_enable(struct amdgpu_device *adev)
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	if (amdgpu_sriov_vf(adev) && amdgpu_in_reset(adev))
-		goto skip_pin_bo;
-
-	r = amdgpu_gart_table_vram_pin(adev);
-	if (r)
-		return r;
-
-skip_pin_bo:
-=======
 	amdgpu_gtt_mgr_recover(&adev->mman.gtt_mgr);
->>>>>>> origin/linux_6.1.15_upstream
 	r = adev->gfxhub.funcs->gart_enable(adev);
 	if (r)
 		return r;

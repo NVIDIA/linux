@@ -672,20 +672,10 @@ EXPORT_SYMBOL_GPL(fwnode_count_parents);
 struct fwnode_handle *fwnode_get_nth_parent(struct fwnode_handle *fwnode,
 					    unsigned int depth)
 {
-<<<<<<< HEAD
-	fwnode_handle_get(fwnode);
-
-	do {
-		if (depth-- == 0)
-			break;
-		fwnode = fwnode_get_next_parent(fwnode);
-	} while (fwnode);
-=======
 	struct fwnode_handle *parent;
 
 	if (depth == 0)
 		return fwnode_handle_get(fwnode);
->>>>>>> origin/linux_6.1.15_upstream
 
 	fwnode_for_each_parent_node(fwnode, parent) {
 		if (--depth == 0)
@@ -706,19 +696,6 @@ EXPORT_SYMBOL_GPL(fwnode_get_nth_parent);
  */
 bool fwnode_is_ancestor_of(struct fwnode_handle *ancestor, struct fwnode_handle *child)
 {
-<<<<<<< HEAD
-	if (IS_ERR_OR_NULL(test_ancestor))
-		return false;
-
-	fwnode_handle_get(test_child);
-	do {
-		if (test_child == test_ancestor) {
-			fwnode_handle_put(test_child);
-			return true;
-		}
-		test_child = fwnode_get_next_parent(test_child);
-	} while (test_child);
-=======
 	struct fwnode_handle *parent;
 
 	if (IS_ERR_OR_NULL(ancestor))
@@ -733,7 +710,6 @@ bool fwnode_is_ancestor_of(struct fwnode_handle *ancestor, struct fwnode_handle 
 			return true;
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	return false;
 }
 
@@ -1026,20 +1002,12 @@ fwnode_graph_get_next_endpoint(const struct fwnode_handle *fwnode,
 		parent = port_parent;
 	} else {
 		parent = fwnode;
-<<<<<<< HEAD
-=======
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR_OR_NULL(parent))
 		return NULL;
 
 	ep = fwnode_call_ptr_op(parent, graph_get_next_endpoint, prev);
 	if (ep)
-<<<<<<< HEAD
-		return ep;
-
-	return fwnode_graph_get_next_endpoint(parent->secondary, NULL);
-=======
 		goto out_put_port_parent;
 
 	ep = fwnode_graph_get_next_endpoint(parent->secondary, NULL);
@@ -1047,7 +1015,6 @@ fwnode_graph_get_next_endpoint(const struct fwnode_handle *fwnode,
 out_put_port_parent:
 	fwnode_handle_put(port_parent);
 	return ep;
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(fwnode_graph_get_next_endpoint);
 

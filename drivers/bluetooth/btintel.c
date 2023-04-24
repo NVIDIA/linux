@@ -2441,12 +2441,9 @@ static int btintel_setup_combined(struct hci_dev *hdev)
 					       INTEL_ROM_LEGACY_NO_WBS_SUPPORT))
 				set_bit(HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED,
 					&hdev->quirks);
-<<<<<<< HEAD
-=======
 			if (ver.hw_variant == 0x08 && ver.fw_variant == 0x22)
 				set_bit(HCI_QUIRK_VALID_LE_STATES,
 					&hdev->quirks);
->>>>>>> origin/linux_6.1.15_upstream
 
 			err = btintel_legacy_rom_setup(hdev, &ver);
 			break;
@@ -2527,11 +2524,7 @@ static int btintel_setup_combined(struct hci_dev *hdev)
 		 */
 		err = btintel_read_version(hdev, &ver);
 		if (err)
-<<<<<<< HEAD
-			return err;
-=======
 			break;
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* Apply the device specific HCI quirks
 		 *
@@ -2539,14 +2532,8 @@ static int btintel_setup_combined(struct hci_dev *hdev)
 		 */
 		set_bit(HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED, &hdev->quirks);
 
-<<<<<<< HEAD
-		/* Valid LE States quirk for JfP/ThP familiy */
-		if (ver.hw_variant == 0x11 || ver.hw_variant == 0x12)
-			set_bit(HCI_QUIRK_VALID_LE_STATES, &hdev->quirks);
-=======
 		/* Set Valid LE States quirk */
 		set_bit(HCI_QUIRK_VALID_LE_STATES, &hdev->quirks);
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* Setup MSFT Extension support */
 		btintel_set_msft_opcode(hdev, ver.hw_variant);

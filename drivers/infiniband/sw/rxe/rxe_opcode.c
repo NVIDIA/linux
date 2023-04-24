@@ -116,13 +116,8 @@ struct rxe_opcode_info rxe_opcode[RXE_NUM_OPCODE] = {
 	},
 	[IB_OPCODE_RC_SEND_MIDDLE]		= {
 		.name	= "IB_OPCODE_RC_SEND_MIDDLE",
-<<<<<<< HEAD
-		.mask	= RXE_PAYLOAD_MASK | RXE_REQ_MASK | RXE_SEND_MASK
-				| RXE_MIDDLE_MASK,
-=======
 		.mask	= RXE_PAYLOAD_MASK | RXE_REQ_MASK | RXE_SEND_MASK |
 			  RXE_MIDDLE_MASK,
->>>>>>> origin/linux_6.1.15_upstream
 		.length = RXE_BTH_BYTES,
 		.offset = {
 			[RXE_BTH]	= 0,

@@ -454,13 +454,8 @@ int irdma_sc_qp_create(struct irdma_sc_qp *qp, struct irdma_create_qp_info *info
 
 	cqp = qp->dev->cqp;
 	if (qp->qp_uk.qp_id < cqp->dev->hw_attrs.min_hw_qp_id ||
-<<<<<<< HEAD
-	    qp->qp_uk.qp_id >= (cqp->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_QP].max_cnt))
-		return IRDMA_ERR_INVALID_QP_ID;
-=======
 	    qp->qp_uk.qp_id >= cqp->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_QP].max_cnt)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	wqe = irdma_sc_cqp_get_next_send_wqe(cqp, scratch);
 	if (!wqe)
@@ -2509,19 +2504,11 @@ static int irdma_sc_cq_create(struct irdma_sc_cq *cq, u64 scratch,
 	int ret_code = 0;
 
 	cqp = cq->dev->cqp;
-<<<<<<< HEAD
-	if (cq->cq_uk.cq_id >= (cqp->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_CQ].max_cnt))
-		return IRDMA_ERR_INVALID_CQ_ID;
-
-	if (cq->ceq_id >= (cq->dev->hmc_fpm_misc.max_ceqs))
-		return IRDMA_ERR_INVALID_CEQ_ID;
-=======
 	if (cq->cq_uk.cq_id >= cqp->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_CQ].max_cnt)
 		return -EINVAL;
 
 	if (cq->ceq_id >= cq->dev->hmc_fpm_misc.max_ceqs)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ceq = cq->dev->ceq[cq->ceq_id];
 	if (ceq && ceq->reg_cq)
@@ -3615,13 +3602,8 @@ int irdma_sc_ceq_init(struct irdma_sc_ceq *ceq,
 	    info->elem_cnt > info->dev->hw_attrs.max_hw_ceq_size)
 		return -EINVAL;
 
-<<<<<<< HEAD
-	if (info->ceq_id >= (info->dev->hmc_fpm_misc.max_ceqs))
-		return IRDMA_ERR_INVALID_CEQ_ID;
-=======
 	if (info->ceq_id >= info->dev->hmc_fpm_misc.max_ceqs)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 	pble_obj_cnt = info->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_PBLE].cnt;
 
 	if (info->virtual_map && info->first_pm_pbl_idx >= pble_obj_cnt)
@@ -4166,13 +4148,8 @@ int irdma_sc_ccq_init(struct irdma_sc_cq *cq, struct irdma_ccq_init_info *info)
 	    info->num_elem > info->dev->hw_attrs.uk_attrs.max_hw_cq_size)
 		return -EINVAL;
 
-<<<<<<< HEAD
-	if (info->ceq_id >= (info->dev->hmc_fpm_misc.max_ceqs ))
-		return IRDMA_ERR_INVALID_CEQ_ID;
-=======
 	if (info->ceq_id >= info->dev->hmc_fpm_misc.max_ceqs)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	pble_obj_cnt = info->dev->hmc_info->hmc_obj[IRDMA_HMC_IW_PBLE].cnt;
 

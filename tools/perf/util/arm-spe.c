@@ -1126,11 +1126,7 @@ arm_spe_synth_events(struct arm_spe *spe, struct perf_session *session)
 				(PERF_SAMPLE_MASK | PERF_SAMPLE_PHYS_ADDR);
 	attr.sample_type |= PERF_SAMPLE_IP | PERF_SAMPLE_TID |
 			    PERF_SAMPLE_PERIOD | PERF_SAMPLE_DATA_SRC |
-<<<<<<< HEAD
-			    PERF_SAMPLE_ADDR;
-=======
 			    PERF_SAMPLE_WEIGHT | PERF_SAMPLE_ADDR;
->>>>>>> origin/linux_6.1.15_upstream
 	if (spe->timeless_decoding)
 		attr.sample_type &= ~(u64)PERF_SAMPLE_TIME;
 	else

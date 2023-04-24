@@ -23,29 +23,11 @@ static int msm_devfreq_target(struct device *dev, unsigned long *freq,
 	struct msm_gpu_devfreq *df = &gpu->devfreq;
 	struct dev_pm_opp *opp;
 
-<<<<<<< HEAD
 	/*
 	 * Note that devfreq_recommended_opp() can modify the freq
 	 * to something that actually is in the opp table:
 	 */
 	opp = devfreq_recommended_opp(dev, freq, flags);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
-	/*
-	 * Note that devfreq_recommended_opp() can modify the freq
-	 * to something that actually is in the opp table:
-	 */
-<<<<<<< HEAD
-	if (gpu->devfreq.idle_freq) {
-		gpu->devfreq.idle_freq = *freq;
-		dev_pm_opp_put(opp);
-		return 0;
-	}
-
-=======
-	opp = devfreq_recommended_opp(dev, freq, flags);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(opp))
 		return PTR_ERR(opp);
 

@@ -424,11 +424,7 @@ static int rz_ssi_pio_recv(struct rz_ssi_priv *ssi, struct rz_ssi_stream *strm)
 
 	runtime = substream->runtime;
 
-<<<<<<< HEAD
-	while (!done) {
-=======
 	do {
->>>>>>> origin/linux_6.1.15_upstream
 		/* frames left in this period */
 		frames_left = runtime->period_size -
 			      (strm->buffer_pos % runtime->period_size);
@@ -446,28 +442,6 @@ static int rz_ssi_pio_recv(struct rz_ssi_priv *ssi, struct rz_ssi_stream *strm)
 			fifo_samples -= runtime->channels;
 			frames_left--;
 		}
-<<<<<<< HEAD
-
-		/* not enough samples yet */
-		if (!samples)
-			break;
-
-		/* calculate new buffer index */
-		buf = (u16 *)(runtime->dma_area);
-		buf += strm->buffer_pos * runtime->channels;
-
-		/* Note, only supports 16-bit samples */
-		for (i = 0; i < samples; i++)
-			*buf++ = (u16)(rz_ssi_reg_readl(ssi, SSIFRDR) >> 16);
-
-		rz_ssi_reg_mask_setl(ssi, SSIFSR, SSIFSR_RDF, 0);
-		rz_ssi_pointer_update(strm, samples / runtime->channels);
-
-		/* check if there are no more samples in the RX FIFO */
-		if (!(!frames_left && fifo_samples >= runtime->channels))
-			done = true;
-	}
-=======
 
 		/* not enough samples yet */
 		if (!samples)
@@ -484,7 +458,6 @@ static int rz_ssi_pio_recv(struct rz_ssi_priv *ssi, struct rz_ssi_stream *strm)
 		rz_ssi_reg_mask_setl(ssi, SSIFSR, SSIFSR_RDF, 0);
 		rz_ssi_pointer_update(strm, samples / runtime->channels);
 	} while (!frames_left && fifo_samples >= runtime->channels);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -1045,28 +1018,16 @@ static int rz_ssi_probe(struct platform_device *pdev)
 
 	ssi->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
 	if (IS_ERR(ssi->rstc)) {
-<<<<<<< HEAD
-		rz_ssi_release_dma_channels(ssi);
-		return PTR_ERR(ssi->rstc);
-=======
 		ret = PTR_ERR(ssi->rstc);
 		goto err_reset;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	reset_control_deassert(ssi->rstc);
 	pm_runtime_enable(&pdev->dev);
 	ret = pm_runtime_resume_and_get(&pdev->dev);
 	if (ret < 0) {
-<<<<<<< HEAD
-		rz_ssi_release_dma_channels(ssi);
-		pm_runtime_disable(ssi->dev);
-		reset_control_assert(ssi->rstc);
-		return dev_err_probe(ssi->dev, ret, "pm_runtime_resume_and_get failed\n");
-=======
 		dev_err(&pdev->dev, "pm_runtime_resume_and_get failed\n");
 		goto err_pm;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &rz_ssi_soc_component,

@@ -124,18 +124,10 @@ __init struct platform_device *sysfb_create_simplefb(const struct screen_info *s
 	if (ret)
 		goto err_put_device;
 
-<<<<<<< HEAD
-	return 0;
-=======
 	return pd;
->>>>>>> origin/linux_6.1.15_upstream
 
 err_put_device:
 	platform_device_put(pd);
 
-<<<<<<< HEAD
-	return ret;
-=======
 	return ERR_PTR(ret);
->>>>>>> origin/linux_6.1.15_upstream
 }

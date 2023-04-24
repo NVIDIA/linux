@@ -757,14 +757,6 @@ static int sh_pfc_suspend_init(struct sh_pfc *pfc) { return 0; }
 #define SH_PFC_MAX_REGS		300
 #define SH_PFC_MAX_ENUMS	5000
 
-<<<<<<< HEAD
-static unsigned int sh_pfc_errors __initdata = 0;
-static unsigned int sh_pfc_warnings __initdata = 0;
-static u32 *sh_pfc_regs __initdata = NULL;
-static u32 sh_pfc_num_regs __initdata = 0;
-static u16 *sh_pfc_enums __initdata = NULL;
-static u32 sh_pfc_num_enums __initdata = 0;
-=======
 static unsigned int sh_pfc_errors __initdata;
 static unsigned int sh_pfc_warnings __initdata;
 static bool sh_pfc_bias_done __initdata;
@@ -777,7 +769,6 @@ static struct {
 static u32 sh_pfc_num_regs __initdata;
 static u16 *sh_pfc_enums __initdata;
 static u32 sh_pfc_num_enums __initdata;
->>>>>>> origin/linux_6.1.15_upstream
 
 #define sh_pfc_err(fmt, ...)					\
 	do {							\
@@ -901,8 +892,6 @@ static void __init sh_pfc_check_cfg_reg(const char *drvname,
 	if (cfg_reg->field_width) {
 		fw = cfg_reg->field_width;
 		n = (cfg_reg->reg_width / fw) << fw;
-<<<<<<< HEAD
-=======
 		for (i = 0, r = 0; i < n; i += 1 << fw) {
 			if (is0s(&cfg_reg->enum_ids[i], 1 << fw))
 				r++;
@@ -912,7 +901,6 @@ static void __init sh_pfc_check_cfg_reg(const char *drvname,
 			sh_pfc_warn("reg 0x%x can be described with variable-width reserved fields\n",
 				    cfg_reg->reg);
 
->>>>>>> origin/linux_6.1.15_upstream
 		/* Skip field checks (done at build time) */
 		goto check_enum_ids;
 	}
@@ -954,17 +942,9 @@ static void __init sh_pfc_check_drive_reg(const struct sh_pfc_soc_info *info,
 		if (!field->pin && !field->offset && !field->size)
 			continue;
 
-<<<<<<< HEAD
-		mask = GENMASK(field->offset + field->size - 1, field->offset);
-		if (mask & seen)
-			sh_pfc_err("drive_reg 0x%x: field %u overlap\n",
-				   drive->reg, i);
-		seen |= mask;
-=======
 		sh_pfc_check_reg(info->name, drive->reg,
 				 GENMASK(field->offset + field->size - 1,
 					 field->offset));
->>>>>>> origin/linux_6.1.15_upstream
 
 		pin = sh_pfc_find_pin(info, drive->reg, field->pin);
 		if (pin && !(pin->configs & SH_PFC_PIN_CFG_DRIVE_STRENGTH))

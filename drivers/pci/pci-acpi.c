@@ -1002,7 +1002,6 @@ bool acpi_pci_bridge_d3(struct pci_dev *dev)
 	 * events from low-power states including D3hot and D3cold.
 	 */
 	if (!adev->wakeup.flags.valid)
-<<<<<<< HEAD
 		return false;
 
 	/*
@@ -1014,19 +1013,6 @@ bool acpi_pci_bridge_d3(struct pci_dev *dev)
 		return false;
 
 	/*
-=======
-		return false;
-
-	/*
-	 * If the Root Port cannot wake itself from D3hot or D3cold, we
-	 * can't use D3.
-	 */
-	status = acpi_evaluate_integer(adev->handle, "_S0W", NULL, &state);
-	if (ACPI_SUCCESS(status) && state < ACPI_STATE_D3_HOT)
-		return false;
-
-	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * The "HotPlugSupportInD3" property in a Root Port _DSD indicates
 	 * the Port can signal hotplug events while in D3.  We assume any
 	 * bridges *below* that Root Port can also signal hotplug events

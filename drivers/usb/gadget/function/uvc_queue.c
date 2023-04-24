@@ -263,12 +263,8 @@ void uvcg_queue_cancel(struct uvc_video_queue *queue, int disconnect)
 	}
 	queue->buf_used = 0;
 
-<<<<<<< HEAD
-	/* This must be protected by the irqlock spinlock to avoid race
-=======
 	/*
 	 * This must be protected by the irqlock spinlock to avoid race
->>>>>>> origin/linux_6.1.15_upstream
 	 * conditions between uvc_queue_buffer and the disconnection event that
 	 * could result in an interruptible wait in uvc_dequeue_buffer. Do not
 	 * blindly replace this logic by checking for the UVC_DEV_DISCONNECTED

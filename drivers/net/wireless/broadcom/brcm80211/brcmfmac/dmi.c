@@ -83,8 +83,6 @@ static const struct dmi_system_id dmi_platform_data[] = {
 		.driver_data = (void *)&acepc_t8_data,
 	},
 	{
-<<<<<<< HEAD
-=======
 		/* Chuwi Hi8 Pro with D2D3_Hi8Pro.233 BIOS */
 		.matches = {
 			DMI_EXACT_MATCH(DMI_BOARD_VENDOR, "Hampoo"),
@@ -96,7 +94,6 @@ static const struct dmi_system_id dmi_platform_data[] = {
 		.driver_data = (void *)&chuwi_hi8_pro_data,
 	},
 	{
->>>>>>> origin/linux_6.1.15_upstream
 		/* Cyberbook T116 rugged tablet */
 		.matches = {
 			DMI_EXACT_MATCH(DMI_BOARD_VENDOR, "Default string"),

@@ -682,11 +682,7 @@ void iavf_add_vlans(struct iavf_adapter *adapter)
 		if (f->add)
 			count++;
 	}
-<<<<<<< HEAD
-	if (!count || !VLAN_ALLOWED(adapter)) {
-=======
 	if (!count || !VLAN_FILTERING_ALLOWED(adapter)) {
->>>>>>> origin/linux_6.1.15_upstream
 		adapter->aq_required &= ~IAVF_FLAG_AQ_ADD_VLAN_FILTER;
 		spin_unlock_bh(&adapter->mac_vlan_list_lock);
 		return;
@@ -826,11 +822,7 @@ void iavf_del_vlans(struct iavf_adapter *adapter)
 		 * filters marked for removal to enable bailing out before
 		 * sending a virtchnl message
 		 */
-<<<<<<< HEAD
-		if (f->remove && !VLAN_ALLOWED(adapter)) {
-=======
 		if (f->remove && !VLAN_FILTERING_ALLOWED(adapter)) {
->>>>>>> origin/linux_6.1.15_upstream
 			list_del(&f->list);
 			kfree(f);
 		} else if (f->remove) {
@@ -2146,14 +2138,11 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 			 * Enable it in netdev->features.
 			 */
 			iavf_netdev_features_vlan_strip_set(netdev, true);
-<<<<<<< HEAD
-=======
 			break;
 		case VIRTCHNL_OP_ADD_VLAN_V2:
 			iavf_vlan_add_reject(adapter);
 			dev_warn(&adapter->pdev->dev, "Failed to add VLAN filter, error %s\n",
 				 iavf_stat_str(&adapter->hw, v_retval));
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		default:
 			dev_err(&adapter->pdev->dev, "PF returned error %d (%s) to our request %d\n",
@@ -2253,8 +2242,6 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 
 		iavf_process_config(adapter);
 		adapter->flags |= IAVF_FLAG_SETUP_NETDEV_FEATURES;
-<<<<<<< HEAD
-=======
 		was_mac_changed = !ether_addr_equal(netdev->dev_addr,
 						    adapter->hw.mac.addr);
 
@@ -2295,7 +2282,6 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 
 		adapter->aq_required |= IAVF_FLAG_AQ_ADD_MAC_FILTER |
 			aq_required;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	case VIRTCHNL_OP_ENABLE_QUEUES:
@@ -2461,9 +2447,6 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 		spin_unlock_bh(&adapter->adv_rss_lock);
 		}
 		break;
-<<<<<<< HEAD
-=======
-	case VIRTCHNL_OP_ADD_VLAN_V2: {
 		struct iavf_vlan_filter *f;
 
 		spin_lock_bh(&adapter->mac_vlan_list_lock);
@@ -2483,7 +2466,6 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 		spin_unlock_bh(&adapter->mac_vlan_list_lock);
 		}
 		break;
->>>>>>> origin/linux_6.1.15_upstream
 	case VIRTCHNL_OP_ENABLE_VLAN_STRIPPING:
 		/* PF enabled vlan strip on this VF.
 		 * Update netdev->features if needed to be in sync with ethtool.

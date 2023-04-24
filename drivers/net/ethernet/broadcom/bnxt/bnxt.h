@@ -601,13 +601,9 @@ struct nqe_cn {
  */
 #define BNXT_MAX_PAGE_MODE_MTU_SBUF \
 	((unsigned int)PAGE_SIZE - VLAN_ETH_HLEN - NET_IP_ALIGN -	\
-<<<<<<< HEAD
-	 XDP_PACKET_HEADROOM - \
-=======
 	 XDP_PACKET_HEADROOM)
 #define BNXT_MAX_PAGE_MODE_MTU	\
 	(BNXT_MAX_PAGE_MODE_MTU_SBUF - \
->>>>>>> origin/linux_6.1.15_upstream
 	 SKB_DATA_ALIGN((unsigned int)sizeof(struct skb_shared_info)))
 
 #define BNXT_MIN_PKT_SIZE	52
@@ -1938,14 +1934,11 @@ struct bnxt {
 #define BNXT_STATE_DRV_REGISTERED	7
 #define BNXT_STATE_PCI_CHANNEL_IO_FROZEN	8
 #define BNXT_STATE_NAPI_DISABLED	9
-<<<<<<< HEAD
-=======
 #define BNXT_STATE_L2_FILTER_RETRY	10
 #define BNXT_STATE_FW_ACTIVATE		11
 #define BNXT_STATE_RECOVER		12
 #define BNXT_STATE_FW_NON_FATAL_COND	13
 #define BNXT_STATE_FW_ACTIVATE_RESET	14
->>>>>>> origin/linux_6.1.15_upstream
 #define BNXT_STATE_HALF_OPEN		15	/* For offline ethtool tests */
 
 #define BNXT_NO_FW_ACCESS(bp)					\

@@ -3368,17 +3368,6 @@ int ionic_lif_init(struct ionic_lif *lif)
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	lif->dbid_inuse = bitmap_zalloc(lif->dbid_count, GFP_KERNEL);
-	if (!lif->dbid_inuse) {
-		dev_err(dev, "Failed alloc doorbell id bitmap, aborting\n");
-		return -ENOMEM;
-	}
-
-	/* first doorbell id reserved for kernel (dbid aka pid == zero) */
-	set_bit(0, lif->dbid_inuse);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	lif->kern_pid = 0;
 	dbpage_num = ionic_db_page_num(lif, lif->kern_pid);
 	lif->kern_dbpage = ionic_bus_map_dbpage(lif->ionic, dbpage_num);

@@ -824,13 +824,8 @@ static int parse_elf_properties(struct file *f, const struct elf_phdr *phdr,
 static int load_elf_binary(struct linux_binprm *bprm)
 {
 	struct file *interpreter = NULL; /* to shut gcc up */
-<<<<<<< HEAD
-	unsigned long load_addr, load_bias = 0, phdr_addr = 0;
-	int load_addr_set = 0;
-=======
 	unsigned long load_bias = 0, phdr_addr = 0;
 	int first_pt_load = 1;
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long error;
 	struct elf_phdr *elf_ppnt, *elf_phdata, *interp_elf_phdata = NULL;
 	struct elf_phdr *elf_property_phdata = NULL;
@@ -1904,11 +1899,7 @@ static int fill_note_info(struct elfhdr *elf, int phdrs,
 	 * Now fill in each thread's information.
 	 */
 	for (t = info->thread; t != NULL; t = t->next)
-<<<<<<< HEAD
-		if (!fill_thread_core_info(t, view, cprm->siginfo->si_signo, &info->size))
-=======
 		if (!fill_thread_core_info(t, view, cprm->siginfo->si_signo, info))
->>>>>>> origin/linux_6.1.15_upstream
 			return 0;
 
 	/*
@@ -2218,11 +2209,7 @@ static int elf_core_dump(struct coredump_params *cprm)
 	 * The number of segs are recored into ELF header as 16bit value.
 	 * Please check DEFAULT_MAX_MAP_COUNT definition when you modify here.
 	 */
-<<<<<<< HEAD
-	segs = cprm->vma_count + elf_core_extra_phdrs();
-=======
 	segs = cprm->vma_count + elf_core_extra_phdrs(cprm);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* for notes section */
 	segs++;
@@ -2262,11 +2249,7 @@ static int elf_core_dump(struct coredump_params *cprm)
 	dataoff = offset = roundup(offset, ELF_EXEC_PAGESIZE);
 
 	offset += cprm->vma_data_size;
-<<<<<<< HEAD
-	offset += elf_core_extra_data_size();
-=======
 	offset += elf_core_extra_data_size(cprm);
->>>>>>> origin/linux_6.1.15_upstream
 	e_shoff = offset;
 
 	if (e_phnum == PN_XNUM) {

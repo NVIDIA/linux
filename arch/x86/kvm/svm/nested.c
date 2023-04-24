@@ -1152,12 +1152,6 @@ void svm_free_nested(struct vcpu_svm *svm)
 	svm->nested.initialized = false;
 }
 
-<<<<<<< HEAD
-/*
- * Forcibly leave nested mode in order to be able to reset the VCPU later on.
- */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 void svm_leave_nested(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
@@ -1644,11 +1638,7 @@ static int svm_set_nested_state(struct kvm_vcpu *vcpu,
 	if (!(save->cr0 & X86_CR0_PG) ||
 	    !(save->cr0 & X86_CR0_PE) ||
 	    (save->rflags & X86_EFLAGS_VM) ||
-<<<<<<< HEAD
-	    !nested_vmcb_valid_sregs(vcpu, save))
-=======
 	    !__nested_vmcb_check_save(vcpu, &save_cached))
->>>>>>> origin/linux_6.1.15_upstream
 		goto out_free;
 
 
@@ -1675,11 +1665,7 @@ static int svm_set_nested_state(struct kvm_vcpu *vcpu,
 	nested_copy_vmcb_control_to_cache(svm, ctl);
 
 	svm_switch_vmcb(svm, &svm->nested.vmcb02);
-<<<<<<< HEAD
-	nested_vmcb02_prepare_control(svm);
-=======
 	nested_vmcb02_prepare_control(svm, svm->vmcb->save.rip, svm->vmcb->save.cs.base);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * While the nested guest CR3 is already checked and set by
@@ -1693,10 +1679,7 @@ static int svm_set_nested_state(struct kvm_vcpu *vcpu,
 	if (WARN_ON_ONCE(ret))
 		goto out_free;
 
-<<<<<<< HEAD
-=======
 	svm->nested.force_msr_bitmap_recalc = true;
->>>>>>> origin/linux_6.1.15_upstream
 
 	kvm_make_request(KVM_REQ_GET_NESTED_STATE_PAGES, vcpu);
 	ret = 0;
@@ -1737,10 +1720,7 @@ static bool svm_get_nested_state_pages(struct kvm_vcpu *vcpu)
 
 struct kvm_x86_nested_ops svm_nested_ops = {
 	.leave_nested = svm_leave_nested,
-<<<<<<< HEAD
-=======
 	.is_exception_vmexit = nested_svm_is_exception_vmexit,
->>>>>>> origin/linux_6.1.15_upstream
 	.check_events = svm_check_nested_events,
 	.triple_fault = nested_svm_triple_fault,
 	.get_nested_state_pages = svm_get_nested_state_pages,

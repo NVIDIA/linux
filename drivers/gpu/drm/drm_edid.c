@@ -2308,16 +2308,9 @@ static struct edid *_drm_do_get_edid(struct drm_connector *connector,
 	if (!edid)
 		return NULL;
 
-<<<<<<< HEAD
-		new = kmalloc_array(valid_extensions + 1, EDID_LENGTH,
-				    GFP_KERNEL);
-		if (!new)
-			goto out;
-=======
 	status = edid_block_read(edid, 0, read_block, context);
 
 	edid_block_status_print(status, edid, 0);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (status == EDID_BLOCK_READ_FAIL)
 		goto fail;
@@ -2332,16 +2325,8 @@ static struct edid *_drm_do_get_edid(struct drm_connector *connector,
 		if (status == EDID_BLOCK_ZERO)
 			connector->null_edid_counter++;
 
-<<<<<<< HEAD
-		new[EDID_LENGTH - 1] += new[0x7e] - valid_extensions;
-		new[0x7e] = valid_extensions;
-
-		kfree(edid);
-		edid = new;
-=======
 		connector_bad_edid(connector, edid, 1);
 		goto fail;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (!edid_extension_block_count(edid))
@@ -5696,36 +5681,7 @@ bool drm_detect_monitor_audio(const struct edid *edid)
 {
 	struct drm_edid drm_edid;
 
-<<<<<<< HEAD
-	edid_ext = drm_find_cea_extension(edid);
-	if (!edid_ext)
-		goto end;
-
-	has_audio = (edid_ext[0] == CEA_EXT &&
-		    (edid_ext[3] & EDID_BASIC_AUDIO) != 0);
-
-	if (has_audio) {
-		DRM_DEBUG_KMS("Monitor has basic audio support\n");
-		goto end;
-	}
-
-	if (cea_db_offsets(edid_ext, &start_offset, &end_offset))
-		goto end;
-
-	for_each_cea_db(edid_ext, i, start_offset, end_offset) {
-		if (cea_db_tag(&edid_ext[i]) == AUDIO_BLOCK) {
-			has_audio = true;
-			for (j = 1; j < cea_db_payload_len(&edid_ext[i]) + 1; j += 3)
-				DRM_DEBUG_KMS("CEA audio format %d\n",
-					      (edid_ext[i + j] >> 3) & 0xf);
-			goto end;
-		}
-	}
-end:
-	return has_audio;
-=======
 	return _drm_detect_monitor_audio(drm_edid_legacy_init(&drm_edid, edid));
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(drm_detect_monitor_audio);
 
@@ -6244,11 +6200,7 @@ static u32 update_display_info(struct drm_connector *connector,
 		goto out;
 
 	info->color_formats |= DRM_COLOR_FORMAT_RGB444;
-<<<<<<< HEAD
-	drm_parse_cea_ext(connector, edid);
-=======
 	drm_parse_cea_ext(connector, drm_edid);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Digital sink with "DFP 1.x compliant TMDS" according to EDID 1.3?

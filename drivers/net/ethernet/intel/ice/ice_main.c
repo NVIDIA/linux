@@ -1858,13 +1858,7 @@ static void ice_handle_mdd_event(struct ice_pf *pf)
 				 * reset, so print the event prior to reset.
 				 */
 				ice_print_vf_rx_mdd_event(vf);
-<<<<<<< HEAD
-				mutex_lock(&pf->vf[i].cfg_lock);
-				ice_reset_vf(&pf->vf[i], false);
-				mutex_unlock(&pf->vf[i].cfg_lock);
-=======
 				ice_reset_vf(vf, ICE_VF_RESET_LOCK);
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 	}
@@ -4643,12 +4637,6 @@ static int ice_register_netdev(struct ice_pf *pf)
 	set_bit(ICE_VSI_NETDEV_REGISTERED, vsi->state);
 	netif_carrier_off(vsi->netdev);
 	netif_tx_stop_all_queues(vsi->netdev);
-<<<<<<< HEAD
-	err = ice_devlink_create_pf_port(pf);
-	if (err)
-		goto err_devlink_create;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	devlink_port_type_eth_set(&pf->devlink_port, vsi->netdev);
 
@@ -5077,10 +5065,7 @@ static void ice_remove(struct pci_dev *pdev)
 	struct ice_pf *pf = pci_get_drvdata(pdev);
 	int i;
 
-<<<<<<< HEAD
-=======
 	ice_devlink_unregister(pf);
->>>>>>> origin/linux_6.1.15_upstream
 	for (i = 0; i < ICE_MAX_RESET_WAIT; i++) {
 		if (!ice_is_reset_in_progress(pf->state))
 			break;

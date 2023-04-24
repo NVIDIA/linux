@@ -258,10 +258,7 @@ static int __init omapdss_init_of(void)
 
 	r = of_platform_populate(node, NULL, NULL, &pdev->dev);
 	put_device(&pdev->dev);
-<<<<<<< HEAD
-=======
 	of_node_put(node);
->>>>>>> origin/linux_6.1.15_upstream
 	if (r) {
 		pr_err("Unable to populate DSS submodule devices\n");
 		return r;

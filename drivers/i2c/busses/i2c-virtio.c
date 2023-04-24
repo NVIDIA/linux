@@ -65,16 +65,6 @@ static int virtio_i2c_prepare_reqs(struct virtqueue *vq,
 		int outcnt = 0, incnt = 0;
 
 		init_completion(&reqs[i].completion);
-<<<<<<< HEAD
-
-		/*
-		 * We don't support 0 length messages and so filter out
-		 * 0 length transfers by using i2c_adapter_quirks.
-		 */
-		if (!msgs[i].len)
-			break;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		/*
 		 * Only 7-bit mode supported for this moment. For the address

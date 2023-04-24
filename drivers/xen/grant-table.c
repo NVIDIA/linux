@@ -149,13 +149,6 @@ struct gnttab_ops {
 	/*
 	 * Read the frame number related to a given grant reference.
 	 */
-<<<<<<< HEAD
-	unsigned long (*end_foreign_transfer_ref)(grant_ref_t ref);
-	/*
-	 * Read the frame number related to a given grant reference.
-	 */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long (*read_frame)(grant_ref_t ref);
 };
 
@@ -432,11 +425,7 @@ int gnttab_grant_foreign_access(domid_t domid, unsigned long frame,
 }
 EXPORT_SYMBOL_GPL(gnttab_grant_foreign_access);
 
-<<<<<<< HEAD
-static int gnttab_end_foreign_access_ref_v1(grant_ref_t ref, int readonly)
-=======
 static int gnttab_end_foreign_access_ref_v1(grant_ref_t ref)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	u16 flags, nflags;
 	u16 *pflags;
@@ -585,46 +574,6 @@ static void gnttab_add_deferred(grant_ref_t ref, struct page *page)
 }
 
 int gnttab_try_end_foreign_access(grant_ref_t ref)
-<<<<<<< HEAD
-{
-	int ret = _gnttab_end_foreign_access_ref(ref, 0);
-
-	if (ret)
-		put_free_entry(ref);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(gnttab_try_end_foreign_access);
-
-void gnttab_end_foreign_access(grant_ref_t ref, int readonly,
-			       unsigned long page)
-{
-	if (gnttab_try_end_foreign_access(ref)) {
-		if (page != 0)
-			put_page(virt_to_page(page));
-	} else
-		gnttab_add_deferred(ref, readonly,
-				    page ? virt_to_page(page) : NULL);
-}
-EXPORT_SYMBOL_GPL(gnttab_end_foreign_access);
-
-int gnttab_grant_foreign_transfer(domid_t domid, unsigned long pfn)
-{
-	int ref;
-
-	ref = get_free_entries(1);
-	if (unlikely(ref < 0))
-		return -ENOSPC;
-	gnttab_grant_foreign_transfer_ref(ref, domid, pfn);
-
-	return ref;
-}
-EXPORT_SYMBOL_GPL(gnttab_grant_foreign_transfer);
-
-void gnttab_grant_foreign_transfer_ref(grant_ref_t ref, domid_t domid,
-				       unsigned long pfn)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int ret = _gnttab_end_foreign_access_ref(ref);
 
@@ -1543,10 +1492,6 @@ static const struct gnttab_ops gnttab_v1_ops = {
 	.unmap_frames			= gnttab_unmap_frames_v1,
 	.update_entry			= gnttab_update_entry_v1,
 	.end_foreign_access_ref		= gnttab_end_foreign_access_ref_v1,
-<<<<<<< HEAD
-	.end_foreign_transfer_ref	= gnttab_end_foreign_transfer_ref_v1,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	.read_frame			= gnttab_read_frame_v1,
 };
 
@@ -1558,10 +1503,6 @@ static const struct gnttab_ops gnttab_v2_ops = {
 	.unmap_frames			= gnttab_unmap_frames_v2,
 	.update_entry			= gnttab_update_entry_v2,
 	.end_foreign_access_ref		= gnttab_end_foreign_access_ref_v2,
-<<<<<<< HEAD
-	.end_foreign_transfer_ref	= gnttab_end_foreign_transfer_ref_v2,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	.read_frame			= gnttab_read_frame_v2,
 };
 

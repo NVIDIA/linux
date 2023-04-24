@@ -256,14 +256,10 @@ struct sfp {
 	struct sfp_eeprom_id id;
 	unsigned int module_power_mW;
 	unsigned int module_t_start_up;
-<<<<<<< HEAD
-	bool tx_fault_ignore;
-=======
 	unsigned int module_t_wait;
 	bool tx_fault_ignore;
 
 	const struct sfp_quirk *quirk;
->>>>>>> origin/linux_6.1.15_upstream
 
 #if IS_ENABLED(CONFIG_HWMON)
 	struct sfp_diag diag;

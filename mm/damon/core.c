@@ -595,13 +595,8 @@ static int __damon_stop(struct damon_ctx *ctx)
 	if (tsk) {
 		get_task_struct(tsk);
 		mutex_unlock(&ctx->kdamond_lock);
-<<<<<<< HEAD
-		while (damon_kdamond_running(ctx))
-			kdamond_usleep(ctx->sample_interval);
-=======
 		kthread_stop(tsk);
 		put_task_struct(tsk);
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 	}
 	mutex_unlock(&ctx->kdamond_lock);
@@ -1178,11 +1173,7 @@ static int kdamond_fn(void *data)
 				ctx->callback.after_sampling(ctx))
 			break;
 
-<<<<<<< HEAD
-		kdamond_usleep(ctx->sample_interval);
-=======
 		kdamond_usleep(ctx->attrs.sample_interval);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (ctx->ops.check_accesses)
 			max_nr_accesses = ctx->ops.check_accesses(ctx);

@@ -759,13 +759,7 @@ int main(int argc, const char **argv)
 	 */
 	if (obj.efile.idlist_shndx == -1 ||
 	    obj.efile.symbols_shndx == -1) {
-<<<<<<< HEAD
-		if (no_fail)
-			return 0;
-		pr_err("FAILED to find needed sections\n");
-=======
 		pr_debug("Cannot find .BTF_ids or symbols sections, nothing to do\n");
->>>>>>> origin/linux_6.1.15_upstream
 		err = 0;
 		goto out;
 	}

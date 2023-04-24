@@ -3161,11 +3161,7 @@ ok:
 	return dst;
 
 nopol:
-<<<<<<< HEAD
-	if (!(dst_orig->dev->flags & IFF_LOOPBACK) &&
-=======
 	if ((!dst_orig->dev || !(dst_orig->dev->flags & IFF_LOOPBACK)) &&
->>>>>>> origin/linux_6.1.15_upstream
 	    net->xfrm.policy_default[dir] == XFRM_USERPOLICY_BLOCK) {
 		err = -EPERM;
 		goto error;

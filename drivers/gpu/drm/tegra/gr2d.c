@@ -8,14 +8,10 @@
 #include <linux/iommu.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
-<<<<<<< HEAD
-#include <linux/reset.h>
-=======
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 
 #include <soc/tegra/common.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include "drm.h"
 #include "gem.h"
@@ -304,11 +300,7 @@ static int gr2d_probe(struct platform_device *pdev)
 	err = host1x_client_register(&gr2d->client.base);
 	if (err < 0) {
 		dev_err(dev, "failed to register host1x client: %d\n", err);
-<<<<<<< HEAD
-		goto assert_rst;
-=======
 		return err;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* initialize address register map */
@@ -337,13 +329,6 @@ static int gr2d_remove(struct platform_device *pdev)
 		return err;
 	}
 
-<<<<<<< HEAD
-	err = reset_control_assert(gr2d->rst);
-	if (err < 0)
-		dev_err(&pdev->dev, "failed to assert reset: %d\n", err);
-
-	usleep_range(2000, 4000);
-=======
 	return 0;
 }
 
@@ -379,7 +364,6 @@ static int __maybe_unused gr2d_runtime_suspend(struct device *dev)
 		dev_err(dev, "failed to assert MC reset: %d\n", err);
 		goto acquire_reset;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	clk_disable_unprepare(gr2d->clk);
 

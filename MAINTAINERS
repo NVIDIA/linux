@@ -7737,8 +7737,6 @@ F:	include/trace/events/mdio.h
 F:	include/uapi/linux/mdio.h
 F:	include/uapi/linux/mii.h
 F:	net/core/of_net.c
-<<<<<<< HEAD
-=======
 
 EXEC & BINFMT API
 R:	Eric Biederman <ebiederm@xmission.com>
@@ -7755,7 +7753,6 @@ F:	include/uapi/linux/elf.h
 F:	tools/testing/selftests/exec/
 N:	asm/elf.h
 N:	binfmt
->>>>>>> origin/linux_6.1.15_upstream
 
 EXFAT FILE SYSTEM
 M:	Namjae Jeon <linkinjeon@kernel.org>

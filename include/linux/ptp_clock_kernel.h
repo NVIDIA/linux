@@ -389,20 +389,11 @@ int ptp_get_vclocks_index(int pclock_index, int **vclock_index);
  *
  * Returns converted timestamp, or 0 on error.
  */
-<<<<<<< HEAD
-ktime_t ptp_convert_timestamp(const struct skb_shared_hwtstamps *hwtstamps,
-			      int vclock_index);
-#else
-static inline int ptp_get_vclocks_index(int pclock_index, int **vclock_index)
-{ return 0; }
-static inline ktime_t ptp_convert_timestamp(const struct skb_shared_hwtstamps *hwtstamps,
-=======
 ktime_t ptp_convert_timestamp(const ktime_t *hwtstamp, int vclock_index);
 #else
 static inline int ptp_get_vclocks_index(int pclock_index, int **vclock_index)
 { return 0; }
 static inline ktime_t ptp_convert_timestamp(const ktime_t *hwtstamp,
->>>>>>> origin/linux_6.1.15_upstream
 					    int vclock_index)
 { return 0; }
 

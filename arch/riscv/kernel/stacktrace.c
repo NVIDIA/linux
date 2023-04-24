@@ -28,14 +28,9 @@ void notrace walk_stackframe(struct task_struct *task, struct pt_regs *regs,
 		pc = instruction_pointer(regs);
 	} else if (task == NULL || task == current) {
 		fp = (unsigned long)__builtin_frame_address(0);
-<<<<<<< HEAD
-		sp = sp_in_global;
-		pc = (unsigned long)walk_stackframe;
-=======
 		sp = current_stack_pointer;
 		pc = (unsigned long)walk_stackframe;
 		level = -1;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		/* task blocked in __switch_to */
 		fp = task->thread.s[0];
@@ -47,11 +42,7 @@ void notrace walk_stackframe(struct task_struct *task, struct pt_regs *regs,
 		unsigned long low, high;
 		struct stackframe *frame;
 
-<<<<<<< HEAD
-		if (unlikely(!__kernel_text_address(pc) || (level++ >= 1 && !fn(arg, pc))))
-=======
 		if (unlikely(!__kernel_text_address(pc) || (level++ >= 0 && !fn(arg, pc))))
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 
 		/* Validate frame pointer */

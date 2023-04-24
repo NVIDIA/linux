@@ -87,10 +87,7 @@ config SND_SOC_SOF_MERRIFIELD
 	tristate "SOF support for Tangier/Merrifield"
 	default SND_SOC_SOF_PCI
 	select SND_SOC_SOF_PCI_DEV
-<<<<<<< HEAD
-=======
 	select SND_SOC_SOF_IPC3
->>>>>>> origin/linux_6.1.15_upstream
 	select SND_SOC_SOF_INTEL_ATOM_HIFI_EP
 	help
 	  This adds support for Sound Open Firmware for Intel(R) platforms

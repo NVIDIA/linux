@@ -610,13 +610,10 @@ struct bfq_group *bfq_bio_bfqg(struct bfq_data *bfqd, struct bio *bio)
 	struct bfq_group *bfqg;
 
 	while (blkg) {
-<<<<<<< HEAD
-=======
 		if (!blkg->online) {
 			blkg = blkg->parent;
 			continue;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		bfqg = blkg_to_bfqg(blkg);
 		if (bfqg->online) {
 			bio_associate_blkg_from_css(bio, &blkg->blkcg->css);
@@ -650,8 +647,6 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	struct bfq_group *old_parent = bfqq_group(bfqq);
 
 	/*
-<<<<<<< HEAD
-=======
 	 * No point to move bfqq to the same group, which can happen when
 	 * root group is offlined
 	 */
@@ -659,7 +654,6 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		return;
 
 	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * oom_bfqq is not allowed to move, oom_bfqq will hold ref to root_group
 	 * until elevator exit.
 	 */
@@ -724,13 +718,8 @@ static void *__bfq_bic_change_cgroup(struct bfq_data *bfqd,
 				     struct bfq_io_cq *bic,
 				     struct bfq_group *bfqg)
 {
-<<<<<<< HEAD
-	struct bfq_queue *async_bfqq = bic_to_bfqq(bic, 0);
-	struct bfq_queue *sync_bfqq = bic_to_bfqq(bic, 1);
-=======
 	struct bfq_queue *async_bfqq = bic_to_bfqq(bic, false);
 	struct bfq_queue *sync_bfqq = bic_to_bfqq(bic, true);
->>>>>>> origin/linux_6.1.15_upstream
 	struct bfq_entity *entity;
 
 	if (async_bfqq) {
@@ -772,13 +761,8 @@ static void *__bfq_bic_change_cgroup(struct bfq_data *bfqd,
 				 * request from the old cgroup.
 				 */
 				bfq_put_cooperator(sync_bfqq);
-<<<<<<< HEAD
-				bfq_release_process_ref(bfqd, sync_bfqq);
-				bic_set_bfqq(bic, NULL, 1);
-=======
 				bic_set_bfqq(bic, NULL, true);
 				bfq_release_process_ref(bfqd, sync_bfqq);
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		}
 	}

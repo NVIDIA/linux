@@ -178,12 +178,6 @@ static int mt8173_max98090_dev_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-<<<<<<< HEAD
-	if (ret)
-		dev_err(&pdev->dev, "%s snd_soc_register_card fail %d\n",
-			__func__, ret);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	of_node_put(codec_node);
 

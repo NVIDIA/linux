@@ -67,13 +67,6 @@ static int frame_pointer_check(struct stackframe *frame)
 #ifdef CONFIG_CC_IS_CLANG
 	if (fp < low + 4 || fp > high - 4)
 		return -EINVAL;
-<<<<<<< HEAD
-
-	frame->sp = frame->fp;
-	frame->fp = READ_ONCE_NOCHECK(*(unsigned long *)(fp));
-	frame->pc = READ_ONCE_NOCHECK(*(unsigned long *)(fp + 4));
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #else
 	if (fp < low + 12 || fp > high - 4)
 		return -EINVAL;
@@ -111,11 +104,6 @@ int notrace unwind_frame(struct stackframe *frame)
 	}
 
 	/* restore the registers from the stack frame */
-<<<<<<< HEAD
-	frame->fp = READ_ONCE_NOCHECK(*(unsigned long *)(fp - 12));
-	frame->sp = READ_ONCE_NOCHECK(*(unsigned long *)(fp - 8));
-	frame->pc = READ_ONCE_NOCHECK(*(unsigned long *)(fp - 4));
-=======
 #ifdef CONFIG_CC_IS_CLANG
 	frame->sp = frame->fp;
 	frame->fp = READ_ONCE_NOCHECK(*(unsigned long *)(fp));
@@ -129,7 +117,6 @@ int notrace unwind_frame(struct stackframe *frame)
 	if (is_kretprobe_trampoline(frame->pc))
 		frame->pc = kretprobe_find_ret_addr(frame->tsk,
 					(void *)frame->fp, &frame->kr_cur);
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 
 	if (in_entry_text(frame->pc))

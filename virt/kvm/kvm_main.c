@@ -1812,20 +1812,11 @@ static void kvm_update_flags_memslot(struct kvm *kvm,
 }
 
 static int kvm_set_memslot(struct kvm *kvm,
-<<<<<<< HEAD
-			   const struct kvm_userspace_memory_region *mem,
-			   struct kvm_memory_slot *new, int as_id,
-			   enum kvm_mr_change change)
-{
-	struct kvm_memory_slot *slot, old;
-	struct kvm_memslots *slots;
-=======
 			   struct kvm_memory_slot *old,
 			   struct kvm_memory_slot *new,
 			   enum kvm_mr_change change)
 {
 	struct kvm_memory_slot *invalid_slot;
->>>>>>> origin/linux_6.1.15_upstream
 	int r;
 
 	/*
@@ -1858,33 +1849,6 @@ static int kvm_set_memslot(struct kvm *kvm,
 	 * invalidation needs to be reverted.
 	 */
 	if (change == KVM_MR_DELETE || change == KVM_MR_MOVE) {
-<<<<<<< HEAD
-		/*
-		 * Note, the INVALID flag needs to be in the appropriate entry
-		 * in the freshly allocated memslots, not in @old or @new.
-		 */
-		slot = id_to_memslot(slots, new->id);
-		slot->flags |= KVM_MEMSLOT_INVALID;
-
-		/*
-		 * We can re-use the memory from the old memslots.
-		 * It will be overwritten with a copy of the new memslots
-		 * after reacquiring the slots_arch_lock below.
-		 */
-		slots = install_new_memslots(kvm, as_id, slots);
-
-		/* From this point no new shadow pages pointing to a deleted,
-		 * or moved, memslot will be created.
-		 *
-		 * validation of sp->gfn happens in:
-		 *	- gfn_to_hva (kvm_read_guest, gfn_to_pfn)
-		 *	- kvm_is_visible_gfn (mmu_check_root)
-		 */
-		kvm_arch_flush_shadow_memslot(kvm, slot);
-
-		/* Released in install_new_memslots. */
-		mutex_lock(&kvm->slots_arch_lock);
-=======
 		invalid_slot = kzalloc(sizeof(*invalid_slot), GFP_KERNEL_ACCOUNT);
 		if (!invalid_slot) {
 			mutex_unlock(&kvm->slots_arch_lock);
@@ -1892,7 +1856,6 @@ static int kvm_set_memslot(struct kvm *kvm,
 		}
 		kvm_invalidate_memslot(kvm, old, invalid_slot);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	r = kvm_prepare_memory_region(kvm, old, new, change);
 	if (r) {
@@ -1912,30 +1875,6 @@ static int kvm_set_memslot(struct kvm *kvm,
 	}
 
 	/*
-<<<<<<< HEAD
-	 * Make a full copy of the old memslot, the pointer will become stale
-	 * when the memslots are re-sorted by update_memslots(), and the old
-	 * memslot needs to be referenced after calling update_memslots(), e.g.
-	 * to free its resources and for arch specific behavior.  This needs to
-	 * happen *after* (re)acquiring slots_arch_lock.
-	 */
-	slot = id_to_memslot(slots, new->id);
-	if (slot) {
-		old = *slot;
-	} else {
-		WARN_ON_ONCE(change != KVM_MR_CREATE);
-		memset(&old, 0, sizeof(old));
-		old.id = new->id;
-		old.as_id = as_id;
-	}
-
-	/* Copy the arch-specific data, again after (re)acquiring slots_arch_lock. */
-	memcpy(&new->arch, &old.arch, sizeof(old.arch));
-
-	r = kvm_arch_prepare_memory_region(kvm, new, mem, change);
-	if (r)
-		goto out_slots;
-=======
 	 * For DELETE and MOVE, the working slot is now active as the INVALID
 	 * version of the old slot.  MOVE is particularly special as it reuses
 	 * the old slot and returns a copy of the old slot (in working_slot).
@@ -1952,63 +1891,24 @@ static int kvm_set_memslot(struct kvm *kvm,
 		kvm_update_flags_memslot(kvm, old, new);
 	else
 		BUG();
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Free the temporary INVALID slot used for DELETE and MOVE. */
 	if (change == KVM_MR_DELETE || change == KVM_MR_MOVE)
 		kfree(invalid_slot);
 
-<<<<<<< HEAD
-	kvm_arch_commit_memory_region(kvm, mem, &old, new, change);
-
-	/* Free the old memslot's metadata.  Note, this is the full copy!!! */
-	if (change == KVM_MR_DELETE)
-		kvm_free_memslot(kvm, &old);
-=======
 	/*
 	 * No need to refresh new->arch, changes after dropping slots_arch_lock
 	 * will directly hit the final, active memslot.  Architectures are
 	 * responsible for knowing that new->arch may be stale.
 	 */
 	kvm_commit_memory_region(kvm, old, new, change);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
-<<<<<<< HEAD
-
-out_slots:
-	if (change == KVM_MR_DELETE || change == KVM_MR_MOVE) {
-		slot = id_to_memslot(slots, new->id);
-		slot->flags &= ~KVM_MEMSLOT_INVALID;
-		slots = install_new_memslots(kvm, as_id, slots);
-	} else {
-		mutex_unlock(&kvm->slots_arch_lock);
-	}
-	kvfree(slots);
-	return r;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool kvm_check_memslot_overlap(struct kvm_memslots *slots, int id,
 				      gfn_t start, gfn_t end)
 {
-<<<<<<< HEAD
-	struct kvm_memory_slot new;
-
-	if (!old->npages)
-		return -EINVAL;
-
-	memset(&new, 0, sizeof(new));
-	new.id = old->id;
-	/*
-	 * This is only for debugging purpose; it should never be referenced
-	 * for a removed memslot.
-	 */
-	new.as_id = as_id;
-
-	return kvm_set_memslot(kvm, mem, &new, as_id, KVM_MR_DELETE);
-=======
 	struct kvm_memslot_iter iter;
 
 	kvm_for_each_memslot_in_gfn_range(&iter, slots, start, end) {
@@ -2017,7 +1917,6 @@ static bool kvm_check_memslot_overlap(struct kvm_memslots *slots, int id,
 	}
 
 	return false;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -2088,9 +1987,6 @@ int __kvm_set_memory_region(struct kvm *kvm,
 
 	if (!old || !old->npages) {
 		change = KVM_MR_CREATE;
-<<<<<<< HEAD
-		new.dirty_bitmap = NULL;
-=======
 
 		/*
 		 * To simplify KVM internals, the total number of pages across
@@ -2098,7 +1994,6 @@ int __kvm_set_memory_region(struct kvm *kvm,
 		 */
 		if ((kvm->nr_memslot_pages + npages) < kvm->nr_memslot_pages)
 			return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 	} else { /* Modify an existing slot. */
 		if ((mem->userspace_addr != old->userspace_addr) ||
 		    (npages != old->npages) ||
@@ -2111,12 +2006,6 @@ int __kvm_set_memory_region(struct kvm *kvm,
 			change = KVM_MR_FLAGS_ONLY;
 		else /* Nothing to change. */
 			return 0;
-<<<<<<< HEAD
-
-		/* Copy dirty_bitmap from the current memslot. */
-		new.dirty_bitmap = old.dirty_bitmap;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if ((change == KVM_MR_CREATE || change == KVM_MR_MOVE) &&
@@ -2135,11 +2024,7 @@ int __kvm_set_memory_region(struct kvm *kvm,
 	new->flags = mem->flags;
 	new->userspace_addr = mem->userspace_addr;
 
-<<<<<<< HEAD
-	r = kvm_set_memslot(kvm, mem, &new, as_id, change);
-=======
 	r = kvm_set_memslot(kvm, old, new, change);
->>>>>>> origin/linux_6.1.15_upstream
 	if (r)
 		kfree(new);
 	return r;
@@ -3629,10 +3514,7 @@ static unsigned int kvm_vcpu_max_halt_poll_ns(struct kvm_vcpu *vcpu)
  */
 void kvm_vcpu_halt(struct kvm_vcpu *vcpu)
 {
-<<<<<<< HEAD
-=======
 	unsigned int max_halt_poll_ns = kvm_vcpu_max_halt_poll_ns(vcpu);
->>>>>>> origin/linux_6.1.15_upstream
 	bool halt_poll_allowed = !kvm_arch_no_poll(vcpu);
 	ktime_t start, cur, poll_end;
 	bool waited = false;
@@ -3645,13 +3527,8 @@ void kvm_vcpu_halt(struct kvm_vcpu *vcpu)
 	do_halt_poll = halt_poll_allowed && vcpu->halt_poll_ns;
 
 	start = cur = poll_end = ktime_get();
-<<<<<<< HEAD
-	if (vcpu->halt_poll_ns && halt_poll_allowed) {
-		ktime_t stop = ktime_add_ns(ktime_get(), vcpu->halt_poll_ns);
-=======
 	if (do_halt_poll) {
 		ktime_t stop = ktime_add_ns(start, vcpu->halt_poll_ns);
->>>>>>> origin/linux_6.1.15_upstream
 
 		do {
 			/*
@@ -3690,10 +3567,6 @@ out:
 		/* Recompute the max halt poll time in case it changed. */
 		max_halt_poll_ns = kvm_vcpu_max_halt_poll_ns(vcpu);
 
-<<<<<<< HEAD
-	if (halt_poll_allowed) {
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		if (!vcpu_valid_wakeup(vcpu)) {
 			shrink_halt_poll_ns(vcpu);
 		} else if (max_halt_poll_ns) {

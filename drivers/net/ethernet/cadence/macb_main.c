@@ -37,11 +37,8 @@
 #include <linux/phy/phy.h>
 #include <linux/pm_runtime.h>
 #include <linux/ptp_classify.h>
-<<<<<<< HEAD
-=======
 #include <linux/reset.h>
 #include <linux/firmware/xlnx-zynqmp.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include "macb.h"
 
 /* This structure is only used for MACB on SiFive FU540 devices */
@@ -1129,39 +1126,6 @@ static void macb_tx_error_task(struct work_struct *work)
 }
 
 static bool ptp_one_step_sync(struct sk_buff *skb)
-<<<<<<< HEAD
-{
-	struct ptp_header *hdr;
-	unsigned int ptp_class;
-	u8 msgtype;
-
-	/* No need to parse packet if PTP TS is not involved */
-	if (likely(!(skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)))
-		goto not_oss;
-
-	/* Identify and return whether PTP one step sync is being processed */
-	ptp_class = ptp_classify_raw(skb);
-	if (ptp_class == PTP_CLASS_NONE)
-		goto not_oss;
-
-	hdr = ptp_parse_header(skb, ptp_class);
-	if (!hdr)
-		goto not_oss;
-
-	if (hdr->flag_field[0] & PTP_FLAG_TWOSTEP)
-		goto not_oss;
-
-	msgtype = ptp_get_msgtype(hdr, ptp_class);
-	if (msgtype == PTP_MSGTYPE_SYNC)
-		return true;
-
-not_oss:
-	return false;
-}
-
-static void macb_tx_interrupt(struct macb_queue *queue)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ptp_header *hdr;
 	unsigned int ptp_class;
@@ -1644,39 +1608,6 @@ static int macb_rx_poll(struct napi_struct *napi, int budget)
 
 	work_done = bp->macbgem_ops.mog_rx(queue, napi, budget);
 
-<<<<<<< HEAD
-		/* RSR bits only seem to propagate to raise interrupts when
-		 * interrupts are enabled at the time, so if bits are already
-		 * set due to packets received while interrupts were disabled,
-		 * they will not cause another interrupt to be generated when
-		 * interrupts are re-enabled.
-		 * Check for this case here. This has been seen to happen
-		 * around 30% of the time under heavy network load.
-		 */
-		status = macb_readl(bp, RSR);
-		if (status) {
-			if (bp->caps & MACB_CAPS_ISR_CLEAR_ON_WRITE)
-				queue_writel(queue, ISR, MACB_BIT(RCOMP));
-			napi_reschedule(napi);
-		} else {
-			queue_writel(queue, IER, bp->rx_intr_mask);
-
-			/* In rare cases, packets could have been received in
-			 * the window between the check above and re-enabling
-			 * interrupts. Therefore, a double-check is required
-			 * to avoid losing a wakeup. This can potentially race
-			 * with the interrupt handler doing the same actions
-			 * if an interrupt is raised just after enabling them,
-			 * but this should be harmless.
-			 */
-			status = macb_readl(bp, RSR);
-			if (unlikely(status)) {
-				queue_writel(queue, IDR, bp->rx_intr_mask);
-				if (bp->caps & MACB_CAPS_ISR_CLEAR_ON_WRITE)
-					queue_writel(queue, ISR, MACB_BIT(RCOMP));
-				napi_schedule(napi);
-			}
-=======
 	netdev_vdbg(bp->dev, "RX poll: queue = %u, work_done = %d, budget = %d\n",
 		    (unsigned int)(queue - bp->queues), work_done, budget);
 
@@ -1699,7 +1630,6 @@ static int macb_rx_poll(struct napi_struct *napi, int budget)
 				queue_writel(queue, ISR, MACB_BIT(RCOMP));
 			netdev_vdbg(bp->dev, "poll: packets pending, reschedule\n");
 			napi_schedule(napi);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 
@@ -1831,32 +1761,6 @@ static void macb_hresp_error_task(struct tasklet_struct *t)
 	netif_tx_start_all_queues(dev);
 }
 
-<<<<<<< HEAD
-static void macb_tx_restart(struct macb_queue *queue)
-{
-	unsigned int head = queue->tx_head;
-	unsigned int tail = queue->tx_tail;
-	struct macb *bp = queue->bp;
-	unsigned int head_idx, tbqp;
-
-	if (bp->caps & MACB_CAPS_ISR_CLEAR_ON_WRITE)
-		queue_writel(queue, ISR, MACB_BIT(TXUBR));
-
-	if (head == tail)
-		return;
-
-	tbqp = queue_readl(queue, TBQP) / macb_dma_desc_get_size(bp);
-	tbqp = macb_adj_dma_desc_idx(bp, macb_tx_ring_wrap(bp, tbqp));
-	head_idx = macb_adj_dma_desc_idx(bp, macb_tx_ring_wrap(bp, head));
-
-	if (tbqp == head_idx)
-		return;
-
-	macb_writel(bp, NCR, macb_readl(bp, NCR) | MACB_BIT(TSTART));
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static irqreturn_t macb_wol_interrupt(int irq, void *dev_id)
 {
 	struct macb_queue *queue = dev_id;

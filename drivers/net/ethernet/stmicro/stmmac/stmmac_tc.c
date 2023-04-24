@@ -237,11 +237,8 @@ static int tc_rfs_init(struct stmmac_priv *priv)
 	int i;
 
 	priv->rfs_entries_max[STMMAC_RFS_T_VLAN] = 8;
-<<<<<<< HEAD
-=======
 	priv->rfs_entries_max[STMMAC_RFS_T_LLDP] = 1;
 	priv->rfs_entries_max[STMMAC_RFS_T_1588] = 1;
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < STMMAC_RFS_T_MAX; i++)
 		priv->rfs_entries_total += priv->rfs_entries_max[i];
@@ -716,11 +713,6 @@ static int tc_del_vlan_flow(struct stmmac_priv *priv,
 			    struct flow_cls_offload *cls)
 {
 	struct stmmac_rfs_entry *entry = tc_find_rfs(priv, cls, false);
-<<<<<<< HEAD
-
-	if (!entry || !entry->in_use || entry->type != STMMAC_RFS_T_VLAN)
-		return -ENOENT;
-=======
 
 	if (!entry || !entry->in_use || entry->type != STMMAC_RFS_T_VLAN)
 		return -ENOENT;
@@ -755,7 +747,6 @@ static int tc_add_ethtype_flow(struct stmmac_priv *priv,
 	/* Nothing to do here */
 	if (!dissector_uses_key(dissector, FLOW_DISSECTOR_KEY_BASIC))
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	stmmac_rx_queue_prio(priv, priv->hw, 0, entry->tc);
 
@@ -764,9 +755,6 @@ static int tc_add_ethtype_flow(struct stmmac_priv *priv,
 	entry->tc = 0;
 	entry->type = 0;
 
-<<<<<<< HEAD
-	priv->rfs_entries_cnt[STMMAC_RFS_T_VLAN]--;
-=======
 	flow_rule_match_basic(rule, &match);
 
 	if (match.mask->n_proto) {
@@ -847,7 +835,6 @@ static int tc_del_ethtype_flow(struct stmmac_priv *priv,
 	entry->tc = 0;
 	entry->etype = 0;
 	entry->type = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

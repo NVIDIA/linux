@@ -1030,8 +1030,6 @@ static int imx412_power_on(struct device *dev)
 	struct imx412 *imx412 = to_imx412(sd);
 	int ret;
 
-<<<<<<< HEAD
-=======
 	ret = regulator_bulk_enable(ARRAY_SIZE(imx412_supply_names),
 				    imx412->supplies);
 	if (ret < 0) {
@@ -1039,7 +1037,6 @@ static int imx412_power_on(struct device *dev)
 		return ret;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	gpiod_set_value_cansleep(imx412->reset_gpio, 0);
 
 	ret = clk_prepare_enable(imx412->inclk);
@@ -1054,11 +1051,8 @@ static int imx412_power_on(struct device *dev)
 
 error_reset:
 	gpiod_set_value_cansleep(imx412->reset_gpio, 1);
-<<<<<<< HEAD
-=======
 	regulator_bulk_disable(ARRAY_SIZE(imx412_supply_names),
 			       imx412->supplies);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -1078,12 +1072,9 @@ static int imx412_power_off(struct device *dev)
 
 	gpiod_set_value_cansleep(imx412->reset_gpio, 1);
 
-<<<<<<< HEAD
-=======
 	regulator_bulk_disable(ARRAY_SIZE(imx412_supply_names),
 			       imx412->supplies);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

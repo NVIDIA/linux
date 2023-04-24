@@ -37,13 +37,8 @@ mt7921_mcu_parse_eeprom(struct mt76_dev *dev, struct sk_buff *skb)
 int mt7921_mcu_parse_response(struct mt76_dev *mdev, int cmd,
 			      struct sk_buff *skb, int seq)
 {
-<<<<<<< HEAD
-	struct mt7921_mcu_rxd *rxd;
-	int mcu_cmd = cmd & MCU_CMD_MASK;
-=======
 	int mcu_cmd = FIELD_GET(__MCU_CMD_FIELD_ID, cmd);
 	struct mt76_connac2_mcu_rxd *rxd;
->>>>>>> origin/linux_6.1.15_upstream
 	int ret = 0;
 
 	if (!skb) {
@@ -81,13 +76,7 @@ int mt7921_mcu_parse_response(struct mt76_dev *mdev, int cmd,
 		/* skip invalid event */
 		if (mcu_cmd != event->cid)
 			ret = -EAGAIN;
-<<<<<<< HEAD
-		break;
-	}
-	case MCU_CMD_REG_READ: {
-=======
 	} else if (cmd == MCU_CE_QUERY(REG_READ)) {
->>>>>>> origin/linux_6.1.15_upstream
 		struct mt7921_mcu_reg_event *event;
 
 		skb_pull(skb, sizeof(*rxd));
@@ -152,84 +141,12 @@ mt7921_mcu_set_ipv6_ns_filter(struct mt76_dev *dev,
 
 void mt7921_mcu_set_suspend_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
 {
-<<<<<<< HEAD
-	struct ieee80211_supported_band *sband;
-	u16 flags = 0, rate_idx;
-	u8 txmode = FIELD_GET(MT_WTBL_RATE_TX_MODE, r);
-	u8 gi = 0;
-	u8 bw = 0;
-	bool cck = false;
-
-	memset(rate, 0, sizeof(*rate));
-	rate->mcs = FIELD_GET(MT_WTBL_RATE_MCS, r);
-	rate->nss = FIELD_GET(MT_WTBL_RATE_NSS, r) + 1;
-
-	switch (peer->bw) {
-	case IEEE80211_STA_RX_BW_160:
-		gi = peer->g16;
-		break;
-	case IEEE80211_STA_RX_BW_80:
-		gi = peer->g8;
-		break;
-	case IEEE80211_STA_RX_BW_40:
-		gi = peer->g4;
-		break;
-	default:
-		gi = peer->g2;
-		break;
-	}
-
-	gi = txmode >= MT_PHY_TYPE_HE_SU ?
-		FIELD_GET(MT_WTBL_RATE_HE_GI, gi) :
-		FIELD_GET(MT_WTBL_RATE_GI, gi);
-
-	switch (txmode) {
-	case MT_PHY_TYPE_CCK:
-		cck = true;
-		fallthrough;
-	case MT_PHY_TYPE_OFDM:
-		if (mphy->chandef.chan->band == NL80211_BAND_5GHZ)
-			sband = &mphy->sband_5g.sband;
-		else
-			sband = &mphy->sband_2g.sband;
-
-		rate_idx = FIELD_GET(MT_TX_RATE_IDX, r);
-		rate_idx = mt76_get_rate(mphy->dev, sband, rate_idx,
-					 cck);
-		rate->legacy = sband->bitrates[rate_idx].bitrate;
-		break;
-	case MT_PHY_TYPE_HT:
-	case MT_PHY_TYPE_HT_GF:
-		flags |= RATE_INFO_FLAGS_MCS;
-
-		if (gi)
-			flags |= RATE_INFO_FLAGS_SHORT_GI;
-		break;
-	case MT_PHY_TYPE_VHT:
-		flags |= RATE_INFO_FLAGS_VHT_MCS;
-
-		if (gi)
-			flags |= RATE_INFO_FLAGS_SHORT_GI;
-		break;
-	case MT_PHY_TYPE_HE_SU:
-	case MT_PHY_TYPE_HE_EXT_SU:
-	case MT_PHY_TYPE_HE_TB:
-	case MT_PHY_TYPE_HE_MU:
-		rate->he_gi = gi;
-		rate->he_dcm = FIELD_GET(MT_RA_RATE_DCM_EN, r);
-
-		flags |= RATE_INFO_FLAGS_HE_MCS;
-		break;
-	default:
-		break;
-=======
 	if (IS_ENABLED(CONFIG_IPV6)) {
 		struct mt76_phy *phy = priv;
 
 		mt7921_mcu_set_ipv6_ns_filter(phy->dev, vif,
 					      !test_bit(MT76_STATE_RUNNING,
 					      &phy->state));
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	mt76_connac_mcu_set_suspend_iter(priv, mac, vif);
@@ -345,39 +262,7 @@ mt7921_mcu_tx_done_event(struct mt7921_dev *dev, struct sk_buff *skb)
 	skb_pull(skb, sizeof(struct mt76_connac2_mcu_rxd));
 	event = (struct mt7921_mcu_tx_done_event *)skb->data;
 
-<<<<<<< HEAD
-	spin_lock_bh(&dev->sta_poll_lock);
-	list_splice_init(&mphy->stats_list, &list);
-
-	while (!list_empty(&list)) {
-		msta = list_first_entry(&list, struct mt7921_sta, stats_list);
-		list_del_init(&msta->stats_list);
-
-		if (msta->wcid.idx != event->wlan_idx)
-			continue;
-
-		spin_unlock_bh(&dev->sta_poll_lock);
-
-		sta = wcid_to_sta(&msta->wcid);
-
-		/* peer config based on IEEE SPEC */
-		memset(&peer, 0x0, sizeof(peer));
-		peer.bw = event->bw;
-		peer.g2 = !!(sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_20);
-		peer.g4 = !!(sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_40);
-		peer.g8 = !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_80);
-		peer.g16 = !!(sta->vht_cap.cap & IEEE80211_VHT_CAP_SHORT_GI_160);
-		mt7921_mcu_tx_rate_parse(mphy->mt76, &peer,
-					 &msta->stats.tx_rate,
-					 le16_to_cpu(event->tx_rate));
-
-		spin_lock_bh(&dev->sta_poll_lock);
-		break;
-	}
-	spin_unlock_bh(&dev->sta_poll_lock);
-=======
 	mt7921_mac_add_txs(dev, event->txs);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void
@@ -447,98 +332,6 @@ void mt7921_mcu_rx_event(struct mt7921_dev *dev, struct sk_buff *skb)
 }
 
 /** starec & wtbl **/
-<<<<<<< HEAD
-static int
-mt7921_mcu_sta_key_tlv(struct mt7921_sta *msta, struct sk_buff *skb,
-		       struct ieee80211_key_conf *key, enum set_key_cmd cmd)
-{
-	struct mt7921_sta_key_conf *bip = &msta->bip;
-	struct sta_rec_sec *sec;
-	struct tlv *tlv;
-	u32 len = sizeof(*sec);
-
-	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_KEY_V2, sizeof(*sec));
-
-	sec = (struct sta_rec_sec *)tlv;
-	sec->add = cmd;
-
-	if (cmd == SET_KEY) {
-		struct sec_key *sec_key;
-		u8 cipher;
-
-		cipher = mt7921_mcu_get_cipher(key->cipher);
-		if (cipher == MCU_CIPHER_NONE)
-			return -EOPNOTSUPP;
-
-		sec_key = &sec->key[0];
-		sec_key->cipher_len = sizeof(*sec_key);
-
-		if (cipher == MCU_CIPHER_BIP_CMAC_128) {
-			sec_key->cipher_id = MCU_CIPHER_AES_CCMP;
-			sec_key->key_id = bip->keyidx;
-			sec_key->key_len = 16;
-			memcpy(sec_key->key, bip->key, 16);
-
-			sec_key = &sec->key[1];
-			sec_key->cipher_id = MCU_CIPHER_BIP_CMAC_128;
-			sec_key->cipher_len = sizeof(*sec_key);
-			sec_key->key_len = 16;
-			memcpy(sec_key->key, key->key, 16);
-
-			sec->n_cipher = 2;
-		} else {
-			sec_key->cipher_id = cipher;
-			sec_key->key_id = key->keyidx;
-			sec_key->key_len = key->keylen;
-			memcpy(sec_key->key, key->key, key->keylen);
-
-			if (cipher == MCU_CIPHER_TKIP) {
-				/* Rx/Tx MIC keys are swapped */
-				memcpy(sec_key->key + 16, key->key + 24, 8);
-				memcpy(sec_key->key + 24, key->key + 16, 8);
-			}
-
-			/* store key_conf for BIP batch update */
-			if (cipher == MCU_CIPHER_AES_CCMP) {
-				memcpy(bip->key, key->key, key->keylen);
-				bip->keyidx = key->keyidx;
-			}
-
-			len -= sizeof(*sec_key);
-			sec->n_cipher = 1;
-		}
-	} else {
-		len -= sizeof(sec->key);
-		sec->n_cipher = 0;
-	}
-	sec->len = cpu_to_le16(len);
-
-	return 0;
-}
-
-int mt7921_mcu_add_key(struct mt7921_dev *dev, struct ieee80211_vif *vif,
-		       struct mt7921_sta *msta, struct ieee80211_key_conf *key,
-		       enum set_key_cmd cmd)
-{
-	struct mt7921_vif *mvif = (struct mt7921_vif *)vif->drv_priv;
-	struct sk_buff *skb;
-	int ret;
-
-	skb = mt76_connac_mcu_alloc_sta_req(&dev->mt76, &mvif->mt76,
-					    &msta->wcid);
-	if (IS_ERR(skb))
-		return PTR_ERR(skb);
-
-	ret = mt7921_mcu_sta_key_tlv(msta, skb, key, cmd);
-	if (ret)
-		return ret;
-
-	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
-				     MCU_UNI_CMD_STA_REC_UPDATE, true);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 int mt7921_mcu_uni_tx_ba(struct mt7921_dev *dev,
 			 struct ieee80211_ampdu_params *params,
 			 bool enable)
@@ -641,26 +434,8 @@ static int mt7921_load_clc(struct mt7921_dev *dev, const char *fw_name)
 		offset += len;
 	}
 
-<<<<<<< HEAD
-	ret = mt76_connac_mcu_start_patch(&dev->mt76);
-	if (ret)
-		dev_err(dev->mt76.dev, "Failed to start patch\n");
-
-out:
-	sem = mt76_connac_mcu_patch_sem_ctrl(&dev->mt76, false);
-	switch (sem) {
-	case PATCH_REL_SEM_SUCCESS:
-		break;
-	default:
-		ret = -EAGAIN;
-		dev_err(dev->mt76.dev, "Failed to release patch semaphore\n");
-		break;
-	}
-	release_firmware(fw);
-=======
 	if (!clc_base)
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (offset = 0; offset < len; offset += le32_to_cpu(clc->len)) {
 		clc = (const struct mt7921_clc *)(clc_base + offset);
@@ -1071,28 +846,6 @@ int mt7921_mcu_sta_update(struct mt7921_dev *dev, struct ieee80211_sta *sta,
 	return mt76_connac_mcu_sta_cmd(&dev->mphy, &info);
 }
 
-<<<<<<< HEAD
-int __mt7921_mcu_drv_pmctrl(struct mt7921_dev *dev)
-{
-	int i, err = 0;
-
-	for (i = 0; i < MT7921_DRV_OWN_RETRY_COUNT; i++) {
-		mt76_wr(dev, MT_CONN_ON_LPCTL, PCIE_LPCR_HOST_CLR_OWN);
-		if (mt76_poll_msec(dev, MT_CONN_ON_LPCTL,
-				   PCIE_LPCR_HOST_OWN_SYNC, 0, 50))
-			break;
-	}
-
-	if (i == MT7921_DRV_OWN_RETRY_COUNT) {
-		dev_err(dev->mt76.dev, "driver own failed\n");
-		err = -EIO;
-	}
-
-	return err;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 int mt7921_mcu_drv_pmctrl(struct mt7921_dev *dev)
 {
 	struct mt76_phy *mphy = &dev->mt76.phy;

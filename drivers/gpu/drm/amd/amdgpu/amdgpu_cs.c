@@ -192,15 +192,8 @@ static int amdgpu_cs_pass1(struct amdgpu_cs_parser *p,
 	int ret;
 	int i;
 
-<<<<<<< HEAD
-	if (cs->in.num_chunks == 0)
-		return -EINVAL;
-
-	chunk_array = kvmalloc_array(cs->in.num_chunks, sizeof(uint64_t), GFP_KERNEL);
-=======
 	chunk_array = kvmalloc_array(cs->in.num_chunks, sizeof(uint64_t),
 				     GFP_KERNEL);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!chunk_array)
 		return -ENOMEM;
 

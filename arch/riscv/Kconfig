@@ -168,11 +168,7 @@ config PAGE_OFFSET
 	hex
 	default 0xC0000000 if 32BIT
 	default 0x80000000 if 64BIT && !MMU
-<<<<<<< HEAD
-	default 0xffffffe000000000 if 64BIT
-=======
 	default 0xff60000000000000 if 64BIT
->>>>>>> origin/linux_6.1.15_upstream
 
 config KASAN_SHADOW_OFFSET
 	hex

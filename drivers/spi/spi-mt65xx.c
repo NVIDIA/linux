@@ -20,75 +20,6 @@
 #include <linux/spi/spi-mem.h>
 #include <linux/dma-mapping.h>
 
-<<<<<<< HEAD
-#define SPI_CFG0_REG                      0x0000
-#define SPI_CFG1_REG                      0x0004
-#define SPI_TX_SRC_REG                    0x0008
-#define SPI_RX_DST_REG                    0x000c
-#define SPI_TX_DATA_REG                   0x0010
-#define SPI_RX_DATA_REG                   0x0014
-#define SPI_CMD_REG                       0x0018
-#define SPI_STATUS0_REG                   0x001c
-#define SPI_PAD_SEL_REG                   0x0024
-#define SPI_CFG2_REG                      0x0028
-#define SPI_TX_SRC_REG_64                 0x002c
-#define SPI_RX_DST_REG_64                 0x0030
-
-#define SPI_CFG0_SCK_HIGH_OFFSET          0
-#define SPI_CFG0_SCK_LOW_OFFSET           8
-#define SPI_CFG0_CS_HOLD_OFFSET           16
-#define SPI_CFG0_CS_SETUP_OFFSET          24
-#define SPI_ADJUST_CFG0_CS_HOLD_OFFSET    0
-#define SPI_ADJUST_CFG0_CS_SETUP_OFFSET   16
-
-#define SPI_CFG1_CS_IDLE_OFFSET           0
-#define SPI_CFG1_PACKET_LOOP_OFFSET       8
-#define SPI_CFG1_PACKET_LENGTH_OFFSET     16
-#define SPI_CFG1_GET_TICK_DLY_OFFSET      29
-#define SPI_CFG1_GET_TICK_DLY_OFFSET_V1   30
-
-#define SPI_CFG1_GET_TICK_DLY_MASK        0xe0000000
-#define SPI_CFG1_GET_TICK_DLY_MASK_V1     0xc0000000
-
-#define SPI_CFG1_CS_IDLE_MASK             0xff
-#define SPI_CFG1_PACKET_LOOP_MASK         0xff00
-#define SPI_CFG1_PACKET_LENGTH_MASK       0x3ff0000
-#define SPI_CFG2_SCK_HIGH_OFFSET          0
-#define SPI_CFG2_SCK_LOW_OFFSET           16
-
-#define SPI_CMD_ACT                  BIT(0)
-#define SPI_CMD_RESUME               BIT(1)
-#define SPI_CMD_RST                  BIT(2)
-#define SPI_CMD_PAUSE_EN             BIT(4)
-#define SPI_CMD_DEASSERT             BIT(5)
-#define SPI_CMD_SAMPLE_SEL           BIT(6)
-#define SPI_CMD_CS_POL               BIT(7)
-#define SPI_CMD_CPHA                 BIT(8)
-#define SPI_CMD_CPOL                 BIT(9)
-#define SPI_CMD_RX_DMA               BIT(10)
-#define SPI_CMD_TX_DMA               BIT(11)
-#define SPI_CMD_TXMSBF               BIT(12)
-#define SPI_CMD_RXMSBF               BIT(13)
-#define SPI_CMD_RX_ENDIAN            BIT(14)
-#define SPI_CMD_TX_ENDIAN            BIT(15)
-#define SPI_CMD_FINISH_IE            BIT(16)
-#define SPI_CMD_PAUSE_IE             BIT(17)
-
-#define MT8173_SPI_MAX_PAD_SEL 3
-
-#define MTK_SPI_PAUSE_INT_STATUS 0x2
-
-#define MTK_SPI_IDLE 0
-#define MTK_SPI_PAUSED 1
-
-#define MTK_SPI_MAX_FIFO_SIZE 32U
-#define MTK_SPI_PACKET_SIZE 1024
-#define MTK_SPI_32BITS_MASK  (0xffffffff)
-
-#define DMA_ADDR_EXT_BITS (36)
-#define DMA_ADDR_DEF_BITS (32)
-
-=======
 #define SPI_CFG0_REG			0x0000
 #define SPI_CFG1_REG			0x0004
 #define SPI_TX_SRC_REG			0x0008
@@ -188,7 +119,6 @@
  * @no_need_unprepare:	Don't unprepare the SPI clk during runtime
  * @ipm_design:		Adjust/extend registers to support IPM design IP features
  */
->>>>>>> origin/linux_6.1.15_upstream
 struct mtk_spi_compatible {
 	bool need_pad_sel;
 	bool must_tx;
@@ -495,19 +425,6 @@ static int mtk_spi_hw_init(struct spi_master *master,
 		       mdata->base + SPI_PAD_SEL_REG);
 
 	/* tick delay */
-<<<<<<< HEAD
-	reg_val = readl(mdata->base + SPI_CFG1_REG);
-	if (mdata->dev_comp->enhance_timing) {
-		reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
-		reg_val |= ((chip_config->tick_delay & 0x7)
-			    << SPI_CFG1_GET_TICK_DLY_OFFSET);
-	} else {
-		reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK_V1;
-		reg_val |= ((chip_config->tick_delay & 0x3)
-			    << SPI_CFG1_GET_TICK_DLY_OFFSET_V1);
-	}
-	writel(reg_val, mdata->base + SPI_CFG1_REG);
-=======
 	if (mdata->dev_comp->enhance_timing) {
 		if (mdata->dev_comp->ipm_design) {
 			reg_val = readl(mdata->base + SPI_CMD_REG);
@@ -529,7 +446,6 @@ static int mtk_spi_hw_init(struct spi_master *master,
 			    << SPI_CFG1_GET_TICK_DLY_OFFSET_V1);
 		writel(reg_val, mdata->base + SPI_CFG1_REG);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* set hw cs timing */
 	mtk_spi_set_hw_cs_timing(spi);
@@ -839,15 +755,12 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 	else
 		mdata->state = MTK_SPI_IDLE;
 
-<<<<<<< HEAD
-=======
 	/* SPI-MEM ops */
 	if (mdata->use_spimem) {
 		complete(&mdata->spimem_done);
 		return IRQ_HANDLED;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (!master->can_dma(master, NULL, trans)) {
 		if (trans->rx_buf) {
 			cnt = mdata->xfer_len / 4;

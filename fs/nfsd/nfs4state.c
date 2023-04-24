@@ -4390,13 +4390,8 @@ nfsd4_init_leases_net(struct nfsd_net *nn)
 	nn->nfsd4_grace = 90;
 	nn->somebody_reclaimed = false;
 	nn->track_reclaim_completes = false;
-<<<<<<< HEAD
-	nn->clverifier_counter = prandom_u32();
-	nn->clientid_base = prandom_u32();
-=======
 	nn->clverifier_counter = get_random_u32();
 	nn->clientid_base = get_random_u32();
->>>>>>> origin/linux_6.1.15_upstream
 	nn->clientid_counter = nn->clientid_base + 1;
 	nn->s2s_cp_cl_id = nn->clientid_counter++;
 
@@ -6054,12 +6049,6 @@ nfs4_laundromat(struct nfsd_net *nn)
 	nfs4_get_client_reaplist(nn, &reaplist, &lt);
 	nfs4_process_client_reaplist(&reaplist);
 
-<<<<<<< HEAD
-	nfs4_get_client_reaplist(nn, &reaplist, &lt);
-	nfs4_process_client_reaplist(&reaplist);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	spin_lock(&state_lock);
 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
@@ -7785,29 +7774,9 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
 	if (status)
 		return status;
 	clp = cstate->clp;
-<<<<<<< HEAD
-	/* Find the matching lock stateowner */
-	spin_lock(&clp->cl_lock);
-	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
-			    so_strhash) {
-
-		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
-			continue;
-
-		if (atomic_read(&sop->so_count) != 1) {
-			spin_unlock(&clp->cl_lock);
-			return nfserr_locks_held;
-		}
-
-		lo = lockowner(sop);
-		nfs4_get_stateowner(sop);
-		break;
-	}
-=======
 
 	spin_lock(&clp->cl_lock);
 	lo = find_lockowner_str_locked(clp, &rlockowner->rl_owner);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!lo) {
 		spin_unlock(&clp->cl_lock);
 		return nfs_ok;

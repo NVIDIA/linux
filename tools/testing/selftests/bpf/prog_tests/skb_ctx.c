@@ -80,35 +80,12 @@ void test_skb_ctx(void)
 	ASSERT_EQ(tattr.ctx_size_out, sizeof(skb), "ctx_size_out");
 
 	for (i = 0; i < 5; i++)
-<<<<<<< HEAD
-		CHECK_ATTR(skb.cb[i] != i + 2,
-			   "ctx_out_cb",
-			   "skb->cb[i] == %d, expected %d\n",
-			   skb.cb[i], i + 2);
-	CHECK_ATTR(skb.priority != 7,
-		   "ctx_out_priority",
-		   "skb->priority == %d, expected %d\n",
-		   skb.priority, 7);
-	CHECK_ATTR(skb.ifindex != 1,
-		   "ctx_out_ifindex",
-		   "skb->ifindex == %d, expected %d\n",
-		   skb.ifindex, 1);
-	CHECK_ATTR(skb.tstamp != 8,
-		   "ctx_out_tstamp",
-		   "skb->tstamp == %lld, expected %d\n",
-		   skb.tstamp, 8);
-	CHECK_ATTR(skb.mark != 10,
-		   "ctx_out_mark",
-		   "skb->mark == %u, expected %d\n",
-		   skb.mark, 10);
-=======
 		ASSERT_EQ(skb.cb[i], i + 2, "ctx_out_cb");
 	ASSERT_EQ(skb.priority, 7, "ctx_out_priority");
 	ASSERT_EQ(skb.ifindex, 1, "ctx_out_ifindex");
 	ASSERT_EQ(skb.ingress_ifindex, 11, "ctx_out_ingress_ifindex");
 	ASSERT_EQ(skb.tstamp, 8, "ctx_out_tstamp");
 	ASSERT_EQ(skb.mark, 10, "ctx_out_mark");
->>>>>>> origin/linux_6.1.15_upstream
 
 	bpf_object__close(obj);
 }

@@ -186,11 +186,8 @@ struct adf_hw_device_data {
 	void (*exit_arb)(struct adf_accel_dev *accel_dev);
 	const u32 *(*get_arb_mapping)(void);
 	int (*init_device)(struct adf_accel_dev *accel_dev);
-<<<<<<< HEAD
-=======
 	int (*enable_pm)(struct adf_accel_dev *accel_dev);
 	bool (*handle_pm_interrupt)(struct adf_accel_dev *accel_dev);
->>>>>>> origin/linux_6.1.15_upstream
 	void (*disable_iov)(struct adf_accel_dev *accel_dev);
 	void (*configure_iov_threads)(struct adf_accel_dev *accel_dev,
 				      bool enable);

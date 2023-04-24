@@ -877,11 +877,7 @@ alternative_endif
 
 	.macro __mitigate_spectre_bhb_loop      tmp
 #ifdef CONFIG_MITIGATE_SPECTRE_BRANCH_HISTORY
-<<<<<<< HEAD
-alternative_cb  spectre_bhb_patch_loop_iter
-=======
 alternative_cb ARM64_ALWAYS_SYSTEM, spectre_bhb_patch_loop_iter
->>>>>>> origin/linux_6.1.15_upstream
 	mov	\tmp, #32		// Patched to correct the immediate
 alternative_cb_end
 .Lspectre_bhb_loop\@:
@@ -894,11 +890,7 @@ alternative_cb_end
 
 	.macro mitigate_spectre_bhb_loop	tmp
 #ifdef CONFIG_MITIGATE_SPECTRE_BRANCH_HISTORY
-<<<<<<< HEAD
-alternative_cb	spectre_bhb_patch_loop_mitigation_enable
-=======
 alternative_cb ARM64_ALWAYS_SYSTEM, spectre_bhb_patch_loop_mitigation_enable
->>>>>>> origin/linux_6.1.15_upstream
 	b	.L_spectre_bhb_loop_done\@	// Patched to NOP
 alternative_cb_end
 	__mitigate_spectre_bhb_loop	\tmp
@@ -912,11 +904,7 @@ alternative_cb_end
 	stp	x0, x1, [sp, #-16]!
 	stp	x2, x3, [sp, #-16]!
 	mov	w0, #ARM_SMCCC_ARCH_WORKAROUND_3
-<<<<<<< HEAD
-alternative_cb	smccc_patch_fw_mitigation_conduit
-=======
 alternative_cb ARM64_ALWAYS_SYSTEM, smccc_patch_fw_mitigation_conduit
->>>>>>> origin/linux_6.1.15_upstream
 	nop					// Patched to SMC/HVC #0
 alternative_cb_end
 	ldp	x2, x3, [sp], #16
@@ -926,11 +914,7 @@ alternative_cb_end
 
 	.macro mitigate_spectre_bhb_clear_insn
 #ifdef CONFIG_MITIGATE_SPECTRE_BRANCH_HISTORY
-<<<<<<< HEAD
-alternative_cb	spectre_bhb_patch_clearbhb
-=======
 alternative_cb ARM64_ALWAYS_SYSTEM, spectre_bhb_patch_clearbhb
->>>>>>> origin/linux_6.1.15_upstream
 	/* Patched to NOP when not supported */
 	clearbhb
 	isb

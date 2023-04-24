@@ -373,11 +373,7 @@ void __init memblock_discard(void)
 		if (memblock_reserved_in_slab)
 			kfree(memblock.reserved.regions);
 		else
-<<<<<<< HEAD
-			__memblock_free_late(addr, size);
-=======
 			memblock_free_late(addr, size);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (memblock.memory.regions != memblock_memory_init_regions) {
@@ -387,11 +383,7 @@ void __init memblock_discard(void)
 		if (memblock_memory_in_slab)
 			kfree(memblock.memory.regions);
 		else
-<<<<<<< HEAD
-			__memblock_free_late(addr, size);
-=======
 			memblock_free_late(addr, size);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	memblock_memory = NULL;

@@ -16,11 +16,6 @@
 #include <linux/init.h>
 #include <linux/bug.h>
 
-<<<<<<< HEAD
-void blake2s_update(struct blake2s_state *state, const u8 *in, size_t inlen)
-{
-	__blake2s_update(state, in, inlen, false);
-=======
 static inline void blake2s_set_lastblock(struct blake2s_state *state)
 {
 	state->f[0] = -1;
@@ -47,23 +42,18 @@ void blake2s_update(struct blake2s_state *state, const u8 *in, size_t inlen)
 	}
 	memcpy(state->buf + state->buflen, in, inlen);
 	state->buflen += inlen;
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(blake2s_update);
 
 void blake2s_final(struct blake2s_state *state, u8 *out)
 {
 	WARN_ON(IS_ENABLED(DEBUG) && !out);
-<<<<<<< HEAD
-	__blake2s_final(state, out, false);
-=======
 	blake2s_set_lastblock(state);
 	memset(state->buf + state->buflen, 0,
 	       BLAKE2S_BLOCK_SIZE - state->buflen); /* Padding */
 	blake2s_compress(state, state->buf, 1, state->buflen);
 	cpu_to_le32_array(state->h, ARRAY_SIZE(state->h));
 	memcpy(out, state->h, state->outlen);
->>>>>>> origin/linux_6.1.15_upstream
 	memzero_explicit(state, sizeof(*state));
 }
 EXPORT_SYMBOL(blake2s_final);

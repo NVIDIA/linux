@@ -373,14 +373,9 @@ struct ucred {
 #define SOL_KCM		281
 #define SOL_TLS		282
 #define SOL_XDP		283
-<<<<<<< HEAD
-/* #define SOL_MPTCP	284 - not yet included in 5.15 */
-#define SOL_MCTP	285
-=======
 #define SOL_MPTCP	284
 #define SOL_MCTP	285
 #define SOL_SMC		286
->>>>>>> origin/linux_6.1.15_upstream
 
 /* IPX options */
 #define IPX_TYPE	1

@@ -223,12 +223,9 @@ static int kexec_file_add_ipl_report(struct kimage *image,
 		data->kernel_buf + offsetof(struct lowcore, ipl_parmblock_ptr);
 	*lc_ipl_parmblock_ptr = (__u32)buf.mem;
 
-<<<<<<< HEAD
-=======
 	if (image->type == KEXEC_TYPE_CRASH)
 		buf.mem += crashk_res.start;
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = kexec_add_buffer(&buf);
 out:
 	return ret;
@@ -309,14 +306,11 @@ int arch_kexec_apply_relocations_add(struct purgatory_info *pi,
 	Elf_Rela *relas;
 	int i, r_type;
 	int ret;
-<<<<<<< HEAD
-=======
 
 	/* String & section header string table */
 	sechdrs = (void *)pi->ehdr + pi->ehdr->e_shoff;
 	strtab = (char *)pi->ehdr + sechdrs[symtab->sh_link].sh_offset;
 	shstrtab = (char *)pi->ehdr + sechdrs[pi->ehdr->e_shstrndx].sh_offset;
->>>>>>> origin/linux_6.1.15_upstream
 
 	relas = (void *)pi->ehdr + relsec->sh_offset;
 

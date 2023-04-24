@@ -504,12 +504,7 @@ static void v1_free_pgtable(struct io_pgtable *iop)
 	BUG_ON(pgtable->mode < PAGE_MODE_NONE ||
 	       pgtable->mode > PAGE_MODE_6_LEVEL);
 
-<<<<<<< HEAD
-	root = (unsigned long)pgtable->root;
-	freelist = free_sub_pt(root, pgtable->mode, freelist);
-=======
 	free_sub_pt(pgtable->root, pgtable->mode, &freelist);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Update data structure */
 	amd_iommu_domain_clr_pt_root(dom);
@@ -517,11 +512,7 @@ static void v1_free_pgtable(struct io_pgtable *iop)
 	/* Make changes visible to IOMMUs */
 	amd_iommu_domain_update(dom);
 
-<<<<<<< HEAD
-	free_page_list(freelist);
-=======
 	put_pages_list(&freelist);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct io_pgtable *v1_alloc_pgtable(struct io_pgtable_cfg *cfg, void *cookie)

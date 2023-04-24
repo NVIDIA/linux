@@ -399,64 +399,8 @@ int amdgpu_vm_validate_pt_bos(struct amdgpu_device *adev, struct amdgpu_vm *vm,
  */
 bool amdgpu_vm_ready(struct amdgpu_vm *vm)
 {
-<<<<<<< HEAD
-	bool ret;
-
-	amdgpu_vm_eviction_lock(vm);
-	ret = !vm->evicting;
-	amdgpu_vm_eviction_unlock(vm);
-
-	return ret && list_empty(&vm->evicted);
-}
-
-/**
- * amdgpu_vm_clear_bo - initially clear the PDs/PTs
- *
- * @adev: amdgpu_device pointer
- * @vm: VM to clear BO from
- * @vmbo: BO to clear
- * @immediate: use an immediate update
- *
- * Root PD needs to be reserved when calling this.
- *
- * Returns:
- * 0 on success, errno otherwise.
- */
-static int amdgpu_vm_clear_bo(struct amdgpu_device *adev,
-			      struct amdgpu_vm *vm,
-			      struct amdgpu_bo_vm *vmbo,
-			      bool immediate)
-{
-	struct ttm_operation_ctx ctx = { true, false };
-	unsigned level = adev->vm_manager.root_level;
-	struct amdgpu_vm_update_params params;
-	struct amdgpu_bo *ancestor = &vmbo->bo;
-	struct amdgpu_bo *bo = &vmbo->bo;
-	unsigned entries, ats_entries;
-	uint64_t addr;
-	int r;
-
-	/* Figure out our place in the hierarchy */
-	if (ancestor->parent) {
-		++level;
-		while (ancestor->parent->parent) {
-			++level;
-			ancestor = ancestor->parent;
-		}
-	}
-
-	entries = amdgpu_bo_size(bo) / 8;
-	if (!vm->pte_support_ats) {
-		ats_entries = 0;
-
-	} else if (!bo->parent) {
-		ats_entries = amdgpu_vm_num_ats_entries(adev);
-		ats_entries = min(ats_entries, entries);
-		entries -= ats_entries;
-=======
 	bool empty;
 	bool ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	amdgpu_vm_eviction_lock(vm);
 	ret = !vm->evicting;

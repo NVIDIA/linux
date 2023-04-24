@@ -90,17 +90,10 @@ struct mctp_sock {
  * Packets are matched on (src,dest,tag).
  *
  * Lifetime / locking requirements:
-<<<<<<< HEAD
  *
  *  - individual key data (ie, the struct itself) is protected by key->lock;
  *    changes must be made with that lock held.
  *
-=======
- *
- *  - individual key data (ie, the struct itself) is protected by key->lock;
- *    changes must be made with that lock held.
- *
->>>>>>> origin/linux_6.1.15_upstream
  *  - the lookup fields: peer_addr, local_addr and tag are set before the
  *    key is added to lookup lists, and never updated.
  *

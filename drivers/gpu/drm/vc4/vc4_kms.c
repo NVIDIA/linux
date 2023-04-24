@@ -374,13 +374,6 @@ static void vc4_atomic_commit_tail(struct drm_atomic_state *state)
 		vc4_hvs_mask_underrun(hvs, vc4_crtc_state->assigned_channel);
 	}
 
-<<<<<<< HEAD
-	old_hvs_state = vc4_hvs_get_old_global_state(state);
-	if (IS_ERR(old_hvs_state))
-		return;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	for (channel = 0; channel < HVS_NUM_CHANNELS; channel++) {
 		struct drm_crtc_commit *commit;
 		int ret;
@@ -398,8 +391,6 @@ static void vc4_atomic_commit_tail(struct drm_atomic_state *state)
 
 		drm_crtc_commit_put(commit);
 		old_hvs_state->fifo_state[channel].pending_commit = NULL;
-<<<<<<< HEAD
-=======
 	}
 
 	if (vc4->is_vc5) {
@@ -415,7 +406,6 @@ static void vc4_atomic_commit_tail(struct drm_atomic_state *state)
 		 * modeset.
 		 */
 		WARN_ON(clk_set_min_rate(hvs->core_clk, core_rate));
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (vc4->hvs->hvs5)
@@ -718,10 +708,7 @@ vc4_hvs_channels_duplicate_state(struct drm_private_obj *obj)
 
 	for (i = 0; i < HVS_NUM_CHANNELS; i++) {
 		state->fifo_state[i].in_use = old_state->fifo_state[i].in_use;
-<<<<<<< HEAD
-=======
 		state->fifo_state[i].fifo_load = old_state->fifo_state[i].fifo_load;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	state->core_clock_rate = old_state->core_clock_rate;

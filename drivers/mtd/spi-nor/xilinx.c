@@ -140,19 +140,11 @@ static int xilinx_nor_setup(struct spi_nor *nor,
 	 */
 	if (nor->bouncebuf[0] & XSR_PAGESIZE) {
 		/* Flash in Power of 2 mode */
-<<<<<<< HEAD
-		nor->page_size = (nor->page_size == 264) ? 256 : 512;
-		nor->mtd.writebufsize = nor->page_size;
-		nor->params->size = 8 * nor->page_size * nor->info->n_sectors;
-		nor->mtd.size = nor->params->size;
-		nor->mtd.erasesize = 8 * nor->page_size;
-=======
 		page_size = (nor->params->page_size == 264) ? 256 : 512;
 		nor->params->page_size = page_size;
 		nor->mtd.writebufsize = page_size;
 		nor->params->size = 8 * page_size * nor->info->n_sectors;
 		nor->mtd.erasesize = 8 * page_size;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		/* Flash in Default addressing mode */
 		nor->params->convert_addr = s3an_nor_convert_addr;

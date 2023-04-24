@@ -1293,11 +1293,6 @@ u64 __vmbus_request_addr_match(struct vmbus_channel *channel, u64 trans_id,
 	/* Hyper-V can send an unsolicited message with ID of 0 */
 	if (!trans_id)
 		return VMBUS_RQST_ERROR;
-<<<<<<< HEAD
-
-	spin_lock_irqsave(&rqstor->req_lock, flags);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Data corresponding to trans_id is stored at trans_id - 1 */
 	trans_id--;

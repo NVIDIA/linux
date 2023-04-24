@@ -2191,34 +2191,6 @@ static void do_notify_parent_cldstop(struct task_struct *tsk,
 	spin_unlock_irqrestore(&sighand->siglock, flags);
 }
 
-<<<<<<< HEAD
-static inline bool may_ptrace_stop(void)
-{
-	if (!likely(current->ptrace))
-		return false;
-	/*
-	 * Are we in the middle of do_coredump?
-	 * If so and our tracer is also part of the coredump stopping
-	 * is a deadlock situation, and pointless because our tracer
-	 * is dead so don't allow us to stop.
-	 * If SIGKILL was already sent before the caller unlocked
-	 * ->siglock we must see ->core_state != NULL. Otherwise it
-	 * is safe to enter schedule().
-	 *
-	 * This is almost outdated, a task with the pending SIGKILL can't
-	 * block in TASK_TRACED. But PTRACE_EVENT_EXIT can be reported
-	 * after SIGKILL was already dequeued.
-	 */
-	if (unlikely(current->mm->core_state) &&
-	    unlikely(current->mm == current->parent->mm))
-		return false;
-
-	return true;
-}
-
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * This must be called with current->sighand->siglock held.
  *
@@ -2253,11 +2225,6 @@ static int ptrace_stop(int exit_code, int why, unsigned long message,
 	}
 
 	/*
-<<<<<<< HEAD
-	 * schedule() will not sleep if there is a pending signal that
-	 * can awaken the task.
-	 */
-=======
 	 * After this point ptrace_signal_wake_up or signal_wake_up
 	 * will clear TASK_TRACED if ptrace_unlink happens or a fatal
 	 * signal comes in.  Handle previous ptrace_unlinks and fatal
@@ -2266,7 +2233,6 @@ static int ptrace_stop(int exit_code, int why, unsigned long message,
 	if (!current->ptrace || __fatal_signal_pending(current))
 		return exit_code;
 
->>>>>>> origin/linux_6.1.15_upstream
 	set_special_state(TASK_TRACED);
 	current->jobctl |= JOBCTL_TRACED;
 
@@ -2735,16 +2701,6 @@ relock:
 			goto fatal;
 		}
 
-		/* Has this task already been marked for death? */
-		if (signal_group_exit(signal)) {
-			ksig->info.si_signo = signr = SIGKILL;
-			sigdelset(&current->pending.signal, SIGKILL);
-			trace_signal_deliver(SIGKILL, SEND_SIG_NOINFO,
-				&sighand->action[SIGKILL - 1]);
-			recalc_sigpending();
-			goto fatal;
-		}
-
 		if (unlikely(current->jobctl & JOBCTL_STOP_PENDING) &&
 		    do_signal_stop(0))
 			goto relock;
@@ -2787,11 +2743,7 @@ relock:
 
 		if (unlikely(current->ptrace) && (signr != SIGKILL) &&
 		    !(sighand->action[signr -1].sa.sa_flags & SA_IMMUTABLE)) {
-<<<<<<< HEAD
-			signr = ptrace_signal(signr, &ksig->info);
-=======
 			signr = ptrace_signal(signr, &ksig->info, type);
->>>>>>> origin/linux_6.1.15_upstream
 			if (!signr)
 				continue;
 		}

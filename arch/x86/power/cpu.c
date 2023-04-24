@@ -513,17 +513,6 @@ static int pm_cpu_check(const struct x86_cpu_id *c)
 
 static void pm_save_spec_msr(void)
 {
-<<<<<<< HEAD
-	u32 spec_msr_id[] = {
-		MSR_IA32_SPEC_CTRL,
-		MSR_IA32_TSX_CTRL,
-		MSR_TSX_FORCE_ABORT,
-		MSR_IA32_MCU_OPT_CTRL,
-		MSR_AMD64_LS_CFG,
-	};
-
-	msr_build_context(spec_msr_id, ARRAY_SIZE(spec_msr_id));
-=======
 	struct msr_enumeration {
 		u32 msr_no;
 		u32 feature;
@@ -541,7 +530,6 @@ static void pm_save_spec_msr(void)
 		if (boot_cpu_has(msr_enum[i].feature))
 			msr_build_context(&msr_enum[i].msr_no, 1);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int pm_check_save_msr(void)

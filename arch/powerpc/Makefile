@@ -152,12 +152,9 @@ CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=power8
 else
 CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=power4
 endif
-<<<<<<< HEAD
-=======
 CFLAGS-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=power10,	\
 				  $(call cc-option,-mtune=power9,	\
 				  $(call cc-option,-mtune=power8)))
->>>>>>> origin/linux_6.1.15_upstream
 else ifdef CONFIG_PPC_BOOK3E_64
 CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=powerpc64
 endif

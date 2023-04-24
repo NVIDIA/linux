@@ -16,33 +16,9 @@ enum {
 	MLX5E_TC_MISS_LEVEL,
 };
 
-<<<<<<< HEAD
-struct mlx5e_tc_table {
-	/* Protects the dynamic assignment of the t parameter
-	 * which is the nic tc root table.
-	 */
-	struct mutex			t_lock;
-	struct mlx5_flow_table		*t;
-	struct mlx5_flow_table		*miss_t;
-	struct mlx5_fs_chains           *chains;
-	struct mlx5e_post_act		*post_act;
-
-	struct rhashtable               ht;
-
-	struct mod_hdr_tbl mod_hdr;
-	struct mutex hairpin_tbl_lock; /* protects hairpin_tbl */
-	DECLARE_HASHTABLE(hairpin_tbl, 8);
-
-	struct notifier_block     netdevice_nb;
-	struct netdev_net_notifier	netdevice_nn;
-
-	struct mlx5_tc_ct_priv         *ct;
-	struct mapping_ctx             *mapping;
-=======
 enum {
 	MLX5E_TC_PRIO = 0,
 	MLX5E_NIC_PRIO
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct mlx5e_flow_table {

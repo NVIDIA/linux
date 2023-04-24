@@ -445,8 +445,6 @@ static inline bool smc_link_usable(struct smc_link *lnk)
 	return true;
 }
 
-<<<<<<< HEAD
-=======
 /*
  * Returns true if the specified link is ready to receive AND send RDMA
  * messages.
@@ -456,7 +454,6 @@ static inline bool smc_link_usable(struct smc_link *lnk)
  * is not strong enough. For those places that need to send any CDC or LLC
  * messages, use smc_link_sendable(), otherwise, use smc_link_usable() instead
  */
->>>>>>> origin/linux_6.1.15_upstream
 static inline bool smc_link_sendable(struct smc_link *lnk)
 {
 	return smc_link_usable(lnk) &&

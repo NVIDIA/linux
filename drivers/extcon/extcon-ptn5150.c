@@ -218,10 +218,7 @@ static void ptn5150_work_sync_and_put(void *data)
 	struct ptn5150_info *info = data;
 
 	cancel_work_sync(&info->irq_work);
-<<<<<<< HEAD
-=======
 	usb_role_switch_put(info->role_sw);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int ptn5150_i2c_probe(struct i2c_client *i2c)
@@ -314,14 +311,11 @@ static int ptn5150_i2c_probe(struct i2c_client *i2c)
 	if (ret)
 		return -EINVAL;
 
-<<<<<<< HEAD
-=======
 	info->role_sw = usb_role_switch_get(info->dev);
 	if (IS_ERR(info->role_sw))
 		return dev_err_probe(info->dev, PTR_ERR(info->role_sw),
 				     "failed to get role switch\n");
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = devm_add_action_or_reset(dev, ptn5150_work_sync_and_put, info);
 	if (ret)
 		return ret;

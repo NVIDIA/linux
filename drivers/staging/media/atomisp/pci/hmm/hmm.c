@@ -36,11 +36,6 @@
 #include "mmu/sh_mmu_mrfld.h"
 
 struct hmm_bo_device bo_device;
-<<<<<<< HEAD
-struct hmm_pool	dynamic_pool;
-struct hmm_pool	reserved_pool;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static ia_css_ptr dummy_ptr = mmgr_EXCEPTION;
 static bool hmm_initialized;
 

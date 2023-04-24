@@ -1611,8 +1611,6 @@
 
 				clocks = <&mmcc MDSS_AHB_CLK>, <&xo_board>;
 				clock-names = "iface", "ref";
-<<<<<<< HEAD
-=======
 
 				status = "disabled";
 			};
@@ -1675,7 +1673,6 @@
 
 			gmu_sram: gmu-sram@0 {
 				reg = <0x0 0x100000>;
->>>>>>> origin/linux_6.1.15_upstream
 			};
 		};
 

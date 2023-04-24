@@ -457,11 +457,7 @@ int sis_wait_for_fw_triage_completion(struct pqi_ctrl_info *ctrl_info)
 	enum sis_fw_triage_status status;
 	unsigned long timeout;
 
-<<<<<<< HEAD
-	timeout = (SIS_FW_TRIAGE_STATUS_TIMEOUT_SECS * PQI_HZ) + jiffies;
-=======
 	timeout = (SIS_FW_TRIAGE_STATUS_TIMEOUT_SECS * HZ) + jiffies;
->>>>>>> origin/linux_6.1.15_upstream
 	while (1) {
 		status = sis_read_firmware_triage_status(ctrl_info);
 		if (status == FW_TRIAGE_COND_INVALID) {
@@ -488,11 +484,7 @@ int sis_wait_for_fw_triage_completion(struct pqi_ctrl_info *ctrl_info)
 	return rc;
 }
 
-<<<<<<< HEAD
-static void __attribute__((unused)) verify_structures(void)
-=======
 void sis_verify_structures(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	BUILD_BUG_ON(offsetof(struct sis_base_struct,
 		revision) != 0x0);

@@ -254,14 +254,10 @@ TRACE_EVENT_CONDITION(nfsd_fh_verify_err,
 				  rqstp->rq_xprt->xpt_remotelen);
 		__entry->xid = be32_to_cpu(rqstp->rq_xid);
 		__entry->fh_hash = knfsd_fh_hash(&fhp->fh_handle);
-<<<<<<< HEAD
-		__entry->inode = d_inode(fhp->fh_dentry);
-=======
 		if (fhp->fh_dentry)
 			__entry->inode = d_inode(fhp->fh_dentry);
 		else
 			__entry->inode = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 		__entry->type = type;
 		__entry->access = access;
 		__entry->error = be32_to_cpu(error);

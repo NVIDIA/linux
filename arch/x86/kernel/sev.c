@@ -113,10 +113,6 @@ struct ghcb_state {
 static DEFINE_PER_CPU(struct sev_es_runtime_data*, runtime_data);
 DEFINE_STATIC_KEY_FALSE(sev_es_enable_key);
 
-<<<<<<< HEAD
-/* Needed in vc_early_forward_exception */
-void do_early_exception(struct pt_regs *regs, int trapnr);
-=======
 static DEFINE_PER_CPU(struct sev_es_save_area *, sev_vmsa);
 
 struct sev_config {
@@ -125,7 +121,6 @@ struct sev_config {
 };
 
 static struct sev_config sev_cfg __read_mostly;
->>>>>>> origin/linux_6.1.15_upstream
 
 static __always_inline bool on_vc_stack(struct pt_regs *regs)
 {

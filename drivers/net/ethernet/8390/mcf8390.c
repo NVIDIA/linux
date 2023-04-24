@@ -410,12 +410,7 @@ static int mcf8390_probe(struct platform_device *pdev)
 	int ret, irq;
 
 	irq = platform_get_irq(pdev, 0);
-<<<<<<< HEAD
-	if (irq < 0) {
-		dev_err(&pdev->dev, "no IRQ specified?\n");
-=======
 	if (irq < 0)
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENXIO;
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);

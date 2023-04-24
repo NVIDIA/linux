@@ -1000,27 +1000,6 @@ int snd_hda_codec_device_new(struct hda_bus *bus, struct snd_card *card,
 	codec->core.exec_verb = codec_exec_verb;
 	codec->card = card;
 	codec->addr = codec_addr;
-<<<<<<< HEAD
-	mutex_init(&codec->spdif_mutex);
-	mutex_init(&codec->control_mutex);
-	snd_array_init(&codec->mixers, sizeof(struct hda_nid_item), 32);
-	snd_array_init(&codec->nids, sizeof(struct hda_nid_item), 32);
-	snd_array_init(&codec->init_pins, sizeof(struct hda_pincfg), 16);
-	snd_array_init(&codec->driver_pins, sizeof(struct hda_pincfg), 16);
-	snd_array_init(&codec->cvt_setups, sizeof(struct hda_cvt_setup), 8);
-	snd_array_init(&codec->spdif_out, sizeof(struct hda_spdif_out), 16);
-	snd_array_init(&codec->jacktbl, sizeof(struct hda_jack_tbl), 16);
-	snd_array_init(&codec->verbs, sizeof(struct hda_verb *), 8);
-	INIT_LIST_HEAD(&codec->conn_list);
-	INIT_LIST_HEAD(&codec->pcm_list_head);
-	refcount_set(&codec->pcm_ref, 1);
-	init_waitqueue_head(&codec->remove_sleep);
-
-	INIT_DELAYED_WORK(&codec->jackpoll_work, hda_jackpoll_work);
-	codec->depop_delay = -1;
-	codec->fixup_id = HDA_FIXUP_ID_NOT_SET;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifdef CONFIG_PM
 	codec->power_jiffies = jiffies;
@@ -3066,16 +3045,10 @@ void snd_hda_codec_shutdown(struct hda_codec *codec)
 	struct hda_pcm *cpcm;
 
 	/* Skip the shutdown if codec is not registered */
-<<<<<<< HEAD
-	if (!codec->registered)
-		return;
-
-=======
 	if (!codec->core.registered)
 		return;
 
 	cancel_delayed_work_sync(&codec->jackpoll_work);
->>>>>>> origin/linux_6.1.15_upstream
 	list_for_each_entry(cpcm, &codec->pcm_list_head, list)
 		snd_pcm_suspend_all(cpcm->pcm);
 

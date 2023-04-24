@@ -123,11 +123,7 @@ alternative_cb_end
 	tbnz	\tmp2, #TIF_SSBD, .L__asm_ssbd_skip\@
 	mov	w0, #ARM_SMCCC_ARCH_WORKAROUND_2
 	mov	w1, #\state
-<<<<<<< HEAD
-alternative_cb	smccc_patch_fw_mitigation_conduit
-=======
 alternative_cb	ARM64_ALWAYS_SYSTEM, smccc_patch_fw_mitigation_conduit
->>>>>>> origin/linux_6.1.15_upstream
 	nop					// Patched to SMC/HVC #0
 alternative_cb_end
 .L__asm_ssbd_skip\@:
@@ -640,20 +636,6 @@ alternative_else_nop_endif
 	 */
 	.endm
 
-<<<<<<< HEAD
-	.macro tramp_data_page	dst
-	adr_l	\dst, .entry.tramp.text
-	sub	\dst, \dst, PAGE_SIZE
-	.endm
-
-	.macro tramp_data_read_var	dst, var
-#ifdef CONFIG_RANDOMIZE_BASE
-	tramp_data_page		\dst
-	add	\dst, \dst, #:lo12:__entry_tramp_data_\var
-	ldr	\dst, [\dst]
-#else
-	ldr	\dst, =\var
-=======
 	.macro		tramp_data_read_var	dst, var
 #ifdef CONFIG_RELOCATABLE
 	ldr		\dst, .L__tramp_data_\var
@@ -676,7 +658,6 @@ alternative_else_nop_endif
 	movz		\dst, :abs_g2_s:\var
 	movk		\dst, :abs_g1_nc:\var
 	movk		\dst, :abs_g0_nc:\var
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 	.endm
 
@@ -724,11 +705,7 @@ alternative_else_nop_endif
 	msr	vbar_el1, x30
 	isb
 	.else
-<<<<<<< HEAD
-	ldr	x30, =vectors
-=======
 	adr_l	x30, vectors
->>>>>>> origin/linux_6.1.15_upstream
 	.endif // \kpti == 1
 
 	.if	\bhb == BHB_MITIGATION_FW
@@ -798,24 +775,6 @@ SYM_CODE_START(tramp_exit_compat)
 	tramp_exit	32
 SYM_CODE_END(tramp_exit_compat)
 	.popsection				// .entry.tramp.text
-<<<<<<< HEAD
-#ifdef CONFIG_RANDOMIZE_BASE
-	.pushsection ".rodata", "a"
-	.align PAGE_SHIFT
-SYM_DATA_START(__entry_tramp_data_start)
-__entry_tramp_data_vectors:
-	.quad	vectors
-#ifdef CONFIG_ARM_SDE_INTERFACE
-__entry_tramp_data___sdei_asm_handler:
-	.quad	__sdei_asm_handler
-#endif /* CONFIG_ARM_SDE_INTERFACE */
-__entry_tramp_data_this_cpu_vector:
-	.quad	this_cpu_vector
-SYM_DATA_END(__entry_tramp_data_start)
-	.popsection				// .rodata
-#endif /* CONFIG_RANDOMIZE_BASE */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* CONFIG_UNMAP_KERNEL_AT_EL0 */
 
 /*

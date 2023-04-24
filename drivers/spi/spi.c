@@ -493,17 +493,8 @@ int __spi_register_driver(struct module *owner, struct spi_driver *sdrv)
 			if (sdrv->id_table) {
 				const struct spi_device_id *spi_id;
 
-<<<<<<< HEAD
-				for (spi_id = sdrv->id_table; spi_id->name[0];
-				     spi_id++)
-					if (strcmp(spi_id->name, of_name) == 0)
-						break;
-
-				if (spi_id->name[0])
-=======
 				spi_id = spi_match_id(sdrv->id_table, of_name);
 				if (spi_id)
->>>>>>> origin/linux_6.1.15_upstream
 					continue;
 			} else {
 				if (strcmp(sdrv->driver.name, of_name) == 0)
@@ -977,12 +968,7 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
 	spi->controller->last_cs = enable ? spi->chip_select : -1;
 	spi->controller->last_cs_mode_high = spi->mode & SPI_CS_HIGH;
 
-<<<<<<< HEAD
-	if ((spi->cs_gpiod || gpio_is_valid(spi->cs_gpio) ||
-	    !spi->controller->set_cs_timing) && !activate) {
-=======
 	if ((spi->cs_gpiod || !spi->controller->set_cs_timing) && !activate) {
->>>>>>> origin/linux_6.1.15_upstream
 		spi_delay_exec(&spi->cs_hold, NULL);
 	}
 
@@ -1015,12 +1001,7 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
 		spi->controller->set_cs(spi, !enable);
 	}
 
-<<<<<<< HEAD
-	if (spi->cs_gpiod || gpio_is_valid(spi->cs_gpio) ||
-	    !spi->controller->set_cs_timing) {
-=======
 	if (spi->cs_gpiod || !spi->controller->set_cs_timing) {
->>>>>>> origin/linux_6.1.15_upstream
 		if (activate)
 			spi_delay_exec(&spi->cs_setup, NULL);
 		else
@@ -1201,23 +1182,6 @@ static int __spi_unmap_msg(struct spi_controller *ctlr, struct spi_message *msg)
 	if (!ctlr->cur_msg_mapped || !ctlr->can_dma)
 		return 0;
 
-<<<<<<< HEAD
-	if (ctlr->dma_tx)
-		tx_dev = ctlr->dma_tx->device->dev;
-	else if (ctlr->dma_map_dev)
-		tx_dev = ctlr->dma_map_dev;
-	else
-		tx_dev = ctlr->dev.parent;
-
-	if (ctlr->dma_rx)
-		rx_dev = ctlr->dma_rx->device->dev;
-	else if (ctlr->dma_map_dev)
-		rx_dev = ctlr->dma_map_dev;
-	else
-		rx_dev = ctlr->dev.parent;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
 		/* The sync has already been done after each transfer. */
 		unsigned long attrs = DMA_ATTR_SKIP_CPU_SYNC;
@@ -1838,18 +1802,8 @@ static void __spi_pump_messages(struct spi_controller *ctlr, bool in_kthread)
 	ret = __spi_pump_transfer_message(ctlr, msg, was_busy);
 	kthread_queue_work(ctlr->kworker, &ctlr->pump_messages);
 
-<<<<<<< HEAD
-	ret = ctlr->transfer_one_message(ctlr, msg);
-	if (ret) {
-		dev_err(&ctlr->dev,
-			"failed to transfer one message from queue: %d\n",
-			ret);
-		goto out;
-	}
-=======
 	ctlr->cur_msg = NULL;
 	ctlr->fallback = false;
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_unlock(&ctlr->io_mutex);
 
@@ -3328,11 +3282,7 @@ void spi_unregister_controller(struct spi_controller *ctlr)
 
 	device_del(&ctlr->dev);
 
-<<<<<<< HEAD
-	/* free bus id */
-=======
 	/* Free bus id */
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_lock(&board_lock);
 	if (found == ctlr)
 		idr_remove(&spi_master_idr, id);

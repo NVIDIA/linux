@@ -531,18 +531,6 @@ static int sk_psock_skb_ingress_enqueue(struct sk_buff *skb,
 {
 	int num_sge, copied;
 
-<<<<<<< HEAD
-	/* skb linearize may fail with ENOMEM, but lets simply try again
-	 * later if this happens. Under memory pressure we don't want to
-	 * drop the skb. We need to linearize the skb so that the mapping
-	 * in skb_to_sgvec can not error.
-	 */
-	if (skb_linearize(skb))
-		return -EAGAIN;
-	num_sge = skb_to_sgvec(skb, msg->sg.data, off, len);
-	if (unlikely(num_sge < 0))
-		return num_sge;
-=======
 	num_sge = skb_to_sgvec(skb, msg->sg.data, off, len);
 	if (num_sge < 0) {
 		/* skb linearize may fail with ENOMEM, but lets simply try again
@@ -557,7 +545,6 @@ static int sk_psock_skb_ingress_enqueue(struct sk_buff *skb,
 		if (unlikely(num_sge < 0))
 			return num_sge;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	copied = len;
 	msg->sg.start = 0;
@@ -1191,7 +1178,7 @@ static int sk_psock_verdict_recv(struct sock *sk, struct sk_buff *skb)
 	struct sk_psock *psock;
 	struct bpf_prog *prog;
 	int ret = __SK_DROP;
-	int len = orig_len;
+	int len = skb->len;
 
 	skb_get(skb);
 

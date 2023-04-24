@@ -770,35 +770,6 @@ static int gfs2_fsync(struct file *file, loff_t start, loff_t end,
 	return ret ? ret : ret1;
 }
 
-<<<<<<< HEAD
-static inline bool should_fault_in_pages(ssize_t ret, struct iov_iter *i,
-					 size_t *prev_count,
-					 size_t *window_size)
-{
-	char __user *p = i->iov[0].iov_base + i->iov_offset;
-	size_t count = iov_iter_count(i);
-	int pages = 1;
-
-	if (likely(!count))
-		return false;
-	if (ret <= 0 && ret != -EFAULT)
-		return false;
-	if (!iter_is_iovec(i))
-		return false;
-
-	if (*prev_count != count || !*window_size) {
-		int pages, nr_dirtied;
-
-		pages = min_t(int, BIO_MAX_VECS,
-			      DIV_ROUND_UP(iov_iter_count(i), PAGE_SIZE));
-		nr_dirtied = max(current->nr_dirtied_pause -
-				 current->nr_dirtied, 1);
-		pages = min(pages, nr_dirtied);
-	}
-
-	*prev_count = count;
-	*window_size = (size_t)PAGE_SIZE * pages - offset_in_page(p);
-=======
 static inline bool should_fault_in_pages(struct iov_iter *i,
 					 struct kiocb *iocb,
 					 size_t *prev_count,
@@ -824,7 +795,6 @@ static inline bool should_fault_in_pages(struct iov_iter *i,
 
 	*prev_count = count;
 	*window_size = size - offs;
->>>>>>> origin/linux_6.1.15_upstream
 	return true;
 }
 
@@ -834,11 +804,7 @@ static ssize_t gfs2_file_direct_read(struct kiocb *iocb, struct iov_iter *to,
 	struct file *file = iocb->ki_filp;
 	struct gfs2_inode *ip = GFS2_I(file->f_mapping->host);
 	size_t prev_count = 0, window_size = 0;
-<<<<<<< HEAD
-	size_t written = 0;
-=======
 	size_t read = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	ssize_t ret;
 
 	/*
@@ -866,30 +832,6 @@ retry:
 	ret = gfs2_glock_nq(gh);
 	if (ret)
 		goto out_uninit;
-<<<<<<< HEAD
-retry_under_glock:
-	pagefault_disable();
-	to->nofault = true;
-	ret = iomap_dio_rw(iocb, to, &gfs2_iomap_ops, NULL,
-			   IOMAP_DIO_PARTIAL, written);
-	to->nofault = false;
-	pagefault_enable();
-	if (ret > 0)
-		written = ret;
-
-	if (should_fault_in_pages(ret, to, &prev_count, &window_size)) {
-		size_t leftover;
-
-		gfs2_holder_allow_demote(gh);
-		leftover = fault_in_iov_iter_writeable(to, window_size);
-		gfs2_holder_disallow_demote(gh);
-		if (leftover != window_size) {
-			if (gfs2_holder_queued(gh))
-				goto retry_under_glock;
-			goto retry;
-		}
-	}
-=======
 	pagefault_disable();
 	to->nofault = true;
 	ret = iomap_dio_rw(iocb, to, &gfs2_iomap_ops, NULL,
@@ -909,21 +851,14 @@ retry_under_glock:
 			goto retry;
 	}
 out_unlock:
->>>>>>> origin/linux_6.1.15_upstream
 	if (gfs2_holder_queued(gh))
 		gfs2_glock_dq(gh);
 out_uninit:
 	gfs2_holder_uninit(gh);
-<<<<<<< HEAD
-	if (ret < 0)
-		return ret;
-	return written;
-=======
 	/* User space doesn't expect partial success. */
 	if (ret < 0)
 		return ret;
 	return read;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t gfs2_file_direct_write(struct kiocb *iocb, struct iov_iter *from,
@@ -933,11 +868,7 @@ static ssize_t gfs2_file_direct_write(struct kiocb *iocb, struct iov_iter *from,
 	struct inode *inode = file->f_mapping->host;
 	struct gfs2_inode *ip = GFS2_I(inode);
 	size_t prev_count = 0, window_size = 0;
-<<<<<<< HEAD
-	size_t read = 0;
-=======
 	size_t written = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	ssize_t ret;
 
 	/*
@@ -963,36 +894,6 @@ retry:
 	ret = gfs2_glock_nq(gh);
 	if (ret)
 		goto out_uninit;
-<<<<<<< HEAD
-retry_under_glock:
-	/* Silently fall back to buffered I/O when writing beyond EOF */
-	if (iocb->ki_pos + iov_iter_count(from) > i_size_read(&ip->i_inode))
-		goto out;
-
-	from->nofault = true;
-	ret = iomap_dio_rw(iocb, from, &gfs2_iomap_ops, NULL,
-			   IOMAP_DIO_PARTIAL, read);
-	from->nofault = false;
-
-	if (ret == -ENOTBLK)
-		ret = 0;
-	if (ret > 0)
-		read = ret;
-
-	if (should_fault_in_pages(ret, from, &prev_count, &window_size)) {
-		size_t leftover;
-
-		gfs2_holder_allow_demote(gh);
-		leftover = fault_in_iov_iter_readable(from, window_size);
-		gfs2_holder_disallow_demote(gh);
-		if (leftover != window_size) {
-			if (gfs2_holder_queued(gh))
-				goto retry_under_glock;
-			goto retry;
-		}
-	}
-out:
-=======
 	/* Silently fall back to buffered I/O when writing beyond EOF */
 	if (iocb->ki_pos + iov_iter_count(from) > i_size_read(&ip->i_inode))
 		goto out_unlock;
@@ -1018,21 +919,14 @@ out:
 			goto retry;
 	}
 out_unlock:
->>>>>>> origin/linux_6.1.15_upstream
 	if (gfs2_holder_queued(gh))
 		gfs2_glock_dq(gh);
 out_uninit:
 	gfs2_holder_uninit(gh);
-<<<<<<< HEAD
-	if (ret < 0)
-		return ret;
-	return read;
-=======
 	/* User space doesn't expect partial success. */
 	if (ret < 0)
 		return ret;
 	return written;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static ssize_t gfs2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
@@ -1040,11 +934,7 @@ static ssize_t gfs2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	struct gfs2_inode *ip;
 	struct gfs2_holder gh;
 	size_t prev_count = 0, window_size = 0;
-<<<<<<< HEAD
-	size_t written = 0;
-=======
 	size_t read = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	ssize_t ret;
 
 	/*
@@ -1054,18 +944,9 @@ static ssize_t gfs2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	 * and retry.
 	 */
 
-<<<<<<< HEAD
-	if (iocb->ki_flags & IOCB_DIRECT) {
-		ret = gfs2_file_direct_read(iocb, to, &gh);
-		if (likely(ret != -ENOTBLK))
-			return ret;
-		iocb->ki_flags &= ~IOCB_DIRECT;
-	}
-=======
 	if (iocb->ki_flags & IOCB_DIRECT)
 		return gfs2_file_direct_read(iocb, to, &gh);
 
->>>>>>> origin/linux_6.1.15_upstream
 	pagefault_disable();
 	iocb->ki_flags |= IOCB_NOIO;
 	ret = generic_file_read_iter(iocb, to);
@@ -1074,11 +955,7 @@ static ssize_t gfs2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	if (ret >= 0) {
 		if (!iov_iter_count(to))
 			return ret;
-<<<<<<< HEAD
-		written = ret;
-=======
 		read = ret;
->>>>>>> origin/linux_6.1.15_upstream
 	} else if (ret != -EFAULT) {
 		if (ret != -EAGAIN)
 			return ret;
@@ -1091,27 +968,6 @@ retry:
 	ret = gfs2_glock_nq(&gh);
 	if (ret)
 		goto out_uninit;
-<<<<<<< HEAD
-retry_under_glock:
-	pagefault_disable();
-	ret = generic_file_read_iter(iocb, to);
-	pagefault_enable();
-	if (ret > 0)
-		written += ret;
-
-	if (should_fault_in_pages(ret, to, &prev_count, &window_size)) {
-		size_t leftover;
-
-		gfs2_holder_allow_demote(&gh);
-		leftover = fault_in_iov_iter_writeable(to, window_size);
-		gfs2_holder_disallow_demote(&gh);
-		if (leftover != window_size) {
-			if (gfs2_holder_queued(&gh))
-				goto retry_under_glock;
-			goto retry;
-		}
-	}
-=======
 	pagefault_disable();
 	ret = generic_file_read_iter(iocb, to);
 	pagefault_enable();
@@ -1127,7 +983,6 @@ retry_under_glock:
 			goto retry;
 	}
 out_unlock:
->>>>>>> origin/linux_6.1.15_upstream
 	if (gfs2_holder_queued(&gh))
 		gfs2_glock_dq(&gh);
 out_uninit:

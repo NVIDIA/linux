@@ -927,41 +927,9 @@ static int hpt37x_init_one(struct pci_dev *dev, const struct pci_device_id *id)
 	if (chip_table == &hpt372a)
 		outb(0x0e, iobase + 0x9c);
 
-<<<<<<< HEAD
-	/*
-	 * Some devices do not let this value be accessed via PCI space
-	 * according to the old driver. In addition we must use the value
-	 * from FN 0 on the HPT374.
-	 */
-
-	if (chip_table == &hpt374) {
-		freq = hpt374_read_freq(dev);
-		if (freq == 0)
-			return -ENODEV;
-	} else
-		freq = inl(iobase + 0x90);
-
-	if ((freq >> 12) != 0xABCDE) {
-		int i;
-		u16 sr;
-		u32 total = 0;
-
-		pr_warn("BIOS has not set timing clocks\n");
-
-		/* This is the process the HPT371 BIOS is reported to use */
-		for (i = 0; i < 128; i++) {
-			pci_read_config_word(dev, 0x78, &sr);
-			total += sr & 0x1FF;
-			udelay(15);
-		}
-		freq = total / 128;
-	}
-	freq &= 0x1FF;
-=======
 	freq = hpt37x_pci_clock(dev, chip_table->base);
 	if (!freq)
 		return -ENODEV;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 *	Turn the frequency check into a band and then find a timing

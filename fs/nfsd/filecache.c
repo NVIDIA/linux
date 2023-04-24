@@ -305,10 +305,6 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, unsigned int may)
 		refcount_set(&nf->nf_ref, 1);
 		nf->nf_may = key->need;
 		nf->nf_mark = NULL;
-<<<<<<< HEAD
-		trace_nfsd_file_alloc(nf);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return nf;
 }
@@ -840,16 +836,6 @@ nfsd_file_cache_init(void)
 	if (!nfsd_filecache_wq)
 		goto out;
 
-<<<<<<< HEAD
-	nfsd_file_hashtbl = kvcalloc(NFSD_FILE_HASH_SIZE,
-				sizeof(*nfsd_file_hashtbl), GFP_KERNEL);
-	if (!nfsd_file_hashtbl) {
-		pr_err("nfsd: unable to allocate nfsd_file_hashtbl\n");
-		goto out_err;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	nfsd_file_slab = kmem_cache_create("nfsd_file",
 				sizeof(struct nfsd_file), 0, 0, NULL);
 	if (!nfsd_file_slab) {
@@ -907,11 +893,6 @@ out_err:
 	nfsd_file_slab = NULL;
 	kmem_cache_destroy(nfsd_file_mark_slab);
 	nfsd_file_mark_slab = NULL;
-<<<<<<< HEAD
-	kvfree(nfsd_file_hashtbl);
-	nfsd_file_hashtbl = NULL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	destroy_workqueue(nfsd_filecache_wq);
 	nfsd_filecache_wq = NULL;
 	rhashtable_destroy(&nfsd_file_rhash_tbl);
@@ -1036,11 +1017,6 @@ nfsd_file_cache_shutdown(void)
 	fsnotify_wait_marks_destroyed();
 	kmem_cache_destroy(nfsd_file_mark_slab);
 	nfsd_file_mark_slab = NULL;
-<<<<<<< HEAD
-	kvfree(nfsd_file_hashtbl);
-	nfsd_file_hashtbl = NULL;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	destroy_workqueue(nfsd_filecache_wq);
 	nfsd_filecache_wq = NULL;
 	rhashtable_destroy(&nfsd_file_rhash_tbl);

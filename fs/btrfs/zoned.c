@@ -4,10 +4,7 @@
 #include <linux/slab.h>
 #include <linux/blkdev.h>
 #include <linux/sched/mm.h>
-<<<<<<< HEAD
-=======
 #include <linux/atomic.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/vmalloc.h>
 #include "ctree.h"
 #include "volumes.h"
@@ -591,11 +588,7 @@ int btrfs_get_dev_zone_info(struct btrfs_device *device, bool populate_cache)
 	}
 
 
-<<<<<<< HEAD
-	kfree(zones);
-=======
 	kvfree(zones);
->>>>>>> origin/linux_6.1.15_upstream
 
 	switch (bdev_zoned_model(bdev)) {
 	case BLK_ZONED_HM:
@@ -1871,8 +1864,6 @@ struct btrfs_device *btrfs_zoned_get_device(struct btrfs_fs_info *fs_info,
 	return device;
 }
 
-<<<<<<< HEAD
-=======
 /**
  * Activate block group and underlying device zones
  *
@@ -2181,7 +2172,6 @@ void btrfs_schedule_zone_finish_bg(struct btrfs_block_group *bg,
 	queue_work(system_unbound_wq, &bg->zone_finish_work);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 void btrfs_clear_data_reloc_bg(struct btrfs_block_group *bg)
 {
 	struct btrfs_fs_info *fs_info = bg->fs_info;
@@ -2209,8 +2199,6 @@ void btrfs_free_zone_cache(struct btrfs_fs_info *fs_info)
 	}
 	mutex_unlock(&fs_devices->device_list_mutex);
 }
-<<<<<<< HEAD
-=======
 
 bool btrfs_zoned_should_reclaim(struct btrfs_fs_info *fs_info)
 {
@@ -2361,4 +2349,3 @@ int btrfs_zoned_activate_one_bg(struct btrfs_fs_info *fs_info,
 
 	return 0;
 }
->>>>>>> origin/linux_6.1.15_upstream

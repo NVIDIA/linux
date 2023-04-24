@@ -1691,16 +1691,11 @@ struct coresight_device *coresight_register(struct coresight_desc *desc)
 out_unlock:
 	mutex_unlock(&coresight_mutex);
 	/* Success */
-<<<<<<< HEAD
-	if (!ret)
-		return csdev;
-=======
 	if (!ret) {
 		if (cti_assoc_ops && cti_assoc_ops->add)
 			cti_assoc_ops->add(csdev);
 		return csdev;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Unregister the device if needed */
 	if (registered) {

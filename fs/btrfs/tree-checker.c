@@ -982,11 +982,7 @@ static int check_dev_item(struct extent_buffer *leaf,
 			  struct btrfs_key *key, int slot)
 {
 	struct btrfs_dev_item *ditem;
-<<<<<<< HEAD
-	const u32 item_size = btrfs_item_size_nr(leaf, slot);
-=======
 	const u32 item_size = btrfs_item_size(leaf, slot);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (unlikely(key->objectid != BTRFS_DEV_ITEMS_OBJECTID)) {
 		dev_item_err(leaf, slot,
@@ -1036,11 +1032,7 @@ static int check_inode_item(struct extent_buffer *leaf,
 	struct btrfs_inode_item *iitem;
 	u64 super_gen = btrfs_super_generation(fs_info->super_copy);
 	u32 valid_mask = (S_IFMT | S_ISUID | S_ISGID | S_ISVTX | 0777);
-<<<<<<< HEAD
-	const u32 item_size = btrfs_item_size_nr(leaf, slot);
-=======
 	const u32 item_size = btrfs_item_size(leaf, slot);
->>>>>>> origin/linux_6.1.15_upstream
 	u32 mode;
 	int ret;
 	u32 flags;

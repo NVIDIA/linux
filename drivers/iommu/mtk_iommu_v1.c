@@ -452,11 +452,7 @@ static struct iommu_device *mtk_iommu_v1_probe_device(struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct of_phandle_args iommu_spec;
-<<<<<<< HEAD
-	struct mtk_iommu_data *data;
-=======
 	struct mtk_iommu_v1_data *data;
->>>>>>> origin/linux_6.1.15_upstream
 	int err, idx = 0, larbid, larbidx;
 	struct device_link *link;
 	struct device *larbdev;
@@ -532,29 +528,14 @@ static void mtk_iommu_v1_probe_finalize(struct device *dev)
 static void mtk_iommu_v1_release_device(struct device *dev)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
-<<<<<<< HEAD
-	struct mtk_iommu_data *data;
-	struct device *larbdev;
-	unsigned int larbid;
-
-	if (!fwspec || fwspec->ops != &mtk_iommu_ops)
-		return;
-
-=======
 	struct mtk_iommu_v1_data *data;
 	struct device *larbdev;
 	unsigned int larbid;
 
->>>>>>> origin/linux_6.1.15_upstream
 	data = dev_iommu_priv_get(dev);
 	larbid = mt2701_m4u_to_larb(fwspec->ids[0]);
 	larbdev = data->larb_imu[larbid].dev;
 	device_link_remove(dev, larbdev);
-<<<<<<< HEAD
-
-	iommu_fwspec_free(dev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int mtk_iommu_v1_hw_init(const struct mtk_iommu_v1_data *data)
@@ -684,13 +665,10 @@ static int mtk_iommu_v1_probe(struct platform_device *pdev)
 		if (!plarbdev) {
 			of_node_put(larbnode);
 			return -ENODEV;
-<<<<<<< HEAD
-=======
 		}
 		if (!plarbdev->dev.driver) {
 			of_node_put(larbnode);
 			return -EPROBE_DEFER;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		data->larb_imu[i].dev = &plarbdev->dev;
 

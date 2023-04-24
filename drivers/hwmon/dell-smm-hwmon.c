@@ -434,13 +434,7 @@ static int i8k_get_power_status(void)
 
 static long i8k_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
-<<<<<<< HEAD
-	int val = 0;
-	int speed, err;
-	unsigned char buff[16];
-=======
 	struct dell_smm_data *data = pde_data(file_inode(fp));
->>>>>>> origin/linux_6.1.15_upstream
 	int __user *argp = (int __user *)arg;
 	int speed, err;
 	int val = 0;
@@ -514,13 +508,6 @@ static long i8k_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		if (copy_from_user(&speed, argp + 1, sizeof(int)))
 			return -EFAULT;
 
-<<<<<<< HEAD
-		err = i8k_set_fan(data, val, speed);
-		if (err < 0)
-			return err;
-
-		val = i8k_get_fan_status(data, val);
-=======
 		mutex_lock(&data->i8k_mutex);
 		err = i8k_set_fan(data, val, speed);
 		if (err < 0)
@@ -528,7 +515,6 @@ static long i8k_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		else
 			val = i8k_get_fan_status(data, val);
 		mutex_unlock(&data->i8k_mutex);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 
 	default:

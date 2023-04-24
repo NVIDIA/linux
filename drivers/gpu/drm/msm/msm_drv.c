@@ -891,11 +891,7 @@ static int wait_fence(struct msm_gpu_submitqueue *queue, uint32_t fence_id,
 	struct dma_fence *fence;
 	int ret;
 
-<<<<<<< HEAD
-	if (fence_id > queue->last_fence) {
-=======
 	if (fence_after(fence_id, queue->last_fence)) {
->>>>>>> origin/linux_6.1.15_upstream
 		DRM_ERROR_RATELIMITED("waiting on invalid fence: %u (of %u)\n",
 				      fence_id, queue->last_fence);
 		return -EINVAL;

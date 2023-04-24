@@ -1869,52 +1869,7 @@ void *addr_gva2hva(struct kvm_vm *vm, vm_vaddr_t gva)
 
 unsigned long __weak vm_compute_max_gfn(struct kvm_vm *vm)
 {
-<<<<<<< HEAD
-	char val = 'N';
-	size_t count;
-	FILE *f;
-
-	if (vm == NULL) {
-		/* Ensure that the KVM vendor-specific module is loaded. */
-		close(open_kvm_dev_path_or_exit());
-	}
-
-	f = fopen("/sys/module/kvm_intel/parameters/unrestricted_guest", "r");
-	if (f) {
-		count = fread(&val, sizeof(char), 1, f);
-		TEST_ASSERT(count == 1, "Unable to read from param file.");
-		fclose(f);
-	}
-
-	return val == 'Y';
-}
-
-unsigned int vm_get_page_size(struct kvm_vm *vm)
-{
-	return vm->page_size;
-}
-
-unsigned int vm_get_page_shift(struct kvm_vm *vm)
-{
-	return vm->page_shift;
-}
-
-unsigned long __attribute__((weak)) vm_compute_max_gfn(struct kvm_vm *vm)
-{
 	return ((1ULL << vm->pa_bits) >> vm->page_shift) - 1;
-}
-
-uint64_t vm_get_max_gfn(struct kvm_vm *vm)
-{
-	return vm->max_gfn;
-}
-
-int vm_get_fd(struct kvm_vm *vm)
-{
-	return vm->fd;
-=======
-	return ((1ULL << vm->pa_bits) >> vm->page_shift) - 1;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static unsigned int vm_calc_num_pages(unsigned int num_pages,

@@ -2089,7 +2089,6 @@ out_err:
 }
 
 static void _kvm_host_prot_finalize(void *arg)
-<<<<<<< HEAD
 {
 	int *err = arg;
 
@@ -2099,28 +2098,6 @@ static void _kvm_host_prot_finalize(void *arg)
 
 static int pkvm_drop_host_privileges(void)
 {
-	int ret = 0;
-
-	/*
-	 * Flip the static key upfront as that may no longer be possible
-	 * once the host stage 2 is installed.
-	 */
-	static_branch_enable(&kvm_protected_mode_initialized);
-	on_each_cpu(_kvm_host_prot_finalize, &ret, 1);
-	return ret;
-=======
-{
-	int *err = arg;
-
-	if (WARN_ON(kvm_call_hyp_nvhe(__pkvm_prot_finalize)))
-		WRITE_ONCE(*err, -EINVAL);
->>>>>>> origin/linux_6.1.15_upstream
-}
-
-static int pkvm_drop_host_privileges(void)
-{
-<<<<<<< HEAD
-=======
 	int ret = 0;
 
 	/*
@@ -2134,24 +2111,15 @@ static int pkvm_drop_host_privileges(void)
 
 static int finalize_hyp_mode(void)
 {
->>>>>>> origin/linux_6.1.15_upstream
 	if (!is_protected_kvm_enabled())
 		return 0;
 
 	/*
-<<<<<<< HEAD
-	 * Exclude HYP BSS from kmemleak so that it doesn't get peeked
-	 * at, which would end badly once the section is inaccessible.
-	 * None of other sections should ever be introspected.
-	 */
-	kmemleak_free_part(__hyp_bss_start, __hyp_bss_end - __hyp_bss_start);
-=======
 	 * Exclude HYP sections from kmemleak so that they don't get peeked
 	 * at, which would end badly once inaccessible.
 	 */
 	kmemleak_free_part(__hyp_bss_start, __hyp_bss_end - __hyp_bss_start);
 	kmemleak_free_part_phys(hyp_mem_base, hyp_mem_size);
->>>>>>> origin/linux_6.1.15_upstream
 	return pkvm_drop_host_privileges();
 }
 

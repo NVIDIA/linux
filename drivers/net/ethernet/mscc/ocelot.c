@@ -1333,25 +1333,6 @@ int ocelot_trap_add(struct ocelot *ocelot, int port,
 
 	trap->ingress_port_mask |= BIT(port);
 
-<<<<<<< HEAD
-	switch (cfg.rx_filter) {
-	case HWTSTAMP_FILTER_NONE:
-		break;
-	case HWTSTAMP_FILTER_PTP_V2_L4_EVENT:
-	case HWTSTAMP_FILTER_PTP_V2_L4_SYNC:
-	case HWTSTAMP_FILTER_PTP_V2_L4_DELAY_REQ:
-	case HWTSTAMP_FILTER_PTP_V2_L2_EVENT:
-	case HWTSTAMP_FILTER_PTP_V2_L2_SYNC:
-	case HWTSTAMP_FILTER_PTP_V2_L2_DELAY_REQ:
-	case HWTSTAMP_FILTER_PTP_V2_EVENT:
-	case HWTSTAMP_FILTER_PTP_V2_SYNC:
-	case HWTSTAMP_FILTER_PTP_V2_DELAY_REQ:
-		cfg.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
-		break;
-	default:
-		mutex_unlock(&ocelot->ptp_lock);
-		return -ERANGE;
-=======
 	if (new)
 		err = ocelot_vcap_filter_add(ocelot, trap, NULL);
 	else
@@ -1361,7 +1342,6 @@ int ocelot_trap_add(struct ocelot *ocelot, int port,
 		if (!trap->ingress_port_mask)
 			kfree(trap);
 		return err;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;
@@ -1379,16 +1359,6 @@ int ocelot_trap_del(struct ocelot *ocelot, int port, unsigned long cookie)
 	if (!trap)
 		return 0;
 
-<<<<<<< HEAD
-/* Caller must hold &ocelot->stats_lock */
-static void ocelot_update_stats(struct ocelot *ocelot)
-{
-	int i, j;
-
-	for (i = 0; i < ocelot->num_phys_ports; i++) {
-		/* Configure the port to read the stats from */
-		ocelot_write(ocelot, SYS_STAT_CFG_STAT_VIEW(i), SYS_STAT_CFG);
-=======
 	trap->ingress_port_mask &= ~BIT(port);
 	if (!trap->ingress_port_mask)
 		return ocelot_vcap_filter_del(ocelot, trap);
@@ -1400,7 +1370,6 @@ static u32 ocelot_get_bond_mask(struct ocelot *ocelot, struct net_device *bond)
 {
 	u32 mask = 0;
 	int port;
->>>>>>> origin/linux_6.1.15_upstream
 
 	lockdep_assert_held(&ocelot->fwd_domain_lock);
 
@@ -1413,11 +1382,8 @@ static u32 ocelot_get_bond_mask(struct ocelot *ocelot, struct net_device *bond)
 		if (ocelot_port->bond == bond)
 			mask |= BIT(port);
 	}
-<<<<<<< HEAD
-=======
 
 	return mask;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* The logical port number of a LAG is equal to the lowest numbered physical
@@ -1427,14 +1393,8 @@ int ocelot_bond_get_id(struct ocelot *ocelot, struct net_device *bond)
 {
 	int bond_mask = ocelot_get_bond_mask(ocelot, bond);
 
-<<<<<<< HEAD
-	mutex_lock(&ocelot->stats_lock);
-	ocelot_update_stats(ocelot);
-	mutex_unlock(&ocelot->stats_lock);
-=======
 	if (!bond_mask)
 		return -ENOENT;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return __ffs(bond_mask);
 }
@@ -1456,26 +1416,11 @@ static u32 ocelot_dsa_8021q_cpu_assigned_ports(struct ocelot *ocelot,
 	u32 mask = 0;
 	int port;
 
-<<<<<<< HEAD
-	mutex_lock(&ocelot->stats_lock);
-
-	/* check and update now */
-	ocelot_update_stats(ocelot);
-
-	/* Copy all counters */
-	for (i = 0; i < ocelot->num_stats; i++)
-		*data++ = ocelot->stats[port * ocelot->num_stats + i];
-
-	mutex_unlock(&ocelot->stats_lock);
-}
-EXPORT_SYMBOL(ocelot_get_ethtool_stats);
-=======
 	for (port = 0; port < ocelot->num_phys_ports; port++) {
 		struct ocelot_port *ocelot_port = ocelot->ports[port];
 
 		if (!ocelot_port)
 			continue;
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (ocelot_port->dsa_8021q_cpu == cpu)
 			mask |= BIT(port);
@@ -1497,22 +1442,6 @@ u32 ocelot_port_assigned_dsa_8021q_cpu_mask(struct ocelot *ocelot, int port)
 
 	if (!cpu_port)
 		return 0;
-<<<<<<< HEAD
-	}
-	info->so_timestamping |= SOF_TIMESTAMPING_TX_SOFTWARE |
-				 SOF_TIMESTAMPING_RX_SOFTWARE |
-				 SOF_TIMESTAMPING_SOFTWARE |
-				 SOF_TIMESTAMPING_TX_HARDWARE |
-				 SOF_TIMESTAMPING_RX_HARDWARE |
-				 SOF_TIMESTAMPING_RAW_HARDWARE;
-	info->tx_types = BIT(HWTSTAMP_TX_OFF) | BIT(HWTSTAMP_TX_ON) |
-			 BIT(HWTSTAMP_TX_ONESTEP_SYNC);
-	info->rx_filters = BIT(HWTSTAMP_FILTER_NONE) |
-			   BIT(HWTSTAMP_FILTER_PTP_V2_EVENT) |
-			   BIT(HWTSTAMP_FILTER_PTP_V2_L2_EVENT) |
-			   BIT(HWTSTAMP_FILTER_PTP_V2_L4_EVENT);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (cpu_port->bond)
 		return ocelot_get_bond_mask(ocelot, cpu_port->bond);
@@ -1521,11 +1450,7 @@ u32 ocelot_port_assigned_dsa_8021q_cpu_mask(struct ocelot *ocelot, int port)
 }
 EXPORT_SYMBOL_GPL(ocelot_port_assigned_dsa_8021q_cpu_mask);
 
-<<<<<<< HEAD
-static u32 ocelot_get_bond_mask(struct ocelot *ocelot, struct net_device *bond)
-=======
 u32 ocelot_get_bridge_fwd_mask(struct ocelot *ocelot, int src_port)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ocelot_port *ocelot_port = ocelot->ports[src_port];
 	const struct net_device *bridge;
@@ -1545,12 +1470,8 @@ u32 ocelot_get_bridge_fwd_mask(struct ocelot *ocelot, int src_port)
 		if (!ocelot_port)
 			continue;
 
-<<<<<<< HEAD
-		if (ocelot_port->bond == bond)
-=======
 		if (ocelot_port->stp_state == BR_STATE_FORWARDING &&
 		    ocelot_port->bridge == bridge)
->>>>>>> origin/linux_6.1.15_upstream
 			mask |= BIT(port);
 	}
 
@@ -1698,24 +1619,9 @@ void ocelot_port_assign_dsa_8021q_cpu(struct ocelot *ocelot, int port,
 }
 EXPORT_SYMBOL_GPL(ocelot_port_assign_dsa_8021q_cpu);
 
-<<<<<<< HEAD
-			mask = ocelot_get_bridge_fwd_mask(ocelot, port, bridge);
-			mask |= cpu_fwd_mask;
-			mask &= ~BIT(port);
-			if (bond)
-				mask &= ~ocelot_get_bond_mask(ocelot, bond);
-		} else {
-			/* Standalone ports forward only to DSA tag_8021q CPU
-			 * ports (if those exist), or to the hardware CPU port
-			 * module otherwise.
-			 */
-			mask = cpu_fwd_mask;
-		}
-=======
 void ocelot_port_unassign_dsa_8021q_cpu(struct ocelot *ocelot, int port)
 {
 	mutex_lock(&ocelot->fwd_domain_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ocelot->ports[port]->dsa_8021q_cpu = NULL;
 	ocelot_apply_bridge_fwd_mask(ocelot, true);
@@ -2116,11 +2022,7 @@ static void ocelot_setup_logical_port_ids(struct ocelot *ocelot)
 
 		bond = ocelot_port->bond;
 		if (bond) {
-<<<<<<< HEAD
-			int lag = __ffs(ocelot_get_bond_mask(ocelot, bond));
-=======
 			int lag = ocelot_bond_get_id(ocelot, bond);
->>>>>>> origin/linux_6.1.15_upstream
 
 			ocelot_rmw_gix(ocelot,
 				       ANA_PORT_PORT_CFG_PORTID_VAL(lag),

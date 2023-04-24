@@ -1,13 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
-<<<<<<< HEAD
-VERSION = 5
-PATCHLEVEL = 15
-SUBLEVEL = 50
-=======
 VERSION = 6
 PATCHLEVEL = 1
 SUBLEVEL = 15
->>>>>>> origin/linux_6.1.15_upstream
 EXTRAVERSION =
 NAME = Hurr durr I'ma ninja sloth
 
@@ -1175,14 +1169,6 @@ export MODORDER := $(extmod_prefix)modules.order
 export MODULES_NSDEPS := $(extmod_prefix)modules.nsdeps
 
 ifeq ($(KBUILD_EXTMOD),)
-<<<<<<< HEAD
-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ io_uring/
-
-vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, \
-		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
-		     $(libs-y) $(libs-m)))
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 build-dir	:= .
 clean-dirs	:= $(sort . Documentation \

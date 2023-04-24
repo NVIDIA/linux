@@ -77,11 +77,6 @@
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 
-<<<<<<< HEAD
-#include "../workqueue_internal.h"
-#include "../../io_uring/io-wq.h"
-#include "../smpboot.h"
-=======
 #define CREATE_TRACE_POINTS
 #include <linux/sched/rseq_api.h>
 #include <trace/events/sched.h>
@@ -90,7 +85,6 @@
 #include "sched.h"
 #include "stats.h"
 #include "autogroup.h"
->>>>>>> origin/linux_6.1.15_upstream
 
 #include "autogroup.h"
 #include "pelt.h"
@@ -4906,21 +4900,12 @@ static void balance_push(struct rq *rq);
  * This abuse is tolerated because it places all the unlikely/odd cases behind
  * a single test, namely: rq->balance_callback == NULL.
  */
-<<<<<<< HEAD
-struct callback_head balance_push_callback = {
-	.next = NULL,
-	.func = (void (*)(struct callback_head *))balance_push,
-};
-
-static inline struct callback_head *
-=======
 struct balance_callback balance_push_callback = {
 	.next = NULL,
 	.func = balance_push,
 };
 
 static inline struct balance_callback *
->>>>>>> origin/linux_6.1.15_upstream
 __splice_balance_callbacks(struct rq *rq, bool split)
 {
 	struct balance_callback *head = rq->balance_callback;
@@ -4948,11 +4933,7 @@ __splice_balance_callbacks(struct rq *rq, bool split)
 	return head;
 }
 
-<<<<<<< HEAD
-static inline struct callback_head *splice_balance_callbacks(struct rq *rq)
-=======
 static inline struct balance_callback *splice_balance_callbacks(struct rq *rq)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return __splice_balance_callbacks(rq, true);
 }
@@ -6853,20 +6834,9 @@ EXPORT_STATIC_CALL_TRAMP(preempt_schedule_notrace);
 static DEFINE_STATIC_KEY_TRUE(sk_dynamic_preempt_schedule_notrace);
 void __sched notrace dynamic_preempt_schedule_notrace(void)
 {
-<<<<<<< HEAD
-	int mode = sched_dynamic_mode(str);
-	if (mode < 0) {
-		pr_warn("Dynamic Preempt: unsupported mode: %s\n", str);
-		return 0;
-	}
-
-	sched_dynamic_update(mode);
-	return 1;
-=======
 	if (!static_branch_unlikely(&sk_dynamic_preempt_schedule_notrace))
 		return;
 	preempt_schedule_notrace();
->>>>>>> origin/linux_6.1.15_upstream
 }
 NOKPROBE_SYMBOL(dynamic_preempt_schedule_notrace);
 EXPORT_SYMBOL(dynamic_preempt_schedule_notrace);
@@ -10365,26 +10335,6 @@ static void cpu_cgroup_css_free(struct cgroup_subsys_state *css)
 	 * Relies on the RCU grace period between css_released() and this.
 	 */
 	sched_unregister_group(tg);
-<<<<<<< HEAD
-}
-
-/*
- * This is called before wake_up_new_task(), therefore we really only
- * have to set its group bits, all the other stuff does not apply.
- */
-static void cpu_cgroup_fork(struct task_struct *task)
-{
-	struct rq_flags rf;
-	struct rq *rq;
-
-	rq = task_rq_lock(task, &rf);
-
-	update_rq_clock(rq);
-	sched_change_group(task, TASK_SET_GROUP);
-
-	task_rq_unlock(rq, task, &rf);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #ifdef CONFIG_RT_GROUP_SCHED

@@ -456,13 +456,8 @@ handle_nadtlb_fault(struct pt_regs *regs)
 		fallthrough;
 	case 0x380:
 		/* PDC and FIC instructions */
-<<<<<<< HEAD
-		if (printk_ratelimit()) {
-			pr_warn("BUG: nullifying cache flush/purge instruction\n");
-=======
 		if (DEBUG_NATLB && printk_ratelimit()) {
 			pr_warn("WARNING: nullifying cache flush/purge instruction\n");
->>>>>>> origin/linux_6.1.15_upstream
 			show_regs(regs);
 		}
 		if (insn & 0x20) {

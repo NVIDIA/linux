@@ -893,13 +893,9 @@ int mlx5_devlink_register(struct devlink *devlink)
 	if (err)
 		goto traps_reg_err;
 
-<<<<<<< HEAD
-	devlink_params_publish(devlink);
-=======
 	if (!mlx5_core_is_mp_slave(dev))
 		devlink_set_features(devlink, DEVLINK_F_RELOAD);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 
 traps_reg_err:

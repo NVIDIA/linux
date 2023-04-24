@@ -732,11 +732,7 @@ config INPUT_ADXL34X_SPI
 
 config INPUT_IBM_PANEL
 	tristate "IBM Operation Panel driver"
-<<<<<<< HEAD
-	depends on I2C_SLAVE || COMPILE_TEST
-=======
 	depends on I2C && I2C_SLAVE
->>>>>>> origin/linux_6.1.15_upstream
 	help
 	  Say Y here if you have an IBM Operation Panel connected to your system
 	  over I2C. The panel is typically connected only to a system's service

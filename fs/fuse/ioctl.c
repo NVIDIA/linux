@@ -404,11 +404,7 @@ static int fuse_priv_ioctl(struct inode *inode, struct fuse_file *ff,
 	args.out_args[1].size = inarg.out_size;
 	args.out_args[1].value = ptr;
 
-<<<<<<< HEAD
-	err = fuse_simple_request(fm, &args);
-=======
 	err = fuse_send_ioctl(fm, &args);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!err) {
 		if (outarg.result < 0)
 			err = outarg.result;

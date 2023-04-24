@@ -433,12 +433,8 @@ static void __init mmio_select_mitigation(void)
 	u64 ia32_cap;
 
 	if (!boot_cpu_has_bug(X86_BUG_MMIO_STALE_DATA) ||
-<<<<<<< HEAD
-	    cpu_mitigations_off()) {
-=======
 	     boot_cpu_has_bug(X86_BUG_MMIO_UNKNOWN) ||
 	     cpu_mitigations_off()) {
->>>>>>> origin/linux_6.1.15_upstream
 		mmio_mitigation = MMIO_MITIGATION_OFF;
 		return;
 	}
@@ -543,11 +539,8 @@ out:
 		pr_info("TAA: %s\n", taa_strings[taa_mitigation]);
 	if (boot_cpu_has_bug(X86_BUG_MMIO_STALE_DATA))
 		pr_info("MMIO Stale Data: %s\n", mmio_strings[mmio_mitigation]);
-<<<<<<< HEAD
-=======
 	else if (boot_cpu_has_bug(X86_BUG_MMIO_UNKNOWN))
 		pr_info("MMIO Stale Data: Unknown: No mitigations\n");
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void __init md_clear_select_mitigation(void)
@@ -985,10 +978,7 @@ static inline const char *spectre_v2_module_string(void) { return ""; }
 #define SPECTRE_V2_LFENCE_MSG "WARNING: LFENCE mitigation is not recommended for this CPU, data leaks possible!\n"
 #define SPECTRE_V2_EIBRS_EBPF_MSG "WARNING: Unprivileged eBPF is enabled with eIBRS on, data leaks possible via Spectre v2 BHB attacks!\n"
 #define SPECTRE_V2_EIBRS_LFENCE_EBPF_SMT_MSG "WARNING: Unprivileged eBPF is enabled with eIBRS+LFENCE mitigation and SMT, data leaks possible via Spectre v2 BHB attacks!\n"
-<<<<<<< HEAD
-=======
 #define SPECTRE_V2_IBRS_PERF_MSG "WARNING: IBRS mitigation selected on Enhanced IBRS CPU, this may cause unnecessary performance loss\n"
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifdef CONFIG_BPF_SYSCALL
 void unpriv_ebpf_notify(int new_state)
@@ -1030,10 +1020,7 @@ enum spectre_v2_mitigation_cmd {
 	SPECTRE_V2_CMD_EIBRS,
 	SPECTRE_V2_CMD_EIBRS_RETPOLINE,
 	SPECTRE_V2_CMD_EIBRS_LFENCE,
-<<<<<<< HEAD
-=======
 	SPECTRE_V2_CMD_IBRS,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 enum spectre_v2_user_cmd {
@@ -1108,20 +1095,12 @@ spectre_v2_parse_user_cmdline(void)
 	return SPECTRE_V2_USER_CMD_AUTO;
 }
 
-<<<<<<< HEAD
-static inline bool spectre_v2_in_eibrs_mode(enum spectre_v2_mitigation mode)
-{
-	return (mode == SPECTRE_V2_EIBRS ||
-		mode == SPECTRE_V2_EIBRS_RETPOLINE ||
-		mode == SPECTRE_V2_EIBRS_LFENCE);
-=======
 static inline bool spectre_v2_in_ibrs_mode(enum spectre_v2_mitigation mode)
 {
 	return mode == SPECTRE_V2_IBRS ||
 	       mode == SPECTRE_V2_EIBRS ||
 	       mode == SPECTRE_V2_EIBRS_RETPOLINE ||
 	       mode == SPECTRE_V2_EIBRS_LFENCE;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void __init
@@ -1191,11 +1170,7 @@ spectre_v2_user_select_mitigation(void)
 	 */
 	if (!boot_cpu_has(X86_FEATURE_STIBP) ||
 	    !smt_possible ||
-<<<<<<< HEAD
-	    spectre_v2_in_eibrs_mode(spectre_v2_enabled))
-=======
 	    spectre_v2_in_ibrs_mode(spectre_v2_enabled))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	/*
@@ -1228,10 +1203,7 @@ static const char * const spectre_v2_strings[] = {
 	[SPECTRE_V2_EIBRS]			= "Mitigation: Enhanced IBRS",
 	[SPECTRE_V2_EIBRS_LFENCE]		= "Mitigation: Enhanced IBRS + LFENCE",
 	[SPECTRE_V2_EIBRS_RETPOLINE]		= "Mitigation: Enhanced IBRS + Retpolines",
-<<<<<<< HEAD
-=======
 	[SPECTRE_V2_IBRS]			= "Mitigation: IBRS",
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct {
@@ -1292,7 +1264,6 @@ static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 	    !IS_ENABLED(CONFIG_RETPOLINE)) {
 		pr_err("%s selected but not compiled in. Switching to AUTO select\n",
 		       mitigation_options[i].option);
-<<<<<<< HEAD
 		return SPECTRE_V2_CMD_AUTO;
 	}
 
@@ -1305,27 +1276,11 @@ static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 		return SPECTRE_V2_CMD_AUTO;
 	}
 
-=======
-		return SPECTRE_V2_CMD_AUTO;
-	}
-
-	if ((cmd == SPECTRE_V2_CMD_EIBRS ||
-	     cmd == SPECTRE_V2_CMD_EIBRS_LFENCE ||
-	     cmd == SPECTRE_V2_CMD_EIBRS_RETPOLINE) &&
-	    !boot_cpu_has(X86_FEATURE_IBRS_ENHANCED)) {
-		pr_err("%s selected but CPU doesn't have eIBRS. Switching to AUTO select\n",
-		       mitigation_options[i].option);
-		return SPECTRE_V2_CMD_AUTO;
-	}
-
->>>>>>> origin/linux_6.1.15_upstream
 	if ((cmd == SPECTRE_V2_CMD_RETPOLINE_LFENCE ||
 	     cmd == SPECTRE_V2_CMD_EIBRS_LFENCE) &&
 	    !boot_cpu_has(X86_FEATURE_LFENCE_RDTSC)) {
 		pr_err("%s selected, but CPU doesn't have a serializing LFENCE. Switching to AUTO select\n",
 		       mitigation_options[i].option);
-<<<<<<< HEAD
-=======
 		return SPECTRE_V2_CMD_AUTO;
 	}
 
@@ -1350,7 +1305,6 @@ static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 	if (cmd == SPECTRE_V2_CMD_IBRS && boot_cpu_has(X86_FEATURE_XENPV)) {
 		pr_err("%s selected but running as XenPV guest. Switching to AUTO select\n",
 		       mitigation_options[i].option);
->>>>>>> origin/linux_6.1.15_upstream
 		return SPECTRE_V2_CMD_AUTO;
 	}
 
@@ -1369,8 +1323,6 @@ static enum spectre_v2_mitigation __init spectre_v2_select_retpoline(void)
 	return SPECTRE_V2_RETPOLINE;
 }
 
-<<<<<<< HEAD
-=======
 /* Disable in-kernel use of non-RSB RET predictors */
 static void __init spec_ctrl_disable_kernel_rrsba(void)
 {
@@ -1434,7 +1386,6 @@ static void __init spectre_v2_determine_rsb_fill_type_at_vmexit(enum spectre_v2_
 	dump_stack();
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void __init spectre_v2_select_mitigation(void)
 {
 	enum spectre_v2_mitigation_cmd cmd = spectre_v2_parse_cmdline();
@@ -1459,8 +1410,6 @@ static void __init spectre_v2_select_mitigation(void)
 			break;
 		}
 
-<<<<<<< HEAD
-=======
 		if (IS_ENABLED(CONFIG_CPU_IBRS_ENTRY) &&
 		    boot_cpu_has_bug(X86_BUG_RETBLEED) &&
 		    retbleed_cmd != RETBLEED_CMD_OFF &&
@@ -1470,7 +1419,6 @@ static void __init spectre_v2_select_mitigation(void)
 			break;
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		mode = spectre_v2_select_retpoline();
 		break;
 
@@ -1487,13 +1435,10 @@ static void __init spectre_v2_select_mitigation(void)
 		mode = spectre_v2_select_retpoline();
 		break;
 
-<<<<<<< HEAD
-=======
 	case SPECTRE_V2_CMD_IBRS:
 		mode = SPECTRE_V2_IBRS;
 		break;
 
->>>>>>> origin/linux_6.1.15_upstream
 	case SPECTRE_V2_CMD_EIBRS:
 		mode = SPECTRE_V2_EIBRS;
 		break;
@@ -1510,16 +1455,9 @@ static void __init spectre_v2_select_mitigation(void)
 	if (mode == SPECTRE_V2_EIBRS && unprivileged_ebpf_enabled())
 		pr_err(SPECTRE_V2_EIBRS_EBPF_MSG);
 
-<<<<<<< HEAD
-	if (spectre_v2_in_eibrs_mode(mode)) {
-		/* Force it so VMEXIT will restore correctly */
-		x86_spec_ctrl_base |= SPEC_CTRL_IBRS;
-		wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
-=======
 	if (spectre_v2_in_ibrs_mode(mode)) {
 		x86_spec_ctrl_base |= SPEC_CTRL_IBRS;
 		update_spec_ctrl(x86_spec_ctrl_base);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	switch (mode) {
@@ -1527,15 +1465,12 @@ static void __init spectre_v2_select_mitigation(void)
 	case SPECTRE_V2_EIBRS:
 		break;
 
-<<<<<<< HEAD
-=======
 	case SPECTRE_V2_IBRS:
 		setup_force_cpu_cap(X86_FEATURE_KERNEL_IBRS);
 		if (boot_cpu_has(X86_FEATURE_IBRS_ENHANCED))
 			pr_warn(SPECTRE_V2_IBRS_PERF_MSG);
 		break;
 
->>>>>>> origin/linux_6.1.15_upstream
 	case SPECTRE_V2_LFENCE:
 	case SPECTRE_V2_EIBRS_LFENCE:
 		setup_force_cpu_cap(X86_FEATURE_RETPOLINE_LFENCE);
@@ -1547,8 +1482,6 @@ static void __init spectre_v2_select_mitigation(void)
 		break;
 	}
 
-<<<<<<< HEAD
-=======
 	/*
 	 * Disable alternate RSB predictions in kernel when indirect CALLs and
 	 * JMPs gets protection against BHI and Intramode-BTI, but RET
@@ -1559,7 +1492,6 @@ static void __init spectre_v2_select_mitigation(void)
 	    mode == SPECTRE_V2_RETPOLINE)
 		spec_ctrl_disable_kernel_rrsba();
 
->>>>>>> origin/linux_6.1.15_upstream
 	spectre_v2_enabled = mode;
 	pr_info("%s\n", spectre_v2_strings[mode]);
 
@@ -1617,9 +1549,6 @@ static void __init spectre_v2_select_mitigation(void)
 	 * the CPU supports Enhanced IBRS, kernel might un-intentionally not
 	 * enable IBRS around firmware calls.
 	 */
-<<<<<<< HEAD
-	if (boot_cpu_has(X86_FEATURE_IBRS) && !spectre_v2_in_eibrs_mode(mode)) {
-=======
 	if (boot_cpu_has_bug(X86_BUG_RETBLEED) &&
 	    boot_cpu_has(X86_FEATURE_IBPB) &&
 	    (boot_cpu_data.x86_vendor == X86_VENDOR_AMD ||
@@ -1631,7 +1560,6 @@ static void __init spectre_v2_select_mitigation(void)
 		}
 
 	} else if (boot_cpu_has(X86_FEATURE_IBRS) && !spectre_v2_in_ibrs_mode(mode)) {
->>>>>>> origin/linux_6.1.15_upstream
 		setup_force_cpu_cap(X86_FEATURE_USE_IBRS_FW);
 		pr_info("Enabling Restricted Speculation for firmware calls\n");
 	}
@@ -2352,12 +2280,9 @@ static ssize_t tsx_async_abort_show_state(char *buf)
 
 static ssize_t mmio_stale_data_show_state(char *buf)
 {
-<<<<<<< HEAD
-=======
 	if (boot_cpu_has_bug(X86_BUG_MMIO_UNKNOWN))
 		return sysfs_emit(buf, "Unknown: No mitigations\n");
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (mmio_mitigation == MMIO_MITIGATION_OFF)
 		return sysfs_emit(buf, "%s\n", mmio_strings[mmio_mitigation]);
 
@@ -2372,11 +2297,7 @@ static ssize_t mmio_stale_data_show_state(char *buf)
 
 static char *stibp_state(void)
 {
-<<<<<<< HEAD
-	if (spectre_v2_in_eibrs_mode(spectre_v2_enabled))
-=======
 	if (spectre_v2_in_ibrs_mode(spectre_v2_enabled))
->>>>>>> origin/linux_6.1.15_upstream
 		return "";
 
 	switch (spectre_v2_user_stibp) {
@@ -2406,8 +2327,6 @@ static char *ibpb_state(void)
 	return "";
 }
 
-<<<<<<< HEAD
-=======
 static char *pbrsb_eibrs_state(void)
 {
 	if (boot_cpu_has_bug(X86_BUG_EIBRS_PBRSB)) {
@@ -2421,7 +2340,6 @@ static char *pbrsb_eibrs_state(void)
 	}
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static ssize_t spectre_v2_show_state(char *buf)
 {
 	if (spectre_v2_enabled == SPECTRE_V2_LFENCE)
@@ -2434,20 +2352,13 @@ static ssize_t spectre_v2_show_state(char *buf)
 	    spectre_v2_enabled == SPECTRE_V2_EIBRS_LFENCE)
 		return sprintf(buf, "Vulnerable: eIBRS+LFENCE with unprivileged eBPF and SMT\n");
 
-<<<<<<< HEAD
-	return sprintf(buf, "%s%s%s%s%s%s\n",
-=======
 	return sprintf(buf, "%s%s%s%s%s%s%s\n",
->>>>>>> origin/linux_6.1.15_upstream
 		       spectre_v2_strings[spectre_v2_enabled],
 		       ibpb_state(),
 		       boot_cpu_has(X86_FEATURE_USE_IBRS_FW) ? ", IBRS_FW" : "",
 		       stibp_state(),
 		       boot_cpu_has(X86_FEATURE_RSB_CTXSW) ? ", RSB filling" : "",
-<<<<<<< HEAD
-=======
 		       pbrsb_eibrs_state(),
->>>>>>> origin/linux_6.1.15_upstream
 		       spectre_v2_module_string());
 }
 
@@ -2518,17 +2429,12 @@ static ssize_t cpu_show_common(struct device *dev, struct device_attribute *attr
 		return srbds_show_state(buf);
 
 	case X86_BUG_MMIO_STALE_DATA:
-<<<<<<< HEAD
-		return mmio_stale_data_show_state(buf);
-
-=======
 	case X86_BUG_MMIO_UNKNOWN:
 		return mmio_stale_data_show_state(buf);
 
 	case X86_BUG_RETBLEED:
 		return retbleed_show_state(buf);
 
->>>>>>> origin/linux_6.1.15_upstream
 	default:
 		break;
 	}
@@ -2583,9 +2489,6 @@ ssize_t cpu_show_srbds(struct device *dev, struct device_attribute *attr, char *
 
 ssize_t cpu_show_mmio_stale_data(struct device *dev, struct device_attribute *attr, char *buf)
 {
-<<<<<<< HEAD
-	return cpu_show_common(dev, attr, buf, X86_BUG_MMIO_STALE_DATA);
-=======
 	if (boot_cpu_has_bug(X86_BUG_MMIO_UNKNOWN))
 		return cpu_show_common(dev, attr, buf, X86_BUG_MMIO_UNKNOWN);
 	else
@@ -2595,6 +2498,5 @@ ssize_t cpu_show_mmio_stale_data(struct device *dev, struct device_attribute *at
 ssize_t cpu_show_retbleed(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return cpu_show_common(dev, attr, buf, X86_BUG_RETBLEED);
->>>>>>> origin/linux_6.1.15_upstream
 }
 #endif

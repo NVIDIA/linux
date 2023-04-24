@@ -292,8 +292,6 @@ static inline bool tcp_out_of_memory(struct sock *sk)
 	return false;
 }
 
-<<<<<<< HEAD
-=======
 static inline void tcp_wmem_free_skb(struct sock *sk, struct sk_buff *skb)
 {
 	sk_wmem_queued_add(sk, -skb->truesize);
@@ -304,7 +302,6 @@ static inline void tcp_wmem_free_skb(struct sock *sk, struct sk_buff *skb)
 	__kfree_skb(skb);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 void sk_forced_mem_schedule(struct sock *sk, int size);
 
 bool tcp_check_oom(struct sock *sk, int shift);

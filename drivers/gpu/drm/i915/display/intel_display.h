@@ -663,17 +663,10 @@ intel_get_crtc_new_encoder(const struct intel_atomic_state *state,
 			   const struct intel_crtc_state *crtc_state);
 void intel_plane_disable_noatomic(struct intel_crtc *crtc,
 				  struct intel_plane *plane);
-<<<<<<< HEAD
-
-unsigned int intel_surf_alignment(const struct drm_framebuffer *fb,
-				  int color_plane);
-unsigned int intel_tile_width_bytes(const struct drm_framebuffer *fb, int color_plane);
-=======
 void intel_set_plane_visible(struct intel_crtc_state *crtc_state,
 			     struct intel_plane_state *plane_state,
 			     bool visible);
 void intel_plane_fixup_bitmasks(struct intel_crtc_state *crtc_state);
->>>>>>> origin/linux_6.1.15_upstream
 
 void intel_display_driver_register(struct drm_i915_private *i915);
 void intel_display_driver_unregister(struct drm_i915_private *i915);

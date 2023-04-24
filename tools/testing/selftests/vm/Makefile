@@ -1,13 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Makefile for vm selftests
 
-<<<<<<< HEAD
-LOCAL_HDRS += $(selfdir)/vm/local_config.h $(top_srcdir)/mm/gup_test.h
-
-include local_config.mk
-=======
 LOCAL_HDRS += $(top_srcdir)/mm/gup_test.h
->>>>>>> origin/linux_6.1.15_upstream
 
 uname_M := $(shell uname -m 2>/dev/null || echo not)
 MACHINE ?= $(shell echo $(uname_M) | sed -e 's/aarch64.*/arm64/' -e 's/ppc64.*/ppc64/')
@@ -158,12 +152,6 @@ endif
 
 $(OUTPUT)/mlock-random-test $(OUTPUT)/memfd_secret: LDLIBS += -lcap
 
-<<<<<<< HEAD
-# HMM_EXTRA_LIBS may get set in local_config.mk, or it may be left empty.
-$(OUTPUT)/hmm-tests: LDLIBS += $(HMM_EXTRA_LIBS)
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 $(OUTPUT)/ksm_tests: LDLIBS += -lnuma
 
 $(OUTPUT)/migration: LDLIBS += -lnuma

@@ -147,14 +147,6 @@ struct fscache_cookie {
 	};
 };
 
-<<<<<<< HEAD
-static inline bool fscache_cookie_enabled(struct fscache_cookie *cookie)
-{
-	return fscache_cookie_valid(cookie) && test_bit(FSCACHE_COOKIE_ENABLED, &cookie->flags);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * slow-path functions for when there is actually caching available, and the
  * netfs does actually have a valid token

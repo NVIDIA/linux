@@ -23,12 +23,9 @@
 #include <asm/kasan.h>
 #include <asm/svm.h>
 #include <asm/mmzone.h>
-<<<<<<< HEAD
-=======
 #include <asm/ftrace.h>
 #include <asm/code-patching.h>
 #include <asm/setup.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <mm/mmu_decl.h>
 

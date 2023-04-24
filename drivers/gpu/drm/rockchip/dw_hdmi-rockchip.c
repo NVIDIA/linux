@@ -565,12 +565,8 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 
 	ret = rockchip_hdmi_parse_dt(hdmi);
 	if (ret) {
-<<<<<<< HEAD
-		DRM_DEV_ERROR(hdmi->dev, "Unable to parse OF data\n");
-=======
 		if (ret != -EPROBE_DEFER)
 			DRM_DEV_ERROR(hdmi->dev, "Unable to parse OF data\n");
->>>>>>> origin/linux_6.1.15_upstream
 		return ret;
 	}
 
@@ -582,13 +578,6 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-<<<<<<< HEAD
-	ret = clk_prepare_enable(hdmi->vpll_clk);
-	if (ret) {
-		DRM_DEV_ERROR(hdmi->dev, "Failed to enable HDMI vpll: %d\n",
-			      ret);
-		return ret;
-=======
 	ret = regulator_enable(hdmi->avdd_0v9);
 	if (ret) {
 		DRM_DEV_ERROR(hdmi->dev, "failed to enable avdd0v9: %d\n", ret);
@@ -614,7 +603,6 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 					   RK3568_HDMI_SCLIN_MSK,
 					   RK3568_HDMI_SDAIN_MSK |
 					   RK3568_HDMI_SCLIN_MSK));
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);

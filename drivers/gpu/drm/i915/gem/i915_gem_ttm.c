@@ -935,9 +935,6 @@ void i915_ttm_adjust_lru(struct drm_i915_gem_object *obj)
 	} else if (!i915_gem_object_has_pages(obj)) {
 		bo->priority = I915_TTM_PRIO_NO_PAGES;
 	} else {
-<<<<<<< HEAD
-		bo->priority = I915_TTM_PRIO_HAS_PAGES;
-=======
 		struct ttm_resource_manager *man =
 			ttm_manager_type(bo->bdev, bo->resource->mem_type);
 
@@ -955,7 +952,6 @@ void i915_ttm_adjust_lru(struct drm_i915_gem_object *obj)
 			bo->priority = I915_TTM_PRIO_NEEDS_CPU_ACCESS;
 		else
 			bo->priority = I915_TTM_PRIO_HAS_PAGES;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	ttm_bo_move_to_lru_tail(bo);

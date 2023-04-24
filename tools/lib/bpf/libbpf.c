@@ -5616,24 +5616,7 @@ static int bpf_core_resolve_relo(struct bpf_program *prog,
 	const struct btf_type *local_type;
 	const char *local_name;
 	__u32 local_id = relo->type_id;
-<<<<<<< HEAD
-	struct bpf_insn *insn;
-	int insn_idx, err;
-
-	if (relo->insn_off % BPF_INSN_SZ)
-		return -EINVAL;
-	insn_idx = relo->insn_off / BPF_INSN_SZ;
-	/* adjust insn_idx from section frame of reference to the local
-	 * program's frame of reference; (sub-)program code is not yet
-	 * relocated, so it's enough to just subtract in-section offset
-	 */
-	insn_idx = insn_idx - prog->sec_insn_off;
-	if (insn_idx >= prog->insns_cnt)
-		return -EINVAL;
-	insn = &prog->insns[insn_idx];
-=======
 	int err;
->>>>>>> origin/linux_6.1.15_upstream
 
 	local_type = btf__type_by_id(local_btf, local_id);
 	if (!local_type)
@@ -5706,27 +5689,6 @@ bpf_object__relocate_core(struct bpf_object *obj, const char *targ_btf_path)
 			err = -EINVAL;
 			goto out;
 		}
-<<<<<<< HEAD
-		/* bpf_object's ELF is gone by now so it's not easy to find
-		 * section index by section name, but we can find *any*
-		 * bpf_program within desired section name and use it's
-		 * prog->sec_idx to do a proper search by section index and
-		 * instruction offset
-		 */
-		prog = NULL;
-		for (i = 0; i < obj->nr_programs; i++) {
-			if (strcmp(obj->programs[i].sec_name, sec_name) == 0) {
-				prog = &obj->programs[i];
-				break;
-			}
-		}
-		if (!prog) {
-			pr_warn("sec '%s': failed to find a BPF program\n", sec_name);
-			return -ENOENT;
-		}
-		sec_idx = prog->sec_idx;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		pr_debug("sec '%s': found %d CO-RE relocations\n", sec_name, sec->num_info);
 

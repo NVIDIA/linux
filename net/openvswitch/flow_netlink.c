@@ -2403,21 +2403,12 @@ static void ovs_nla_free_nested_actions(const struct nlattr *actions, int len)
 		switch (nla_type(a)) {
 		case OVS_ACTION_ATTR_CHECK_PKT_LEN:
 			ovs_nla_free_check_pkt_len_action(a);
-<<<<<<< HEAD
 			break;
 
 		case OVS_ACTION_ATTR_CLONE:
 			ovs_nla_free_clone_action(a);
 			break;
 
-=======
-			break;
-
-		case OVS_ACTION_ATTR_CLONE:
-			ovs_nla_free_clone_action(a);
-			break;
-
->>>>>>> origin/linux_6.1.15_upstream
 		case OVS_ACTION_ATTR_CT:
 			ovs_ct_free_action(a);
 			break;

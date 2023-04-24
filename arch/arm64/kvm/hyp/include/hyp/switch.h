@@ -441,9 +441,6 @@ static inline bool fixup_guest_exit(struct kvm_vcpu *vcpu, u64 *exit_code)
 	 * Save PSTATE early so that we can evaluate the vcpu mode
 	 * early on.
 	 */
-<<<<<<< HEAD
-	vcpu->arch.ctxt.regs.pstate = read_sysreg_el2(SYS_SPSR);
-=======
 	synchronize_vcpu_pstate(vcpu, exit_code);
 
 	/*
@@ -451,7 +448,6 @@ static inline bool fixup_guest_exit(struct kvm_vcpu *vcpu, u64 *exit_code)
 	 * another.
 	 */
 	early_exit_filter(vcpu, exit_code);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (ARM_EXCEPTION_CODE(*exit_code) != ARM_EXCEPTION_IRQ)
 		vcpu->arch.fault.esr_el2 = read_sysreg_el2(SYS_ESR);

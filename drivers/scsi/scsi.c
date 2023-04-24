@@ -200,19 +200,11 @@ void scsi_finish_command(struct scsi_cmnd *cmd)
 
 
 /*
-<<<<<<< HEAD
- * 1024 is big enough for saturating fast SCSI LUNs.
- */
-int scsi_device_max_queue_depth(struct scsi_device *sdev)
-{
-	return min_t(int, sdev->host->can_queue, 1024);
-=======
  * 4096 is big enough for saturating fast SCSI LUNs.
  */
 int scsi_device_max_queue_depth(struct scsi_device *sdev)
 {
 	return min_t(int, sdev->host->can_queue, 4096);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**

@@ -356,7 +356,6 @@ void iwl_mvm_phy_ctxt_unref(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt)
 
 			if (!sband)
 				continue;
-<<<<<<< HEAD
 
 			for (channel = 0; channel < sband->n_channels; channel++)
 				if (!(sband->channels[channel].flags &
@@ -365,16 +364,6 @@ void iwl_mvm_phy_ctxt_unref(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt)
 					break;
 				}
 
-=======
-
-			for (channel = 0; channel < sband->n_channels; channel++)
-				if (!(sband->channels[channel].flags &
-						IEEE80211_CHAN_DISABLED)) {
-					chan = &sband->channels[channel];
-					break;
-				}
-
->>>>>>> origin/linux_6.1.15_upstream
 			if (chan)
 				break;
 		}

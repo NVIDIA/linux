@@ -2126,23 +2126,9 @@ static int init_tracefs(void)
 	tmp = trace_create_file("cpus", TRACE_MODE_WRITE, top_dir, NULL, &cpus_fops);
 	if (!tmp)
 		goto err;
-<<<<<<< HEAD
-#ifdef CONFIG_TIMERLAT_TRACER
-#ifdef CONFIG_STACKTRACE
-	tmp = tracefs_create_file("print_stack", TRACE_MODE_WRITE, top_dir,
-				  &osnoise_print_stack, &trace_min_max_fops);
-	if (!tmp)
-		goto err;
-#endif
-
-	tmp = tracefs_create_file("timerlat_period_us", TRACE_MODE_WRITE, top_dir,
-				  &timerlat_period, &trace_min_max_fops);
-	if (!tmp)
-=======
 
 	ret = init_timerlat_tracefs(top_dir);
 	if (ret)
->>>>>>> origin/linux_6.1.15_upstream
 		goto err;
 
 	return 0;
@@ -2191,14 +2177,10 @@ static void osnoise_unhook_events(void)
 	unhook_irq_events();
 }
 
-<<<<<<< HEAD
-static int __osnoise_tracer_start(struct trace_array *tr)
-=======
 /*
  * osnoise_workload_start - start the workload and hook to events
  */
 static int osnoise_workload_start(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int retval;
 
@@ -2299,22 +2281,8 @@ static void osnoise_tracer_start(struct trace_array *tr)
 
 static void osnoise_tracer_stop(struct trace_array *tr)
 {
-<<<<<<< HEAD
-	if (!osnoise_busy)
-		return;
-
-	trace_osnoise_callback_enabled = false;
-	barrier();
-
-	stop_per_cpu_kthreads();
-
-	osnoise_unhook_events();
-
-	osnoise_busy = false;
-=======
 	osnoise_unregister_instance(tr);
 	osnoise_workload_stop();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int osnoise_tracer_init(struct trace_array *tr)

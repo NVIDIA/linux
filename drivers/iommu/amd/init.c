@@ -20,11 +20,7 @@
 #include <linux/amd-iommu.h>
 #include <linux/export.h>
 #include <linux/kmemleak.h>
-<<<<<<< HEAD
-#include <linux/mem_encrypt.h>
-=======
 #include <linux/cc_platform.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/iopoll.h>
 #include <asm/pci-direct.h>
 #include <asm/iommu.h>
@@ -88,13 +84,10 @@
 #define ACPI_DEVFLAG_ATSDIS             0x10000000
 
 #define LOOP_TIMEOUT	2000000
-<<<<<<< HEAD
-=======
 
 #define IVRS_GET_SBDF_ID(seg, bus, dev, fd)	(((seg & 0xffff) << 16) | ((bus & 0xff) << 8) \
 						 | ((dev & 0x1f) << 3) | (fn & 0x7))
 
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * ACPI table definitions
  *
@@ -913,12 +906,6 @@ static int iommu_ga_log_enable(struct amd_iommu *iommu)
 	if (!iommu->ga_log)
 		return -EINVAL;
 
-<<<<<<< HEAD
-	/* Check if already running */
-	status = readl(iommu->mmio_base + MMIO_STATUS_OFFSET);
-	if (WARN_ON(status & (MMIO_STATUS_GALOG_RUN_MASK)))
-		return 0;
-=======
 	entry = iommu_virt_to_phys(iommu->ga_log) | GA_LOG_SIZE_512;
 	memcpy_toio(iommu->mmio_base + MMIO_GA_LOG_BASE_OFFSET,
 		    &entry, sizeof(entry));
@@ -929,7 +916,6 @@ static int iommu_ga_log_enable(struct amd_iommu *iommu)
 	writel(0x00, iommu->mmio_base + MMIO_GA_HEAD_OFFSET);
 	writel(0x00, iommu->mmio_base + MMIO_GA_TAIL_OFFSET);
 
->>>>>>> origin/linux_6.1.15_upstream
 
 	entry = iommu_virt_to_phys(iommu->ga_log) | GA_LOG_SIZE_512;
 	memcpy_toio(iommu->mmio_base + MMIO_GA_LOG_BASE_OFFSET,
@@ -960,10 +946,6 @@ static int iommu_ga_log_enable(struct amd_iommu *iommu)
 
 static int iommu_init_ga_log(struct amd_iommu *iommu)
 {
-<<<<<<< HEAD
-#ifdef CONFIG_IRQ_REMAP
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (!AMD_IOMMU_GUEST_IR_VAPIC(amd_iommu_guest_ir))
 		return 0;
 

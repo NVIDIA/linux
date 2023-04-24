@@ -1510,14 +1510,6 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 	if (ret < 0)
 		goto error;
 
-<<<<<<< HEAD
-		bdev = fs_info->fs_devices->latest_dev->bdev;
-		bio_set_dev(bio, bdev);
-		wbc_init_bio(wbc, bio);
-	}
-	if (btrfs_is_zoned(fs_info) && bio_op(bio) == REQ_OP_ZONE_APPEND) {
-		struct btrfs_device *device;
-=======
 	if (wbc) {
 		/*
 		 * For Zone append we need the correct block_device that we are
@@ -1533,7 +1525,6 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 				ret = PTR_ERR(dev);
 				goto error;
 			}
->>>>>>> origin/linux_6.1.15_upstream
 
 			bio_set_dev(bio, dev->bdev);
 		} else {
@@ -1902,11 +1893,7 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 			 * We have to unlock the remaining range, or the page
 			 * will never be unlocked.
 			 */
-<<<<<<< HEAD
-			unlock_extent(tree, cur, end);
-=======
 			unlock_extent(tree, cur, end, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 			end_page_read(page, false, cur, end + 1 - cur);
 			goto out;
 		}
@@ -2100,13 +2087,8 @@ static noinline_for_stack int __extent_writepage_io(struct btrfs_inode *inode,
 	int saved_ret = 0;
 	int ret = 0;
 	int nr = 0;
-<<<<<<< HEAD
-	u32 opf = REQ_OP_WRITE;
-	const unsigned int write_flags = wbc_to_write_flags(wbc);
-=======
 	enum req_op op = REQ_OP_WRITE;
 	const blk_opf_t write_flags = wbc_to_write_flags(wbc);
->>>>>>> origin/linux_6.1.15_upstream
 	bool has_error = false;
 	bool compressed;
 
@@ -2478,8 +2460,6 @@ static void set_btree_ioerr(struct page *page, struct extent_buffer *eb)
 	clear_bit(EXTENT_BUFFER_UPTODATE, &eb->bflags);
 
 	/*
-<<<<<<< HEAD
-=======
 	 * We need to set the mapping with the io error as well because a write
 	 * error will flip the file system readonly, and then syncfs() will
 	 * return a 0 because we are readonly if we don't modify the err seq for
@@ -2488,7 +2468,6 @@ static void set_btree_ioerr(struct page *page, struct extent_buffer *eb)
 	mapping_set_error(page->mapping, -EIO);
 
 	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * If we error out, we should add back the dirty_metadata_bytes
 	 * to make it consistent.
 	 */
@@ -3323,11 +3302,6 @@ int extent_writepages(struct address_space *mapping,
 		      struct writeback_control *wbc)
 {
 	struct inode *inode = mapping->host;
-<<<<<<< HEAD
-	const bool data_reloc = btrfs_is_data_reloc_root(BTRFS_I(inode)->root);
-	const bool zoned = btrfs_is_zoned(BTRFS_I(inode)->root->fs_info);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	int ret = 0;
 	struct extent_page_data epd = {
 		.bio_ctrl = { 0 },
@@ -3339,24 +3313,10 @@ int extent_writepages(struct address_space *mapping,
 	 * Allow only a single thread to do the reloc work in zoned mode to
 	 * protect the write pointer updates.
 	 */
-<<<<<<< HEAD
-	if (data_reloc && zoned)
-		btrfs_inode_lock(inode, 0);
-	ret = extent_write_cache_pages(mapping, wbc, &epd);
-	if (data_reloc && zoned)
-		btrfs_inode_unlock(inode, 0);
-	ASSERT(ret <= 0);
-	if (ret < 0) {
-		end_write_bio(&epd, ret);
-		return ret;
-	}
-	ret = flush_write_bio(&epd);
-=======
 	btrfs_zoned_data_reloc_lock(BTRFS_I(inode));
 	ret = extent_write_cache_pages(mapping, wbc, &epd);
 	submit_write_bio(&epd, ret);
 	btrfs_zoned_data_reloc_unlock(BTRFS_I(inode));
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -5082,11 +5042,7 @@ int read_extent_buffer_pages(struct extent_buffer *eb, int wait, int mirror_num)
 	if (unlikely(test_bit(EXTENT_BUFFER_WRITE_ERR, &eb->bflags)))
 		return -EIO;
 
-<<<<<<< HEAD
-	if (eb->fs_info->sectorsize < PAGE_SIZE)
-=======
 	if (eb->fs_info->nodesize < PAGE_SIZE)
->>>>>>> origin/linux_6.1.15_upstream
 		return read_extent_buffer_subpage(eb, wait, mirror_num);
 
 	num_pages = num_extent_pages(eb);
@@ -5336,11 +5292,7 @@ static void assert_eb_page_uptodate(const struct extent_buffer *eb,
 	 * would have !PageUptodate && !PageError, as we clear PageError before
 	 * reading.
 	 */
-<<<<<<< HEAD
-	if (fs_info->sectorsize < PAGE_SIZE) {
-=======
 	if (fs_info->nodesize < PAGE_SIZE) {
->>>>>>> origin/linux_6.1.15_upstream
 		bool uptodate, error;
 
 		uptodate = btrfs_subpage_test_uptodate(fs_info, page,

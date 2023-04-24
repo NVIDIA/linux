@@ -379,16 +379,6 @@ static void xenbus_switch_fatal(struct xenbus_device *dev, int depth, int err,
 int xenbus_setup_ring(struct xenbus_device *dev, gfp_t gfp, void **vaddr,
 		      unsigned int nr_pages, grant_ref_t *grefs)
 {
-<<<<<<< HEAD
-	int err;
-	unsigned int i;
-	grant_ref_t gref_head;
-
-	err = gnttab_alloc_grant_references(nr_pages, &gref_head);
-	if (err) {
-		xenbus_dev_fatal(dev, err, "granting access to ring page");
-		return err;
-=======
 	unsigned long ring_size = nr_pages * XEN_PAGE_SIZE;
 	grant_ref_t gref_head;
 	unsigned int i;
@@ -406,7 +396,6 @@ int xenbus_setup_ring(struct xenbus_device *dev, gfp_t gfp, void **vaddr,
 		xenbus_dev_fatal(dev, ret, "granting access to %u ring pages",
 				 nr_pages);
 		goto err;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	for (i = 0; i < nr_pages; i++) {
@@ -425,8 +414,6 @@ int xenbus_setup_ring(struct xenbus_device *dev, gfp_t gfp, void **vaddr,
 	}
 
 	return 0;
-<<<<<<< HEAD
-=======
 
  err:
 	if (*vaddr)
@@ -436,7 +423,6 @@ int xenbus_setup_ring(struct xenbus_device *dev, gfp_t gfp, void **vaddr,
 	*vaddr = NULL;
 
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(xenbus_setup_ring);
 

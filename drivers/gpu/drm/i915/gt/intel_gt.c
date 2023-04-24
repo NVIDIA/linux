@@ -969,11 +969,7 @@ get_reg_and_bit(const struct intel_engine_cs *engine, const bool gen8,
 	return rb;
 }
 
-<<<<<<< HEAD
-void intel_gt_invalidate_tlbs(struct intel_gt *gt)
-=======
 static void mmio_invalidate_full(struct intel_gt *gt)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	static const i915_reg_t gen8_regs[] = {
 		[RENDER_CLASS]			= GEN8_RTCR,
@@ -986,28 +982,16 @@ static void mmio_invalidate_full(struct intel_gt *gt)
 		[VIDEO_DECODE_CLASS]		= GEN12_VD_TLB_INV_CR,
 		[VIDEO_ENHANCEMENT_CLASS]	= GEN12_VE_TLB_INV_CR,
 		[COPY_ENGINE_CLASS]		= GEN12_BLT_TLB_INV_CR,
-<<<<<<< HEAD
-=======
 		[COMPUTE_CLASS]			= GEN12_COMPCTX_TLB_INV_CR,
->>>>>>> origin/linux_6.1.15_upstream
 	};
 	struct drm_i915_private *i915 = gt->i915;
 	struct intel_uncore *uncore = gt->uncore;
 	struct intel_engine_cs *engine;
-<<<<<<< HEAD
-=======
 	intel_engine_mask_t awake, tmp;
->>>>>>> origin/linux_6.1.15_upstream
 	enum intel_engine_id id;
 	const i915_reg_t *regs;
 	unsigned int num = 0;
 
-<<<<<<< HEAD
-	if (I915_SELFTEST_ONLY(gt->awake == -ENODEV))
-		return;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (GRAPHICS_VER(i915) == 12) {
 		regs = gen12_regs;
 		num = ARRAY_SIZE(gen12_regs);
@@ -1022,16 +1006,6 @@ static void mmio_invalidate_full(struct intel_gt *gt)
 			  "Platform does not implement TLB invalidation!"))
 		return;
 
-<<<<<<< HEAD
-	GEM_TRACE("\n");
-
-	assert_rpm_wakelock_held(&i915->runtime_pm);
-
-	mutex_lock(&gt->tlb_invalidate_lock);
-	intel_uncore_forcewake_get(uncore, FORCEWAKE_ALL);
-
-	for_each_engine(engine, gt, id) {
-=======
 	intel_uncore_forcewake_get(uncore, FORCEWAKE_ALL);
 
 	spin_lock_irq(&uncore->lock); /* serialise invalidate with GT reset */
@@ -1072,7 +1046,6 @@ static void mmio_invalidate_full(struct intel_gt *gt)
 	for_each_engine_masked(engine, gt, awake, tmp) {
 		struct reg_and_bit rb;
 
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * HW architecture suggest typical invalidation time at 40us,
 		 * with pessimistic cases up to 100us and a recommendation to
@@ -1080,18 +1053,8 @@ static void mmio_invalidate_full(struct intel_gt *gt)
 		 */
 		const unsigned int timeout_us = 100;
 		const unsigned int timeout_ms = 4;
-<<<<<<< HEAD
-		struct reg_and_bit rb;
 
 		rb = get_reg_and_bit(engine, regs == gen8_regs, regs, num);
-		if (!i915_mmio_reg_offset(rb.reg))
-			continue;
-
-		intel_uncore_write_fw(uncore, rb.reg, rb.bit);
-=======
-
-		rb = get_reg_and_bit(engine, regs == gen8_regs, regs, num);
->>>>>>> origin/linux_6.1.15_upstream
 		if (__intel_wait_for_register_fw(uncore,
 						 rb.reg, rb.bit, 0,
 						 timeout_us, timeout_ms,
@@ -1101,10 +1064,6 @@ static void mmio_invalidate_full(struct intel_gt *gt)
 					    engine->name, timeout_ms);
 	}
 
-<<<<<<< HEAD
-	intel_uncore_forcewake_put_delayed(uncore, FORCEWAKE_ALL);
-	mutex_unlock(&gt->tlb_invalidate_lock);
-=======
 	/*
 	 * Use delayed put since a) we mostly expect a flurry of TLB
 	 * invalidations so it is good to avoid paying the forcewake cost and
@@ -1146,5 +1105,4 @@ void intel_gt_invalidate_tlb(struct intel_gt *gt, u32 seqno)
 unlock:
 		mutex_unlock(&gt->tlb.invalidate_lock);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }

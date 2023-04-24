@@ -503,13 +503,8 @@ static void ip_rt_fix_tos(struct flowi4 *fl4)
 	__u8 tos = RT_FL_TOS(fl4);
 
 	fl4->flowi4_tos = tos & IPTOS_RT_MASK;
-<<<<<<< HEAD
-	fl4->flowi4_scope = tos & RTO_ONLINK ?
-			    RT_SCOPE_LINK : RT_SCOPE_UNIVERSE;
-=======
 	if (tos & RTO_ONLINK)
 		fl4->flowi4_scope = RT_SCOPE_LINK;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void __build_flow_key(const struct net *net, struct flowi4 *fl4,
@@ -839,7 +834,6 @@ static void ip_do_redirect(struct dst_entry *dst, struct sock *sk, struct sk_buf
 	rt = (struct rtable *) dst;
 
 	__build_flow_key(net, &fl4, sk, iph, oif, tos, prot, mark, 0);
-	ip_rt_fix_tos(&fl4);
 	__ip_do_redirect(rt, skb, &fl4, true);
 }
 
@@ -1068,7 +1062,6 @@ static void ip_rt_update_pmtu(struct dst_entry *dst, struct sock *sk,
 	struct flowi4 fl4;
 
 	ip_rt_build_flow_key(&fl4, sk, skb);
-	ip_rt_fix_tos(&fl4);
 
 	/* Don't make lookup fail for bridged encapsulations */
 	if (skb && netif_is_any_bridge_port(skb->dev))
@@ -1143,8 +1136,6 @@ void ipv4_sk_update_pmtu(struct sk_buff *skb, struct sock *sk, u32 mtu)
 			goto out;
 
 		new = true;
-	} else {
-		ip_rt_fix_tos(&fl4);
 	}
 
 	__ip_rt_update_pmtu((struct rtable *)xfrm_dst_path(&rt->dst), &fl4, mtu);
@@ -1734,7 +1725,6 @@ static int ip_route_input_mc(struct sk_buff *skb, __be32 daddr, __be32 saddr,
 	struct in_device *in_dev = __in_dev_get_rcu(dev);
 	unsigned int flags = RTCF_MULTICAST;
 	struct rtable *rth;
-	bool no_policy;
 	u32 itag = 0;
 	int err;
 
@@ -1745,20 +1735,11 @@ static int ip_route_input_mc(struct sk_buff *skb, __be32 daddr, __be32 saddr,
 	if (our)
 		flags |= RTCF_LOCAL;
 
-<<<<<<< HEAD
-	no_policy = IN_DEV_ORCONF(in_dev, NOPOLICY);
-	if (no_policy)
-		IPCB(skb)->flags |= IPSKB_NOPOLICY;
-
-	rth = rt_dst_alloc(dev_net(dev)->loopback_dev, flags, RTN_MULTICAST,
-			   no_policy, false);
-=======
 	if (IN_DEV_ORCONF(in_dev, NOPOLICY))
 		IPCB(skb)->flags |= IPSKB_NOPOLICY;
 
 	rth = rt_dst_alloc(dev_net(dev)->loopback_dev, flags, RTN_MULTICAST,
 			   false);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!rth)
 		return -ENOBUFS;
 
@@ -1817,7 +1798,7 @@ static int __mkroute_input(struct sk_buff *skb,
 	struct rtable *rth;
 	int err;
 	struct in_device *out_dev;
-	bool do_cache, no_policy;
+	bool do_cache;
 	u32 itag = 0;
 
 	/* get a working reference to the output device */
@@ -1862,12 +1843,7 @@ static int __mkroute_input(struct sk_buff *skb,
 		}
 	}
 
-<<<<<<< HEAD
-	no_policy = IN_DEV_ORCONF(in_dev, NOPOLICY);
-	if (no_policy)
-=======
 	if (IN_DEV_ORCONF(in_dev, NOPOLICY))
->>>>>>> origin/linux_6.1.15_upstream
 		IPCB(skb)->flags |= IPSKB_NOPOLICY;
 
 	fnhe = find_exception(nhc, daddr);
@@ -1882,11 +1858,7 @@ static int __mkroute_input(struct sk_buff *skb,
 		}
 	}
 
-<<<<<<< HEAD
-	rth = rt_dst_alloc(out_dev->dev, 0, res->type, no_policy,
-=======
 	rth = rt_dst_alloc(out_dev->dev, 0, res->type,
->>>>>>> origin/linux_6.1.15_upstream
 			   IN_DEV_ORCONF(out_dev, NOXFRM));
 	if (!rth) {
 		err = -ENOBUFS;
@@ -2261,7 +2233,6 @@ static int ip_route_input_slow(struct sk_buff *skb, __be32 daddr, __be32 saddr,
 	struct rtable	*rth;
 	struct flowi4	fl4;
 	bool do_cache = true;
-	bool no_policy;
 
 	/* IP on this device is disabled. */
 
@@ -2380,12 +2351,7 @@ brd_input:
 	RT_CACHE_STAT_INC(in_brd);
 
 local_input:
-<<<<<<< HEAD
-	no_policy = IN_DEV_ORCONF(in_dev, NOPOLICY);
-	if (no_policy)
-=======
 	if (IN_DEV_ORCONF(in_dev, NOPOLICY))
->>>>>>> origin/linux_6.1.15_upstream
 		IPCB(skb)->flags |= IPSKB_NOPOLICY;
 
 	do_cache &= res->fi && !itag;
@@ -2401,12 +2367,7 @@ local_input:
 	}
 
 	rth = rt_dst_alloc(ip_rt_get_dev(net, res),
-<<<<<<< HEAD
-			   flags | RTCF_LOCAL, res->type,
-			   no_policy, false);
-=======
 			   flags | RTCF_LOCAL, res->type, false);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!rth)
 		goto e_nobufs;
 

@@ -604,8 +604,6 @@ static inline void list_splice_tail_init(struct list_head *list,
  */
 #define list_for_each(pos, head) \
 	for (pos = (head)->next; !list_is_head(pos, (head)); pos = pos->next)
-<<<<<<< HEAD
-=======
 
 /**
  * list_for_each_rcu - Iterate over a list in an RCU-safe fashion
@@ -616,7 +614,6 @@ static inline void list_splice_tail_init(struct list_head *list,
 	for (pos = rcu_dereference((head)->next); \
 	     !list_is_head(pos, (head)); \
 	     pos = rcu_dereference(pos->next))
->>>>>>> origin/linux_6.1.15_upstream
 
 /**
  * list_for_each_continue - continue iteration over a list

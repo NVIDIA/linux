@@ -2311,11 +2311,8 @@ static int arm_cmn_probe(struct platform_device *pdev)
 	err = perf_pmu_register(&cmn->pmu, name, -1);
 	if (err)
 		cpuhp_state_remove_instance_nocalls(arm_cmn_hp_state, &cmn->cpuhp_node);
-<<<<<<< HEAD
-=======
 	else
 		arm_cmn_debugfs_init(cmn, this_id);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return err;
 }
@@ -2328,10 +2325,7 @@ static int arm_cmn_remove(struct platform_device *pdev)
 
 	perf_pmu_unregister(&cmn->pmu);
 	cpuhp_state_remove_instance_nocalls(arm_cmn_hp_state, &cmn->cpuhp_node);
-<<<<<<< HEAD
-=======
 	debugfs_remove(cmn->debug);
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

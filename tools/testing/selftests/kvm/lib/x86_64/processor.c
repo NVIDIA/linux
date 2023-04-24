@@ -20,12 +20,7 @@
 
 vm_vaddr_t exception_handlers;
 
-<<<<<<< HEAD
-void regs_dump(FILE *stream, struct kvm_regs *regs,
-	       uint8_t indent)
-=======
 static void regs_dump(FILE *stream, struct kvm_regs *regs, uint8_t indent)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	fprintf(stream, "%*srax: 0x%.16llx rbx: 0x%.16llx "
 		"rcx: 0x%.16llx rdx: 0x%.16llx\n",
@@ -149,16 +144,6 @@ static uint64_t *virt_create_upper_pte(struct kvm_vm *vm,
 				       uint64_t pt_pfn,
 				       uint64_t vaddr,
 				       uint64_t paddr,
-<<<<<<< HEAD
-				       int level,
-				       enum x86_page_size page_size)
-{
-	uint64_t *pte = virt_get_pte(vm, pt_pfn, vaddr, level);
-
-	if (!(*pte & PTE_PRESENT_MASK)) {
-		*pte = PTE_PRESENT_MASK | PTE_WRITABLE_MASK;
-		if (level == page_size)
-=======
 				       int current_level,
 				       int target_level)
 {
@@ -167,7 +152,6 @@ static uint64_t *virt_create_upper_pte(struct kvm_vm *vm,
 	if (!(*pte & PTE_PRESENT_MASK)) {
 		*pte = PTE_PRESENT_MASK | PTE_WRITABLE_MASK;
 		if (current_level == target_level)
->>>>>>> origin/linux_6.1.15_upstream
 			*pte |= PTE_LARGE_MASK | (paddr & PHYSICAL_PAGE_MASK);
 		else
 			*pte |= vm_alloc_page_table(vm) & PHYSICAL_PAGE_MASK;
@@ -179,11 +163,7 @@ static uint64_t *virt_create_upper_pte(struct kvm_vm *vm,
 		 */
 		TEST_ASSERT(current_level != target_level,
 			    "Cannot create hugepage at level: %u, vaddr: 0x%lx\n",
-<<<<<<< HEAD
-			    page_size, vaddr);
-=======
 			    current_level, vaddr);
->>>>>>> origin/linux_6.1.15_upstream
 		TEST_ASSERT(!(*pte & PTE_LARGE_MASK),
 			    "Cannot create page table at level: %u, vaddr: 0x%lx\n",
 			    current_level, vaddr);
@@ -193,11 +173,7 @@ static uint64_t *virt_create_upper_pte(struct kvm_vm *vm,
 
 void __virt_pg_map(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr, int level)
 {
-<<<<<<< HEAD
-	const uint64_t pg_size = 1ull << ((page_size * 9) + 12);
-=======
 	const uint64_t pg_size = PG_LEVEL_SIZE(level);
->>>>>>> origin/linux_6.1.15_upstream
 	uint64_t *pml4e, *pdpe, *pde;
 	uint64_t *pte;
 
@@ -222,17 +198,6 @@ void __virt_pg_map(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr, int level)
 	 * early if a hugepage was created.
 	 */
 	pml4e = virt_create_upper_pte(vm, vm->pgd >> vm->page_shift,
-<<<<<<< HEAD
-				      vaddr, paddr, 3, page_size);
-	if (*pml4e & PTE_LARGE_MASK)
-		return;
-
-	pdpe = virt_create_upper_pte(vm, PTE_GET_PFN(*pml4e), vaddr, paddr, 2, page_size);
-	if (*pdpe & PTE_LARGE_MASK)
-		return;
-
-	pde = virt_create_upper_pte(vm, PTE_GET_PFN(*pdpe), vaddr, paddr, 1, page_size);
-=======
 				      vaddr, paddr, PG_LEVEL_512G, level);
 	if (*pml4e & PTE_LARGE_MASK)
 		return;
@@ -242,18 +207,10 @@ void __virt_pg_map(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr, int level)
 		return;
 
 	pde = virt_create_upper_pte(vm, PTE_GET_PFN(*pdpe), vaddr, paddr, PG_LEVEL_2M, level);
->>>>>>> origin/linux_6.1.15_upstream
 	if (*pde & PTE_LARGE_MASK)
 		return;
 
 	/* Fill in page table entry. */
-<<<<<<< HEAD
-	pte = virt_get_pte(vm, PTE_GET_PFN(*pde), vaddr, 0);
-	TEST_ASSERT(!(*pte & PTE_PRESENT_MASK),
-		    "PTE already present for 4k page at vaddr: 0x%lx\n", vaddr);
-	*pte = PTE_PRESENT_MASK | PTE_WRITABLE_MASK | (paddr & PHYSICAL_PAGE_MASK);
-=======
-	pte = virt_get_pte(vm, PTE_GET_PFN(*pde), vaddr, PG_LEVEL_4K);
 	TEST_ASSERT(!(*pte & PTE_PRESENT_MASK),
 		    "PTE already present for 4k page at vaddr: 0x%lx\n", vaddr);
 	*pte = PTE_PRESENT_MASK | PTE_WRITABLE_MASK | (paddr & PHYSICAL_PAGE_MASK);
@@ -262,7 +219,6 @@ void __virt_pg_map(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr, int level)
 void virt_arch_pg_map(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr)
 {
 	__virt_pg_map(vm, vaddr, paddr, PG_LEVEL_4K);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void virt_map_level(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr,
@@ -284,22 +240,13 @@ void virt_map_level(struct kvm_vm *vm, uint64_t vaddr, uint64_t paddr,
 	}
 }
 
-<<<<<<< HEAD
-static uint64_t *_vm_get_page_table_entry(struct kvm_vm *vm, int vcpuid,
-						       uint64_t vaddr)
-=======
 static uint64_t *_vm_get_page_table_entry(struct kvm_vm *vm,
 					  struct kvm_vcpu *vcpu,
 					  uint64_t vaddr)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	uint16_t index[4];
 	uint64_t *pml4e, *pdpe, *pde;
 	uint64_t *pte;
-<<<<<<< HEAD
-	struct kvm_cpuid_entry2 *entry;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct kvm_sregs sregs;
 	uint64_t rsvd_mask = 0;
 
@@ -368,11 +315,7 @@ static uint64_t *_vm_get_page_table_entry(struct kvm_vm *vm,
 uint64_t vm_get_page_table_entry(struct kvm_vm *vm, struct kvm_vcpu *vcpu,
 				 uint64_t vaddr)
 {
-<<<<<<< HEAD
-	uint64_t *pte = _vm_get_page_table_entry(vm, vcpuid, vaddr);
-=======
 	uint64_t *pte = _vm_get_page_table_entry(vm, vcpu, vaddr);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return *(uint64_t *)pte;
 }
@@ -380,12 +323,7 @@ uint64_t vm_get_page_table_entry(struct kvm_vm *vm, struct kvm_vcpu *vcpu,
 void vm_set_page_table_entry(struct kvm_vm *vm, struct kvm_vcpu *vcpu,
 			     uint64_t vaddr, uint64_t pte)
 {
-<<<<<<< HEAD
-	uint64_t *new_pte = _vm_get_page_table_entry(vm, vcpuid, vaddr);
-=======
 	uint64_t *new_pte = _vm_get_page_table_entry(vm, vcpu, vaddr);
->>>>>>> origin/linux_6.1.15_upstream
-
 	*(uint64_t *)new_pte = pte;
 }
 
@@ -602,11 +540,7 @@ vm_paddr_t addr_arch_gva2gpa(struct kvm_vm *vm, vm_vaddr_t gva)
 	if (!(pte[index[0]] & PTE_PRESENT_MASK))
 		goto unmapped_gva;
 
-<<<<<<< HEAD
-	return (PTE_GET_PFN(pte[index[0]]) * vm->page_size) + (gva & 0xfffu);
-=======
 	return (PTE_GET_PFN(pte[index[0]]) * vm->page_size) + (gva & ~PAGE_MASK);
->>>>>>> origin/linux_6.1.15_upstream
 
 unmapped_gva:
 	TEST_FAIL("No mapping for vm virtual address, gva: 0x%lx", gva);
@@ -1325,25 +1259,6 @@ const struct kvm_cpuid2 *vcpu_get_supported_hv_cpuid(struct kvm_vcpu *vcpu)
 	return cpuid;
 }
 
-<<<<<<< HEAD
-#define X86EMUL_CPUID_VENDOR_AuthenticAMD_ebx 0x68747541
-#define X86EMUL_CPUID_VENDOR_AuthenticAMD_ecx 0x444d4163
-#define X86EMUL_CPUID_VENDOR_AuthenticAMD_edx 0x69746e65
-
-static inline unsigned x86_family(unsigned int eax)
-{
-        unsigned int x86;
-
-        x86 = (eax >> 8) & 0xf;
-
-        if (x86 == 0xf)
-                x86 += (eax >> 20) & 0xff;
-
-        return x86;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 unsigned long vm_compute_max_gfn(struct kvm_vm *vm)
 {
 	const unsigned long num_ht_pages = 12 << (30 - vm->page_shift); /* 12 GiB */
@@ -1353,15 +1268,7 @@ unsigned long vm_compute_max_gfn(struct kvm_vm *vm)
 	max_gfn = (1ULL << (vm->pa_bits - vm->page_shift)) - 1;
 
 	/* Avoid reserved HyperTransport region on AMD processors.  */
-<<<<<<< HEAD
-	eax = ecx = 0;
-	cpuid(&eax, &ebx, &ecx, &edx);
-	if (ebx != X86EMUL_CPUID_VENDOR_AuthenticAMD_ebx ||
-	    ecx != X86EMUL_CPUID_VENDOR_AuthenticAMD_ecx ||
-	    edx != X86EMUL_CPUID_VENDOR_AuthenticAMD_edx)
-=======
 	if (!is_amd_cpu())
->>>>>>> origin/linux_6.1.15_upstream
 		return max_gfn;
 
 	/* On parts with <40 physical address bits, the area is fully hidden */
@@ -1370,12 +1277,7 @@ unsigned long vm_compute_max_gfn(struct kvm_vm *vm)
 
 	/* Before family 17h, the HyperTransport area is just below 1T.  */
 	ht_gfn = (1 << 28) - num_ht_pages;
-<<<<<<< HEAD
-	eax = 1;
-	cpuid(&eax, &ebx, &ecx, &edx);
-=======
 	cpuid(1, &eax, &ebx, &ecx, &edx);
->>>>>>> origin/linux_6.1.15_upstream
 	if (x86_family(eax) < 0x17)
 		goto done;
 
@@ -1384,29 +1286,15 @@ unsigned long vm_compute_max_gfn(struct kvm_vm *vm)
 	 * reduced due to SME by bits 11:6 of CPUID[0x8000001f].EBX.  Use
 	 * the old conservative value if MAXPHYADDR is not enumerated.
 	 */
-<<<<<<< HEAD
-	eax = 0x80000000;
-	cpuid(&eax, &ebx, &ecx, &edx);
-=======
 	cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
->>>>>>> origin/linux_6.1.15_upstream
 	max_ext_leaf = eax;
 	if (max_ext_leaf < 0x80000008)
 		goto done;
 
-<<<<<<< HEAD
-	eax = 0x80000008;
-	cpuid(&eax, &ebx, &ecx, &edx);
-	max_pfn = (1ULL << ((eax & 0xff) - vm->page_shift)) - 1;
-	if (max_ext_leaf >= 0x8000001f) {
-		eax = 0x8000001f;
-		cpuid(&eax, &ebx, &ecx, &edx);
-=======
 	cpuid(0x80000008, &eax, &ebx, &ecx, &edx);
 	max_pfn = (1ULL << ((eax & 0xff) - vm->page_shift)) - 1;
 	if (max_ext_leaf >= 0x8000001f) {
 		cpuid(0x8000001f, &eax, &ebx, &ecx, &edx);
->>>>>>> origin/linux_6.1.15_upstream
 		max_pfn >>= (ebx >> 6) & 0x3f;
 	}
 
@@ -1414,8 +1302,6 @@ unsigned long vm_compute_max_gfn(struct kvm_vm *vm)
 done:
 	return min(max_gfn, ht_gfn - 1);
 }
-<<<<<<< HEAD
-=======
 
 /* Returns true if kvm_intel was loaded with unrestricted_guest=1. */
 bool vm_is_unrestricted_guest(struct kvm_vm *vm)
@@ -1426,4 +1312,3 @@ bool vm_is_unrestricted_guest(struct kvm_vm *vm)
 
 	return get_kvm_intel_param_bool("unrestricted_guest");
 }
->>>>>>> origin/linux_6.1.15_upstream

@@ -240,14 +240,9 @@ static int sun8i_r_ccu_probe(struct platform_device *pdev)
 	if (!desc)
 		return -EINVAL;
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, desc);
-}
-=======
 	reg = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(reg))
 		return PTR_ERR(reg);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, desc);
 }

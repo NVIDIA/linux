@@ -542,11 +542,8 @@ int kunit_run_tests(struct kunit_suite *suite)
 			/* Get initial param. */
 			param_desc[0] = '\0';
 			test.param_value = test_case->generate_params(NULL, param_desc);
-<<<<<<< HEAD
-=======
 			kunit_log(KERN_INFO, &test, KUNIT_SUBTEST_INDENT KUNIT_SUBTEST_INDENT
 				  "# Subtest: %s", test_case->name);
->>>>>>> origin/linux_6.1.15_upstream
 
 			while (test.param_value) {
 				kunit_run_case_catch_errors(suite, test_case, &test);

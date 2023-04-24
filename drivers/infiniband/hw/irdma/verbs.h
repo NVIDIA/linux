@@ -116,11 +116,7 @@ struct irdma_cq {
 	u16 cq_size;
 	u16 cq_num;
 	bool user_mode;
-<<<<<<< HEAD
-	bool armed;
-=======
 	atomic_t armed;
->>>>>>> origin/linux_6.1.15_upstream
 	enum irdma_cmpl_notify last_notify;
 	u32 polled_cmpls;
 	u32 cq_mem_size;

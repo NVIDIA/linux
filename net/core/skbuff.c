@@ -4894,12 +4894,7 @@ static void __skb_complete_tx_timestamp(struct sk_buff *skb,
 	serr->header.h4.iif = skb->dev ? skb->dev->ifindex : 0;
 	if (sk->sk_tsflags & SOF_TIMESTAMPING_OPT_ID) {
 		serr->ee.ee_data = skb_shinfo(skb)->tskey;
-<<<<<<< HEAD
-		if (sk->sk_protocol == IPPROTO_TCP &&
-		    sk->sk_type == SOCK_STREAM)
-=======
 		if (sk_is_tcp(sk))
->>>>>>> origin/linux_6.1.15_upstream
 			serr->ee.ee_data -= atomic_read(&sk->sk_tskey);
 	}
 

@@ -59,10 +59,7 @@
 #include <linux/slab.h>
 #include <linux/sysctl.h>
 #include <linux/moduleparam.h>
-<<<<<<< HEAD
-=======
 #include <linux/jiffies.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <asm/page.h>
 #include <asm/tlb.h>
@@ -83,11 +80,6 @@
 
 static uint __read_mostly balloon_boot_timeout = 180;
 module_param(balloon_boot_timeout, uint, 0444);
-<<<<<<< HEAD
-
-static int xen_hotplug_unpopulated;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifdef CONFIG_XEN_BALLOON_MEMORY_HOTPLUG
 static int xen_hotplug_unpopulated;
@@ -795,11 +787,7 @@ static int __init balloon_wait_finish(void)
 		if (balloon_state == BP_ECANCELED) {
 			pr_warn_once("Initial ballooning failed, %ld pages need to be freed.\n",
 				     -credit);
-<<<<<<< HEAD
-			if (jiffies - last_changed >= HZ * balloon_boot_timeout)
-=======
 			if (time_is_before_eq_jiffies(last_changed + HZ * balloon_boot_timeout))
->>>>>>> origin/linux_6.1.15_upstream
 				panic("Initial ballooning failed!\n");
 		}
 

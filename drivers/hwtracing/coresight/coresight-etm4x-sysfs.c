@@ -366,22 +366,14 @@ static ssize_t mode_store(struct device *dev,
 	/* bits[14:13], Q element enable field */
 	mode = ETM_MODE_QELEM(config->mode);
 	/* start by clearing QE bits */
-<<<<<<< HEAD
-	config->cfg &= ~(BIT(13) | BIT(14));
-=======
 	config->cfg &= ~(TRCCONFIGR_QE_W_COUNTS | TRCCONFIGR_QE_WO_COUNTS);
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * if supported, Q elements with instruction counts are enabled.
 	 * Always set the low bit for any requested mode. Valid combos are
 	 * 0b00, 0b01 and 0b11.
 	 */
 	if (mode && drvdata->q_support)
-<<<<<<< HEAD
-		config->cfg |= BIT(13);
-=======
 		config->cfg |= TRCCONFIGR_QE_W_COUNTS;
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * if supported, Q elements with and without instruction
 	 * counts are enabled

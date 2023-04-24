@@ -84,11 +84,7 @@ static void uhid_device_add_worker(struct work_struct *work)
 		 * However, we do have to clear the ->running flag and do a
 		 * wakeup to make sure userspace knows that the device is gone.
 		 */
-<<<<<<< HEAD
-		uhid->running = false;
-=======
 		WRITE_ONCE(uhid->running, false);
->>>>>>> origin/linux_6.1.15_upstream
 		wake_up_interruptible(&uhid->report_wait);
 	}
 }

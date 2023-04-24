@@ -62,11 +62,8 @@ typedef void (*glock_examiner) (struct gfs2_glock * gl);
 
 static void do_xmote(struct gfs2_glock *gl, struct gfs2_holder *gh, unsigned int target);
 static void __gfs2_glock_dq(struct gfs2_holder *gh);
-<<<<<<< HEAD
-=======
 static void handle_callback(struct gfs2_glock *gl, unsigned int state,
 			    unsigned long delay, bool remote);
->>>>>>> origin/linux_6.1.15_upstream
 
 static struct dentry *gfs2_root;
 static struct workqueue_struct *glock_workqueue;
@@ -413,14 +410,6 @@ static void do_error(struct gfs2_glock *gl, const int ret)
 /**
  * demote_incompat_holders - demote incompatible demoteable holders
  * @gl: the glock we want to promote
-<<<<<<< HEAD
- * @new_gh: the new holder to be promoted
- */
-static void demote_incompat_holders(struct gfs2_glock *gl,
-				    struct gfs2_holder *new_gh)
-{
-	struct gfs2_holder *gh;
-=======
  * @current_gh: the newly promoted holder
  *
  * We're passing the newly promoted holder in @current_gh, but actually, any of
@@ -430,33 +419,23 @@ static void demote_incompat_holders(struct gfs2_glock *gl,
 				    struct gfs2_holder *current_gh)
 {
 	struct gfs2_holder *gh, *tmp;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Demote incompatible holders before we make ourselves eligible.
 	 * (This holder may or may not allow auto-demoting, but we don't want
 	 * to demote the new holder before it's even granted.)
 	 */
-<<<<<<< HEAD
-	list_for_each_entry(gh, &gl->gl_holders, gh_list) {
-=======
 	list_for_each_entry_safe(gh, tmp, &gl->gl_holders, gh_list) {
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * Since holders are at the front of the list, we stop when we
 		 * find the first non-holder.
 		 */
 		if (!test_bit(HIF_HOLDER, &gh->gh_iflags))
 			return;
-<<<<<<< HEAD
-		if (test_bit(HIF_MAY_DEMOTE, &gh->gh_iflags) &&
-		    !may_grant(gl, new_gh, gh)) {
-=======
 		if (gh == current_gh)
 			continue;
 		if (test_bit(HIF_MAY_DEMOTE, &gh->gh_iflags) &&
 		    !may_grant(gl, current_gh, gh)) {
->>>>>>> origin/linux_6.1.15_upstream
 			/*
 			 * We should not recurse into do_promote because
 			 * __gfs2_glock_dq only calls handle_callback,
@@ -505,8 +484,6 @@ find_first_strong_holder(struct gfs2_glock *gl)
 	return NULL;
 }
 
-<<<<<<< HEAD
-=======
 /*
  * gfs2_instantiate - Call the glops instantiate function
  * @gh: The glock holder
@@ -553,7 +530,6 @@ done:
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /**
  * do_promote - promote as many requests as possible on the current queue
  * @gl: The glock
@@ -563,58 +539,6 @@ done:
 
 static int do_promote(struct gfs2_glock *gl)
 {
-<<<<<<< HEAD
-	const struct gfs2_glock_operations *glops = gl->gl_ops;
-	struct gfs2_holder *gh, *tmp, *first_gh;
-	bool incompat_holders_demoted = false;
-	int ret;
-
-restart:
-	first_gh = find_first_strong_holder(gl);
-	list_for_each_entry_safe(gh, tmp, &gl->gl_holders, gh_list) {
-		if (!test_bit(HIF_WAIT, &gh->gh_iflags))
-			continue;
-		if (may_grant(gl, first_gh, gh)) {
-			if (!incompat_holders_demoted) {
-				demote_incompat_holders(gl, first_gh);
-				incompat_holders_demoted = true;
-				first_gh = gh;
-			}
-			if (gh->gh_list.prev == &gl->gl_holders &&
-			    glops->go_lock) {
-				spin_unlock(&gl->gl_lockref.lock);
-				/* FIXME: eliminate this eventually */
-				ret = glops->go_lock(gh);
-				spin_lock(&gl->gl_lockref.lock);
-				if (ret) {
-					if (ret == 1)
-						return 2;
-					gh->gh_error = ret;
-					list_del_init(&gh->gh_list);
-					trace_gfs2_glock_queue(gh, 0);
-					gfs2_holder_wake(gh);
-					goto restart;
-				}
-				set_bit(HIF_HOLDER, &gh->gh_iflags);
-				trace_gfs2_promote(gh, 1);
-				gfs2_holder_wake(gh);
-				goto restart;
-			}
-			set_bit(HIF_HOLDER, &gh->gh_iflags);
-			trace_gfs2_promote(gh, 0);
-			gfs2_holder_wake(gh);
-			continue;
-		}
-		/*
-		 * If we get here, it means we may not grant this holder for
-		 * some reason. If this holder is the head of the list, it
-		 * means we have a blocked holder at the head, so return 1.
-		 */
-		if (gh->gh_list.prev == &gl->gl_holders)
-			return 1;
-		do_error(gl, 0);
-		break;
-=======
 	struct gfs2_holder *gh, *current_gh;
 	bool incompat_holders_demoted = false;
 
@@ -642,7 +566,6 @@ restart:
 			demote_incompat_holders(gl, current_gh);
 			incompat_holders_demoted = true;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return 0;
 }
@@ -1573,29 +1496,16 @@ __acquires(&gl->gl_lockref.lock)
 
 	if (gh->gh_flags & (LM_FLAG_TRY | LM_FLAG_TRY_1CB)) {
 		if (test_bit(GLF_LOCK, &gl->gl_flags)) {
-<<<<<<< HEAD
-			struct gfs2_holder *first_gh;
-
-			first_gh = find_first_strong_holder(gl);
-			try_futile = !may_grant(gl, first_gh, gh);
-=======
 			struct gfs2_holder *current_gh;
 
 			current_gh = find_first_strong_holder(gl);
 			try_futile = !may_grant(gl, current_gh, gh);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		if (test_bit(GLF_INVALIDATE_IN_PROGRESS, &gl->gl_flags))
 			goto fail;
 	}
 
 	list_for_each_entry(gh2, &gl->gl_holders, gh_list) {
-<<<<<<< HEAD
-		if (unlikely(gh2->gh_owner_pid == gh->gh_owner_pid &&
-		    (gh->gh_gl->gl_ops->go_type != LM_TYPE_FLOCK) &&
-		    !test_bit(HIF_MAY_DEMOTE, &gh2->gh_iflags)))
-			goto trap_recursive;
-=======
 		if (likely(gh2->gh_owner_pid != gh->gh_owner_pid))
 			continue;
 		if (gh->gh_gl->gl_ops->go_type == LM_TYPE_FLOCK)
@@ -1607,7 +1517,6 @@ __acquires(&gl->gl_lockref.lock)
 		goto trap_recursive;
 	}
 	list_for_each_entry(gh2, &gl->gl_holders, gh_list) {
->>>>>>> origin/linux_6.1.15_upstream
 		if (try_futile &&
 		    !(gh2->gh_flags & (LM_FLAG_TRY | LM_FLAG_TRY_1CB))) {
 fail:
@@ -1740,7 +1649,6 @@ static void __gfs2_glock_dq(struct gfs2_holder *gh)
 				    TASK_UNINTERRUPTIBLE);
 			spin_lock(&gl->gl_lockref.lock);
 		}
-<<<<<<< HEAD
 
 		/*
 		 * This holder should not be cached, so mark it for demote.
@@ -1755,22 +1663,6 @@ static void __gfs2_glock_dq(struct gfs2_holder *gh)
 		trace_gfs2_glock_queue(gh, 0);
 
 		/*
-=======
-
-		/*
-		 * This holder should not be cached, so mark it for demote.
-		 * Note: this should be done before the check for needs_demote
-		 * below.
-		 */
-		if (gh->gh_flags & GL_NOCACHE)
-			handle_callback(gl, LM_ST_UNLOCKED, 0, false);
-
-		list_del_init(&gh->gh_list);
-		clear_bit(HIF_HOLDER, &gh->gh_iflags);
-		trace_gfs2_glock_queue(gh, 0);
-
-		/*
->>>>>>> origin/linux_6.1.15_upstream
 		 * If there hasn't been a demote request we are done.
 		 * (Let the remaining holders, if any, keep holding it.)
 		 */
@@ -1817,8 +1709,6 @@ void gfs2_glock_dq(struct gfs2_holder *gh)
 	struct gfs2_glock *gl = gh->gh_gl;
 
 	spin_lock(&gl->gl_lockref.lock);
-<<<<<<< HEAD
-=======
 	if (list_is_first(&gh->gh_list, &gl->gl_holders) &&
 	    !test_bit(HIF_HOLDER, &gh->gh_iflags)) {
 		spin_unlock(&gl->gl_lockref.lock);
@@ -1827,7 +1717,6 @@ void gfs2_glock_dq(struct gfs2_holder *gh)
 		spin_lock(&gl->gl_lockref.lock);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	__gfs2_glock_dq(gh);
 	spin_unlock(&gl->gl_lockref.lock);
 }
@@ -2020,10 +1909,6 @@ void gfs2_glock_cb(struct gfs2_glock *gl, unsigned int state)
 	 * keep the glock until the last strong holder is done with it.
 	 */
 	if (!find_first_strong_holder(gl)) {
-<<<<<<< HEAD
-		if (state == LM_ST_UNLOCKED)
-			mock_gh.gh_state = LM_ST_EXCLUSIVE;
-=======
 		struct gfs2_holder mock_gh = {
 			.gh_gl = gl,
 			.gh_state = (state == LM_ST_UNLOCKED) ?
@@ -2031,7 +1916,6 @@ void gfs2_glock_cb(struct gfs2_glock *gl, unsigned int state)
 			.gh_iflags = BIT(HIF_HOLDER)
 		};
 
->>>>>>> origin/linux_6.1.15_upstream
 		demote_incompat_holders(gl, &mock_gh);
 	}
 	handle_callback(gl, state, delay, true);
@@ -2427,11 +2311,8 @@ static const char *hflags2str(char *buf, u16 flags, unsigned long iflags)
 		*p++ = 'W';
 	if (test_bit(HIF_MAY_DEMOTE, &iflags))
 		*p++ = 'D';
-<<<<<<< HEAD
-=======
 	if (flags & GL_SKIP)
 		*p++ = 's';
->>>>>>> origin/linux_6.1.15_upstream
 	*p = 0;
 	return buf;
 }

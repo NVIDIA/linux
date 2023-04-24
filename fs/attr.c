@@ -97,14 +97,9 @@ EXPORT_SYMBOL(setattr_should_drop_suidgid);
 static bool chown_ok(struct user_namespace *mnt_userns,
 		     const struct inode *inode, vfsuid_t ia_vfsuid)
 {
-<<<<<<< HEAD
-	kuid_t kuid = i_uid_into_mnt(mnt_userns, inode);
-	if (uid_eq(current_fsuid(), kuid) && uid_eq(uid, inode->i_uid))
-=======
 	vfsuid_t vfsuid = i_uid_into_vfsuid(mnt_userns, inode);
 	if (vfsuid_eq_kuid(vfsuid, current_fsuid()) &&
 	    vfsuid_eq(ia_vfsuid, vfsuid))
->>>>>>> origin/linux_6.1.15_upstream
 		return true;
 	if (capable_wrt_inode_uidgid(mnt_userns, inode, CAP_CHOWN))
 		return true;
@@ -129,12 +124,6 @@ static bool chown_ok(struct user_namespace *mnt_userns,
 static bool chgrp_ok(struct user_namespace *mnt_userns,
 		     const struct inode *inode, vfsgid_t ia_vfsgid)
 {
-<<<<<<< HEAD
-	kgid_t kgid = i_gid_into_mnt(mnt_userns, inode);
-	if (uid_eq(current_fsuid(), i_uid_into_mnt(mnt_userns, inode)) &&
-	    (in_group_p(gid) || gid_eq(gid, inode->i_gid)))
-		return true;
-=======
 	vfsgid_t vfsgid = i_gid_into_vfsgid(mnt_userns, inode);
 	vfsuid_t vfsuid = i_uid_into_vfsuid(mnt_userns, inode);
 	if (vfsuid_eq_kuid(vfsuid, current_fsuid())) {
@@ -143,7 +132,6 @@ static bool chgrp_ok(struct user_namespace *mnt_userns,
 		if (vfsgid_in_group_p(ia_vfsgid))
 			return true;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (capable_wrt_inode_uidgid(mnt_userns, inode, CAP_CHOWN))
 		return true;
 	if (!vfsgid_valid(vfsgid) &&

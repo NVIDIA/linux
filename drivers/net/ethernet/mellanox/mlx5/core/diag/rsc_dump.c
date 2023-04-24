@@ -30,11 +30,7 @@ static const char *const mlx5_rsc_sgmt_name[] = {
 
 struct mlx5_rsc_dump {
 	u32 pdn;
-<<<<<<< HEAD
-	struct mlx5_core_mkey mkey;
-=======
 	u32 mkey;
->>>>>>> origin/linux_6.1.15_upstream
 	u32 number_of_menu_items;
 	u16 fw_segment_type[MLX5_SGMT_TYPE_NUM];
 };

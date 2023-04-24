@@ -2078,12 +2078,8 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	smmu->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
 	if (IS_ERR(smmu->base))
 		return PTR_ERR(smmu->base);
-<<<<<<< HEAD
-	ioaddr = res->start;
-=======
 	smmu->ioaddr = res->start;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * The resource size should effectively match the value of SMMU_TOP;
 	 * stash that temporarily until we know PAGESIZE to validate it with.

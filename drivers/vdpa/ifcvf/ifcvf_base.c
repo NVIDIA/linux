@@ -127,10 +127,7 @@ int ifcvf_init_hw(struct ifcvf_hw *hw, struct pci_dev *pdev)
 			break;
 		case VIRTIO_PCI_CAP_DEVICE_CFG:
 			hw->dev_cfg = get_cap_addr(hw, &cap);
-<<<<<<< HEAD
-=======
 			hw->cap_dev_config_size = le32_to_cpu(cap.length);
->>>>>>> origin/linux_6.1.15_upstream
 			IFCVF_DBG(pdev, "hw->dev_cfg = %p\n", hw->dev_cfg);
 			break;
 		}
@@ -163,12 +160,8 @@ next:
 		  "PCI capability mapping: common cfg: %p, notify base: %p\n, isr cfg: %p, device cfg: %p, multiplier: %u\n",
 		  hw->common_cfg, hw->notify_base, hw->isr,
 		  hw->dev_cfg, hw->notify_off_multiplier);
-<<<<<<< HEAD
-=======
-
 	hw->vqs_reused_irq = -EINVAL;
 	hw->config_irq = -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -239,17 +232,6 @@ int ifcvf_verify_min_features(struct ifcvf_hw *hw, u64 features)
 u32 ifcvf_get_config_size(struct ifcvf_hw *hw)
 {
 	struct ifcvf_adapter *adapter;
-<<<<<<< HEAD
-	u32 config_size;
-
-	adapter = vf_to_adapter(hw);
-	switch (hw->dev_type) {
-	case VIRTIO_ID_NET:
-		config_size = sizeof(struct virtio_net_config);
-		break;
-	case VIRTIO_ID_BLOCK:
-		config_size = sizeof(struct virtio_blk_config);
-=======
 	u32 net_config_size = sizeof(struct virtio_net_config);
 	u32 blk_config_size = sizeof(struct virtio_blk_config);
 	u32 cap_size = hw->cap_dev_config_size;
@@ -267,7 +249,6 @@ u32 ifcvf_get_config_size(struct ifcvf_hw *hw)
 		break;
 	case VIRTIO_ID_BLOCK:
 		config_size = min(cap_size, blk_config_size);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	default:
 		config_size = 0;
@@ -288,11 +269,7 @@ void ifcvf_read_dev_config(struct ifcvf_hw *hw, u64 offset,
 		old_gen = vp_ioread8(&hw->common_cfg->config_generation);
 		p = dst;
 		for (i = 0; i < length; i++)
-<<<<<<< HEAD
-			*p++ = ifc_ioread8(hw->dev_cfg + offset + i);
-=======
 			*p++ = vp_ioread8(hw->dev_cfg + offset + i);
->>>>>>> origin/linux_6.1.15_upstream
 
 		new_gen = vp_ioread8(&hw->common_cfg->config_generation);
 	} while (old_gen != new_gen);
@@ -307,11 +284,7 @@ void ifcvf_write_dev_config(struct ifcvf_hw *hw, u64 offset,
 	p = src;
 	WARN_ON(offset + length > hw->config_size);
 	for (i = 0; i < length; i++)
-<<<<<<< HEAD
-		ifc_iowrite8(*p++, hw->dev_cfg + offset + i);
-=======
 		vp_iowrite8(*p++, hw->dev_cfg + offset + i);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void ifcvf_set_features(struct ifcvf_hw *hw, u64 features)

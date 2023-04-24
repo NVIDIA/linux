@@ -2995,16 +2995,7 @@ static int handle_pmi_common(struct pt_regs *regs, u64 status)
 	 */
 	if (__test_and_clear_bit(GLOBAL_STATUS_TRACE_TOPAPMI_BIT, (unsigned long *)&status)) {
 		handled++;
-<<<<<<< HEAD
-
-		guest_cbs = perf_get_guest_cbs();
-		if (unlikely(guest_cbs && guest_cbs->is_in_guest() &&
-			     guest_cbs->handle_intel_pt_intr))
-			guest_cbs->handle_intel_pt_intr();
-		else
-=======
 		if (!perf_guest_handle_intel_pt_intr())
->>>>>>> origin/linux_6.1.15_upstream
 			intel_pt_interrupt();
 	}
 

@@ -1575,11 +1575,6 @@ noinstr void do_machine_check(struct pt_regs *regs)
 			queue_task_work(&m, msg, kill_me_never);
 	}
 
-<<<<<<< HEAD
-	instrumentation_end();
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	instrumentation_end();
 

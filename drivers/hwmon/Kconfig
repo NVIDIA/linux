@@ -1379,14 +1379,6 @@ config SENSORS_LM90
 	tristate "National Semiconductor LM90 and compatibles"
 	depends on I2C
 	help
-<<<<<<< HEAD
-	  If you say yes here you get support for National Semiconductor LM90,
-	  LM86, LM89 and LM99, Analog Devices ADM1032, ADT7461, and ADT7461A,
-	  Maxim MAX6646, MAX6647, MAX6648, MAX6649, MAX6654, MAX6657, MAX6658,
-	  MAX6659, MAX6680, MAX6681, MAX6692, MAX6695, MAX6696,
-	  ON Semiconductor NCT1008, Winbond/Nuvoton W83L771W/G/AWG/ASG,
-	  Philips SA56004, GMT G781, Texas Instruments TMP451 and TMP461
-=======
 	  If you say yes here you get support for National Semiconductor LM84,
 	  LM90, LM86, LM89 and LM99, Analog Devices ADM1020, ADM2021, ADM1021A,
 	  ADM1023, ADM1032, ADT7461, ADT7461A, ADT7481, ADT7482, and ADT7483A,
@@ -1396,7 +1388,6 @@ config SENSORS_LM90
 	  ON Semiconductor NCT1008, NCT210, NCT72, NCT214, NCT218,
 	  Winbond/Nuvoton W83L771W/G/AWG/ASG,
 	  Philips NE1618, SA56004, GMT G781, Texas Instruments TMP451 and TMP461
->>>>>>> origin/linux_6.1.15_upstream
 	  sensor chips.
 
 	  This driver can also be built as a module. If so, the module
@@ -1636,37 +1627,7 @@ config SENSORS_PCF8591
 	  These devices are hard to detect and rarely found on mainstream
 	  hardware. If unsure, say N.
 
-<<<<<<< HEAD
-config SENSORS_PECI_CPUTEMP
-	tristate "PECI CPU temperature monitoring client"
-	depends on PECI
-	select MFD_INTEL_PECI_CLIENT
-	help
-	  If you say yes here you get support for the generic Intel PECI
-	  cputemp driver which provides Digital Thermal Sensor (DTS) thermal
-	  readings of the CPU package and CPU cores that are accessible using
-	  the PECI Client Command Suite via the processor PECI client.
-	  Check <file:Documentation/hwmon/peci-cputemp.rst> for details.
-
-	  This driver can also be built as a module. If so, the module
-	  will be called peci-cputemp.
-
-config SENSORS_PECI_DIMMTEMP
-	tristate "PECI DIMM temperature monitoring client"
-	depends on PECI
-	select MFD_INTEL_PECI_CLIENT
-	help
-	  If you say yes here you get support for the generic Intel PECI hwmon
-	  driver which provides Digital Thermal Sensor (DTS) thermal readings of
-	  DIMM components that are accessible using the PECI Client Command
-	  Suite via the processor PECI client.
-	  Check <file:Documentation/hwmon/peci-dimmtemp.rst> for details.
-
-	  This driver can also be built as a module. If so, the module
-	  will be called peci-dimmtemp.
-=======
 source "drivers/hwmon/peci/Kconfig"
->>>>>>> origin/linux_6.1.15_upstream
 
 source "drivers/hwmon/pmbus/Kconfig"
 

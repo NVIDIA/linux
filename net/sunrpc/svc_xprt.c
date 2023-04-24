@@ -1227,10 +1227,6 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
 		dr->addrlen = rqstp->rq_addrlen;
 		dr->daddr = rqstp->rq_daddr;
 		dr->argslen = rqstp->rq_arg.len >> 2;
-<<<<<<< HEAD
-		dr->xprt_hlen = rqstp->rq_xprt_hlen;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		dr->xprt_ctxt = rqstp->rq_xprt_ctxt;
 		rqstp->rq_xprt_ctxt = NULL;
 

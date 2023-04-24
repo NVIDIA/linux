@@ -1048,9 +1048,6 @@ void avic_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	int h_physical_id = kvm_cpu_get_apicid(cpu);
 	struct vcpu_svm *svm = to_svm(vcpu);
 
-<<<<<<< HEAD
-	if (WARN_ON(h_physical_id & ~AVIC_PHYSICAL_ID_ENTRY_HOST_PHYSICAL_ID_MASK))
-=======
 	lockdep_assert_preemption_disabled();
 
 	if (WARN_ON(h_physical_id & ~AVIC_PHYSICAL_ID_ENTRY_HOST_PHYSICAL_ID_MASK))
@@ -1064,8 +1061,6 @@ void avic_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	 * vCPU unblocks.
 	 */
 	if (kvm_vcpu_is_blocking(vcpu))
->>>>>>> origin/linux_6.1.15_upstream
-		return;
 
 	entry = READ_ONCE(*(svm->avic_physical_id_cache));
 
@@ -1100,20 +1095,6 @@ void avic_vcpu_put(struct kvm_vcpu *vcpu)
 void avic_refresh_apicv_exec_ctrl(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
-<<<<<<< HEAD
-	int cpu = get_cpu();
-
-	WARN_ON(cpu != vcpu->cpu);
-	svm->avic_is_running = is_run;
-
-	if (kvm_vcpu_apicv_active(vcpu)) {
-		if (is_run)
-			avic_vcpu_load(vcpu, cpu);
-		else
-			avic_vcpu_put(vcpu);
-	}
-	put_cpu();
-=======
 	struct vmcb *vmcb = svm->vmcb01.ptr;
 	bool activated = kvm_vcpu_apicv_active(vcpu);
 
@@ -1141,7 +1122,6 @@ void avic_refresh_apicv_exec_ctrl(struct kvm_vcpu *vcpu)
 		avic_vcpu_put(vcpu);
 
 	avic_set_pi_irte_mode(vcpu, activated);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void avic_vcpu_blocking(struct kvm_vcpu *vcpu)

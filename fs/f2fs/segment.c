@@ -256,39 +256,6 @@ retry:
 static void __complete_revoke_list(struct inode *inode, struct list_head *head,
 					bool revoke)
 {
-<<<<<<< HEAD
-	struct f2fs_inode_info *fi = F2FS_I(inode);
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	struct list_head *head = &fi->inmem_pages;
-	struct inmem_pages *cur = NULL;
-	struct inmem_pages *tmp;
-
-	f2fs_bug_on(sbi, !page_private_atomic(page));
-
-	mutex_lock(&fi->inmem_lock);
-	list_for_each_entry(tmp, head, list) {
-		if (tmp->page == page) {
-			cur = tmp;
-			break;
-		}
-	}
-
-	f2fs_bug_on(sbi, !cur);
-	list_del(&cur->list);
-	mutex_unlock(&fi->inmem_lock);
-
-	dec_page_count(sbi, F2FS_INMEM_PAGES);
-	kmem_cache_free(inmem_entry_slab, cur);
-
-	ClearPageUptodate(page);
-	clear_page_private_atomic(page);
-	f2fs_put_page(page, 0);
-
-	detach_page_private(page);
-	set_page_private(page, 0);
-
-	trace_f2fs_commit_inmem_page(page, INMEM_INVALIDATE);
-=======
 	struct revoke_entry *cur, *tmp;
 
 	list_for_each_entry_safe(cur, tmp, head, list) {
@@ -298,7 +265,6 @@ static void __complete_revoke_list(struct inode *inode, struct list_head *head,
 		list_del(&cur->list);
 		kmem_cache_free(revoke_entry_slab, cur);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int __f2fs_commit_atomic_write(struct inode *inode)
@@ -4413,8 +4379,6 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 				return err;
 			seg_info_from_raw_sit(se, &sit);
 
-<<<<<<< HEAD
-=======
 			if (se->type >= NR_PERSISTENT_LOG) {
 				f2fs_err(sbi, "Invalid segment type: %u, segno: %u",
 							se->type, start);
@@ -4423,7 +4387,6 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 				return -EFSCORRUPTED;
 			}
 
->>>>>>> origin/linux_6.1.15_upstream
 			sit_valid_blocks[SE_PAGETYPE(se)] += se->valid_blocks;
 
 			if (f2fs_block_unit_discard(sbi)) {
@@ -4473,8 +4436,6 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 			break;
 		seg_info_from_raw_sit(se, &sit);
 
-<<<<<<< HEAD
-=======
 		if (se->type >= NR_PERSISTENT_LOG) {
 			f2fs_err(sbi, "Invalid segment type: %u, segno: %u",
 							se->type, start);
@@ -4483,7 +4444,6 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 			break;
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		sit_valid_blocks[SE_PAGETYPE(se)] += se->valid_blocks;
 
 		if (f2fs_block_unit_discard(sbi)) {
@@ -4512,10 +4472,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	if (sit_valid_blocks[NODE] != valid_node_count(sbi)) {
 		f2fs_err(sbi, "SIT is corrupted node# %u vs %u",
 			 sit_valid_blocks[NODE], valid_node_count(sbi));
-<<<<<<< HEAD
-=======
 		f2fs_handle_error(sbi, ERROR_INCONSISTENT_NODE_COUNT);
->>>>>>> origin/linux_6.1.15_upstream
 		return -EFSCORRUPTED;
 	}
 
@@ -4524,10 +4481,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 		f2fs_err(sbi, "SIT is corrupted data# %u %u vs %u",
 			 sit_valid_blocks[DATA], sit_valid_blocks[NODE],
 			 valid_user_blocks(sbi));
-<<<<<<< HEAD
-=======
 		f2fs_handle_error(sbi, ERROR_INCONSISTENT_BLOCK_COUNT);
->>>>>>> origin/linux_6.1.15_upstream
 		return -EFSCORRUPTED;
 	}
 
@@ -4678,10 +4632,7 @@ static int sanity_check_curseg(struct f2fs_sb_info *sbi)
 			f2fs_err(sbi,
 				 "Current segment has invalid alloc_type:%d",
 				 curseg->alloc_type);
-<<<<<<< HEAD
-=======
 			f2fs_handle_error(sbi, ERROR_INVALID_CURSEG);
->>>>>>> origin/linux_6.1.15_upstream
 			return -EFSCORRUPTED;
 		}
 

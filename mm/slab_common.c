@@ -543,19 +543,11 @@ bool kmem_valid_obj(void *object)
 }
 EXPORT_SYMBOL_GPL(kmem_valid_obj);
 
-<<<<<<< HEAD
-static void kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct page *page)
-{
-	if (__kfence_obj_info(kpp, object, page))
-		return;
-	__kmem_obj_info(kpp, object, page);
-=======
 static void kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct slab *slab)
 {
 	if (__kfence_obj_info(kpp, object, slab))
 		return;
 	__kmem_obj_info(kpp, object, slab);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**

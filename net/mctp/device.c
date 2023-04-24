@@ -313,10 +313,7 @@ void mctp_dev_hold(struct mctp_dev *mdev)
 void mctp_dev_put(struct mctp_dev *mdev)
 {
 	if (mdev && refcount_dec_and_test(&mdev->refs)) {
-<<<<<<< HEAD
-=======
 		kfree(mdev->addrs);
->>>>>>> origin/linux_6.1.15_upstream
 		dev_put(mdev->dev);
 		kfree_rcu(mdev, rcu);
 	}
@@ -432,15 +429,6 @@ static void mctp_unregister(struct net_device *dev)
 	struct mctp_dev *mdev;
 
 	mdev = mctp_dev_get_rtnl(dev);
-<<<<<<< HEAD
-	if (mdev && !mctp_known(dev)) {
-		// Sanity check, should match what was set in mctp_register
-		netdev_warn(dev, "%s: BUG mctp_ptr set for unknown type %d",
-			    __func__, dev->type);
-		return;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (!mdev)
 		return;
 

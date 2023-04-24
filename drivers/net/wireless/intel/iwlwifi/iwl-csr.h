@@ -105,13 +105,10 @@
 /* GIO Chicken Bits (PCI Express bus link power management) */
 #define CSR_GIO_CHICKEN_BITS    (CSR_BASE+0x100)
 
-<<<<<<< HEAD
-=======
 #define CSR_IPC_SLEEP_CONTROL	(CSR_BASE + 0x114)
 #define CSR_IPC_SLEEP_CONTROL_SUSPEND	0x3
 #define CSR_IPC_SLEEP_CONTROL_RESUME	0
 
->>>>>>> origin/linux_6.1.15_upstream
 /* Doorbell - since Bz
  * connected to UREG_DOORBELL_TO_ISR6 (lower 16 bits only)
  */

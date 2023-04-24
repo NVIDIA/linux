@@ -21,8 +21,6 @@
 #include <linux/init.h>
 #include <linux/linkage.h>
 #include <../entry/calling.h>
-<<<<<<< HEAD
-=======
 
 .pushsection .noinstr.text, "ax"
 /*
@@ -62,7 +60,6 @@ SYM_FUNC_START(check_events)
 	FRAME_END
 	RET
 SYM_FUNC_END(check_events)
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * Enable events.  This clears the event mask and tests the pending
@@ -90,19 +87,6 @@ SYM_FUNC_START(xen_irq_enable_direct)
 	RET
 SYM_FUNC_END(xen_irq_enable_direct)
 
-<<<<<<< HEAD
-
-/*
- * Disabling events is simply a matter of making the event mask
- * non-zero.
- */
-SYM_FUNC_START(xen_irq_disable_direct)
-	movb $1, PER_CPU_VAR(xen_vcpu_info) + XEN_vcpu_info_mask
-	RET
-SYM_FUNC_END(xen_irq_disable_direct)
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * (xen_)save_fl is used to get the current interrupt enable status.
  * Callers expect the status to be in X86_EFLAGS_IF, and other bits
@@ -119,38 +103,6 @@ SYM_FUNC_START(xen_save_fl_direct)
 	RET
 SYM_FUNC_END(xen_save_fl_direct)
 
-<<<<<<< HEAD
-/*
- * Force an event check by making a hypercall, but preserve regs
- * before making the call.
- */
-SYM_FUNC_START(check_events)
-	FRAME_BEGIN
-	push %rax
-	push %rcx
-	push %rdx
-	push %rsi
-	push %rdi
-	push %r8
-	push %r9
-	push %r10
-	push %r11
-	call xen_force_evtchn_callback
-	pop %r11
-	pop %r10
-	pop %r9
-	pop %r8
-	pop %rdi
-	pop %rsi
-	pop %rdx
-	pop %rcx
-	pop %rax
-	FRAME_END
-	RET
-SYM_FUNC_END(check_events)
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 SYM_FUNC_START(xen_read_cr2)
 	FRAME_BEGIN
 	_ASM_MOV PER_CPU_VAR(xen_vcpu), %_ASM_AX

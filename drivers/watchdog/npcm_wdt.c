@@ -61,13 +61,7 @@
 struct npcm_wdt {
 	struct watchdog_device	wdd;
 	void __iomem		*reg;
-<<<<<<< HEAD
-	u32			card_reset;
-	u32			ext1_reset;
-	u32			ext2_reset;
-=======
 	struct clk		*clk;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static inline struct npcm_wdt *to_npcm_wdt(struct watchdog_device *wdd)

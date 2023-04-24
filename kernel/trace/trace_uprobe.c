@@ -1308,12 +1308,7 @@ static int uprobe_perf_open(struct trace_event_call *call,
 	if (trace_uprobe_filter_add(tu->tp.event->filter, event))
 		return 0;
 
-<<<<<<< HEAD
-	list_for_each_entry(pos, trace_probe_probe_list(tp), list) {
-		tu = container_of(pos, struct trace_uprobe, tp);
-=======
 	list_for_each_entry(tu, trace_probe_probe_list(tp), tp.list) {
->>>>>>> origin/linux_6.1.15_upstream
 		err = uprobe_apply(tu->inode, tu->offset, &tu->consumer, true);
 		if (err) {
 			uprobe_perf_close(call, event);

@@ -4018,13 +4018,8 @@ static uint64_t gfx_v9_0_get_gpu_clock_counter(struct amdgpu_device *adev)
 {
 	uint64_t clock, clock_lo, clock_hi, hi_check;
 
-<<<<<<< HEAD
-	switch (adev->asic_type) {
-	case CHIP_RENOIR:
-=======
 	switch (adev->ip_versions[GC_HWIP][0]) {
 	case IP_VERSION(9, 3, 0):
->>>>>>> origin/linux_6.1.15_upstream
 		preempt_disable();
 		clock_hi = RREG32_SOC15_NO_KIQ(SMUIO, 0, mmGOLDEN_TSC_COUNT_UPPER_Renoir);
 		clock_lo = RREG32_SOC15_NO_KIQ(SMUIO, 0, mmGOLDEN_TSC_COUNT_LOWER_Renoir);
@@ -4042,11 +4037,7 @@ static uint64_t gfx_v9_0_get_gpu_clock_counter(struct amdgpu_device *adev)
 	default:
 		amdgpu_gfx_off_ctrl(adev, false);
 		mutex_lock(&adev->gfx.gpu_clock_mutex);
-<<<<<<< HEAD
-		if (adev->asic_type == CHIP_VEGA10 && amdgpu_sriov_runtime(adev)) {
-=======
 		if (adev->ip_versions[GC_HWIP][0] == IP_VERSION(9, 0, 1) && amdgpu_sriov_runtime(adev)) {
->>>>>>> origin/linux_6.1.15_upstream
 			clock = gfx_v9_0_kiq_read_clock(adev);
 		} else {
 			WREG32_SOC15(GC, 0, mmRLC_CAPTURE_GPU_CLOCK_COUNT, 1);

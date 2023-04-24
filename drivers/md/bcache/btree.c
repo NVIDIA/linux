@@ -2017,10 +2017,7 @@ int bch_btree_check(struct cache_set *c)
 	if (c->root->level == 0)
 		return 0;
 
-<<<<<<< HEAD
-=======
 	memset(&check_state, 0, sizeof(struct btree_check_state));
->>>>>>> origin/linux_6.1.15_upstream
 	check_state.c = c;
 	check_state.total_threads = bch_btree_chkthread_nr();
 	check_state.key_idx = 0;

@@ -76,8 +76,6 @@ static int __init adjust_protection_map(void)
 	return 0;
 }
 arch_initcall(adjust_protection_map);
-<<<<<<< HEAD
-=======
 
 pgprot_t vm_get_page_prot(unsigned long vm_flags)
 {
@@ -103,4 +101,3 @@ pgprot_t vm_get_page_prot(unsigned long vm_flags)
 	return __pgprot(prot);
 }
 EXPORT_SYMBOL(vm_get_page_prot);
->>>>>>> origin/linux_6.1.15_upstream

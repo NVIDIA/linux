@@ -146,10 +146,6 @@ static int snd_proto_probe(struct platform_device *pdev)
 			"snd_soc_register_card() failed\n");
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 put_cpu_node:
 	of_node_put(bitclkmaster);
 	of_node_put(framemaster);

@@ -1399,10 +1399,7 @@ static int adis16480_probe(struct spi_device *spi)
 	const struct spi_device_id *id = spi_get_device_id(spi);
 	const struct adis_data *adis16480_data;
 	irq_handler_t trigger_handler = NULL;
-<<<<<<< HEAD
-=======
 	struct device *dev = &spi->dev;
->>>>>>> origin/linux_6.1.15_upstream
 	struct iio_dev *indio_dev;
 	struct adis16480 *st;
 	int ret;

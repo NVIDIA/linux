@@ -115,15 +115,12 @@ struct mac_ops {
 
 	int			(*mac_rx_tx_enable)(void *cgxd, int lmac_id, bool enable);
 	int			(*mac_tx_enable)(void *cgxd, int lmac_id, bool enable);
-<<<<<<< HEAD
-=======
 	int                     (*pfc_config)(void *cgxd, int lmac_id,
 					      u8 tx_pause, u8 rx_pause, u16 pfc_en);
 
 	int                     (*mac_get_pfc_frm_cfg)(void *cgxd, int lmac_id,
 						       u8 *tx_pause, u8 *rx_pause);
 
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct cgx {

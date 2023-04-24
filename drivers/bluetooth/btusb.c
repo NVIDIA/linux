@@ -36,35 +36,6 @@ static bool reset = true;
 
 static struct usb_driver btusb_driver;
 
-<<<<<<< HEAD
-#define BTUSB_IGNORE		0x01
-#define BTUSB_DIGIANSWER	0x02
-#define BTUSB_CSR		0x04
-#define BTUSB_SNIFFER		0x08
-#define BTUSB_BCM92035		0x10
-#define BTUSB_BROKEN_ISOC	0x20
-#define BTUSB_WRONG_SCO_MTU	0x40
-#define BTUSB_ATH3012		0x80
-#define BTUSB_INTEL_COMBINED	0x100
-#define BTUSB_INTEL_BOOT	0x200
-#define BTUSB_BCM_PATCHRAM	0x400
-#define BTUSB_MARVELL		0x800
-#define BTUSB_SWAVE		0x1000
-#define BTUSB_AMP		0x4000
-#define BTUSB_QCA_ROME		0x8000
-#define BTUSB_BCM_APPLE		0x10000
-#define BTUSB_REALTEK		0x20000
-#define BTUSB_BCM2045		0x40000
-#define BTUSB_IFNUM_2		0x80000
-#define BTUSB_CW6622		0x100000
-#define BTUSB_MEDIATEK		0x200000
-#define BTUSB_WIDEBAND_SPEECH	0x400000
-#define BTUSB_VALID_LE_STATES   0x800000
-#define BTUSB_QCA_WCN6855	0x1000000
-#define BTUSB_INTEL_BROKEN_SHUTDOWN_LED	0x2000000
-#define BTUSB_INTEL_BROKEN_INITIAL_NCMD 0x4000000
-#define BTUSB_INTEL_NO_WBS_SUPPORT	0x8000000
-=======
 #define BTUSB_IGNORE			BIT(0)
 #define BTUSB_DIGIANSWER		BIT(1)
 #define BTUSB_CSR			BIT(2)
@@ -92,7 +63,6 @@ static struct usb_driver btusb_driver;
 #define BTUSB_INTEL_BROKEN_SHUTDOWN_LED	BIT(24)
 #define BTUSB_INTEL_BROKEN_INITIAL_NCMD BIT(25)
 #define BTUSB_INTEL_NO_WBS_SUPPORT	BIT(26)
->>>>>>> origin/linux_6.1.15_upstream
 
 static const struct usb_device_id btusb_table[] = {
 	/* Generic Bluetooth USB device */
@@ -346,8 +316,6 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x0489, 0xe0d0), .driver_info = BTUSB_QCA_WCN6855 |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
-<<<<<<< HEAD
-=======
 	{ USB_DEVICE(0x10ab, 0x9108), .driver_info = BTUSB_QCA_WCN6855 |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
@@ -437,7 +405,6 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x0cf3, 0xe700), .driver_info = BTUSB_QCA_WCN6855 |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Broadcom BCM2035 */
 	{ USB_DEVICE(0x0a5c, 0x2009), .driver_info = BTUSB_BCM92035 },
@@ -543,8 +510,6 @@ static const struct usb_device_id blacklist_table[] = {
 						     BTUSB_WIDEBAND_SPEECH },
 	{ USB_DEVICE(0x04ca, 0x4006), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
-<<<<<<< HEAD
-=======
 	{ USB_DEVICE(0x0cb8, 0xc549), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
 
@@ -561,7 +526,6 @@ static const struct usb_device_id blacklist_table[] = {
 						     BTUSB_WIDEBAND_SPEECH },
 	{ USB_DEVICE(0x13d3, 0x3592), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Realtek Bluetooth devices */
 	{ USB_VENDOR_AND_INTERFACE_INFO(0x0bda, 0xe0, 0x01, 0x01),
@@ -602,8 +566,6 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x13d3, 0x3564), .driver_info = BTUSB_MEDIATEK |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
-<<<<<<< HEAD
-=======
 	{ USB_DEVICE(0x13d3, 0x3567), .driver_info = BTUSB_MEDIATEK |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
@@ -613,7 +575,6 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x13d3, 0x3583), .driver_info = BTUSB_MEDIATEK |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
->>>>>>> origin/linux_6.1.15_upstream
 	{ USB_DEVICE(0x0489, 0xe0cd), .driver_info = BTUSB_MEDIATEK |
 						     BTUSB_WIDEBAND_SPEECH |
 						     BTUSB_VALID_LE_STATES },
@@ -663,28 +624,13 @@ static const struct usb_device_id blacklist_table[] = {
 	{ USB_DEVICE(0x0bda, 0xb009), .driver_info = BTUSB_REALTEK },
 	{ USB_DEVICE(0x2ff8, 0xb011), .driver_info = BTUSB_REALTEK },
 
-<<<<<<< HEAD
-	/* Additional Realtek 8761B Bluetooth devices */
-	{ USB_DEVICE(0x2357, 0x0604), .driver_info = BTUSB_REALTEK |
-						     BTUSB_WIDEBAND_SPEECH },
-
-	/* Additional Realtek 8761BU Bluetooth devices */
-=======
 	/* Additional Realtek 8761BUV Bluetooth devices */
 	{ USB_DEVICE(0x2357, 0x0604), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
->>>>>>> origin/linux_6.1.15_upstream
 	{ USB_DEVICE(0x0b05, 0x190e), .driver_info = BTUSB_REALTEK |
 	  					     BTUSB_WIDEBAND_SPEECH },
 	{ USB_DEVICE(0x2550, 0x8761), .driver_info = BTUSB_REALTEK |
 						     BTUSB_WIDEBAND_SPEECH },
-<<<<<<< HEAD
-=======
-	{ USB_DEVICE(0x0bda, 0x8771), .driver_info = BTUSB_REALTEK |
-						     BTUSB_WIDEBAND_SPEECH },
-	{ USB_DEVICE(0x7392, 0xc611), .driver_info = BTUSB_REALTEK |
-						     BTUSB_WIDEBAND_SPEECH },
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Additional Realtek 8821AE Bluetooth devices */
 	{ USB_DEVICE(0x0b05, 0x17dc), .driver_info = BTUSB_REALTEK },
@@ -2735,213 +2681,6 @@ err_free_wc:
 	return err;
 }
 
-<<<<<<< HEAD
-static int btusb_mtk_setup_firmware_79xx(struct hci_dev *hdev, const char *fwname)
-{
-	struct btmtk_hci_wmt_params wmt_params;
-	struct btmtk_global_desc *globaldesc = NULL;
-	struct btmtk_section_map *sectionmap;
-	const struct firmware *fw;
-	const u8 *fw_ptr;
-	const u8 *fw_bin_ptr;
-	int err, dlen, i, status;
-	u8 flag, first_block, retry;
-	u32 section_num, dl_size, section_offset;
-	u8 cmd[64];
-
-	err = request_firmware(&fw, fwname, &hdev->dev);
-	if (err < 0) {
-		bt_dev_err(hdev, "Failed to load firmware file (%d)", err);
-		return err;
-	}
-
-	fw_ptr = fw->data;
-	fw_bin_ptr = fw_ptr;
-	globaldesc = (struct btmtk_global_desc *)(fw_ptr + MTK_FW_ROM_PATCH_HEADER_SIZE);
-	section_num = le32_to_cpu(globaldesc->section_num);
-
-	for (i = 0; i < section_num; i++) {
-		first_block = 1;
-		fw_ptr = fw_bin_ptr;
-		sectionmap = (struct btmtk_section_map *)(fw_ptr + MTK_FW_ROM_PATCH_HEADER_SIZE +
-			      MTK_FW_ROM_PATCH_GD_SIZE + MTK_FW_ROM_PATCH_SEC_MAP_SIZE * i);
-
-		section_offset = le32_to_cpu(sectionmap->secoffset);
-		dl_size = le32_to_cpu(sectionmap->bin_info_spec.dlsize);
-
-		if (dl_size > 0) {
-			retry = 20;
-			while (retry > 0) {
-				cmd[0] = 0; /* 0 means legacy dl mode. */
-				memcpy(cmd + 1,
-				       fw_ptr + MTK_FW_ROM_PATCH_HEADER_SIZE +
-				       MTK_FW_ROM_PATCH_GD_SIZE + MTK_FW_ROM_PATCH_SEC_MAP_SIZE * i +
-				       MTK_SEC_MAP_COMMON_SIZE,
-				       MTK_SEC_MAP_NEED_SEND_SIZE + 1);
-
-				wmt_params.op = BTMTK_WMT_PATCH_DWNLD;
-				wmt_params.status = &status;
-				wmt_params.flag = 0;
-				wmt_params.dlen = MTK_SEC_MAP_NEED_SEND_SIZE + 1;
-				wmt_params.data = &cmd;
-
-				err = btusb_mtk_hci_wmt_sync(hdev, &wmt_params);
-				if (err < 0) {
-					bt_dev_err(hdev, "Failed to send wmt patch dwnld (%d)",
-						   err);
-					goto err_release_fw;
-				}
-
-				if (status == BTMTK_WMT_PATCH_UNDONE) {
-					break;
-				} else if (status == BTMTK_WMT_PATCH_PROGRESS) {
-					msleep(100);
-					retry--;
-				} else if (status == BTMTK_WMT_PATCH_DONE) {
-					goto next_section;
-				} else {
-					bt_dev_err(hdev, "Failed wmt patch dwnld status (%d)",
-						   status);
-					err = -EIO;
-					goto err_release_fw;
-				}
-			}
-
-			fw_ptr += section_offset;
-			wmt_params.op = BTMTK_WMT_PATCH_DWNLD;
-			wmt_params.status = NULL;
-
-			while (dl_size > 0) {
-				dlen = min_t(int, 250, dl_size);
-				if (first_block == 1) {
-					flag = 1;
-					first_block = 0;
-				} else if (dl_size - dlen <= 0) {
-					flag = 3;
-				} else {
-					flag = 2;
-				}
-
-				wmt_params.flag = flag;
-				wmt_params.dlen = dlen;
-				wmt_params.data = fw_ptr;
-
-				err = btusb_mtk_hci_wmt_sync(hdev, &wmt_params);
-				if (err < 0) {
-					bt_dev_err(hdev, "Failed to send wmt patch dwnld (%d)",
-						   err);
-					goto err_release_fw;
-				}
-
-				dl_size -= dlen;
-				fw_ptr += dlen;
-			}
-		}
-next_section:
-		continue;
-	}
-	/* Wait a few moments for firmware activation done */
-	usleep_range(100000, 120000);
-
-err_release_fw:
-	release_firmware(fw);
-
-	return err;
-}
-
-static int btusb_mtk_setup_firmware(struct hci_dev *hdev, const char *fwname)
-{
-	struct btmtk_hci_wmt_params wmt_params;
-	const struct firmware *fw;
-	const u8 *fw_ptr;
-	size_t fw_size;
-	int err, dlen;
-	u8 flag, param;
-
-	err = request_firmware(&fw, fwname, &hdev->dev);
-	if (err < 0) {
-		bt_dev_err(hdev, "Failed to load firmware file (%d)", err);
-		return err;
-	}
-
-	/* Power on data RAM the firmware relies on. */
-	param = 1;
-	wmt_params.op = BTMTK_WMT_FUNC_CTRL;
-	wmt_params.flag = 3;
-	wmt_params.dlen = sizeof(param);
-	wmt_params.data = &param;
-	wmt_params.status = NULL;
-
-	err = btusb_mtk_hci_wmt_sync(hdev, &wmt_params);
-	if (err < 0) {
-		bt_dev_err(hdev, "Failed to power on data RAM (%d)", err);
-		goto err_release_fw;
-	}
-
-	fw_ptr = fw->data;
-	fw_size = fw->size;
-
-	/* The size of patch header is 30 bytes, should be skip */
-	if (fw_size < 30) {
-		err = -EINVAL;
-		goto err_release_fw;
-	}
-
-	fw_size -= 30;
-	fw_ptr += 30;
-	flag = 1;
-
-	wmt_params.op = BTMTK_WMT_PATCH_DWNLD;
-	wmt_params.status = NULL;
-
-	while (fw_size > 0) {
-		dlen = min_t(int, 250, fw_size);
-
-		/* Tell device the position in sequence */
-		if (fw_size - dlen <= 0)
-			flag = 3;
-		else if (fw_size < fw->size - 30)
-			flag = 2;
-
-		wmt_params.flag = flag;
-		wmt_params.dlen = dlen;
-		wmt_params.data = fw_ptr;
-
-		err = btusb_mtk_hci_wmt_sync(hdev, &wmt_params);
-		if (err < 0) {
-			bt_dev_err(hdev, "Failed to send wmt patch dwnld (%d)",
-				   err);
-			goto err_release_fw;
-		}
-
-		fw_size -= dlen;
-		fw_ptr += dlen;
-	}
-
-	wmt_params.op = BTMTK_WMT_RST;
-	wmt_params.flag = 4;
-	wmt_params.dlen = 0;
-	wmt_params.data = NULL;
-	wmt_params.status = NULL;
-
-	/* Activate funciton the firmware providing to */
-	err = btusb_mtk_hci_wmt_sync(hdev, &wmt_params);
-	if (err < 0) {
-		bt_dev_err(hdev, "Failed to send wmt rst (%d)", err);
-		goto err_release_fw;
-	}
-
-	/* Wait a few moments for firmware activation done */
-	usleep_range(10000, 12000);
-
-err_release_fw:
-	release_firmware(fw);
-
-	return err;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int btusb_mtk_func_query(struct hci_dev *hdev)
 {
 	struct btmtk_hci_wmt_params wmt_params;
@@ -3099,12 +2838,8 @@ static int btusb_mtk_setup(struct hci_dev *hdev)
 		snprintf(fw_bin_name, sizeof(fw_bin_name),
 			"mediatek/BT_RAM_CODE_MT%04x_1_%x_hdr.bin",
 			 dev_id & 0xffff, (fw_version & 0xff) + 1);
-<<<<<<< HEAD
-		err = btusb_mtk_setup_firmware_79xx(hdev, fw_bin_name);
-=======
 		err = btmtk_setup_firmware_79xx(hdev, fw_bin_name,
 						btusb_mtk_hci_wmt_sync);
->>>>>>> origin/linux_6.1.15_upstream
 		if (err < 0) {
 			bt_dev_err(hdev, "Failed to set up firmware (%d)", err);
 			return err;

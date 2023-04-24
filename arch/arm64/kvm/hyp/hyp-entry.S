@@ -196,11 +196,7 @@ SYM_CODE_END(__kvm_hyp_vector)
 	sub	sp, sp, #(8 * 4)
 	stp	x2, x3, [sp, #(8 * 0)]
 	stp	x0, x1, [sp, #(8 * 2)]
-<<<<<<< HEAD
-	alternative_cb spectre_bhb_patch_wa3
-=======
 	alternative_cb ARM64_ALWAYS_SYSTEM, spectre_bhb_patch_wa3
->>>>>>> origin/linux_6.1.15_upstream
 	/* Patched to mov WA3 when supported */
 	mov	w0, #ARM_SMCCC_ARCH_WORKAROUND_1
 	alternative_cb_end

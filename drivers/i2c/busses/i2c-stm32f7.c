@@ -1517,11 +1517,7 @@ static irqreturn_t stm32f7_i2c_isr_event(int irq, void *data)
 		writel_relaxed(STM32F7_I2C_ICR_NACKCF, base + STM32F7_I2C_ICR);
 		if (i2c_dev->use_dma) {
 			stm32f7_i2c_disable_dma_req(i2c_dev);
-<<<<<<< HEAD
-			dmaengine_terminate_all(dma->chan_using);
-=======
 			dmaengine_terminate_async(dma->chan_using);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		f7_msg->result = -ENXIO;
 	}
@@ -1702,12 +1698,9 @@ static int stm32f7_i2c_xfer(struct i2c_adapter *i2c_adap,
 						i2c_dev->adap.timeout);
 	ret = f7_msg->result;
 	if (ret) {
-<<<<<<< HEAD
-=======
 		if (i2c_dev->use_dma)
 			dmaengine_synchronize(dma->chan_using);
 
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * It is possible that some unsent data have already been
 		 * written into TXDR. To avoid sending old data in a
@@ -1722,11 +1715,7 @@ static int stm32f7_i2c_xfer(struct i2c_adapter *i2c_adap,
 		dev_dbg(i2c_dev->dev, "Access to slave 0x%x timed out\n",
 			i2c_dev->msg->addr);
 		if (i2c_dev->use_dma)
-<<<<<<< HEAD
-			dmaengine_terminate_all(dma->chan_using);
-=======
 			dmaengine_terminate_sync(dma->chan_using);
->>>>>>> origin/linux_6.1.15_upstream
 		stm32f7_i2c_wait_free_bus(i2c_dev);
 		ret = -ETIMEDOUT;
 	}
@@ -1771,12 +1760,9 @@ static int stm32f7_i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 					      i2c_dev->adap.timeout);
 	ret = f7_msg->result;
 	if (ret) {
-<<<<<<< HEAD
-=======
 		if (i2c_dev->use_dma)
 			dmaengine_synchronize(dma->chan_using);
 
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * It is possible that some unsent data have already been
 		 * written into TXDR. To avoid sending old data in a
@@ -1790,11 +1776,7 @@ static int stm32f7_i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 	if (!timeout) {
 		dev_dbg(dev, "Access to slave 0x%x timed out\n", f7_msg->addr);
 		if (i2c_dev->use_dma)
-<<<<<<< HEAD
-			dmaengine_terminate_all(dma->chan_using);
-=======
 			dmaengine_terminate_sync(dma->chan_using);
->>>>>>> origin/linux_6.1.15_upstream
 		stm32f7_i2c_wait_free_bus(i2c_dev);
 		ret = -ETIMEDOUT;
 		goto pm_free;

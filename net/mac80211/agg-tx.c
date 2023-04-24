@@ -106,11 +106,7 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
 	mgmt->u.action.u.addba_req.start_seq_num =
 					cpu_to_le16(start_seq_num << 4);
 
-<<<<<<< HEAD
-	ieee80211_tx_skb_tid(sdata, skb, tid);
-=======
 	ieee80211_tx_skb_tid(sdata, skb, tid, -1);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void ieee80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn)

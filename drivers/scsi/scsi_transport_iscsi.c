@@ -212,16 +212,12 @@ iscsi_create_endpoint(int dd_size)
 		return NULL;
 
 	mutex_lock(&iscsi_ep_idr_mutex);
-<<<<<<< HEAD
-	id = idr_alloc(&iscsi_ep_idr, ep, 0, -1, GFP_NOIO);
-=======
 
 	/*
 	 * First endpoint id should be 1 to comply with user space
 	 * applications (iscsid).
 	 */
 	id = idr_alloc(&iscsi_ep_idr, ep, 1, -1, GFP_NOIO);
->>>>>>> origin/linux_6.1.15_upstream
 	if (id < 0) {
 		mutex_unlock(&iscsi_ep_idr_mutex);
 		printk(KERN_ERR "Could not allocate endpoint ID. Error %d.\n",
@@ -235,11 +231,7 @@ iscsi_create_endpoint(int dd_size)
 	dev_set_name(&ep->dev, "ep-%d", id);
 	err = device_register(&ep->dev);
         if (err)
-<<<<<<< HEAD
-		goto free_id;
-=======
 		goto put_dev;
->>>>>>> origin/linux_6.1.15_upstream
 
 	err = sysfs_create_group(&ep->dev.kobj, &iscsi_endpoint_group);
 	if (err)
@@ -253,19 +245,12 @@ unregister_dev:
 	device_unregister(&ep->dev);
 	return NULL;
 
-<<<<<<< HEAD
-free_id:
-	mutex_lock(&iscsi_ep_idr_mutex);
-	idr_remove(&iscsi_ep_idr, id);
-	mutex_unlock(&iscsi_ep_idr_mutex);
-=======
 put_dev:
 	mutex_lock(&iscsi_ep_idr_mutex);
 	idr_remove(&iscsi_ep_idr, id);
 	mutex_unlock(&iscsi_ep_idr_mutex);
 	put_device(&ep->dev);
 	return NULL;
->>>>>>> origin/linux_6.1.15_upstream
 free_ep:
 	kfree(ep);
 	return NULL;
@@ -2260,53 +2245,6 @@ static void iscsi_stop_conn(struct iscsi_cls_conn *conn, int flag)
 }
 
 static void iscsi_ep_disconnect(struct iscsi_cls_conn *conn, bool is_active)
-<<<<<<< HEAD
-{
-	struct iscsi_cls_session *session = iscsi_conn_to_session(conn);
-	struct iscsi_endpoint *ep;
-
-	ISCSI_DBG_TRANS_CONN(conn, "disconnect ep.\n");
-	WRITE_ONCE(conn->state, ISCSI_CONN_FAILED);
-
-	if (!conn->ep || !session->transport->ep_disconnect)
-		return;
-
-	ep = conn->ep;
-	conn->ep = NULL;
-
-	session->transport->unbind_conn(conn, is_active);
-	session->transport->ep_disconnect(ep);
-	ISCSI_DBG_TRANS_CONN(conn, "disconnect ep done.\n");
-}
-
-static void iscsi_if_disconnect_bound_ep(struct iscsi_cls_conn *conn,
-					 struct iscsi_endpoint *ep,
-					 bool is_active)
-{
-	/* Check if this was a conn error and the kernel took ownership */
-	spin_lock_irq(&conn->lock);
-	if (!test_bit(ISCSI_CLS_CONN_BIT_CLEANUP, &conn->flags)) {
-		spin_unlock_irq(&conn->lock);
-		iscsi_ep_disconnect(conn, is_active);
-	} else {
-		spin_unlock_irq(&conn->lock);
-		ISCSI_DBG_TRANS_CONN(conn, "flush kernel conn cleanup.\n");
-		mutex_unlock(&conn->ep_mutex);
-
-		flush_work(&conn->cleanup_work);
-		/*
-		 * Userspace is now done with the EP so we can release the ref
-		 * iscsi_cleanup_conn_work_fn took.
-		 */
-		iscsi_put_endpoint(ep);
-		mutex_lock(&conn->ep_mutex);
-	}
-}
-
-static int iscsi_if_stop_conn(struct iscsi_transport *transport,
-			      struct iscsi_uevent *ev)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct iscsi_cls_session *session = iscsi_conn_to_session(conn);
 	struct iscsi_endpoint *ep;

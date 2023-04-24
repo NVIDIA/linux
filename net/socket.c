@@ -863,10 +863,7 @@ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 	int empty = 1, false_tstamp = 0;
 	struct skb_shared_hwtstamps *shhwtstamps =
 		skb_hwtstamps(skb);
-<<<<<<< HEAD
-=======
 	int if_index;
->>>>>>> origin/linux_6.1.15_upstream
 	ktime_t hwtstamp;
 
 	/* Race occurred between timestamp enabling and packet
@@ -922,15 +919,8 @@ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 			hwtstamp = shhwtstamps->hwtstamp;
 
 		if (sk->sk_tsflags & SOF_TIMESTAMPING_BIND_PHC)
-<<<<<<< HEAD
-			hwtstamp = ptp_convert_timestamp(shhwtstamps,
-							 sk->sk_bind_phc);
-		else
-			hwtstamp = shhwtstamps->hwtstamp;
-=======
 			hwtstamp = ptp_convert_timestamp(&hwtstamp,
 							 sk->sk_bind_phc);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (ktime_to_timespec64_cond(hwtstamp, tss.ts + 2)) {
 			empty = 0;

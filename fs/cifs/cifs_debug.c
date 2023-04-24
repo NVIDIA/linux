@@ -412,14 +412,11 @@ skip_rdma:
 				   from_kuid(&init_user_ns, ses->cred_uid));
 
 			spin_lock(&ses->chan_lock);
-<<<<<<< HEAD
-=======
 			if (CIFS_CHAN_NEEDS_RECONNECT(ses, 0))
 				seq_puts(m, "\tPrimary channel: DISCONNECTED ");
 			if (CIFS_CHAN_IN_RECONNECT(ses, 0))
 				seq_puts(m, "\t[RECONNECTING] ");
 
->>>>>>> origin/linux_6.1.15_upstream
 			if (ses->chan_count > 1) {
 				seq_printf(m, "\n\n\tExtra Channels: %zu ",
 					   ses->chan_count-1);

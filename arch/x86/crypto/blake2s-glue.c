@@ -4,10 +4,6 @@
  */
 
 #include <crypto/internal/blake2s.h>
-<<<<<<< HEAD
-#include <crypto/internal/simd.h>
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <linux/types.h>
 #include <linux/jump_label.h>

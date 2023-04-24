@@ -747,12 +747,8 @@ int afs_getattr(struct user_namespace *mnt_userns, const struct path *path,
 
 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
 
-<<<<<<< HEAD
-	if (!(query_flags & AT_STATX_DONT_SYNC) &&
-=======
 	if (vnode->volume &&
 	    !(query_flags & AT_STATX_DONT_SYNC) &&
->>>>>>> origin/linux_6.1.15_upstream
 	    !test_bit(AFS_VNODE_CB_PROMISED, &vnode->flags)) {
 		key = afs_request_key(vnode->volume->cell);
 		if (IS_ERR(key))

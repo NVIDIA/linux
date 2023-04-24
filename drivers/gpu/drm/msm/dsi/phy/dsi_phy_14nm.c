@@ -1078,10 +1078,6 @@ const struct msm_dsi_phy_cfg dsi_phy_14nm_8953_cfgs = {
 	},
 	.min_pll_rate = VCO_MIN_RATE,
 	.max_pll_rate = VCO_MAX_RATE,
-<<<<<<< HEAD
-	.io_start = { 0xc994400, 0xc996400 },
-=======
 	.io_start = { 0x1a94400, 0x1a96400 },
->>>>>>> origin/linux_6.1.15_upstream
 	.num_dsi_phy = 2,
 };

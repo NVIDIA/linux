@@ -107,11 +107,7 @@
 	isb					// Make sure SRE is now set
 	mrs_s	x0, SYS_ICC_SRE_EL2		// Read SRE back,
 	tbz	x0, #0, .Lskip_gicv3_\@		// and check that it sticks
-<<<<<<< HEAD
-	msr_s	SYS_ICH_HCR_EL2, xzr		// Reset ICC_HCR_EL2 to defaults
-=======
 	msr_s	SYS_ICH_HCR_EL2, xzr		// Reset ICH_HCR_EL2 to defaults
->>>>>>> origin/linux_6.1.15_upstream
 .Lskip_gicv3_\@:
 .endm
 

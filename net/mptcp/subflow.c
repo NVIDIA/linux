@@ -969,15 +969,7 @@ static enum mapping_status validate_data_csum(struct sock *ssk, struct sk_buff *
 				 subflow->map_data_csum);
 	if (unlikely(csum)) {
 		MPTCP_INC_STATS(sock_net(ssk), MPTCP_MIB_DATACSUMERR);
-<<<<<<< HEAD
-		if (subflow->mp_join || subflow->valid_csum_seen) {
-			subflow->send_mp_fail = 1;
-			MPTCP_INC_STATS(sock_net(ssk), MPTCP_MIB_MPFAILTX);
-		}
-		return subflow->mp_join ? MAPPING_INVALID : MAPPING_DUMMY;
-=======
 		return MAPPING_BAD_CSUM;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	subflow->valid_csum_seen = 1;
@@ -1176,8 +1168,6 @@ static bool subflow_can_fallback(struct mptcp_subflow_context *subflow)
 		return !subflow->fully_established;
 }
 
-<<<<<<< HEAD
-=======
 static void mptcp_subflow_fail(struct mptcp_sock *msk, struct sock *ssk)
 {
 	struct mptcp_subflow_context *subflow = mptcp_subflow_ctx(ssk);
@@ -1205,7 +1195,6 @@ static void mptcp_subflow_fail(struct mptcp_sock *msk, struct sock *ssk)
 	mptcp_reset_timeout(msk, subflow->fail_tout);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static bool subflow_check_data_avail(struct sock *ssk)
 {
 	struct mptcp_subflow_context *subflow = mptcp_subflow_ctx(ssk);
@@ -1299,21 +1288,7 @@ reset:
 			return false;
 		}
 
-<<<<<<< HEAD
-	if (!subflow_can_fallback(subflow)) {
-		/* fatal protocol error, close the socket.
-		 * subflow_error_report() will introduce the appropriate barriers
-		 */
-		ssk->sk_err = EBADMSG;
-		tcp_set_state(ssk, TCP_CLOSE);
-		subflow->reset_transient = 0;
-		subflow->reset_reason = MPTCP_RST_EMPTCP;
-		tcp_send_active_reset(ssk, GFP_ATOMIC);
-		WRITE_ONCE(subflow->data_avail, 0);
-		return false;
-=======
 		mptcp_do_fallback(ssk);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	skb = skb_peek(&ssk->sk_receive_queue);

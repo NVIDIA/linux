@@ -582,23 +582,6 @@ static struct rockchip_mux_recalced_data rk3308_mux_recalced_data[] = {
 		.bit = 8,
 		.mask = 0xf
 	}, {
-<<<<<<< HEAD
-		/* gpio3b4_sel */
-		.num = 3,
-		.pin = 12,
-		.reg = 0x68,
-		.bit = 8,
-		.mask = 0xf
-	}, {
-		/* gpio3b5_sel */
-		.num = 3,
-		.pin = 13,
-		.reg = 0x68,
-		.bit = 12,
-		.mask = 0xf
-	}, {
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		/* gpio2a2_sel */
 		.num = 2,
 		.pin = 2,
@@ -633,8 +616,6 @@ static struct rockchip_mux_recalced_data rk3308_mux_recalced_data[] = {
 		.reg = 0x68,
 		.bit = 6,
 		.mask = 0x3
-<<<<<<< HEAD
-=======
 	}, {
 		/* gpio3b4_sel */
 		.num = 3,
@@ -649,7 +630,6 @@ static struct rockchip_mux_recalced_data rk3308_mux_recalced_data[] = {
 		.reg = 0x68,
 		.bit = 12,
 		.mask = 0xf
->>>>>>> origin/linux_6.1.15_upstream
 	},
 };
 
@@ -3443,15 +3423,8 @@ static int rockchip_pinctrl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, info);
 
 	ret = of_platform_populate(np, NULL, NULL, &pdev->dev);
-<<<<<<< HEAD
-	if (ret) {
-		dev_err(&pdev->dev, "failed to register gpio device\n");
-		return ret;
-	}
-=======
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to register gpio device\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

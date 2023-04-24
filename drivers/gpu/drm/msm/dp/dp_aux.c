@@ -34,10 +34,7 @@ struct dp_aux_private {
 	bool no_send_addr;
 	bool no_send_stop;
 	bool initted;
-<<<<<<< HEAD
-=======
 	bool is_edp;
->>>>>>> origin/linux_6.1.15_upstream
 	u32 offset;
 	u32 segment;
 
@@ -340,8 +337,6 @@ static ssize_t dp_aux_transfer(struct drm_dp_aux *dp_aux,
 		ret = -EIO;
 		goto exit;
 	}
-<<<<<<< HEAD
-=======
 
 	/*
 	 * For eDP it's important to give a reasonably long wait here for HPD
@@ -358,7 +353,6 @@ static ssize_t dp_aux_transfer(struct drm_dp_aux *dp_aux,
 			goto exit;
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	dp_aux_update_offset_and_segment(aux, msg);
 	dp_aux_transfer_helper(aux, msg, true);

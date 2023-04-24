@@ -743,11 +743,7 @@ static void le_conn_timeout(struct work_struct *work)
 		/* Disable LE Advertising */
 		le_disable_advertising(hdev);
 		hci_dev_lock(hdev);
-<<<<<<< HEAD
-		hci_le_conn_failed(conn, HCI_ERROR_ADVERTISING_TIMEOUT);
-=======
 		hci_conn_failed(conn, HCI_ERROR_ADVERTISING_TIMEOUT);
->>>>>>> origin/linux_6.1.15_upstream
 		hci_dev_unlock(hdev);
 		return;
 	}

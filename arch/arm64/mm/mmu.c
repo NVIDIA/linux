@@ -547,11 +547,7 @@ static void __init map_mem(pgd_t *pgdp)
 	 */
 	BUILD_BUG_ON(pgd_index(direct_map_end - 1) == pgd_index(direct_map_end));
 
-<<<<<<< HEAD
-	if (can_set_direct_map() || IS_ENABLED(CONFIG_KFENCE))
-=======
 	if (can_set_direct_map())
->>>>>>> origin/linux_6.1.15_upstream
 		flags |= NO_BLOCK_MAPPINGS | NO_CONT_MAPPINGS;
 
 	/*
@@ -564,12 +560,7 @@ static void __init map_mem(pgd_t *pgdp)
 
 #ifdef CONFIG_KEXEC_CORE
 	if (crash_mem_map) {
-<<<<<<< HEAD
-		if (IS_ENABLED(CONFIG_ZONE_DMA) ||
-		    IS_ENABLED(CONFIG_ZONE_DMA32))
-=======
 		if (defer_reserve_crashkernel())
->>>>>>> origin/linux_6.1.15_upstream
 			flags |= NO_BLOCK_MAPPINGS | NO_CONT_MAPPINGS;
 		else if (crashk_res.end)
 			memblock_mark_nomap(crashk_res.start,
@@ -610,12 +601,7 @@ static void __init map_mem(pgd_t *pgdp)
 	 * through /sys/kernel/kexec_crash_size interface.
 	 */
 #ifdef CONFIG_KEXEC_CORE
-<<<<<<< HEAD
-	if (crash_mem_map &&
-	    !IS_ENABLED(CONFIG_ZONE_DMA) && !IS_ENABLED(CONFIG_ZONE_DMA32)) {
-=======
 	if (crash_mem_map && !defer_reserve_crashkernel()) {
->>>>>>> origin/linux_6.1.15_upstream
 		if (crashk_res.end) {
 			__map_memblock(pgdp, crashk_res.start,
 				       crashk_res.end + 1,
@@ -689,12 +675,6 @@ static int __init map_entry_trampoline(void)
 	for (i = 0; i < DIV_ROUND_UP(entry_tramp_text_size(), PAGE_SIZE); i++)
 		__set_fixmap(FIX_ENTRY_TRAMP_TEXT1 - i,
 			     pa_start + i * PAGE_SIZE, prot);
-<<<<<<< HEAD
-
-	if (IS_ENABLED(CONFIG_RANDOMIZE_BASE)) {
-		extern char __entry_tramp_data_start[];
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (IS_ENABLED(CONFIG_RELOCATABLE))
 		__set_fixmap(FIX_ENTRY_TRAMP_TEXT1 - i,

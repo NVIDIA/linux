@@ -481,10 +481,7 @@ static const struct snd_soc_component_driver atmel_pdmic_cpu_dai_component = {
 	.num_controls		= ARRAY_SIZE(atmel_pdmic_snd_controls),
 	.idle_bias_on		= 1,
 	.use_pmdown_time	= 1,
-<<<<<<< HEAD
-=======
 	.legacy_dai_naming	= 1,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /* ASoC sound card */

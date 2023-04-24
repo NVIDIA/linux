@@ -1717,58 +1717,6 @@ static enum fullness_group putback_zspage(struct size_class *class,
 static void lock_zspage(struct zspage *zspage)
 {
 	struct page *curr_page, *page;
-<<<<<<< HEAD
-
-	/*
-	 * Pages we haven't locked yet can be migrated off the list while we're
-	 * trying to lock them, so we need to be careful and only attempt to
-	 * lock each page under migrate_read_lock(). Otherwise, the page we lock
-	 * may no longer belong to the zspage. This means that we may wait for
-	 * the wrong page to unlock, so we must take a reference to the page
-	 * prior to waiting for it to unlock outside migrate_read_lock().
-	 */
-	while (1) {
-		migrate_read_lock(zspage);
-		page = get_first_page(zspage);
-		if (trylock_page(page))
-			break;
-		get_page(page);
-		migrate_read_unlock(zspage);
-		wait_on_page_locked(page);
-		put_page(page);
-	}
-
-	curr_page = page;
-	while ((page = get_next_page(curr_page))) {
-		if (trylock_page(page)) {
-			curr_page = page;
-		} else {
-			get_page(page);
-			migrate_read_unlock(zspage);
-			wait_on_page_locked(page);
-			put_page(page);
-			migrate_read_lock(zspage);
-		}
-	}
-	migrate_read_unlock(zspage);
-}
-
-static int zs_init_fs_context(struct fs_context *fc)
-{
-	return init_pseudo(fc, ZSMALLOC_MAGIC) ? 0 : -ENOMEM;
-}
-
-static struct file_system_type zsmalloc_fs = {
-	.name		= "zsmalloc",
-	.init_fs_context = zs_init_fs_context,
-	.kill_sb	= kill_anon_super,
-};
-
-static int zsmalloc_mount(void)
-{
-	int ret = 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Pages we haven't locked yet can be migrated off the list while we're
@@ -1846,35 +1794,7 @@ static void dec_zspage_isolation(struct zspage *zspage)
 	zspage->isolated--;
 }
 
-<<<<<<< HEAD
-static void putback_zspage_deferred(struct zs_pool *pool,
-				    struct size_class *class,
-				    struct zspage *zspage)
-{
-	enum fullness_group fg;
-
-	fg = putback_zspage(class, zspage);
-	if (fg == ZS_EMPTY)
-		schedule_work(&pool->free_work);
-
-}
-
-static inline void zs_pool_dec_isolated(struct zs_pool *pool)
-{
-	VM_BUG_ON(atomic_long_read(&pool->isolated_pages) <= 0);
-	atomic_long_dec(&pool->isolated_pages);
-	/*
-	 * Checking pool->destroying must happen after atomic_long_dec()
-	 * for pool->isolated_pages above. Paired with the smp_mb() in
-	 * zs_unregister_migration().
-	 */
-	smp_mb__after_atomic();
-	if (atomic_long_read(&pool->isolated_pages) == 0 && pool->destroying)
-		wake_up_all(&pool->migration_wait);
-}
-=======
 static const struct movable_operations zsmalloc_mops;
->>>>>>> origin/linux_6.1.15_upstream
 
 static void replace_sub_page(struct size_class *class, struct zspage *zspage,
 				struct page *newpage, struct page *oldpage)

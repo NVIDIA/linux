@@ -864,11 +864,7 @@ void fuse_flush_time_update(struct inode *inode)
 	mapping_set_error(inode->i_mapping, err);
 }
 
-<<<<<<< HEAD
-void fuse_update_ctime(struct inode *inode)
-=======
 static void fuse_update_ctime_in_cache(struct inode *inode)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (!IS_NOCMTIME(inode)) {
 		inode->i_ctime = current_time(inode);

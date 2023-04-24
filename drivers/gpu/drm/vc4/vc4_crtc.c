@@ -127,11 +127,7 @@ static bool vc4_crtc_get_scanout_position(struct drm_crtc *crtc,
 		*vpos /= 2;
 
 		/* Use hpos to correct for field offset in interlaced mode. */
-<<<<<<< HEAD
-		if (vc4_hvs_get_fifo_frame_count(dev, vc4_crtc_state->assigned_channel) % 2)
-=======
 		if (vc4_hvs_get_fifo_frame_count(hvs, vc4_crtc_state->assigned_channel) % 2)
->>>>>>> origin/linux_6.1.15_upstream
 			*hpos += mode->crtc_htotal / 2;
 	}
 
@@ -560,8 +556,6 @@ int vc4_crtc_disable_at_boot(struct drm_crtc *crtc)
 	 */
 
 	return 0;
-<<<<<<< HEAD
-=======
 }
 
 void vc4_crtc_send_vblank(struct drm_crtc *crtc)
@@ -576,7 +570,6 @@ void vc4_crtc_send_vblank(struct drm_crtc *crtc)
 	drm_crtc_send_vblank_event(crtc, crtc->state->event);
 	crtc->state->event = NULL;
 	spin_unlock_irqrestore(&dev->event_lock, flags);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void vc4_crtc_atomic_disable(struct drm_crtc *crtc,
@@ -775,10 +768,7 @@ static void vc4_crtc_handle_page_flip(struct vc4_crtc *vc4_crtc)
 	struct drm_crtc *crtc = &vc4_crtc->base;
 	struct drm_device *dev = crtc->dev;
 	struct vc4_dev *vc4 = to_vc4_dev(dev);
-<<<<<<< HEAD
-=======
 	struct vc4_hvs *hvs = vc4->hvs;
->>>>>>> origin/linux_6.1.15_upstream
 	u32 chan = vc4_crtc->current_hvs_channel;
 	unsigned long flags;
 
@@ -1311,16 +1301,11 @@ int vc4_crtc_init(struct drm_device *drm, struct vc4_crtc *vc4_crtc,
 	}
 
 	spin_lock_init(&vc4_crtc->irq_lock);
-<<<<<<< HEAD
-	drm_crtc_init_with_planes(drm, crtc, primary_plane, NULL,
-				  crtc_funcs, NULL);
-=======
 	ret = drmm_crtc_init_with_planes(drm, crtc, primary_plane, NULL,
 					 crtc_funcs, NULL);
 	if (ret)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	drm_crtc_helper_add(crtc, crtc_helper_funcs);
 
 	if (!vc4->is_vc5) {

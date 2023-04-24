@@ -615,11 +615,7 @@ static int vlan_dev_init(struct net_device *dev)
 		return -ENOMEM;
 
 	/* Get vlan's reference to real_dev */
-<<<<<<< HEAD
-	dev_hold(real_dev);
-=======
 	netdev_hold(real_dev, &vlan->dev_tracker, GFP_KERNEL);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -856,11 +852,7 @@ static void vlan_dev_free(struct net_device *dev)
 	vlan->vlan_pcpu_stats = NULL;
 
 	/* Get rid of the vlan's reference to real_dev */
-<<<<<<< HEAD
-	dev_put(vlan->real_dev);
-=======
 	netdev_put(vlan->real_dev, &vlan->dev_tracker);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void vlan_setup(struct net_device *dev)

@@ -1045,10 +1045,7 @@ static inline int __drbg_seed(struct drbg_state *drbg, struct list_head *seed,
 		return ret;
 
 	drbg->seeded = new_seed_state;
-<<<<<<< HEAD
-=======
 	drbg->last_seed_time = jiffies;
->>>>>>> origin/linux_6.1.15_upstream
 	/* 10.1.1.2 / 10.1.1.3 step 5 */
 	drbg->reseed_ctr = 1;
 
@@ -1109,14 +1106,7 @@ static int drbg_seed_from_random(struct drbg_state *drbg)
 	ret = drbg_get_random_bytes(drbg, entropy, entropylen);
 	if (ret)
 		goto out;
-<<<<<<< HEAD
 
-	ret = __drbg_seed(drbg, &seedlist, true, DRBG_SEED_STATE_FULL);
-
-out:
-	memzero_explicit(entropy, entropylen);
-	return ret;
-=======
 
 	ret = __drbg_seed(drbg, &seedlist, true, DRBG_SEED_STATE_FULL);
 
@@ -1143,7 +1133,6 @@ static bool drbg_nopr_reseed_interval_elapsed(struct drbg_state *drbg)
 	 */
 	next_reseed = drbg->last_seed_time + 300 * HZ;
 	return time_after(jiffies, next_reseed);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -1450,12 +1439,8 @@ static int drbg_generate(struct drbg_state *drbg,
 		/* 9.3.1 step 7.4 */
 		addtl = NULL;
 	} else if (rng_is_initialized() &&
-<<<<<<< HEAD
-		   drbg->seeded == DRBG_SEED_STATE_PARTIAL) {
-=======
 		   (drbg->seeded == DRBG_SEED_STATE_PARTIAL ||
 		    drbg_nopr_reseed_interval_elapsed(drbg))) {
->>>>>>> origin/linux_6.1.15_upstream
 		len = drbg_seed_from_random(drbg);
 		if (len)
 			goto err;
@@ -1561,15 +1546,12 @@ static int drbg_prepare_hrng(struct drbg_state *drbg)
 	if (IS_ERR(drbg->jent)) {
 		const int err = PTR_ERR(drbg->jent);
 
-<<<<<<< HEAD
-=======
 		drbg->jent = NULL;
 		if (fips_enabled || err != -ENOENT)
 			return err;
 		pr_info("DRBG: Continuing without Jitter RNG\n");
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -1614,10 +1596,7 @@ static int drbg_instantiate(struct drbg_state *drbg, struct drbg_string *pers,
 		drbg->core = &drbg_cores[coreref];
 		drbg->pr = pr;
 		drbg->seeded = DRBG_SEED_STATE_UNSEEDED;
-<<<<<<< HEAD
-=======
 		drbg->last_seed_time = 0;
->>>>>>> origin/linux_6.1.15_upstream
 		drbg->reseed_threshold = drbg_max_requests(drbg);
 
 		ret = drbg_alloc_state(drbg);

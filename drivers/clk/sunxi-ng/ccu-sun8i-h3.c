@@ -1052,13 +1052,9 @@ static int sun8i_h3_ccu_probe(struct platform_device *pdev)
 	val &= ~GENMASK(19, 16);
 	writel(val | (0 << 16), reg + SUN8I_H3_PLL_AUDIO_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, desc);
-=======
 	ret = devm_sunxi_ccu_probe(&pdev->dev, reg, desc);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Gate then ungate PLL CPU after any rate changes */
 	ccu_pll_notifier_register(&sun8i_h3_pll_cpu_nb);

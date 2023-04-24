@@ -120,7 +120,6 @@ static inline void zonefs_i_size_write(struct inode *inode, loff_t isize)
 static int zonefs_read_iomap_begin(struct inode *inode, loff_t offset,
 				   loff_t length, unsigned int flags,
 				   struct iomap *iomap, struct iomap *srcmap)
-<<<<<<< HEAD
 {
 	struct zonefs_inode_info *zi = ZONEFS_I(inode);
 	struct super_block *sb = inode->i_sb;
@@ -157,52 +156,11 @@ static const struct iomap_ops zonefs_read_iomap_ops = {
 static int zonefs_write_iomap_begin(struct inode *inode, loff_t offset,
 				    loff_t length, unsigned int flags,
 				    struct iomap *iomap, struct iomap *srcmap)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct zonefs_inode_info *zi = ZONEFS_I(inode);
 	struct super_block *sb = inode->i_sb;
 	loff_t isize;
 
-<<<<<<< HEAD
-=======
-	/*
-	 * All blocks are always mapped below EOF. If reading past EOF,
-	 * act as if there is a hole up to the file maximum size.
-	 */
-	mutex_lock(&zi->i_truncate_mutex);
-	iomap->bdev = inode->i_sb->s_bdev;
-	iomap->offset = ALIGN_DOWN(offset, sb->s_blocksize);
-	isize = i_size_read(inode);
-	if (iomap->offset >= isize) {
-		iomap->type = IOMAP_HOLE;
-		iomap->addr = IOMAP_NULL_ADDR;
-		iomap->length = length;
-	} else {
-		iomap->type = IOMAP_MAPPED;
-		iomap->addr = (zi->i_zsector << SECTOR_SHIFT) + iomap->offset;
-		iomap->length = isize - iomap->offset;
-	}
-	mutex_unlock(&zi->i_truncate_mutex);
-
-	trace_zonefs_iomap_begin(inode, iomap);
-
-	return 0;
-}
-
-static const struct iomap_ops zonefs_read_iomap_ops = {
-	.iomap_begin	= zonefs_read_iomap_begin,
-};
-
-static int zonefs_write_iomap_begin(struct inode *inode, loff_t offset,
-				    loff_t length, unsigned int flags,
-				    struct iomap *iomap, struct iomap *srcmap)
-{
-	struct zonefs_inode_info *zi = ZONEFS_I(inode);
-	struct super_block *sb = inode->i_sb;
-	loff_t isize;
-
->>>>>>> origin/linux_6.1.15_upstream
 	/* All write I/Os should always be within the file maximum size */
 	if (WARN_ON_ONCE(offset + length > zi->i_max_size))
 		return -EIO;
@@ -246,11 +204,7 @@ static const struct iomap_ops zonefs_write_iomap_ops = {
 
 static int zonefs_read_folio(struct file *unused, struct folio *folio)
 {
-<<<<<<< HEAD
-	return iomap_readpage(page, &zonefs_read_iomap_ops);
-=======
 	return iomap_read_folio(folio, &zonefs_read_iomap_ops);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void zonefs_readahead(struct readahead_control *rac)
@@ -1012,11 +966,7 @@ static ssize_t zonefs_file_dio_write(struct kiocb *iocb, struct iov_iter *from)
 		ret = zonefs_file_dio_append(iocb, from);
 	else
 		ret = iomap_dio_rw(iocb, from, &zonefs_write_iomap_ops,
-<<<<<<< HEAD
-				   &zonefs_write_dio_ops, 0, 0);
-=======
 				   &zonefs_write_dio_ops, 0, NULL, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	if (zi->i_ztype == ZONEFS_ZTYPE_SEQ &&
 	    (ret > 0 || ret == -EIOCBQUEUED)) {
 		if (ret > 0)
@@ -1158,11 +1108,7 @@ static ssize_t zonefs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		}
 		file_accessed(iocb->ki_filp);
 		ret = iomap_dio_rw(iocb, to, &zonefs_read_iomap_ops,
-<<<<<<< HEAD
-				   &zonefs_read_dio_ops, 0, 0);
-=======
 				   &zonefs_read_dio_ops, 0, NULL, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		ret = generic_file_read_iter(iocb, to);
 		if (ret == -EIO)
@@ -1528,11 +1474,8 @@ static int zonefs_init_file_inode(struct inode *inode, struct blk_zone *zone,
 	sbi->s_blocks += zi->i_max_size >> sb->s_blocksize_bits;
 	sbi->s_used_blocks += zi->i_wpoffset >> sb->s_blocksize_bits;
 
-<<<<<<< HEAD
-=======
 	mutex_lock(&zi->i_truncate_mutex);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * For sequential zones, make sure that any open zone is closed first
 	 * to ensure that the initial number of open zones is 0, in sync with
@@ -1542,13 +1485,6 @@ static int zonefs_init_file_inode(struct inode *inode, struct blk_zone *zone,
 	if (type == ZONEFS_ZTYPE_SEQ &&
 	    (zone->cond == BLK_ZONE_COND_IMP_OPEN ||
 	     zone->cond == BLK_ZONE_COND_EXP_OPEN)) {
-<<<<<<< HEAD
-		mutex_lock(&zi->i_truncate_mutex);
-		ret = zonefs_zone_mgmt(inode, REQ_OP_ZONE_CLOSE);
-		mutex_unlock(&zi->i_truncate_mutex);
-	}
-
-=======
 		ret = zonefs_zone_mgmt(inode, REQ_OP_ZONE_CLOSE);
 		if (ret)
 			goto unlock;
@@ -1559,7 +1495,6 @@ static int zonefs_init_file_inode(struct inode *inode, struct blk_zone *zone,
 unlock:
 	mutex_unlock(&zi->i_truncate_mutex);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -1570,11 +1505,7 @@ static struct dentry *zonefs_create_inode(struct dentry *parent,
 	struct inode *dir = d_inode(parent);
 	struct dentry *dentry;
 	struct inode *inode;
-<<<<<<< HEAD
-	int ret;
-=======
 	int ret = -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 
 	dentry = d_alloc_name(parent, name);
 	if (!dentry)
@@ -1900,16 +1831,11 @@ static int zonefs_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->s_gid = GLOBAL_ROOT_GID;
 	sbi->s_perm = 0640;
 	sbi->s_mount_opts = ZONEFS_MNTOPT_ERRORS_RO;
-<<<<<<< HEAD
-	sbi->s_max_open_zones = bdev_max_open_zones(sb->s_bdev);
-	atomic_set(&sbi->s_open_zones, 0);
-=======
 
 	atomic_set(&sbi->s_wro_seq_files, 0);
 	sbi->s_max_wro_seq_files = bdev_max_open_zones(sb->s_bdev);
 	atomic_set(&sbi->s_active_seq_files, 0);
 	sbi->s_max_active_seq_files = bdev_max_active_zones(sb->s_bdev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = zonefs_read_super(sb);
 	if (ret)

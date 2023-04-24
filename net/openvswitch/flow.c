@@ -34,10 +34,7 @@
 #include <net/mpls.h>
 #include <net/ndisc.h>
 #include <net/nsh.h>
-<<<<<<< HEAD
-=======
 #include <net/pkt_cls.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <net/netfilter/nf_conntrack_zones.h>
 
 #include "conntrack.h"

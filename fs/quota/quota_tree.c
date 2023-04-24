@@ -527,19 +527,10 @@ static int remove_tree(struct qtree_mem_dqinfo *info, struct dquot *dquot,
 		goto out_buf;
 	}
 	newblk = le32_to_cpu(ref[get_index(info, dquot->dq_id, depth)]);
-<<<<<<< HEAD
-	if (newblk < QT_TREEOFF || newblk >= info->dqi_blocks) {
-		quota_error(dquot->dq_sb, "Getting block too big (%u >= %u)",
-			    newblk, info->dqi_blocks);
-		ret = -EUCLEAN;
-		goto out_buf;
-	}
-=======
 	ret = do_check_range(dquot->dq_sb, "block", newblk, QT_TREEOFF,
 			     info->dqi_blocks - 1);
 	if (ret)
 		goto out_buf;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (depth == info->dqi_qtree_depth - 1) {
 		ret = free_dqentry(info, dquot, newblk);
@@ -640,19 +631,10 @@ static loff_t find_tree_dqentry(struct qtree_mem_dqinfo *info,
 	blk = le32_to_cpu(ref[get_index(info, dquot->dq_id, depth)]);
 	if (!blk)	/* No reference? */
 		goto out_buf;
-<<<<<<< HEAD
-	if (blk < QT_TREEOFF || blk >= info->dqi_blocks) {
-		quota_error(dquot->dq_sb, "Getting block too big (%u >= %u)",
-			    blk, info->dqi_blocks);
-		ret = -EUCLEAN;
-		goto out_buf;
-	}
-=======
 	ret = do_check_range(dquot->dq_sb, "block", blk, QT_TREEOFF,
 			     info->dqi_blocks - 1);
 	if (ret)
 		goto out_buf;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (depth < info->dqi_qtree_depth - 1)
 		ret = find_tree_dqentry(info, dquot, blk, depth+1);

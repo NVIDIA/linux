@@ -464,15 +464,6 @@ static int rk3399_dmcfreq_remove(struct platform_device *pdev)
 	struct rk3399_dmcfreq *dmcfreq = dev_get_drvdata(&pdev->dev);
 
 	devfreq_event_disable_edev(dmcfreq->edev);
-<<<<<<< HEAD
-
-	/*
-	 * Before remove the opp table we need to unregister the opp notifier.
-	 */
-	devm_devfreq_unregister_opp_notifier(dmcfreq->dev, dmcfreq->devfreq);
-	dev_pm_opp_of_remove_table(dmcfreq->dev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

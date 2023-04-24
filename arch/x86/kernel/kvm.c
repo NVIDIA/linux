@@ -236,12 +236,7 @@ again:
 	raw_spin_unlock(&b->lock);
 
 	/* A dummy token might be allocated and ultimately not used.  */
-<<<<<<< HEAD
-	if (dummy)
-		kfree(dummy);
-=======
 	kfree(dummy);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(kvm_async_pf_task_wake);
 
@@ -481,10 +476,7 @@ static bool pv_tlb_flush_supported(void)
 	return (kvm_para_has_feature(KVM_FEATURE_PV_TLB_FLUSH) &&
 		!kvm_para_has_hint(KVM_HINTS_REALTIME) &&
 		kvm_para_has_feature(KVM_FEATURE_STEAL_TIME) &&
-<<<<<<< HEAD
-=======
 		!boot_cpu_has(X86_FEATURE_MWAIT) &&
->>>>>>> origin/linux_6.1.15_upstream
 		(num_possible_cpus() != 1));
 }
 
@@ -499,10 +491,7 @@ static bool pv_sched_yield_supported(void)
 	return (kvm_para_has_feature(KVM_FEATURE_PV_SCHED_YIELD) &&
 		!kvm_para_has_hint(KVM_HINTS_REALTIME) &&
 	    kvm_para_has_feature(KVM_FEATURE_STEAL_TIME) &&
-<<<<<<< HEAD
-=======
 	    !boot_cpu_has(X86_FEATURE_MWAIT) &&
->>>>>>> origin/linux_6.1.15_upstream
 	    (num_possible_cpus() != 1));
 }
 

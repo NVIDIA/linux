@@ -42,11 +42,7 @@ void arch_send_call_function_ipi_mask(struct cpumask *mask);
 /* Hook for the generic smp_call_function_single() routine. */
 void arch_send_call_function_single_ipi(int cpu);
 
-<<<<<<< HEAD
-int riscv_hartid_to_cpuid(int hartid);
-=======
 int riscv_hartid_to_cpuid(unsigned long hartid);
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Set custom IPI operations */
 void riscv_set_ipi_ops(const struct riscv_ipi_ops *ops);

@@ -80,11 +80,7 @@ static void reprogram_counters(struct kvm_pmu *pmu, u64 diff)
 	}
 }
 
-<<<<<<< HEAD
-static unsigned int intel_pmc_perf_hw_id(struct kvm_pmc *pmc)
-=======
 static bool intel_hw_event_available(struct kvm_pmc *pmc)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct kvm_pmu *pmu = pmc_to_pmu(pmc);
 	u8 event_select = pmc->eventsel & ARCH_PERFMON_EVENTSEL_EVENT;
@@ -397,11 +393,7 @@ static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 	struct kvm_pmc *pmc;
 	u32 msr = msr_info->index;
 	u64 data = msr_info->data;
-<<<<<<< HEAD
-	u64 reserved_bits;
-=======
 	u64 reserved_bits, diff;
->>>>>>> origin/linux_6.1.15_upstream
 
 	switch (msr) {
 	case MSR_CORE_PERF_FIXED_CTR_CTRL:
@@ -484,12 +476,8 @@ static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			    (pmu->raw_event_mask & HSW_IN_TX_CHECKPOINTED))
 				reserved_bits ^= HSW_IN_TX_CHECKPOINTED;
 			if (!(data & reserved_bits)) {
-<<<<<<< HEAD
-				reprogram_gp_counter(pmc, data);
-=======
 				pmc->eventsel = data;
 				reprogram_counter(pmc);
->>>>>>> origin/linux_6.1.15_upstream
 				return 0;
 			}
 		} else if (intel_pmu_handle_lbr_msrs_access(vcpu, msr_info, false))
@@ -532,11 +520,6 @@ static void intel_pmu_refresh(struct kvm_vcpu *vcpu)
 	pmu->version = 0;
 	pmu->reserved_bits = 0xffffffff00200000ull;
 	pmu->raw_event_mask = X86_RAW_EVENT_MASK;
-<<<<<<< HEAD
-
-	entry = kvm_find_cpuid_entry(vcpu, 0xa, 0);
-	if (!entry)
-=======
 	pmu->global_ctrl_mask = ~0ull;
 	pmu->global_ovf_ctrl_mask = ~0ull;
 	pmu->fixed_ctr_ctrl_mask = ~0ull;
@@ -545,7 +528,6 @@ static void intel_pmu_refresh(struct kvm_vcpu *vcpu)
 
 	entry = kvm_find_cpuid_entry(vcpu, 0xa);
 	if (!entry || !vcpu->kvm->arch.enable_pmu)
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	eax.full = entry->eax;
 	edx.full = entry->edx;
@@ -791,11 +773,6 @@ static void intel_pmu_cleanup(struct kvm_vcpu *vcpu)
 		intel_pmu_release_guest_lbr_event(vcpu);
 }
 
-<<<<<<< HEAD
-struct kvm_pmu_ops intel_pmu_ops = {
-	.pmc_perf_hw_id = intel_pmc_perf_hw_id,
-	.find_fixed_event = intel_find_fixed_event,
-=======
 void intel_pmu_cross_mapped_check(struct kvm_pmu *pmu)
 {
 	struct kvm_pmc *pmc = NULL;
@@ -821,7 +798,6 @@ void intel_pmu_cross_mapped_check(struct kvm_pmu *pmu)
 
 struct kvm_pmu_ops intel_pmu_ops __initdata = {
 	.hw_event_available = intel_hw_event_available,
->>>>>>> origin/linux_6.1.15_upstream
 	.pmc_is_enabled = intel_pmc_is_enabled,
 	.pmc_idx_to_pmc = intel_pmc_idx_to_pmc,
 	.rdpmc_ecx_to_pmc = intel_rdpmc_ecx_to_pmc,

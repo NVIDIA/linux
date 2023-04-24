@@ -50,11 +50,7 @@
 		.align 4;						\
 	.Lsave_cp_regs_cp##x:						\
 		xchal_cp##x##_store a2 a3 a4 a5 a6;			\
-<<<<<<< HEAD
-		jx	a0;						\
-=======
 		ret;							\
->>>>>>> origin/linux_6.1.15_upstream
 	.endif
 
 #define LOAD_CP_REGS(x)							\
@@ -62,11 +58,7 @@
 		.align 4;						\
 	.Lload_cp_regs_cp##x:						\
 		xchal_cp##x##_load a2 a3 a4 a5 a6;			\
-<<<<<<< HEAD
-		jx	a0;						\
-=======
 		ret;							\
->>>>>>> origin/linux_6.1.15_upstream
 	.endif
 
 #define CP_REGS_TAB(x)							\

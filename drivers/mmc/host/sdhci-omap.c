@@ -71,15 +71,9 @@
 #define SDHCI_OMAP_IE		0x134
 #define INT_CC_EN		BIT(0)
 
-<<<<<<< HEAD
-#define SDHCI_OMAP_ISE		0x238
-
-#define SDHCI_OMAP_AC12		0x23c
-=======
 #define SDHCI_OMAP_ISE		0x138
 
 #define SDHCI_OMAP_AC12		0x13c
->>>>>>> origin/linux_6.1.15_upstream
 #define AC12_V1V8_SIGEN		BIT(19)
 #define AC12_SCLK_SEL		BIT(23)
 
@@ -726,8 +720,6 @@ static void sdhci_omap_set_power(struct sdhci_host *host, unsigned char mode,
 
 	if (!IS_ERR(mmc->supply.vmmc))
 		mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, vdd);
-<<<<<<< HEAD
-=======
 }
 
 /*
@@ -744,7 +736,6 @@ static bool sdhci_omap_has_adma(struct sdhci_omap_host *omap_host, int offset)
 		return false;
 
 	return readl(omap_host->base + 4) & 1;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int sdhci_omap_enable_dma(struct sdhci_host *host)
@@ -1433,11 +1424,7 @@ static void __maybe_unused sdhci_omap_context_save(struct sdhci_omap_host *omap_
 }
 
 /* Order matters here, HCTL must be restored in two phases */
-<<<<<<< HEAD
-static void sdhci_omap_context_restore(struct sdhci_omap_host *omap_host)
-=======
 static void __maybe_unused sdhci_omap_context_restore(struct sdhci_omap_host *omap_host)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	sdhci_omap_writel(omap_host, SDHCI_OMAP_HCTL, omap_host->hctl);
 	sdhci_omap_writel(omap_host, SDHCI_OMAP_CAPA, omap_host->capa);

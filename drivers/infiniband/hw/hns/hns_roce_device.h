@@ -731,12 +731,7 @@ struct hns_roce_caps {
 	u32		num_qps;
 	u32		num_pi_qps;
 	u32		reserved_qps;
-<<<<<<< HEAD
-	int		num_qpc_timer;
-	int		num_srqs;
-=======
 	u32		num_srqs;
->>>>>>> origin/linux_6.1.15_upstream
 	u32		max_wqes;
 	u32		max_srq_wrs;
 	u32		max_srq_sges;

@@ -579,35 +579,7 @@ int asix_mdio_bus_write(struct mii_bus *bus, int phy_id, int regnum, u16 val)
 
 int asix_mdio_read_nopm(struct net_device *netdev, int phy_id, int loc)
 {
-<<<<<<< HEAD
-	struct usbnet *dev = netdev_priv(netdev);
-	__le16 res;
-	int ret;
-
-	mutex_lock(&dev->phy_mutex);
-
-	ret = asix_check_host_enable(dev, 1);
-	if (ret == -ENODEV || ret == -ETIMEDOUT) {
-		mutex_unlock(&dev->phy_mutex);
-		return ret;
-	}
-
-	ret = asix_read_cmd(dev, AX_CMD_READ_MII_REG, phy_id,
-			    (__u16)loc, 2, &res, 1);
-	if (ret < 0) {
-		mutex_unlock(&dev->phy_mutex);
-		return ret;
-	}
-	asix_set_hw_mii(dev, 1);
-	mutex_unlock(&dev->phy_mutex);
-
-	netdev_dbg(dev->net, "asix_mdio_read_nopm() phy_id=0x%02x, loc=0x%02x, returns=0x%04x\n",
-			phy_id, loc, le16_to_cpu(res));
-
-	return le16_to_cpu(res);
-=======
 	return __asix_mdio_read(netdev, phy_id, loc, true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void

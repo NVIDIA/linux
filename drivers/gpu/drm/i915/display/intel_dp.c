@@ -29,10 +29,7 @@
 #include <linux/i2c.h>
 #include <linux/notifier.h>
 #include <linux/slab.h>
-<<<<<<< HEAD
-=======
 #include <linux/string_helpers.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/timekeeping.h>
 #include <linux/types.h>
 
@@ -122,15 +119,12 @@ bool intel_dp_is_edp(struct intel_dp *intel_dp)
 static void intel_dp_unset_edid(struct intel_dp *intel_dp);
 static int intel_dp_dsc_compute_bpp(struct intel_dp *intel_dp, u8 dsc_max_bpc);
 
-<<<<<<< HEAD
-=======
 /* Is link rate UHBR and thus 128b/132b? */
 bool intel_dp_is_uhbr(const struct intel_crtc_state *crtc_state)
 {
 	return crtc_state->port_clock >= 1000000;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void intel_dp_set_default_sink_rates(struct intel_dp *intel_dp)
 {
 	intel_dp->sink_rates[0] = 162000;
@@ -1882,12 +1876,6 @@ intel_dp_compute_hdr_metadata_infoframe_sdp(struct intel_dp *intel_dp,
 		intel_hdmi_infoframe_enable(HDMI_PACKET_TYPE_GAMUT_METADATA);
 }
 
-<<<<<<< HEAD
-int
-intel_dp_compute_config(struct intel_encoder *encoder,
-			struct intel_crtc_state *pipe_config,
-			struct drm_connector_state *conn_state)
-=======
 static bool cpu_transcoder_has_drrs(struct drm_i915_private *i915,
 				    enum transcoder cpu_transcoder)
 {
@@ -2914,13 +2902,7 @@ intel_edp_init_dpcd(struct intel_dp *intel_dp)
 		intel_dp->use_rate_select = true;
 	else
 		intel_dp_set_sink_rates(intel_dp);
-<<<<<<< HEAD
-
-	intel_dp_set_common_rates(intel_dp);
-	intel_dp_reset_max_link_params(intel_dp);
-=======
 	intel_dp_set_max_sink_lane_count(intel_dp);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Read the eDP DSC DPCD registers */
 	if (DISPLAY_VER(dev_priv) >= 10)
@@ -5152,8 +5134,6 @@ intel_dp_add_properties(struct intel_dp *intel_dp, struct drm_connector *connect
 		drm_connector_attach_vrr_capable_property(connector);
 }
 
-<<<<<<< HEAD
-=======
 static void
 intel_edp_add_properties(struct intel_dp *intel_dp)
 {
@@ -5171,7 +5151,6 @@ intel_edp_add_properties(struct intel_dp *intel_dp)
 						       fixed_mode->vdisplay);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 				     struct intel_connector *intel_connector)
 {
@@ -5335,14 +5314,6 @@ intel_dp_init_connector(struct intel_digital_port *dig_port,
 		     intel_encoder->base.name))
 		return false;
 
-<<<<<<< HEAD
-	intel_dp_set_source_rates(intel_dp);
-	intel_dp_set_default_sink_rates(intel_dp);
-	intel_dp_set_common_rates(intel_dp);
-	intel_dp_reset_max_link_params(intel_dp);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	intel_dp->reset_link_params = true;
 	intel_dp->pps.pps_pipe = INVALID_PIPE;
 	intel_dp->pps.active_pipe = INVALID_PIPE;

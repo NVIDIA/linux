@@ -201,37 +201,17 @@ static void kvm_xen_update_runstate(struct kvm_vcpu *v, int state)
 void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 {
 	struct kvm_vcpu_xen *vx = &v->arch.xen;
-<<<<<<< HEAD
-	struct gfn_to_hva_cache *ghc = &vx->runstate_cache;
-	struct kvm_memslots *slots = kvm_memslots(v->kvm);
-	bool atomic = (state == RUNSTATE_runnable);
-	uint64_t state_entry_time;
-	int __user *user_state;
-	uint64_t __user *user_times;
-=======
 	struct gfn_to_pfn_cache *gpc = &vx->runstate_cache;
 	uint64_t *user_times;
 	unsigned long flags;
 	size_t user_len;
 	int *user_state;
->>>>>>> origin/linux_6.1.15_upstream
 
 	kvm_xen_update_runstate(v, state);
 
 	if (!vx->runstate_cache.active)
 		return;
 
-<<<<<<< HEAD
-	if (unlikely(slots->generation != ghc->generation || kvm_is_error_hva(ghc->hva)) &&
-	    kvm_gfn_to_hva_cache_init(v->kvm, ghc, ghc->gpa, ghc->len))
-		return;
-
-	/* We made sure it fits in a single page */
-	BUG_ON(!ghc->memslot);
-
-	if (atomic)
-		pagefault_disable();
-=======
 	if (IS_ENABLED(CONFIG_64BIT) && v->kvm->arch.xen.long_mode)
 		user_len = sizeof(struct vcpu_runstate_info);
 	else
@@ -251,7 +231,6 @@ void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 
 		read_lock_irqsave(&gpc->lock, flags);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * The only difference between 32-bit and 64-bit versions of the
@@ -265,30 +244,12 @@ void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 	 */
 	BUILD_BUG_ON(offsetof(struct vcpu_runstate_info, state) != 0);
 	BUILD_BUG_ON(offsetof(struct compat_vcpu_runstate_info, state) != 0);
-<<<<<<< HEAD
-	user_state = (int __user *)ghc->hva;
-
 	BUILD_BUG_ON(sizeof(struct compat_vcpu_runstate_info) != 0x2c);
-
-	user_times = (uint64_t __user *)(ghc->hva +
-					 offsetof(struct compat_vcpu_runstate_info,
-						  state_entry_time));
-=======
-	BUILD_BUG_ON(sizeof(struct compat_vcpu_runstate_info) != 0x2c);
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_X86_64
 	BUILD_BUG_ON(offsetof(struct vcpu_runstate_info, state_entry_time) !=
 		     offsetof(struct compat_vcpu_runstate_info, state_entry_time) + 4);
 	BUILD_BUG_ON(offsetof(struct vcpu_runstate_info, time) !=
 		     offsetof(struct compat_vcpu_runstate_info, time) + 4);
-<<<<<<< HEAD
-
-	if (v->kvm->arch.xen.long_mode)
-		user_times = (uint64_t __user *)(ghc->hva +
-						 offsetof(struct vcpu_runstate_info,
-							  state_entry_time));
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 
 	user_state = gpc->khva;
@@ -309,12 +270,7 @@ void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 	BUILD_BUG_ON(sizeof_field(struct compat_vcpu_runstate_info, state_entry_time) !=
 		     sizeof(user_times[0]));
 
-<<<<<<< HEAD
-	if (__put_user(state_entry_time, user_times))
-		goto out;
-=======
 	user_times[0] = vx->runstate_entry_time | XEN_RUNSTATE_UPDATE;
->>>>>>> origin/linux_6.1.15_upstream
 	smp_wmb();
 
 	/*
@@ -328,12 +284,7 @@ void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 	BUILD_BUG_ON(sizeof_field(struct compat_vcpu_runstate_info, state) !=
 		     sizeof(vx->current_runstate));
 
-<<<<<<< HEAD
-	if (__put_user(vx->current_runstate, user_state))
-		goto out;
-=======
 	*user_state = vx->current_runstate;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Write the actual runstate times immediately after the
@@ -348,29 +299,13 @@ void kvm_xen_update_runstate_guest(struct kvm_vcpu *v, int state)
 	BUILD_BUG_ON(sizeof_field(struct vcpu_runstate_info, time) !=
 		     sizeof(vx->runstate_times));
 
-<<<<<<< HEAD
-	if (__copy_to_user(user_times + 1, vx->runstate_times, sizeof(vx->runstate_times)))
-		goto out;
-=======
 	memcpy(user_times + 1, vx->runstate_times, sizeof(vx->runstate_times));
->>>>>>> origin/linux_6.1.15_upstream
 	smp_wmb();
 
 	/*
 	 * Finally, clear the XEN_RUNSTATE_UPDATE bit in the guest's
 	 * runstate_entry_time field.
 	 */
-<<<<<<< HEAD
-	state_entry_time &= ~XEN_RUNSTATE_UPDATE;
-	__put_user(state_entry_time, user_times);
-	smp_wmb();
-
- out:
-	mark_page_dirty_in_slot(v->kvm, ghc->memslot, ghc->gpa >> PAGE_SHIFT);
-
-	if (atomic)
-		pagefault_enable();
-=======
 	user_times[0] &= ~XEN_RUNSTATE_UPDATE;
 	smp_wmb();
 
@@ -579,14 +514,10 @@ int kvm_xen_hvm_get_attr(struct kvm *kvm, struct kvm_xen_hvm_attr *data)
 		break;
 
 	case KVM_XEN_ATTR_TYPE_SHARED_INFO:
-<<<<<<< HEAD
-		data->u.shared_info.gfn = kvm->arch.xen.shinfo_gfn;
-=======
 		if (kvm->arch.xen.shinfo_cache.active)
 			data->u.shared_info.gfn = gpa_to_gfn(kvm->arch.xen.shinfo_cache.gpa);
 		else
 			data->u.shared_info.gfn = GPA_INVALID;
->>>>>>> origin/linux_6.1.15_upstream
 		r = 0;
 		break;
 
@@ -629,26 +560,11 @@ int kvm_xen_vcpu_set_attr(struct kvm_vcpu *vcpu, struct kvm_xen_vcpu_attr *data)
 			break;
 		}
 
-<<<<<<< HEAD
-		/* It must fit within a single page */
-		if ((data->u.gpa & ~PAGE_MASK) + sizeof(struct vcpu_info) > PAGE_SIZE) {
-			r = -EINVAL;
-			break;
-		}
-
-		r = kvm_gfn_to_hva_cache_init(vcpu->kvm,
-					      &vcpu->arch.xen.vcpu_info_cache,
-					      data->u.gpa,
-					      sizeof(struct vcpu_info));
-		if (!r) {
-			vcpu->arch.xen.vcpu_info_set = true;
-=======
 		r = kvm_gpc_activate(vcpu->kvm,
 				     &vcpu->arch.xen.vcpu_info_cache, NULL,
 				     KVM_HOST_USES_PFN, data->u.gpa,
 				     sizeof(struct vcpu_info));
 		if (!r)
->>>>>>> origin/linux_6.1.15_upstream
 			kvm_make_request(KVM_REQ_CLOCK_UPDATE, vcpu);
 
 		break;
@@ -661,26 +577,8 @@ int kvm_xen_vcpu_set_attr(struct kvm_vcpu *vcpu, struct kvm_xen_vcpu_attr *data)
 			break;
 		}
 
-<<<<<<< HEAD
-		/* It must fit within a single page */
-		if ((data->u.gpa & ~PAGE_MASK) + sizeof(struct pvclock_vcpu_time_info) > PAGE_SIZE) {
-			r = -EINVAL;
-			break;
-		}
-
-		r = kvm_gfn_to_hva_cache_init(vcpu->kvm,
-					      &vcpu->arch.xen.vcpu_time_info_cache,
-					      data->u.gpa,
-					      sizeof(struct pvclock_vcpu_time_info));
-		if (!r) {
-			vcpu->arch.xen.vcpu_time_info_set = true;
-=======
 		r = kvm_gpc_activate(vcpu->kvm,
 				     &vcpu->arch.xen.vcpu_time_info_cache,
-				     NULL, KVM_HOST_USES_PFN, data->u.gpa,
-				     sizeof(struct pvclock_vcpu_time_info));
-		if (!r)
->>>>>>> origin/linux_6.1.15_upstream
 			kvm_make_request(KVM_REQ_CLOCK_UPDATE, vcpu);
 		break;
 
@@ -696,25 +594,9 @@ int kvm_xen_vcpu_set_attr(struct kvm_vcpu *vcpu, struct kvm_xen_vcpu_attr *data)
 			break;
 		}
 
-<<<<<<< HEAD
-		/* It must fit within a single page */
-		if ((data->u.gpa & ~PAGE_MASK) + sizeof(struct vcpu_runstate_info) > PAGE_SIZE) {
-			r = -EINVAL;
-			break;
-		}
-
-		r = kvm_gfn_to_hva_cache_init(vcpu->kvm,
-					      &vcpu->arch.xen.runstate_cache,
-					      data->u.gpa,
-					      sizeof(struct vcpu_runstate_info));
-		if (!r) {
-			vcpu->arch.xen.runstate_set = true;
-		}
-=======
 		r = kvm_gpc_activate(vcpu->kvm, &vcpu->arch.xen.runstate_cache,
 				     NULL, KVM_HOST_USES_PFN, data->u.gpa,
 				     sizeof(struct vcpu_runstate_info));
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 
 	case KVM_XEN_VCPU_ATTR_TYPE_RUNSTATE_CURRENT:

@@ -3562,11 +3562,7 @@ complete_cmd_fusion(struct megasas_instance *instance, u32 MSIxIndex,
 	if (atomic_read(&instance->adprecovery) == MEGASAS_HW_CRITICAL_ERROR)
 		return IRQ_HANDLED;
 
-<<<<<<< HEAD
-	if (irq_context && !atomic_add_unless(&irq_context->in_used, 1, 1))
-=======
 	if (!access_irq_context(irq_context))
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 
 	desc = fusion->reply_frames_desc[MSIxIndex] +
@@ -3580,12 +3576,7 @@ complete_cmd_fusion(struct megasas_instance *instance, u32 MSIxIndex,
 		MPI2_RPY_DESCRIPT_FLAGS_TYPE_MASK;
 
 	if (reply_descript_type == MPI2_RPY_DESCRIPT_FLAGS_UNUSED) {
-<<<<<<< HEAD
-		if (irq_context)
-			atomic_dec(&irq_context->in_used);
-=======
 		release_irq_context(irq_context);
->>>>>>> origin/linux_6.1.15_upstream
 		return IRQ_NONE;
 	}
 

@@ -100,10 +100,7 @@
 #include <linux/kcsan.h>
 #include <linux/init_syscalls.h>
 #include <linux/stackdepot.h>
-<<<<<<< HEAD
-=======
 #include <linux/randomize_kstack.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <net/net_namespace.h>
 
 #include <asm/io.h>
@@ -933,11 +930,7 @@ static void __init print_unknown_bootoptions(void)
 	/* Start at unknown_options[1] to skip the initial space */
 	pr_notice("Unknown kernel command line parameters \"%s\", will be passed to user space.\n",
 		&unknown_options[1]);
-<<<<<<< HEAD
-	memblock_free_ptr(unknown_options, len);
-=======
 	memblock_free(unknown_options, len);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
@@ -1053,19 +1046,6 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	hrtimers_init();
 	softirq_init();
 	timekeeping_init();
-<<<<<<< HEAD
-	kfence_init();
-	time_init();
-
-	/*
-	 * For best initial stack canary entropy, prepare it after:
-	 * - setup_arch() for any UEFI RNG entropy and boot cmdline access
-	 * - timekeeping_init() for ktime entropy used in random_init()
-	 * - time_init() for making random_get_entropy() work on some platforms
-	 * - random_init() to initialize the RNG from from early entropy sources
-	 */
-	random_init(command_line);
-=======
 	time_init();
 
 	/* This must be after timekeeping is initialized */
@@ -1073,7 +1053,6 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 
 	/* These make use of the fully initialized rng */
 	kfence_init();
->>>>>>> origin/linux_6.1.15_upstream
 	boot_init_stack_canary();
 
 	perf_event_init();
@@ -1481,11 +1460,6 @@ static inline bool arch_parse_debug_rodata(char *str) { return false; }
 
 static int __init set_debug_rodata(char *str)
 {
-<<<<<<< HEAD
-	if (strtobool(str, &rodata_enabled))
-		pr_warn("Invalid option string for rodata: '%s'\n", str);
-	return 1;
-=======
 	if (arch_parse_debug_rodata(str))
 		return 0;
 
@@ -1496,7 +1470,6 @@ static int __init set_debug_rodata(char *str)
 	else
 		pr_warn("Invalid option string for rodata: '%s'\n", str);
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 early_param("rodata", set_debug_rodata);
 #endif

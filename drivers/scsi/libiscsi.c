@@ -2037,9 +2037,6 @@ EXPORT_SYMBOL_GPL(iscsi_suspend_tx);
 static void iscsi_start_tx(struct iscsi_conn *conn)
 {
 	clear_bit(ISCSI_CONN_FLAG_SUSPEND_TX, &conn->flags);
-<<<<<<< HEAD
-	iscsi_conn_queue_work(conn);
-=======
 	iscsi_conn_queue_xmit(conn);
 }
 
@@ -2055,7 +2052,6 @@ void iscsi_suspend_rx(struct iscsi_conn *conn)
 	set_bit(ISCSI_CONN_FLAG_SUSPEND_RX, &conn->flags);
 	if (ihost->workq)
 		flush_work(&conn->recvwork);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(iscsi_suspend_rx);
 
@@ -3283,13 +3279,7 @@ void iscsi_conn_teardown(struct iscsi_cls_conn *cls_conn)
 	spin_unlock_bh(&session->frwd_lock);
 	mutex_unlock(&session->eh_mutex);
 
-<<<<<<< HEAD
-	iscsi_destroy_conn(cls_conn);
-	kfree(tmp_persistent_address);
-	kfree(tmp_local_ipaddr);
-=======
 	iscsi_put_conn(cls_conn);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(iscsi_conn_teardown);
 

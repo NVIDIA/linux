@@ -389,15 +389,9 @@ static __always_inline void vmx_disable_fb_clear(struct vcpu_vmx *vmx)
 	if (!vmx->disable_fb_clear)
 		return;
 
-<<<<<<< HEAD
-	rdmsrl(MSR_IA32_MCU_OPT_CTRL, msr);
-	msr |= FB_CLEAR_DIS;
-	wrmsrl(MSR_IA32_MCU_OPT_CTRL, msr);
-=======
 	msr = __rdmsr(MSR_IA32_MCU_OPT_CTRL);
 	msr |= FB_CLEAR_DIS;
 	native_wrmsrl(MSR_IA32_MCU_OPT_CTRL, msr);
->>>>>>> origin/linux_6.1.15_upstream
 	/* Cache the MSR value to avoid reading it later */
 	vmx->msr_ia32_mcu_opt_ctrl = msr;
 }
@@ -408,11 +402,7 @@ static __always_inline void vmx_enable_fb_clear(struct vcpu_vmx *vmx)
 		return;
 
 	vmx->msr_ia32_mcu_opt_ctrl &= ~FB_CLEAR_DIS;
-<<<<<<< HEAD
-	wrmsrl(MSR_IA32_MCU_OPT_CTRL, vmx->msr_ia32_mcu_opt_ctrl);
-=======
 	native_wrmsrl(MSR_IA32_MCU_OPT_CTRL, vmx->msr_ia32_mcu_opt_ctrl);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void vmx_update_fb_clear_dis(struct kvm_vcpu *vcpu, struct vcpu_vmx *vmx)
@@ -853,10 +843,6 @@ static bool msr_write_intercepted(struct vcpu_vmx *vmx, u32 msr)
 	if (!(exec_controls_get(vmx) & CPU_BASED_USE_MSR_BITMAPS))
 		return true;
 
-<<<<<<< HEAD
-	return vmx_test_msr_bitmap_write(vmx->loaded_vmcs->msr_bitmap,
-					 MSR_IA32_SPEC_CTRL);
-=======
 	return vmx_test_msr_bitmap_write(vmx->loaded_vmcs->msr_bitmap, msr);
 }
 
@@ -876,7 +862,6 @@ unsigned int __vmx_vcpu_run_flags(struct vcpu_vmx *vmx)
 		flags |= VMX_RUN_SAVE_SPEC_CTRL;
 
 	return flags;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static __always_inline void clear_atomic_switch_msr_special(struct vcpu_vmx *vmx,
@@ -3087,11 +3072,7 @@ static void vmx_flush_tlb_current(struct kvm_vcpu *vcpu)
 
 	if (enable_ept)
 		ept_sync_context(construct_eptp(vcpu, root_hpa,
-<<<<<<< HEAD
-						mmu->shadow_root_level));
-=======
 						mmu->root_role.level));
->>>>>>> origin/linux_6.1.15_upstream
 	else
 		vpid_sync_context(vmx_get_current_vpid(vcpu));
 }
@@ -3851,8 +3832,6 @@ void free_vpid(int vpid)
 	spin_unlock(&vmx_vpid_lock);
 }
 
-<<<<<<< HEAD
-=======
 static void vmx_msr_bitmap_l01_changed(struct vcpu_vmx *vmx)
 {
 	/*
@@ -3866,7 +3845,6 @@ static void vmx_msr_bitmap_l01_changed(struct vcpu_vmx *vmx)
 	vmx->nested.force_msr_bitmap_recalc = true;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 void vmx_disable_intercept_for_msr(struct kvm_vcpu *vcpu, u32 msr, int type)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4168,11 +4146,6 @@ static int vmx_deliver_posted_interrupt(struct kvm_vcpu *vcpu, int vector)
 	if (pi_test_and_set_on(&vmx->pi_desc))
 		return 0;
 
-<<<<<<< HEAD
-	if (!kvm_vcpu_trigger_posted_interrupt(vcpu, false))
-		kvm_vcpu_kick(vcpu);
-
-=======
 	/*
 	 * The implied barrier in pi_test_and_set_on() pairs with the smp_mb_*()
 	 * after setting vcpu->mode in vcpu_enter_guest(), thus the vCPU is
@@ -4180,7 +4153,6 @@ static int vmx_deliver_posted_interrupt(struct kvm_vcpu *vcpu, int vector)
 	 * posted interrupt "fails" because vcpu->mode != IN_GUEST_MODE.
 	 */
 	kvm_vcpu_trigger_posted_interrupt(vcpu, POSTED_INTR_VECTOR);
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -5176,15 +5148,10 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			 * instruction.  ICEBP generates a trap-like #DB, but
 			 * despite its interception control being tied to #DB,
 			 * is an instruction intercept, i.e. the VM-Exit occurs
-<<<<<<< HEAD
-			 * on the ICEBP itself.  Note, skipping ICEBP also
-			 * clears STI and MOVSS blocking.
-=======
 			 * on the ICEBP itself.  Use the inner "skip" helper to
 			 * avoid single-step #DB and MTF updates, as ICEBP is
 			 * higher priority.  Note, skipping ICEBP still clears
 			 * STI and MOVSS blocking.
->>>>>>> origin/linux_6.1.15_upstream
 			 *
 			 * For all other #DBs, set vmcs.PENDING_DBG_EXCEPTIONS.BS
 			 * if single-step is enabled in RFLAGS and STI or MOVSS
@@ -7124,11 +7091,7 @@ static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 
 	vmx_enable_fb_clear(vmx);
 
-<<<<<<< HEAD
-	kvm_guest_exit_irqoff();
-=======
 	guest_state_exit_irqoff();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
@@ -7222,31 +7185,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	kvm_wait_lapic_expire(vcpu);
 
 	/* The actual VMENTER/EXIT is in the .noinstr.text section. */
-<<<<<<< HEAD
-	vmx_vcpu_enter_exit(vcpu, vmx);
-
-	/*
-	 * We do not use IBRS in the kernel. If this vCPU has used the
-	 * SPEC_CTRL MSR it may have left it on; save the value and
-	 * turn it off. This is much more efficient than blindly adding
-	 * it to the atomic save/restore list. Especially as the former
-	 * (Saving guest MSRs on vmexit) doesn't even exist in KVM.
-	 *
-	 * For non-nested case:
-	 * If the L01 MSR bitmap does not intercept the MSR, then we need to
-	 * save it.
-	 *
-	 * For nested case:
-	 * If the L02 MSR bitmap does not intercept the MSR, then we need to
-	 * save it.
-	 */
-	if (unlikely(!msr_write_intercepted(vmx, MSR_IA32_SPEC_CTRL)))
-		vmx->spec_ctrl = native_read_msr(MSR_IA32_SPEC_CTRL);
-
-	x86_spec_ctrl_restore_host(vmx->spec_ctrl, 0);
-=======
 	vmx_vcpu_enter_exit(vcpu, vmx, __vmx_vcpu_run_flags(vmx));
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* All fields are clean at this point */
 	if (static_branch_unlikely(&enable_evmcs)) {
@@ -8429,12 +8368,8 @@ static __init int hardware_setup(void)
 		vmx_x86_ops.request_immediate_exit = __kvm_request_immediate_exit;
 	}
 
-<<<<<<< HEAD
-	kvm_mce_cap_supported |= MCG_LMCE_P;
-=======
 	kvm_caps.supported_mce_cap |= MCG_LMCE_P;
 	kvm_caps.supported_mce_cap |= MCG_CMCI_P;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (pt_mode != PT_MODE_SYSTEM && pt_mode != PT_MODE_HOST_GUEST)
 		return -EINVAL;
@@ -8471,11 +8406,7 @@ static struct kvm_x86_init_ops vmx_init_ops __initdata = {
 	.disabled_by_bios = vmx_disabled_by_bios,
 	.check_processor_compatibility = vmx_check_processor_compat,
 	.hardware_setup = hardware_setup,
-<<<<<<< HEAD
-	.intel_pt_intr_in_guest = vmx_pt_mode_is_host_guest,
-=======
 	.handle_intel_pt_intr = NULL,
->>>>>>> origin/linux_6.1.15_upstream
 
 	.runtime_ops = &vmx_x86_ops,
 	.pmu_ops = &intel_pmu_ops,

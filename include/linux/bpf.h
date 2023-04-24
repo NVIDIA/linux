@@ -236,8 +236,6 @@ struct bpf_map {
 	struct work_struct work;
 	struct mutex freeze_mutex;
 	atomic64_t writecnt;
-<<<<<<< HEAD
-=======
 	/* 'Ownership' of program-containing map is claimed by the first program
 	 * that is going to use this map or by the first program which FD is
 	 * stored in the map to make sure that all callers and callees have the
@@ -251,7 +249,6 @@ struct bpf_map {
 	} owner;
 	bool bypass_spec_v1;
 	bool frozen; /* write-once; write-protected by freeze_mutex */
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static inline bool map_value_has_spin_lock(const struct bpf_map *map)
@@ -275,8 +272,6 @@ static inline void check_and_init_map_value(struct bpf_map *map, void *dst)
 		memset(dst + map->spin_lock_off, 0, sizeof(struct bpf_spin_lock));
 	if (unlikely(map_value_has_timer(map)))
 		memset(dst + map->timer_off, 0, sizeof(struct bpf_timer));
-<<<<<<< HEAD
-=======
 	if (unlikely(map_value_has_kptrs(map))) {
 		struct bpf_map_value_off *tab = map->kptr_off_tab;
 		int i;
@@ -323,7 +318,6 @@ static inline void __copy_map_value(struct bpf_map *map, void *dst, void *src, b
 		curr_off = next_off + map->off_arr->field_sz[i];
 	}
 	memcpy(dst + curr_off, src + curr_off, map->value_size - curr_off);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
@@ -341,19 +335,9 @@ static inline void zero_map_value(struct bpf_map *map, void *dst)
 	u32 curr_off = 0;
 	int i;
 
-<<<<<<< HEAD
-	if (unlikely(map_value_has_spin_lock(map))) {
-		s_off = map->spin_lock_off;
-		s_sz = sizeof(struct bpf_spin_lock);
-	}
-	if (unlikely(map_value_has_timer(map))) {
-		t_off = map->timer_off;
-		t_sz = sizeof(struct bpf_timer);
-=======
 	if (likely(!map->off_arr)) {
 		memset(dst, 0, map->value_size);
 		return;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	for (i = 0; i < map->off_arr->cnt; i++) {
@@ -436,11 +420,6 @@ enum bpf_type_flag {
 	 */
 	MEM_RDONLY		= BIT(1 + BPF_BASE_TYPE_BITS),
 
-<<<<<<< HEAD
-	__BPF_TYPE_LAST_FLAG	= MEM_RDONLY,
-};
-
-=======
 	/* MEM was "allocated" from a different helper, and cannot be mixed
 	 * with regular non-MEM_ALLOC'ed MEM types.
 	 */
@@ -485,7 +464,6 @@ enum bpf_type_flag {
 
 #define DYNPTR_TYPE_FLAG_MASK	(DYNPTR_TYPE_LOCAL | DYNPTR_TYPE_RINGBUF)
 
->>>>>>> origin/linux_6.1.15_upstream
 /* Max number of base types. */
 #define BPF_BASE_TYPE_LIMIT	(1UL << BPF_BASE_TYPE_BITS)
 
@@ -502,22 +480,11 @@ enum bpf_arg_type {
 	ARG_CONST_MAP_PTR,	/* const argument used as pointer to bpf_map */
 	ARG_PTR_TO_MAP_KEY,	/* pointer to stack used as map key */
 	ARG_PTR_TO_MAP_VALUE,	/* pointer to stack used as map value */
-<<<<<<< HEAD
-	ARG_PTR_TO_UNINIT_MAP_VALUE,	/* pointer to valid memory used to store a map value */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Used to prototype bpf_memcmp() and other functions that access data
 	 * on eBPF program stack
 	 */
 	ARG_PTR_TO_MEM,		/* pointer to valid memory (stack, packet, map value) */
-<<<<<<< HEAD
-	ARG_PTR_TO_UNINIT_MEM,	/* pointer to memory does not need to be initialized,
-				 * helper function must fill all bytes or clear
-				 * them in error case.
-				 */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	ARG_CONST_SIZE,		/* number of bytes accessed from memory */
 	ARG_CONST_SIZE_OR_ZERO,	/* number of bytes accessed from memory or 0 */
@@ -549,8 +516,6 @@ enum bpf_arg_type {
 	ARG_PTR_TO_SOCKET_OR_NULL	= PTR_MAYBE_NULL | ARG_PTR_TO_SOCKET,
 	ARG_PTR_TO_ALLOC_MEM_OR_NULL	= PTR_MAYBE_NULL | ARG_PTR_TO_ALLOC_MEM,
 	ARG_PTR_TO_STACK_OR_NULL	= PTR_MAYBE_NULL | ARG_PTR_TO_STACK,
-<<<<<<< HEAD
-=======
 	ARG_PTR_TO_BTF_ID_OR_NULL	= PTR_MAYBE_NULL | ARG_PTR_TO_BTF_ID,
 	/* pointer to memory does not need to be initialized, helper function must fill
 	 * all bytes or clear them in error case.
@@ -558,7 +523,6 @@ enum bpf_arg_type {
 	ARG_PTR_TO_UNINIT_MEM		= MEM_UNINIT | ARG_PTR_TO_MEM,
 	/* Pointer to valid memory of size known at compile time. */
 	ARG_PTR_TO_FIXED_SIZE_MEM	= MEM_FIXED_SIZE | ARG_PTR_TO_MEM,
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* This must be the last entry. Its purpose is to ensure the enum is
 	 * wide enough to hold the higher bits reserved for bpf_type_flag.
@@ -585,12 +549,8 @@ enum bpf_return_type {
 	RET_PTR_TO_SOCKET_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_SOCKET,
 	RET_PTR_TO_TCP_SOCK_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_TCP_SOCK,
 	RET_PTR_TO_SOCK_COMMON_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_SOCK_COMMON,
-<<<<<<< HEAD
-	RET_PTR_TO_ALLOC_MEM_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_ALLOC_MEM,
-=======
 	RET_PTR_TO_ALLOC_MEM_OR_NULL	= PTR_MAYBE_NULL | MEM_ALLOC | RET_PTR_TO_ALLOC_MEM,
 	RET_PTR_TO_DYNPTR_MEM_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_ALLOC_MEM,
->>>>>>> origin/linux_6.1.15_upstream
 	RET_PTR_TO_BTF_ID_OR_NULL	= PTR_MAYBE_NULL | RET_PTR_TO_BTF_ID,
 
 	/* This must be the last entry. Its purpose is to ensure the enum is
@@ -696,13 +656,8 @@ enum bpf_reg_type {
 	 */
 	PTR_TO_MEM,		 /* reg points to valid memory region */
 	PTR_TO_BUF,		 /* reg points to a read/write buffer */
-<<<<<<< HEAD
-	PTR_TO_PERCPU_BTF_ID,	 /* reg points to a percpu kernel variable */
-	PTR_TO_FUNC,		 /* reg points to a bpf program function */
-=======
 	PTR_TO_FUNC,		 /* reg points to a bpf program function */
 	PTR_TO_DYNPTR,		 /* reg points to a dynptr */
->>>>>>> origin/linux_6.1.15_upstream
 	__BPF_REG_TYPE_MAX,
 
 	/* Extended reg_types. */
@@ -1019,9 +974,6 @@ int bpf_trampoline_unlink_prog(struct bpf_tramp_link *link, struct bpf_trampolin
 struct bpf_trampoline *bpf_trampoline_get(u64 key,
 					  struct bpf_attach_target_info *tgt_info);
 void bpf_trampoline_put(struct bpf_trampoline *tr);
-<<<<<<< HEAD
-int arch_prepare_bpf_dispatcher(void *image, s64 *funcs, int num_funcs);
-=======
 int arch_prepare_bpf_dispatcher(void *image, void *buf, s64 *funcs, int num_funcs);
 
 /*
@@ -1051,7 +1003,6 @@ int arch_prepare_bpf_dispatcher(void *image, void *buf, s64 *funcs, int num_func
 #define __BPF_DISPATCHER_UPDATE(_d, _new)
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 #define BPF_DISPATCHER_INIT(_name) {				\
 	.mutex = __MUTEX_INITIALIZER(_name.mutex),		\
 	.func = &_name##_func,					\
@@ -2128,8 +2079,6 @@ bool bpf_prog_has_kfunc_call(const struct bpf_prog *prog);
 const struct btf_func_model *
 bpf_jit_find_kfunc_model(const struct bpf_prog *prog,
 			 const struct bpf_insn *insn);
-<<<<<<< HEAD
-=======
 struct bpf_core_ctx {
 	struct bpf_verifier_log *log;
 	const struct btf *btf;
@@ -2137,15 +2086,12 @@ struct bpf_core_ctx {
 
 int bpf_core_apply(struct bpf_core_ctx *ctx, const struct bpf_core_relo *relo,
 		   int relo_idx, void *insn);
->>>>>>> origin/linux_6.1.15_upstream
 
 static inline bool unprivileged_ebpf_enabled(void)
 {
 	return !sysctl_unprivileged_bpf_disabled;
 }
 
-<<<<<<< HEAD
-=======
 /* Not all bpf prog type has the bpf_ctx.
  * For the bpf prog type that has initialized the bpf_ctx,
  * this function can be used to decide if a kernel function
@@ -2157,7 +2103,6 @@ static inline bool has_current_bpf_ctx(void)
 }
 
 void notrace bpf_prog_inc_misses_counter(struct bpf_prog *prog);
->>>>>>> origin/linux_6.1.15_upstream
 #else /* !CONFIG_BPF_SYSCALL */
 static inline struct bpf_prog *bpf_prog_get(u32 ufd)
 {
@@ -2376,8 +2321,6 @@ static inline bool unprivileged_ebpf_enabled(void)
 	return false;
 }
 
-<<<<<<< HEAD
-=======
 static inline bool has_current_bpf_ctx(void)
 {
 	return false;
@@ -2386,7 +2329,6 @@ static inline bool has_current_bpf_ctx(void)
 static inline void bpf_prog_inc_misses_counter(struct bpf_prog *prog)
 {
 }
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* CONFIG_BPF_SYSCALL */
 
 void __bpf_free_used_btfs(struct bpf_prog_aux *aux,

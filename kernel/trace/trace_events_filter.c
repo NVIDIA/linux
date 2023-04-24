@@ -1519,15 +1519,10 @@ static int parse_pred(const char *str, void *data,
 			pred->fn_num = FILTER_PRED_FN_STRING;
 			pred->regex.field_len = field->size;
 
-<<<<<<< HEAD
-		} else if (field->filter_type == FILTER_DYN_STRING)
-			pred->fn = filter_pred_strloc;
-=======
 		} else if (field->filter_type == FILTER_DYN_STRING) {
 			pred->fn_num = FILTER_PRED_FN_STRLOC;
 		} else if (field->filter_type == FILTER_RDYN_STRING)
 			pred->fn_num = FILTER_PRED_FN_STRRELLOC;
->>>>>>> origin/linux_6.1.15_upstream
 		else {
 
 			if (!ustring_per_cpu) {
@@ -1538,15 +1533,9 @@ static int parse_pred(const char *str, void *data,
 			}
 
 			if (ustring)
-<<<<<<< HEAD
-				pred->fn = filter_pred_pchar_user;
-			else
-				pred->fn = filter_pred_pchar;
-=======
 				pred->fn_num = FILTER_PRED_FN_PCHAR_USER;
 			else
 				pred->fn_num = FILTER_PRED_FN_PCHAR;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		/* go past the last quote */
 		i++;

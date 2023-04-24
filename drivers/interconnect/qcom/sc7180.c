@@ -369,11 +369,7 @@ static const struct qcom_icc_desc sc7180_gem_noc = {
 	.num_bcms = ARRAY_SIZE(gem_noc_bcms),
 };
 
-<<<<<<< HEAD
-static struct qcom_icc_bcm *mc_virt_bcms[] = {
-=======
 static struct qcom_icc_bcm * const mc_virt_bcms[] = {
->>>>>>> origin/linux_6.1.15_upstream
 	&bcm_acv,
 	&bcm_mc0,
 };

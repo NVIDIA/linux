@@ -3367,14 +3367,6 @@
 			ranges;
 			dma-ranges;
 
-<<<<<<< HEAD
-			qcom,qmp = <&aoss_qmp>;
-
-			qcom,smem-states = <&ipa_smp2p_out 0>,
-					   <&ipa_smp2p_out 1>;
-			qcom,smem-state-names = "ipa-clock-enabled-valid",
-						"ipa-clock-enabled";
-=======
 			clocks = <&gcc GCC_CFG_NOC_USB3_SEC_AXI_CLK>,
 				 <&gcc GCC_USB30_SEC_MASTER_CLK>,
 				 <&gcc GCC_AGGRE_USB3_SEC_AXI_CLK>,
@@ -3424,7 +3416,6 @@
 				};
 			};
 		};
->>>>>>> origin/linux_6.1.15_upstream
 
 		qspi: spi@88dc000 {
 			compatible = "qcom,sc7280-qspi", "qcom,qspi-v1";
@@ -4823,20 +4814,9 @@
 				function = "qup07";
 			};
 
-<<<<<<< HEAD
-			dp_phy: dp-phy@88ea200 {
-				reg = <0 0x088ea200 0 0x200>,
-				      <0 0x088ea400 0 0x200>,
-				      <0 0x088eaa00 0 0x200>,
-				      <0 0x088ea600 0 0x200>,
-				      <0 0x088ea800 0 0x200>;
-				#phy-cells = <0>;
-				#clock-cells = <1>;
-=======
 			qup_uart7_rx: qup-uart7-rx-pins {
 				pins = "gpio31";
 				function = "qup07";
->>>>>>> origin/linux_6.1.15_upstream
 			};
 
 			qup_uart8_cts: qup-uart8-cts-pins {

@@ -606,10 +606,6 @@ static int pmem_attach_disk(struct device *dev,
 	if (!pmem->bb_state)
 		dev_warn(dev, "'badblocks' notification disabled\n");
 	return 0;
-<<<<<<< HEAD
-out:
-	blk_cleanup_disk(pmem->disk);
-=======
 
 out_remove_host:
 	dax_remove_host(pmem->disk);
@@ -618,7 +614,6 @@ out_cleanup_dax:
 	put_dax(pmem->dax_dev);
 out:
 	put_disk(pmem->disk);
->>>>>>> origin/linux_6.1.15_upstream
 	return rc;
 }
 

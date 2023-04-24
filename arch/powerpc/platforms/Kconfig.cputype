@@ -107,12 +107,8 @@ config PPC_BOOK3S_64
 
 config PPC_BOOK3E_64
 	bool "Embedded processors"
-<<<<<<< HEAD
-	select PPC_FSL_BOOK3E
-=======
 	select PPC_E500
 	select PPC_E500MC
->>>>>>> origin/linux_6.1.15_upstream
 	select PPC_FPU # Make it a choice ?
 	select PPC_SMP_MUXED_IPI
 	select PPC_DOORBELL
@@ -332,18 +328,6 @@ config BOOKE_OR_40x
 	depends on BOOKE || 40x
 	default y
 
-<<<<<<< HEAD
-# this is for common code between PPC32 & PPC64 FSL BOOKE
-config PPC_FSL_BOOK3E
-	bool
-	select ARCH_SUPPORTS_HUGETLBFS if PHYS_64BIT || PPC64
-	imply FSL_EMB_PERFMON
-	select PPC_SMP_MUXED_IPI
-	select PPC_DOORBELL
-	default y if FSL_BOOKE
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 config PTE_64BIT
 	bool
 	depends on 44x || PPC_E500 || PPC_86xx

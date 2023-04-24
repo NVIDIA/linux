@@ -1716,11 +1716,7 @@ static void update_sibling_cpumasks(struct cpuset *parent, struct cpuset *cs,
 			continue;
 
 		rcu_read_unlock();
-<<<<<<< HEAD
-		update_cpumasks_hier(sibling, tmp);
-=======
 		update_cpumasks_hier(sibling, tmp, false);
->>>>>>> origin/linux_6.1.15_upstream
 		rcu_read_lock();
 		css_put(&sibling->css);
 	}
@@ -1825,10 +1821,6 @@ static int update_cpumask(struct cpuset *cs, struct cpuset *trialcs,
 	 * empty effective cpus with tasks.
 	 */
 	if (cs->nr_subparts_cpus) {
-<<<<<<< HEAD
-		cpumask_and(cs->subparts_cpus, cs->subparts_cpus, cs->cpus_allowed);
-		cs->nr_subparts_cpus = cpumask_weight(cs->subparts_cpus);
-=======
 		if (!is_partition_valid(cs) ||
 		   (cpumask_subset(trialcs->effective_cpus, cs->subparts_cpus) &&
 		    partition_is_populated(cs, NULL))) {
@@ -1839,7 +1831,6 @@ static int update_cpumask(struct cpuset *cs, struct cpuset *trialcs,
 				    cs->cpus_allowed);
 			cs->nr_subparts_cpus = cpumask_weight(cs->subparts_cpus);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	spin_unlock_irq(&callback_lock);
 
@@ -2527,11 +2518,7 @@ static void cpuset_attach(struct cgroup_taskset *tset)
 	cgroup_taskset_first(tset, &css);
 	cs = css_cs(css);
 
-<<<<<<< HEAD
-	cpus_read_lock();
-=======
 	lockdep_assert_cpus_held();	/* see cgroup_attach_lock() */
->>>>>>> origin/linux_6.1.15_upstream
 	percpu_down_write(&cpuset_rwsem);
 
 	guarantee_online_mems(cs, &cpuset_attach_nodemask_to);

@@ -34,10 +34,6 @@ static __always_inline void unwind_init_from_regs(struct unwind_state *state,
 	state->pc = regs->pc;
 }
 
-<<<<<<< HEAD
-notrace void start_backtrace(struct stackframe *frame, unsigned long fp,
-		     unsigned long pc)
-=======
 /*
  * Start an unwind from a caller.
  *
@@ -47,7 +43,6 @@ notrace void start_backtrace(struct stackframe *frame, unsigned long fp,
  * The function which invokes this must be noinline.
  */
 static __always_inline void unwind_init_from_caller(struct unwind_state *state)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	unwind_init_common(state, current);
 

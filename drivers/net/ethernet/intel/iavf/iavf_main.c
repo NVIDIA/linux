@@ -299,11 +299,7 @@ void iavf_schedule_reset(struct iavf_adapter *adapter)
 void iavf_schedule_request_stats(struct iavf_adapter *adapter)
 {
 	adapter->aq_required |= IAVF_FLAG_AQ_REQUEST_STATS;
-<<<<<<< HEAD
-	mod_delayed_work(iavf_wq, &adapter->watchdog_task, 0);
-=======
 	mod_delayed_work(adapter->wq, &adapter->watchdog_task, 0);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -423,11 +419,7 @@ static irqreturn_t iavf_msix_aq(int irq, void *data)
 
 	if (adapter->state != __IAVF_REMOVE)
 		/* schedule work on the private workqueue */
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->adminq_task);
-=======
 		queue_work(adapter->wq, &adapter->adminq_task);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return IRQ_HANDLED;
 }
@@ -848,10 +840,6 @@ static void iavf_restore_filters(struct iavf_adapter *adapter)
 	u16 vid;
 
 	/* re-add all VLAN filters */
-<<<<<<< HEAD
-	for_each_set_bit(vid, adapter->vsi.active_vlans, VLAN_N_VID)
-		iavf_add_vlan(adapter, vid);
-=======
 	for_each_set_bit(vid, adapter->vsi.active_cvlans, VLAN_N_VID)
 		iavf_add_vlan(adapter, IAVF_VLAN(vid, ETH_P_8021Q));
 
@@ -901,7 +889,6 @@ static bool iavf_max_vlans_added(struct iavf_adapter *adapter)
 		return false;
 
 	return true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -922,19 +909,11 @@ static int iavf_vlan_rx_add_vid(struct net_device *netdev,
 		netdev_err(netdev, "Max allowed VLAN filters %u. Remove existing VLANs or disable filtering via Ethtool if supported.\n",
 			   iavf_get_max_vlans_allowed(adapter));
 		return -EIO;
-<<<<<<< HEAD
-
-	if (iavf_add_vlan(adapter, vid) == NULL)
-		return -ENOMEM;
-
-	set_bit(vid, adapter->vsi.active_vlans);
-=======
 	}
 
 	if (!iavf_add_vlan(adapter, IAVF_VLAN(vid, be16_to_cpu(proto))))
 		return -ENOMEM;
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -949,16 +928,11 @@ static int iavf_vlan_rx_kill_vid(struct net_device *netdev,
 {
 	struct iavf_adapter *adapter = netdev_priv(netdev);
 
-<<<<<<< HEAD
-	iavf_del_vlan(adapter, vid);
-	clear_bit(vid, adapter->vsi.active_vlans);
-=======
 	iavf_del_vlan(adapter, IAVF_VLAN(vid, be16_to_cpu(proto)));
 	if (proto == cpu_to_be16(ETH_P_8021Q))
 		clear_bit(vid, adapter->vsi.active_cvlans);
 	else
 		clear_bit(vid, adapter->vsi.active_svlans);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -1423,14 +1397,11 @@ void iavf_down(struct iavf_adapter *adapter)
 	iavf_napi_disable_all(adapter);
 	iavf_irq_disable(adapter);
 
-<<<<<<< HEAD
-=======
 	iavf_clear_mac_vlan_filters(adapter);
 	iavf_clear_cloud_filters(adapter);
 	iavf_clear_fdir_filters(adapter);
 	iavf_clear_adv_rss_conf(adapter);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (!(adapter->flags & IAVF_FLAG_PF_COMMS_FAILED)) {
 		/* cancel any current operation */
 		adapter->current_op = VIRTCHNL_OP_UNKNOWN;
@@ -2163,8 +2134,6 @@ static int iavf_process_aq_command(struct iavf_adapter *adapter)
 		iavf_del_adv_rss_cfg(adapter);
 		return 0;
 	}
-<<<<<<< HEAD
-=======
 	if (adapter->aq_required & IAVF_FLAG_AQ_DISABLE_CTAG_VLAN_STRIPPING) {
 		iavf_disable_vlan_stripping_v2(adapter, ETH_P_8021Q);
 		return 0;
@@ -2198,7 +2167,6 @@ static int iavf_process_aq_command(struct iavf_adapter *adapter)
 		return 0;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (adapter->aq_required & IAVF_FLAG_AQ_REQUEST_STATS) {
 		iavf_request_stats(adapter);
 		return 0;
@@ -2393,8 +2361,6 @@ static void iavf_init_version_check(struct iavf_adapter *adapter)
 	return;
 err:
 	iavf_change_state(adapter, __IAVF_INIT_FAILED);
-<<<<<<< HEAD
-=======
 }
 
 /**
@@ -2447,7 +2413,6 @@ int iavf_parse_vf_resource_msg(struct iavf_adapter *adapter)
 	}
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -2702,13 +2667,10 @@ static void iavf_init_config_adapter(struct iavf_adapter *adapter)
 	else
 		iavf_init_rss(adapter);
 
-<<<<<<< HEAD
-=======
 	if (VLAN_V2_ALLOWED(adapter))
 		/* request initial VLAN offload settings */
 		iavf_set_vlan_offload_features(adapter, 0, netdev->features);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return;
 err_mem:
 	iavf_free_rss(adapter);
@@ -2746,11 +2708,7 @@ static void iavf_watchdog_task(struct work_struct *work)
 		adapter->aq_required = 0;
 		adapter->current_op = VIRTCHNL_OP_UNKNOWN;
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->reset_task);
-=======
 		queue_work(adapter->wq, &adapter->reset_task);
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 
@@ -2758,29 +2716,18 @@ static void iavf_watchdog_task(struct work_struct *work)
 	case __IAVF_STARTUP:
 		iavf_startup(adapter);
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq, &adapter->watchdog_task,
-=======
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
->>>>>>> origin/linux_6.1.15_upstream
 				   msecs_to_jiffies(30));
 		return;
 	case __IAVF_INIT_VERSION_CHECK:
 		iavf_init_version_check(adapter);
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq, &adapter->watchdog_task,
-=======
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
->>>>>>> origin/linux_6.1.15_upstream
 				   msecs_to_jiffies(30));
 		return;
 	case __IAVF_INIT_GET_RESOURCES:
 		iavf_init_get_resources(adapter);
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq, &adapter->watchdog_task,
-=======
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
 				   msecs_to_jiffies(1));
 		return;
@@ -2794,7 +2741,6 @@ static void iavf_watchdog_task(struct work_struct *work)
 		iavf_init_config_adapter(adapter);
 		mutex_unlock(&adapter->crit_lock);
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
->>>>>>> origin/linux_6.1.15_upstream
 				   msecs_to_jiffies(1));
 		return;
 	case __IAVF_INIT_FAILED:
@@ -2813,22 +2759,14 @@ static void iavf_watchdog_task(struct work_struct *work)
 			adapter->flags |= IAVF_FLAG_PF_COMMS_FAILED;
 			iavf_shutdown_adminq(hw);
 			mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-			queue_delayed_work(iavf_wq,
-=======
 			queue_delayed_work(adapter->wq,
->>>>>>> origin/linux_6.1.15_upstream
 					   &adapter->watchdog_task, (5 * HZ));
 			return;
 		}
 		/* Try again from failed step*/
 		iavf_change_state(adapter, adapter->last_state);
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq, &adapter->watchdog_task, HZ);
-=======
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task, HZ);
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	case __IAVF_COMM_FAILED:
 		if (test_bit(__IAVF_IN_REMOVE_TASK,
@@ -2859,11 +2797,7 @@ static void iavf_watchdog_task(struct work_struct *work)
 		adapter->aq_required = 0;
 		adapter->current_op = VIRTCHNL_OP_UNKNOWN;
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq,
-=======
 		queue_delayed_work(adapter->wq,
->>>>>>> origin/linux_6.1.15_upstream
 				   &adapter->watchdog_task,
 				   msecs_to_jiffies(10));
 		return;
@@ -2909,15 +2843,9 @@ static void iavf_watchdog_task(struct work_struct *work)
 		adapter->aq_required = 0;
 		adapter->current_op = VIRTCHNL_OP_UNKNOWN;
 		dev_err(&adapter->pdev->dev, "Hardware reset detected\n");
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->reset_task);
-		mutex_unlock(&adapter->crit_lock);
-		queue_delayed_work(iavf_wq,
-=======
 		queue_work(adapter->wq, &adapter->reset_task);
 		mutex_unlock(&adapter->crit_lock);
 		queue_delayed_work(adapter->wq,
->>>>>>> origin/linux_6.1.15_upstream
 				   &adapter->watchdog_task, HZ * 2);
 		return;
 	}
@@ -2926,21 +2854,13 @@ static void iavf_watchdog_task(struct work_struct *work)
 	mutex_unlock(&adapter->crit_lock);
 restart_watchdog:
 	if (adapter->state >= __IAVF_DOWN)
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->adminq_task);
-=======
 		queue_work(adapter->wq, &adapter->adminq_task);
->>>>>>> origin/linux_6.1.15_upstream
 	if (adapter->aq_required)
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
 				   msecs_to_jiffies(20));
 	else
-<<<<<<< HEAD
-		queue_delayed_work(iavf_wq, &adapter->watchdog_task, HZ * 2);
-=======
 		queue_delayed_work(adapter->wq, &adapter->watchdog_task,
 				   HZ * 2);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -3003,10 +2923,6 @@ static void iavf_disable_vf(struct iavf_adapter *adapter)
 	iavf_free_queues(adapter);
 	memset(adapter->vf_res, 0, IAVF_VIRTCHNL_VF_RESOURCE_SIZE);
 	iavf_shutdown_adminq(&adapter->hw);
-<<<<<<< HEAD
-	adapter->netdev->flags &= ~IFF_UP;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	adapter->flags &= ~IAVF_FLAG_RESET_PENDING;
 	iavf_change_state(adapter, __IAVF_DOWN);
 	wake_up(&adapter->down_waitqueue);
@@ -3046,15 +2962,9 @@ static void iavf_reset_task(struct work_struct *work)
 	 */
 	if (!mutex_trylock(&adapter->crit_lock)) {
 		if (adapter->state != __IAVF_REMOVE)
-<<<<<<< HEAD
-			queue_work(iavf_wq, &adapter->reset_task);
-
-		return;
-=======
 			queue_work(adapter->wq, &adapter->reset_task);
 
 		goto reset_finish;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	while (!mutex_trylock(&adapter->client_lock))
@@ -3112,14 +3022,11 @@ static void iavf_reset_task(struct work_struct *work)
 		iavf_disable_vf(adapter);
 		mutex_unlock(&adapter->client_lock);
 		mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-=======
 		if (netif_running(netdev)) {
 			rtnl_lock();
 			dev_close(netdev);
 			rtnl_unlock();
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		return; /* Do not attempt to reinit. It's dead, Jim. */
 	}
 
@@ -3272,10 +3179,6 @@ reset_err:
 
 	mutex_unlock(&adapter->client_lock);
 	mutex_unlock(&adapter->crit_lock);
-<<<<<<< HEAD
-	if (running)
-		iavf_change_state(adapter, __IAVF_RUNNING);
-=======
 
 	if (netif_running(netdev)) {
 		/* Close device to ensure that Tx queues will not be started
@@ -3286,7 +3189,6 @@ reset_err:
 		rtnl_unlock();
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	dev_err(&adapter->pdev->dev, "failed to allocate resources during reinit\n");
 reset_finish:
 	rtnl_lock();
@@ -3316,11 +3218,7 @@ static void iavf_adminq_task(struct work_struct *work)
 		if (adapter->state == __IAVF_REMOVE)
 			return;
 
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->adminq_task);
-=======
 		queue_work(adapter->wq, &adapter->adminq_task);
->>>>>>> origin/linux_6.1.15_upstream
 		goto out;
 	}
 
@@ -3352,15 +3250,12 @@ static void iavf_adminq_task(struct work_struct *work)
 			rtnl_lock();
 			netdev_update_features(netdev);
 			rtnl_unlock();
-<<<<<<< HEAD
-=======
 			/* Request VLAN offload settings */
 			if (VLAN_V2_ALLOWED(adapter))
 				iavf_set_vlan_offload_features
 					(adapter, 0, netdev->features);
 
 			iavf_set_queue_vlan_tag_loc(adapter);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		adapter->flags &= ~IAVF_FLAG_SETUP_NETDEV_FEATURES;
@@ -4464,11 +4359,7 @@ static int iavf_change_mtu(struct net_device *netdev, int new_mtu)
 
 	if (netif_running(netdev)) {
 		adapter->flags |= IAVF_FLAG_RESET_NEEDED;
-<<<<<<< HEAD
-		queue_work(iavf_wq, &adapter->reset_task);
-=======
 		queue_work(adapter->wq, &adapter->reset_task);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;
@@ -4490,33 +4381,11 @@ static int iavf_set_features(struct net_device *netdev,
 {
 	struct iavf_adapter *adapter = netdev_priv(netdev);
 
-<<<<<<< HEAD
-	/* Don't allow enabling VLAN features when adapter is not capable
-	 * of VLAN offload/filtering
-	 */
-	if (!VLAN_ALLOWED(adapter)) {
-		netdev->hw_features &= ~(NETIF_F_HW_VLAN_CTAG_RX |
-					 NETIF_F_HW_VLAN_CTAG_TX |
-					 NETIF_F_HW_VLAN_CTAG_FILTER);
-		if (features & (NETIF_F_HW_VLAN_CTAG_RX |
-				NETIF_F_HW_VLAN_CTAG_TX |
-				NETIF_F_HW_VLAN_CTAG_FILTER))
-			return -EINVAL;
-	} else if ((netdev->features ^ features) & NETIF_F_HW_VLAN_CTAG_RX) {
-		if (features & NETIF_F_HW_VLAN_CTAG_RX)
-			adapter->aq_required |=
-				IAVF_FLAG_AQ_ENABLE_VLAN_STRIPPING;
-		else
-			adapter->aq_required |=
-				IAVF_FLAG_AQ_DISABLE_VLAN_STRIPPING;
-	}
-=======
 	/* trigger update on any VLAN feature change */
 	if ((netdev->features & NETIF_VLAN_OFFLOAD_FEATURES) ^
 	    (features & NETIF_VLAN_OFFLOAD_FEATURES))
 		iavf_set_vlan_offload_features(adapter, netdev->features,
 					       features);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -4813,17 +4682,7 @@ static netdev_features_t iavf_fix_features(struct net_device *netdev,
 {
 	struct iavf_adapter *adapter = netdev_priv(netdev);
 
-<<<<<<< HEAD
-	if (adapter->vf_res &&
-	    !(adapter->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
-		features &= ~(NETIF_F_HW_VLAN_CTAG_TX |
-			      NETIF_F_HW_VLAN_CTAG_RX |
-			      NETIF_F_HW_VLAN_CTAG_FILTER);
-
-	return features;
-=======
 	return iavf_fix_netdev_vlan_features(adapter, features);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct net_device_ops iavf_netdev_ops = {
@@ -5100,11 +4959,7 @@ static int iavf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	INIT_WORK(&adapter->adminq_task, iavf_adminq_task);
 	INIT_DELAYED_WORK(&adapter->watchdog_task, iavf_watchdog_task);
 	INIT_DELAYED_WORK(&adapter->client_task, iavf_client_task);
-<<<<<<< HEAD
-	queue_delayed_work(iavf_wq, &adapter->watchdog_task,
-=======
 	queue_delayed_work(adapter->wq, &adapter->watchdog_task,
->>>>>>> origin/linux_6.1.15_upstream
 			   msecs_to_jiffies(5 * (pdev->devfn & 0x07)));
 
 	/* Setup the wait queue for indicating transition to down status */
@@ -5206,10 +5061,6 @@ static int __maybe_unused iavf_resume(struct device *dev_d)
 static void iavf_remove(struct pci_dev *pdev)
 {
 	struct iavf_adapter *adapter = iavf_pdev_to_adapter(pdev);
-<<<<<<< HEAD
-	struct net_device *netdev = adapter->netdev;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct iavf_fdir_fltr *fdir, *fdirtmp;
 	struct iavf_vlan_filter *vlf, *vlftmp;
 	struct iavf_cloud_filter *cf, *cftmp;
@@ -5219,23 +5070,12 @@ static void iavf_remove(struct pci_dev *pdev)
 	struct iavf_hw *hw;
 	int err;
 
-<<<<<<< HEAD
-	/* When reboot/shutdown is in progress no need to do anything
-	 * as the adapter is already REMOVE state that was set during
-	 * iavf_shutdown() callback.
-	 */
-	if (adapter->state == __IAVF_REMOVE)
-		return;
-
-	set_bit(__IAVF_IN_REMOVE_TASK, &adapter->crit_section);
-=======
 	netdev = adapter->netdev;
 	hw = &adapter->hw;
 
 	if (test_and_set_bit(__IAVF_IN_REMOVE_TASK, &adapter->crit_section))
 		return;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Wait until port initialization is complete.
 	 * There are flows where register/unregister netdev may race.
 	 */

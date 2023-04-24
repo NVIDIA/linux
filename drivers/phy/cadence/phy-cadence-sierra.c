@@ -283,8 +283,6 @@ static u32 cdns_sierra_pll_mux_table[][SIERRA_NUM_CMN_PLLC_PARENTS] = {
 	[CMN_PLLLC] = { 0, 1 },
 	[CMN_PLLLC1] = { 1, 0 },
 };
-<<<<<<< HEAD
-=======
 
 struct cdns_sierra_derived_refclk {
 	struct clk_hw           hw;
@@ -308,7 +306,6 @@ enum cdns_sierra_ssc_mode {
 	EXTERNAL_SSC,
 	INTERNAL_SSC
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 struct cdns_sierra_inst {
 	struct phy *phy;

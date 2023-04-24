@@ -4547,10 +4547,7 @@ void rvu_nix_lf_teardown(struct rvu *rvu, u16 pcifunc, int blkaddr, int nixlf)
 	int pf = rvu_get_pf(pcifunc);
 	struct mac_ops *mac_ops;
 	u8 cgx_id, lmac_id;
-<<<<<<< HEAD
-=======
 	u64 sa_base;
->>>>>>> origin/linux_6.1.15_upstream
 	void *cgxd;
 	int err;
 
@@ -4604,15 +4601,12 @@ void rvu_nix_lf_teardown(struct rvu *rvu, u16 pcifunc, int blkaddr, int nixlf)
 		pfvf->hw_rx_tstamp_en = false;
 	}
 
-<<<<<<< HEAD
-=======
 	/* reset priority flow control config */
 	rvu_cgx_prio_flow_ctrl_cfg(rvu, pcifunc, 0, 0, 0);
 
 	/* reset 802.3x flow control config */
 	rvu_cgx_cfg_pause_frm(rvu, pcifunc, 0, 0);
 
->>>>>>> origin/linux_6.1.15_upstream
 	nix_ctx_free(rvu, pfvf);
 
 	nix_free_all_bandprof(rvu, pcifunc);

@@ -1086,12 +1086,7 @@ static int ocfs2_fill_super(struct super_block *sb, void *data, int silent)
 
 	if (!inode) {
 		status = -EIO;
-<<<<<<< HEAD
-		mlog_errno(status);
-		goto read_super_error;
-=======
 		goto out_dismount;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	osb->osb_dev_kset = kset_create_and_add(sb->s_id, NULL,
@@ -1117,16 +1112,6 @@ static int ocfs2_fill_super(struct super_block *sb, void *data, int silent)
 		goto out_dismount;
 	}
 
-<<<<<<< HEAD
-	root = d_make_root(inode);
-	if (!root) {
-		status = -ENOMEM;
-		mlog_errno(status);
-		goto read_super_error;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	sb->s_root = root;
 
 	ocfs2_complete_mount_recovery(osb);

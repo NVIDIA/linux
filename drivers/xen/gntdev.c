@@ -256,11 +256,6 @@ void gntdev_put_map(struct gntdev_priv *priv, struct gntdev_grant_map *map)
 	if (!refcount_dec_and_test(&map->users))
 		return;
 
-<<<<<<< HEAD
-	if (map->pages && !use_ptemod)
-		unmap_grant_pages(map, 0, map->count);
-
-=======
 	if (map->pages && !use_ptemod) {
 		/*
 		 * Increment the reference count.  This ensures that the
@@ -294,7 +289,6 @@ void gntdev_put_map(struct gntdev_priv *priv, struct gntdev_grant_map *map)
 	if (use_ptemod && map->notifier_init)
 		mmu_interval_notifier_remove(&map->notifier);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (map->notify.flags & UNMAP_NOTIFY_SEND_EVENT) {
 		notify_remote_via_evtchn(map->notify.event);
 		evtchn_put(map->notify.event);

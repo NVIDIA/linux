@@ -1,11 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Portions of this file
-<<<<<<< HEAD
- * Copyright (C) 2018, 2020-2021 Intel Corporation
-=======
  * Copyright (C) 2018, 2020-2022 Intel Corporation
->>>>>>> origin/linux_6.1.15_upstream
  */
 #ifndef __NET_WIRELESS_NL80211_H
 #define __NET_WIRELESS_NL80211_H

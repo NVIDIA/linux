@@ -438,19 +438,11 @@ static void kvmppc_clear_tce(struct mm_struct *mm, struct kvmppc_spapr_tce_table
 	unsigned long i;
 	unsigned long subpages = 1ULL << (stt->page_shift - tbl->it_page_shift);
 	unsigned long io_entry = entry << (stt->page_shift - tbl->it_page_shift);
-<<<<<<< HEAD
 
 	for (i = 0; i < subpages; ++i) {
 		unsigned long hpa = 0;
 		enum dma_data_direction dir = DMA_NONE;
 
-=======
-
-	for (i = 0; i < subpages; ++i) {
-		unsigned long hpa = 0;
-		enum dma_data_direction dir = DMA_NONE;
-
->>>>>>> origin/linux_6.1.15_upstream
 		iommu_tce_xchg_no_kill(mm, tbl, io_entry + i, &hpa, &dir);
 	}
 }

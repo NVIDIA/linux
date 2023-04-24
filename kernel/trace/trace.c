@@ -7829,15 +7829,8 @@ static struct tracing_log_err *get_tracing_log_err(struct trace_array *tr,
 	char *cmd;
 
 	if (tr->n_err_log_entries < TRACING_LOG_ERRS_MAX) {
-<<<<<<< HEAD
-		err = kzalloc(sizeof(*err), GFP_KERNEL);
-		if (!err)
-			err = ERR_PTR(-ENOMEM);
-		else
-=======
 		err = alloc_tracing_log_err(len);
 		if (PTR_ERR(err) != -ENOMEM)
->>>>>>> origin/linux_6.1.15_upstream
 			tr->n_err_log_entries++;
 
 		return err;

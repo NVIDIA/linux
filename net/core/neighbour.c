@@ -460,11 +460,7 @@ EXPORT_SYMBOL(neigh_ifdown);
 
 static struct neighbour *neigh_alloc(struct neigh_table *tbl,
 				     struct net_device *dev,
-<<<<<<< HEAD
-				     u8 flags, bool exempt_from_gc)
-=======
 				     u32 flags, bool exempt_from_gc)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct neighbour *n = NULL;
 	unsigned long now = jiffies;
@@ -664,11 +660,7 @@ EXPORT_SYMBOL(neigh_lookup_nodev);
 
 static struct neighbour *
 ___neigh_create(struct neigh_table *tbl, const void *pkey,
-<<<<<<< HEAD
-		struct net_device *dev, u8 flags,
-=======
 		struct net_device *dev, u32 flags,
->>>>>>> origin/linux_6.1.15_upstream
 		bool exempt_from_gc, bool want_ref)
 {
 	u32 hash_val, key_len = tbl->key_len;
@@ -1314,10 +1306,7 @@ static void neigh_update_hhs(struct neighbour *neigh)
 				if it is different.
 	NEIGH_UPDATE_F_ADMIN	means that the change is administrative.
 	NEIGH_UPDATE_F_USE	means that the entry is user triggered.
-<<<<<<< HEAD
-=======
 	NEIGH_UPDATE_F_MANAGED	means that the entry will be auto-refreshed.
->>>>>>> origin/linux_6.1.15_upstream
 	NEIGH_UPDATE_F_OVERRIDE_ISROUTER allows to override existing
 				NTF_ROUTER flag.
 	NEIGH_UPDATE_F_ISROUTER	indicates if the neighbour is known as
@@ -1352,13 +1341,8 @@ static int __neigh_update(struct neighbour *neigh, const u8 *lladdr,
 	    (old & (NUD_NOARP | NUD_PERMANENT)))
 		goto out;
 
-<<<<<<< HEAD
-	ext_learn_change = neigh_update_ext_learned(neigh, flags, &notify);
-	if (flags & NEIGH_UPDATE_F_USE) {
-=======
 	neigh_update_flags(neigh, flags, &notify, &gc_update, &managed_update);
 	if (flags & (NEIGH_UPDATE_F_USE | NEIGH_UPDATE_F_MANAGED)) {
->>>>>>> origin/linux_6.1.15_upstream
 		new = old & ~NUD_PERMANENT;
 		neigh->nud_state = new;
 		err = 0;
@@ -2092,16 +2076,9 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 			goto out;
 		}
 
-<<<<<<< HEAD
-		exempt_from_gc = ndm->ndm_state & NUD_PERMANENT ||
-				 ndm->ndm_flags & NTF_EXT_LEARNED;
-		neigh = ___neigh_create(tbl, dst, dev,
-					ndm->ndm_flags & NTF_EXT_LEARNED,
-=======
 		neigh = ___neigh_create(tbl, dst, dev,
 					ndm_flags &
 					(NTF_EXT_LEARNED | NTF_MANAGED),
->>>>>>> origin/linux_6.1.15_upstream
 					exempt_from_gc, true);
 		if (IS_ERR(neigh)) {
 			err = PTR_ERR(neigh);
@@ -2121,13 +2098,6 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	if (protocol)
 		neigh->protocol = protocol;
-<<<<<<< HEAD
-	if (ndm->ndm_flags & NTF_EXT_LEARNED)
-		flags |= NEIGH_UPDATE_F_EXT_LEARNED;
-	if (ndm->ndm_flags & NTF_ROUTER)
-		flags |= NEIGH_UPDATE_F_ISROUTER;
-	if (ndm->ndm_flags & NTF_USE)
-=======
 	if (ndm_flags & NTF_EXT_LEARNED)
 		flags |= NEIGH_UPDATE_F_EXT_LEARNED;
 	if (ndm_flags & NTF_ROUTER)
@@ -2135,16 +2105,11 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
 	if (ndm_flags & NTF_MANAGED)
 		flags |= NEIGH_UPDATE_F_MANAGED;
 	if (ndm_flags & NTF_USE)
->>>>>>> origin/linux_6.1.15_upstream
 		flags |= NEIGH_UPDATE_F_USE;
 
 	err = __neigh_update(neigh, lladdr, ndm->ndm_state, flags,
 			     NETLINK_CB(skb).portid, extack);
-<<<<<<< HEAD
-	if (!err && ndm->ndm_flags & NTF_USE) {
-=======
 	if (!err && ndm_flags & (NTF_USE | NTF_MANAGED)) {
->>>>>>> origin/linux_6.1.15_upstream
 		neigh_event_send(neigh, NULL);
 		err = 0;
 	}

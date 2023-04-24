@@ -644,17 +644,12 @@ static void vp_vdpa_remove(struct pci_dev *pdev)
 	struct vp_vdpa_mgmtdev *vp_vdpa_mgtdev = pci_get_drvdata(pdev);
 	struct virtio_pci_modern_device *mdev = NULL;
 
-<<<<<<< HEAD
-	vp_modern_remove(&vp_vdpa->mdev);
-	vdpa_unregister_device(&vp_vdpa->vdpa);
-=======
 	mdev = vp_vdpa_mgtdev->mdev;
 	vp_modern_remove(mdev);
 	vdpa_mgmtdev_unregister(&vp_vdpa_mgtdev->mgtdev);
 	kfree(vp_vdpa_mgtdev->mgtdev.id_table);
 	kfree(mdev);
 	kfree(vp_vdpa_mgtdev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct pci_driver vp_vdpa_driver = {

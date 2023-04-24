@@ -1502,13 +1502,10 @@ static int ice_vsi_alloc_rings(struct ice_vsi *vsi)
 		ring->dev = dev;
 		ring->count = vsi->num_tx_desc;
 		ring->txq_teid = ICE_INVAL_TEID;
-<<<<<<< HEAD
-=======
 		if (dvm_ena)
 			ring->flags |= ICE_TX_FLAGS_RING_VLAN_L2TAG2;
 		else
 			ring->flags |= ICE_TX_FLAGS_RING_VLAN_L2TAG1;
->>>>>>> origin/linux_6.1.15_upstream
 		WRITE_ONCE(vsi->tx_rings[i], ring);
 	}
 
@@ -1756,13 +1753,8 @@ static void ice_vsi_set_rss_flow_fld(struct ice_vsi *vsi)
 	status = ice_add_rss_cfg(hw, vsi_handle, ICE_FLOW_HASH_IPV6,
 				 ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV6);
 	if (status)
-<<<<<<< HEAD
-		dev_dbg(dev, "ice_add_rss_cfg failed for sctp6 flow, vsi = %d, error = %s\n",
-			vsi_num, ice_stat_str(status));
-=======
 		dev_dbg(dev, "ice_add_rss_cfg failed for sctp6 flow, vsi = %d, error = %d\n",
 			vsi_num, status);
->>>>>>> origin/linux_6.1.15_upstream
 
 	status = ice_add_rss_cfg(hw, vsi_handle, ICE_FLOW_HASH_ESP_SPI,
 				 ICE_FLOW_SEG_HDR_ESP);
@@ -3021,12 +3013,6 @@ int ice_vsi_release(struct ice_vsi *vsi)
 		clear_bit(ICE_VSI_NETDEV_REGISTERED, vsi->state);
 	}
 
-<<<<<<< HEAD
-	if (vsi->type == ICE_VSI_PF)
-		ice_devlink_destroy_pf_port(pf);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (test_bit(ICE_FLAG_RSS_ENA, pf->flags))
 		ice_rss_clean(vsi);
 
@@ -3061,13 +3047,8 @@ int ice_vsi_release(struct ice_vsi *vsi)
 		}
 	}
 
-<<<<<<< HEAD
-	if (ice_is_vsi_dflt_vsi(pf->first_sw, vsi))
-		ice_clear_dflt_vsi(pf->first_sw);
-=======
 	if (ice_is_vsi_dflt_vsi(vsi))
 		ice_clear_dflt_vsi(vsi);
->>>>>>> origin/linux_6.1.15_upstream
 	ice_fltr_remove_all(vsi);
 	ice_rm_vsi_lan_cfg(vsi->port_info, vsi->idx);
 	err = ice_rm_vsi_rdma_cfg(vsi->port_info, vsi->idx);

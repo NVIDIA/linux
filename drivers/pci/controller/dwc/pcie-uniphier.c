@@ -168,33 +168,20 @@ static void uniphier_pcie_irq_enable(struct uniphier_pcie *pcie)
 	writel(PCL_RCV_INTX_ALL_ENABLE, pcie->base + PCL_RCV_INTX);
 }
 
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/linux_6.1.15_upstream
 static void uniphier_pcie_irq_mask(struct irq_data *d)
 {
 	struct dw_pcie_rp *pp = irq_data_get_irq_chip_data(d);
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
-<<<<<<< HEAD
-	struct uniphier_pcie_priv *priv = to_uniphier_pcie(pci);
-=======
 	struct uniphier_pcie *pcie = to_uniphier_pcie(pci);
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long flags;
 	u32 val;
 
 	raw_spin_lock_irqsave(&pp->lock, flags);
 
-<<<<<<< HEAD
-	val = readl(priv->base + PCL_RCV_INTX);
-	val |= BIT(irqd_to_hwirq(d) + PCL_RCV_INTX_MASK_SHIFT);
-	writel(val, priv->base + PCL_RCV_INTX);
-=======
 	val = readl(pcie->base + PCL_RCV_INTX);
 	val |= BIT(irqd_to_hwirq(d) + PCL_RCV_INTX_MASK_SHIFT);
 	writel(val, pcie->base + PCL_RCV_INTX);
->>>>>>> origin/linux_6.1.15_upstream
 
 	raw_spin_unlock_irqrestore(&pp->lock, flags);
 }
@@ -203,25 +190,15 @@ static void uniphier_pcie_irq_unmask(struct irq_data *d)
 {
 	struct dw_pcie_rp *pp = irq_data_get_irq_chip_data(d);
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
-<<<<<<< HEAD
-	struct uniphier_pcie_priv *priv = to_uniphier_pcie(pci);
-=======
 	struct uniphier_pcie *pcie = to_uniphier_pcie(pci);
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long flags;
 	u32 val;
 
 	raw_spin_lock_irqsave(&pp->lock, flags);
 
-<<<<<<< HEAD
-	val = readl(priv->base + PCL_RCV_INTX);
-	val &= ~BIT(irqd_to_hwirq(d) + PCL_RCV_INTX_MASK_SHIFT);
-	writel(val, priv->base + PCL_RCV_INTX);
-=======
 	val = readl(pcie->base + PCL_RCV_INTX);
 	val &= ~BIT(irqd_to_hwirq(d) + PCL_RCV_INTX_MASK_SHIFT);
 	writel(val, pcie->base + PCL_RCV_INTX);
->>>>>>> origin/linux_6.1.15_upstream
 
 	raw_spin_unlock_irqrestore(&pp->lock, flags);
 }

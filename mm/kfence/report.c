@@ -291,11 +291,7 @@ static void kfence_to_kp_stack(const struct kfence_track *track, void **kp_stack
 		kp_stack[j] = NULL;
 }
 
-<<<<<<< HEAD
-bool __kfence_obj_info(struct kmem_obj_info *kpp, void *object, struct page *page)
-=======
 bool __kfence_obj_info(struct kmem_obj_info *kpp, void *object, struct slab *slab)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct kfence_metadata *meta = addr_to_metadata((unsigned long)object);
 	unsigned long flags;
@@ -315,11 +311,7 @@ bool __kfence_obj_info(struct kmem_obj_info *kpp, void *object, struct slab *sla
 
 	raw_spin_lock_irqsave(&meta->lock, flags);
 
-<<<<<<< HEAD
-	kpp->kp_page = page;
-=======
 	kpp->kp_slab = slab;
->>>>>>> origin/linux_6.1.15_upstream
 	kpp->kp_slab_cache = meta->cache;
 	kpp->kp_objp = (void *)meta->addr;
 	kfence_to_kp_stack(&meta->alloc_track, kpp->kp_stack);

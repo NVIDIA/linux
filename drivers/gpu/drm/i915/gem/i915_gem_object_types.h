@@ -331,13 +331,6 @@ struct drm_i915_gem_object {
 #define I915_BO_ALLOC_FLAGS (I915_BO_ALLOC_CONTIGUOUS | \
 			     I915_BO_ALLOC_VOLATILE | \
 			     I915_BO_ALLOC_CPU_CLEAR | \
-<<<<<<< HEAD
-			     I915_BO_ALLOC_USER)
-#define I915_BO_READONLY         BIT(4)
-#define I915_TILING_QUIRK_BIT    5 /* unknown swizzling; do not release! */
-#define I915_BO_WAS_BOUND_BIT    6
-
-=======
 			     I915_BO_ALLOC_USER | \
 			     I915_BO_ALLOC_PM_VOLATILE | \
 			     I915_BO_ALLOC_PM_EARLY | \
@@ -346,7 +339,6 @@ struct drm_i915_gem_object {
 #define I915_BO_READONLY          BIT(8)
 #define I915_TILING_QUIRK_BIT     9 /* unknown swizzling; do not release! */
 #define I915_BO_PROTECTED         BIT(10)
->>>>>>> origin/linux_6.1.15_upstream
 	/**
 	 * @mem_flags - Mutable placement-related flags
 	 *

@@ -419,10 +419,7 @@ static int max98090_put_enab_tlv(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	sel = sel_unchecked;
 
-<<<<<<< HEAD
-=======
 	change = *select != sel;
->>>>>>> origin/linux_6.1.15_upstream
 	*select = sel;
 
 	/* Setting a volume is only valid if it is already On */
@@ -437,11 +434,7 @@ static int max98090_put_enab_tlv(struct snd_kcontrol *kcontrol,
 		mask << mc->shift,
 		sel << mc->shift);
 
-<<<<<<< HEAD
-	return *select != val;
-=======
 	return change;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const char *max98090_perf_pwr_text[] =

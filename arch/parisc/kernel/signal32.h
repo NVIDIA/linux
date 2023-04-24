@@ -36,14 +36,6 @@ struct compat_regfile {
         compat_int_t rf_sar;
 };
 
-<<<<<<< HEAD
-#define COMPAT_SIGRETURN_TRAMP 4
-#define COMPAT_SIGRESTARTBLOCK_TRAMP 5
-#define COMPAT_TRAMP_SIZE (COMPAT_SIGRETURN_TRAMP + \
-				COMPAT_SIGRESTARTBLOCK_TRAMP)
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 struct compat_rt_sigframe {
 	unsigned int tramp[2]; /* holds original return address */
 	compat_siginfo_t info;

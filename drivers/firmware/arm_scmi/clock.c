@@ -312,12 +312,6 @@ scmi_clock_describe_rates_get(const struct scmi_protocol_handle *ph, u32 clk_id,
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	if (rate_discrete && rate) {
-		clk->list.num_rates = tot_rate_cnt;
-		sort(clk->list.rates, tot_rate_cnt, sizeof(*rate),
-		     rate_cmp_func, NULL);
-=======
 	if (!clk->rate_discrete) {
 		dev_dbg(ph->dev, "Min %llu Max %llu Step %llu Hz\n",
 			clk->range.min_rate, clk->range.max_rate,
@@ -325,7 +319,6 @@ scmi_clock_describe_rates_get(const struct scmi_protocol_handle *ph, u32 clk_id,
 	} else if (clk->list.num_rates) {
 		sort(clk->list.rates, clk->list.num_rates,
 		     sizeof(clk->list.rates[0]), rate_cmp_func, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return ret;

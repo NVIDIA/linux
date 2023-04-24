@@ -18,10 +18,7 @@
 #include <linux/pinctrl/pinmux.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
-<<<<<<< HEAD
-=======
 #include <linux/regmap.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/reset.h>
 #include <linux/spinlock.h>
 
@@ -124,11 +121,8 @@ struct sgpio_priv {
 	struct regmap *regs;
 	const struct sgpio_properties *properties;
 	spinlock_t lock;
-<<<<<<< HEAD
-=======
 	/* protects the config register and single shot mode */
 	struct mutex poll_lock;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct sgpio_port_addr {
@@ -290,12 +284,8 @@ static int sgpio_output_set(struct sgpio_priv *priv,
 			    int value)
 {
 	unsigned int bit = SGPIO_SRC_BITS * addr->bit;
-<<<<<<< HEAD
-	unsigned long flags;
-=======
 	u32 reg = sgpio_get_addr(priv, REG_PORT_CONFIG, addr->port);
 	bool changed;
->>>>>>> origin/linux_6.1.15_upstream
 	u32 clr, set;
 	int ret;
 
@@ -316,11 +306,6 @@ static int sgpio_output_set(struct sgpio_priv *priv,
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	spin_lock_irqsave(&priv->lock, flags);
-	sgpio_clrsetbits(priv, REG_PORT_CONFIG, addr->port, clr, set);
-	spin_unlock_irqrestore(&priv->lock, flags);
-=======
 	ret = regmap_update_bits_check(priv->regs, reg, clr | set, set,
 				       &changed);
 	if (ret)
@@ -333,7 +318,6 @@ static int sgpio_output_set(struct sgpio_priv *priv,
 	}
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int sgpio_output_get(struct sgpio_priv *priv,
@@ -938,10 +922,7 @@ static int microchip_sgpio_probe(struct platform_device *pdev)
 
 	priv->dev = dev;
 	spin_lock_init(&priv->lock);
-<<<<<<< HEAD
-=======
 	mutex_init(&priv->poll_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	reset = devm_reset_control_get_optional_shared(&pdev->dev, "switch");
 	if (IS_ERR(reset))

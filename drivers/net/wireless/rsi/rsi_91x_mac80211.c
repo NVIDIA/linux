@@ -1489,15 +1489,9 @@ static int rsi_mac80211_sta_add(struct ieee80211_hw *hw,
 
 	if ((vif->type == NL80211_IFTYPE_STATION) ||
 	    (vif->type == NL80211_IFTYPE_P2P_CLIENT)) {
-<<<<<<< HEAD
-		common->bitrate_mask[common->band] = sta->supp_rates[common->band];
-		common->vif_info[0].is_ht = sta->ht_cap.ht_supported;
-		if (sta->ht_cap.ht_supported) {
-=======
 		common->bitrate_mask[common->band] = sta->deflink.supp_rates[common->band];
 		common->vif_info[0].is_ht = sta->deflink.ht_cap.ht_supported;
 		if (sta->deflink.ht_cap.ht_supported) {
->>>>>>> origin/linux_6.1.15_upstream
 			common->bitrate_mask[NL80211_BAND_2GHZ] =
 					sta->deflink.supp_rates[NL80211_BAND_2GHZ];
 			if ((sta->deflink.ht_cap.cap & IEEE80211_HT_CAP_SGI_20) ||

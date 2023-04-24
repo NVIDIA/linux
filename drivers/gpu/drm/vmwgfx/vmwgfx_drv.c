@@ -1662,39 +1662,13 @@ static int vmw_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_set_drvdata(pdev, &vmw->drm);
 
-<<<<<<< HEAD
-	ret = ttm_mem_global_init(&ttm_mem_glob, &pdev->dev);
-	if (ret)
-		goto out_error;
-
-	ret = vmw_driver_load(vmw, ent->device);
-	if (ret)
-		goto out_release;
-=======
 	ret = vmw_driver_load(vmw, ent->device);
 	if (ret)
 		goto out_error;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = drm_dev_register(&vmw->drm, 0);
 	if (ret)
 		goto out_unload;
-<<<<<<< HEAD
-
-	return 0;
-out_unload:
-	vmw_driver_unload(&vmw->drm);
-out_release:
-	ttm_mem_global_release(&ttm_mem_glob);
-out_error:
-	return ret;
-}
-
-static int __init vmwgfx_init(void)
-{
-	int ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	vmw_debugfs_gem_init(vmw);
 	vmw_debugfs_resource_managers_init(vmw);

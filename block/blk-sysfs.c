@@ -774,14 +774,7 @@ static void blk_release_queue(struct kobject *kobj)
 	blk_stat_free_callback(q->poll_cb);
 
 	blk_free_queue_stats(q->stats);
-<<<<<<< HEAD
-
-	blk_exit_queue(q);
-
-	blk_queue_free_zone_bitmaps(q);
-=======
 	kfree(q->poll_stat);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (queue_is_mq(q))
 		blk_mq_release(q);
@@ -921,13 +914,8 @@ void blk_unregister_queue(struct gendisk *disk)
 	 * structures that can be modified through sysfs.
 	 */
 	if (queue_is_mq(q))
-<<<<<<< HEAD
-		blk_mq_unregister_dev(disk_to_dev(disk), q);
-	blk_trace_remove_sysfs(disk_to_dev(disk));
-=======
 		blk_mq_sysfs_unregister(disk);
 	blk_crypto_sysfs_unregister(q);
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_lock(&q->sysfs_lock);
 	elv_unregister_queue(q);
@@ -937,10 +925,6 @@ void blk_unregister_queue(struct gendisk *disk)
 	/* Now that we've deleted all child objects, we can delete the queue. */
 	kobject_uevent(&q->kobj, KOBJ_REMOVE);
 	kobject_del(&q->kobj);
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&q->sysfs_dir_lock);
 
 	mutex_lock(&q->debugfs_mutex);

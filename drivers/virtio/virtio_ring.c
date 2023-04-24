@@ -1372,11 +1372,7 @@ static inline int virtqueue_add_packed(struct virtqueue *_vq,
 
 	BUG_ON(total_sg == 0);
 
-<<<<<<< HEAD
-	if (virtqueue_use_indirect(_vq, total_sg)) {
-=======
 	if (virtqueue_use_indirect(vq, total_sg)) {
->>>>>>> origin/linux_6.1.15_upstream
 		err = virtqueue_add_indirect_packed(vq, sgs, total_sg, out_sgs,
 						    in_sgs, data, gfp);
 		if (err != -ENOMEM) {

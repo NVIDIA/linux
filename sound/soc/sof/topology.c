@@ -1433,26 +1433,8 @@ static int sof_widget_unload(struct snd_soc_component *scomp,
 		if (dai)
 			list_del(&dai->list);
 
-<<<<<<< HEAD
-		/* power down the pipeline schedule core */
-		pipeline = swidget->private;
-
-		/*
-		 * Runtime PM should still function normally if topology loading fails and
-		 * it's components are unloaded. Do not power down the primary core so that the
-		 * CTX_SAVE IPC can succeed during runtime suspend.
-		 */
-		if (pipeline->core == SOF_DSP_PRIMARY_CORE)
-			break;
-
-		ret = snd_sof_dsp_core_power_down(sdev, 1 << pipeline->core);
-		if (ret < 0)
-			dev_err(scomp->dev, "error: powering down pipeline schedule core %d\n",
-				pipeline->core);
-=======
 		sof_disconnect_dai_widget(scomp, widget);
 
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	default:
 		break;

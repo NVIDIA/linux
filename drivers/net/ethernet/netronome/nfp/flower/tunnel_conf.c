@@ -1051,11 +1051,7 @@ err_free_entry:
 	kfree(entry);
 err_free_ida:
 	if (ida_idx != -1)
-<<<<<<< HEAD
-		ida_simple_remove(&priv->tun.mac_off_ids, ida_idx);
-=======
 		ida_free(&priv->tun.mac_off_ids, ida_idx);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return err;
 }

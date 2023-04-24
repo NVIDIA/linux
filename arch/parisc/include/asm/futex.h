@@ -20,12 +20,6 @@ static inline unsigned long _futex_hash_index(unsigned long ua)
 static inline void
 _futex_spin_lock_irqsave(arch_spinlock_t *s, unsigned long *flags)
 {
-<<<<<<< HEAD
-	extern u32 lws_lock_start[];
-	long index = ((long)uaddr & 0x7f8) >> 1;
-	arch_spinlock_t *s = (arch_spinlock_t *)&lws_lock_start[index];
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	local_irq_save(*flags);
 	arch_spin_lock(s);
 }
@@ -33,12 +27,6 @@ _futex_spin_lock_irqsave(arch_spinlock_t *s, unsigned long *flags)
 static inline void
 _futex_spin_unlock_irqrestore(arch_spinlock_t *s, unsigned long *flags)
 {
-<<<<<<< HEAD
-	extern u32 lws_lock_start[];
-	long index = ((long)uaddr & 0x7f8) >> 1;
-	arch_spinlock_t *s = (arch_spinlock_t *)&lws_lock_start[index];
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	arch_spin_unlock(s);
 	local_irq_restore(*flags);
 }

@@ -16,10 +16,7 @@
 /* Registers */
 #define RPMX_CMRX_CFG			0x00
 #define RPMX_RX_TS_PREPEND              BIT_ULL(22)
-<<<<<<< HEAD
-=======
 #define RPMX_TX_PTP_1S_SUPPORT          BIT_ULL(17)
->>>>>>> origin/linux_6.1.15_upstream
 #define RPMX_CMRX_SW_INT                0x180
 #define RPMX_CMRX_SW_INT_W1S            0x188
 #define RPMX_CMRX_SW_INT_ENA_W1S        0x198
@@ -63,8 +60,6 @@
 #define RPM_LMAC_FWI			0xa
 #define RPM_TX_EN			BIT_ULL(0)
 #define RPM_RX_EN			BIT_ULL(1)
-<<<<<<< HEAD
-=======
 #define RPMX_CMRX_PRT_CBFC_CTL                         0x5B08
 #define RPMX_CMRX_PRT_CBFC_CTL_LOGL_EN_RX_SHIFT        33
 #define RPMX_CMRX_PRT_CBFC_CTL_PHYS_BP_SHIFT           16
@@ -81,7 +76,6 @@
 #define RPMX_MTI_MAC100X_XIF_MODE		        0x8100
 #define RPMX_ONESTEP_ENABLE				BIT_ULL(5)
 #define RPMX_TS_BINARY_MODE				BIT_ULL(11)
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Function Declarations */
 int rpm_get_nr_lmacs(void *rpmd);
@@ -99,11 +93,8 @@ int rpm_get_rx_stats(void *rpmd, int lmac_id, int idx, u64 *rx_stat);
 void rpm_lmac_ptp_config(void *rpmd, int lmac_id, bool enable);
 int rpm_lmac_rx_tx_enable(void *rpmd, int lmac_id, bool enable);
 int rpm_lmac_tx_enable(void *rpmd, int lmac_id, bool enable);
-<<<<<<< HEAD
-=======
 int rpm_lmac_pfc_config(void *rpmd, int lmac_id, u8 tx_pause, u8 rx_pause,
 			u16 pfc_en);
 int rpm_lmac_get_pfc_frm_cfg(void *rpmd, int lmac_id, u8 *tx_pause,
 			     u8 *rx_pause);
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* RPM_H */

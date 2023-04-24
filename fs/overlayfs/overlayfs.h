@@ -661,10 +661,6 @@ struct ovl_cattr {
 
 #define OVL_CATTR(m) (&(struct ovl_cattr) { .mode = (m) })
 
-<<<<<<< HEAD
-int ovl_mkdir_real(struct inode *dir, struct dentry **newdentry, umode_t mode);
-struct dentry *ovl_create_real(struct inode *dir, struct dentry *newdentry,
-=======
 int ovl_mkdir_real(struct ovl_fs *ofs, struct inode *dir,
 		   struct dentry **newdentry, umode_t mode);
 struct dentry *ovl_create_real(struct ovl_fs *ofs,
@@ -673,7 +669,6 @@ struct dentry *ovl_create_real(struct ovl_fs *ofs,
 int ovl_cleanup(struct ovl_fs *ofs, struct inode *dir, struct dentry *dentry);
 struct dentry *ovl_lookup_temp(struct ovl_fs *ofs, struct dentry *workdir);
 struct dentry *ovl_create_temp(struct ovl_fs *ofs, struct dentry *workdir,
->>>>>>> origin/linux_6.1.15_upstream
 			       struct ovl_cattr *attr);
 
 /* file.c */

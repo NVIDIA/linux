@@ -1714,8 +1714,6 @@ static bool acpi_device_enumeration_by_parent(struct acpi_device *device)
 		{"CSC3551", },
 		{"INT33FE", },
 		{"INT3515", },
-<<<<<<< HEAD
-=======
 		/* Non-conforming _HID for Cirrus Logic already released */
 		{"CLSA0100", },
 		{"CLSA0101", },
@@ -1724,7 +1722,6 @@ static bool acpi_device_enumeration_by_parent(struct acpi_device *device)
 	 * attached to a serial bus at all.
 	 */
 		{"MSHW0028", },
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * HIDs of device with an UartSerialBusV2 resource for which userspace
 	 * expects a regular tty cdev to be created (instead of the in kernel

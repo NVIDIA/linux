@@ -131,11 +131,7 @@ static int lp3943_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		return err;
 
 	duty_ns = min(duty_ns, period_ns);
-<<<<<<< HEAD
-	val = (u8)(duty_ns * LP3943_MAX_DUTY / period_ns);
-=======
 	val = (u8)((int)duty_ns * LP3943_MAX_DUTY / (int)period_ns);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return lp3943_write_byte(lp3943, reg_duty, val);
 }

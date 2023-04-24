@@ -792,9 +792,6 @@ int set_guest_storage_key(struct mm_struct *mm, unsigned long addr,
 	pmd_t *pmdp;
 	pte_t *ptep;
 
-<<<<<<< HEAD
-	if (pmd_lookup(mm, addr, &pmdp))
-=======
 	/*
 	 * If we don't have a PTE table and if there is no huge page mapped,
 	 * we can ignore attempts to set the key to 0, because it already is 0.
@@ -805,7 +802,6 @@ int set_guest_storage_key(struct mm_struct *mm, unsigned long addr,
 	case 0:
 		break;
 	default:
->>>>>>> origin/linux_6.1.15_upstream
 		return -EFAULT;
 	}
 
@@ -905,9 +901,6 @@ int reset_guest_reference_bit(struct mm_struct *mm, unsigned long addr)
 	pte_t *ptep;
 	int cc = 0;
 
-<<<<<<< HEAD
-	if (pmd_lookup(mm, addr, &pmdp))
-=======
 	/*
 	 * If we don't have a PTE table and if there is no huge page mapped,
 	 * the storage key is 0 and there is nothing for us to do.
@@ -918,7 +911,6 @@ int reset_guest_reference_bit(struct mm_struct *mm, unsigned long addr)
 	case 0:
 		break;
 	default:
->>>>>>> origin/linux_6.1.15_upstream
 		return -EFAULT;
 	}
 

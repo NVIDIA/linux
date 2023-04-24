@@ -1778,24 +1778,7 @@ static int kszphy_probe(struct phy_device *phydev)
 
 	priv->type = type;
 
-<<<<<<< HEAD
-	if (type && type->led_mode_reg) {
-		ret = of_property_read_u32(np, "micrel,led-mode",
-				&priv->led_mode);
-		if (ret)
-			priv->led_mode = -1;
-
-		if (priv->led_mode > 3) {
-			phydev_err(phydev, "invalid led mode: 0x%02x\n",
-				   priv->led_mode);
-			priv->led_mode = -1;
-		}
-	} else {
-		priv->led_mode = -1;
-	}
-=======
 	kszphy_parse_led_mode(phydev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	clk = devm_clk_get(&phydev->mdio.dev, "rmii-ref");
 	/* NOTE: clk may be NULL if building without CONFIG_HAVE_CLK */
@@ -2080,8 +2063,6 @@ static int ksz886x_cable_test_get_status(struct phy_device *phydev,
 
 static int lanphy_read_page_reg(struct phy_device *phydev, int page, u32 addr)
 {
-<<<<<<< HEAD
-=======
 	int data;
 
 	phy_lock_mdio_bus(phydev);
@@ -3106,7 +3087,6 @@ static int lan8814_probe(struct phy_device *phydev)
 
 static struct phy_driver ksphy_driver[] = {
 {
->>>>>>> origin/linux_6.1.15_upstream
 	.phy_id		= PHY_ID_KS8737,
 	.phy_id_mask	= MICREL_PHY_ID_MASK,
 	.name		= "Micrel KS8737",

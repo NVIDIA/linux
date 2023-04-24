@@ -779,11 +779,6 @@ static bool msi_check_reservation_mode(struct irq_domain *domain,
 	/*
 	 * Checking the first MSI descriptor is sufficient. MSIX supports
 	 * masking and MSI does so when the can_mask attribute is set.
-<<<<<<< HEAD
-	 */
-	desc = first_msi_entry(dev);
-	return desc->msi_attrib.is_msix || desc->msi_attrib.can_mask;
-=======
 	 */
 	desc = msi_first_desc(dev, MSI_DESC_ALL);
 	return desc->pci.msi_attrib.is_msix || desc->pci.msi_attrib.can_mask;
@@ -853,7 +848,6 @@ static int msi_init_virq(struct irq_domain *domain, int virq, unsigned int vflag
 	if (vflags & VIRQ_CAN_RESERVE)
 		irqd_clr_activated(irqd);
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int __msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,

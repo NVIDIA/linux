@@ -349,11 +349,7 @@ static int scsi_fill_sghdr_rq(struct scsi_device *sdev, struct request *rq,
 
 	if (hdr->cmd_len < 6)
 		return -EMSGSIZE;
-<<<<<<< HEAD
-	if (copy_from_user(req->cmd, hdr->cmdp, hdr->cmd_len))
-=======
 	if (copy_from_user(scmd->cmnd, hdr->cmdp, hdr->cmd_len))
->>>>>>> origin/linux_6.1.15_upstream
 		return -EFAULT;
 	if (!scsi_cmd_allowed(scmd->cmnd, mode))
 		return -EPERM;

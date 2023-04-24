@@ -246,14 +246,8 @@ static void scsifront_gnttab_done(struct vscsifrnt_info *info,
 
 	for (i = 0; i < shadow->nr_grants; i++) {
 		if (unlikely(!gnttab_try_end_foreign_access(shadow->gref[i]))) {
-<<<<<<< HEAD
-			shost_printk(KERN_ALERT, info->host, KBUILD_MODNAME
-				     "grant still in use by backend\n");
-			BUG();
-=======
 			scsifront_set_error(info, "grant still in use by backend");
 			return;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 

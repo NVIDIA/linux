@@ -568,10 +568,6 @@ static void flush_to_ldisc(struct work_struct *work)
 			lookahead_bufs(port, head);
 		if (!rcvd)
 			break;
-<<<<<<< HEAD
-		head->read += count;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (need_resched())
 			cond_resched();

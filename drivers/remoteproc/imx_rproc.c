@@ -75,36 +75,6 @@ struct imx_rproc_mem {
 /* M4 own area. Can be mapped at probe */
 #define ATT_OWN		BIT(1)
 #define ATT_IOMEM	BIT(2)
-<<<<<<< HEAD
-
-/* address translation table */
-struct imx_rproc_att {
-	u32 da;	/* device address (From Cortex M4 view)*/
-	u32 sa;	/* system bus address */
-	u32 size; /* size of reg range */
-	int flags;
-};
-
-/* Remote core start/stop method */
-enum imx_rproc_method {
-	IMX_RPROC_NONE,
-	/* Through syscon regmap */
-	IMX_RPROC_MMIO,
-	/* Through ARM SMCCC */
-	IMX_RPROC_SMC,
-};
-
-struct imx_rproc_dcfg {
-	u32				src_reg;
-	u32				src_mask;
-	u32				src_start;
-	u32				src_stop;
-	const struct imx_rproc_att	*att;
-	size_t				att_size;
-	enum imx_rproc_method		method;
-};
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 struct imx_rproc {
 	struct device			*dev;
@@ -624,12 +594,8 @@ static int imx_rproc_addr_init(struct imx_rproc *priv,
 
 		node = of_parse_phandle(np, "memory-region", a);
 		/* Not map vdevbuffer, vdevring region */
-<<<<<<< HEAD
-		if (!strncmp(node->name, "vdev", strlen("vdev")))
-=======
 		if (!strncmp(node->name, "vdev", strlen("vdev"))) {
 			of_node_put(node);
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 		}
 		err = of_address_to_resource(node, 0, &res);

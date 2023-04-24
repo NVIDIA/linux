@@ -122,12 +122,7 @@ retry:
  * nor FOLL_PIN was set, that's considered failure, and furthermore,
  * a likely bug in the caller, so a warning is also emitted.
  */
-<<<<<<< HEAD
-__maybe_unused struct page *try_grab_compound_head(struct page *page,
-						   int refs, unsigned int flags)
-=======
 struct folio *try_grab_folio(struct page *page, int refs, unsigned int flags)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (flags & FOLL_GET)
 		return try_get_folio(page, refs);
@@ -214,34 +209,6 @@ static void gup_put_folio(struct folio *folio, int refs, unsigned int flags)
  */
 bool __must_check try_grab_page(struct page *page, unsigned int flags)
 {
-<<<<<<< HEAD
-	WARN_ON_ONCE((flags & (FOLL_GET | FOLL_PIN)) == (FOLL_GET | FOLL_PIN));
-
-	if (flags & FOLL_GET)
-		return try_get_page(page);
-	else if (flags & FOLL_PIN) {
-		int refs = 1;
-
-		page = compound_head(page);
-
-		if (WARN_ON_ONCE(page_ref_count(page) <= 0))
-			return false;
-
-		if (hpage_pincount_available(page))
-			hpage_pincount_add(page, 1);
-		else
-			refs = GUP_PIN_COUNTING_BIAS;
-
-		/*
-		 * Similar to try_grab_compound_head(): even if using the
-		 * hpage_pincount_add/_sub() routines, be sure to
-		 * *also* increment the normal page refcount field at least
-		 * once, so that the page really is pinned.
-		 */
-		page_ref_add(page, refs);
-
-		mod_node_page_state(page_pgdat(page), NR_FOLL_PIN_ACQUIRED, 1);
-=======
 	struct folio *folio = page_folio(page);
 
 	WARN_ON_ONCE((flags & (FOLL_GET | FOLL_PIN)) == (FOLL_GET | FOLL_PIN));
@@ -264,7 +231,6 @@ bool __must_check try_grab_page(struct page *page, unsigned int flags)
 		}
 
 		node_stat_mod_folio(folio, NR_FOLL_PIN_ACQUIRED, 1);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return true;
@@ -503,13 +469,6 @@ static struct page *no_page_table(struct vm_area_struct *vma,
 static int follow_pfn_pte(struct vm_area_struct *vma, unsigned long address,
 		pte_t *pte, unsigned int flags)
 {
-<<<<<<< HEAD
-	/* No page to get reference */
-	if (flags & (FOLL_GET | FOLL_PIN))
-		return -EFAULT;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (flags & FOLL_TOUCH) {
 		pte_t entry = *pte;
 
@@ -586,8 +545,6 @@ static struct page *follow_page_pte(struct vm_area_struct *vma,
 		return no_page_table(vma, flags);
 	}
 
-<<<<<<< HEAD
-=======
 	/* FOLL_GET and FOLL_PIN are mutually exclusive. */
 	if (WARN_ON_ONCE((flags & (FOLL_PIN | FOLL_GET)) ==
 			 (FOLL_PIN | FOLL_GET)))
@@ -604,7 +561,6 @@ static struct page *follow_page_pte(struct vm_area_struct *vma,
 		return no_page_table(vma, flags);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 retry:
 	if (unlikely(pmd_bad(*pmd)))
 		return no_page_table(vma, flags);
@@ -736,11 +692,7 @@ static struct page *follow_pmd_mask(struct vm_area_struct *vma,
 	pmdval = READ_ONCE(*pmd);
 	if (pmd_none(pmdval))
 		return no_page_table(vma, flags);
-<<<<<<< HEAD
-	if (pmd_huge(pmdval) && vma->vm_flags & VM_HUGETLB) {
-=======
 	if (pmd_huge(pmdval) && is_vm_hugetlb_page(vma)) {
->>>>>>> origin/linux_6.1.15_upstream
 		page = follow_huge_pmd_pte(vma, address, flags);
 		if (page)
 			return page;
@@ -1043,12 +995,6 @@ static int faultin_page(struct vm_area_struct *vma,
 	unsigned int fault_flags = 0;
 	vm_fault_t ret;
 
-<<<<<<< HEAD
-	/* mlock all present pages, but do not fault in new pages */
-	if ((*flags & (FOLL_POPULATE | FOLL_MLOCK)) == FOLL_MLOCK)
-		return -ENOENT;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (*flags & FOLL_NOFAULT)
 		return -EFAULT;
 	if (*flags & FOLL_WRITE)
@@ -1841,44 +1787,28 @@ size_t fault_in_writeable(char __user *uaddr, size_t size)
 
 	if (unlikely(size == 0))
 		return 0;
-<<<<<<< HEAD
-	if (!PAGE_ALIGNED(uaddr)) {
-		if (unlikely(__put_user(0, uaddr) != 0))
-			return size;
-=======
 	if (!user_write_access_begin(uaddr, size))
 		return size;
 	if (!PAGE_ALIGNED(uaddr)) {
 		unsafe_put_user(0, uaddr, out);
->>>>>>> origin/linux_6.1.15_upstream
 		uaddr = (char __user *)PAGE_ALIGN((unsigned long)uaddr);
 	}
 	end = (char __user *)PAGE_ALIGN((unsigned long)start + size);
 	if (unlikely(end < start))
 		end = NULL;
 	while (uaddr != end) {
-<<<<<<< HEAD
-		if (unlikely(__put_user(0, uaddr) != 0))
-			goto out;
-=======
 		unsafe_put_user(0, uaddr, out);
->>>>>>> origin/linux_6.1.15_upstream
 		uaddr += PAGE_SIZE;
 	}
 
 out:
-<<<<<<< HEAD
-=======
 	user_write_access_end();
->>>>>>> origin/linux_6.1.15_upstream
 	if (size > uaddr - start)
 		return size - (uaddr - start);
 	return 0;
 }
 EXPORT_SYMBOL(fault_in_writeable);
 
-<<<<<<< HEAD
-=======
 /**
  * fault_in_subpage_writeable - fault in an address range for writing
  * @uaddr: start of address range
@@ -1908,7 +1838,6 @@ size_t fault_in_subpage_writeable(char __user *uaddr, size_t size)
 }
 EXPORT_SYMBOL(fault_in_subpage_writeable);
 
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * fault_in_safe_writeable - fault in an address range for writing
  * @uaddr: start of address range
@@ -1968,36 +1897,22 @@ size_t fault_in_readable(const char __user *uaddr, size_t size)
 
 	if (unlikely(size == 0))
 		return 0;
-<<<<<<< HEAD
-	if (!PAGE_ALIGNED(uaddr)) {
-		if (unlikely(__get_user(c, uaddr) != 0))
-			return size;
-=======
 	if (!user_read_access_begin(uaddr, size))
 		return size;
 	if (!PAGE_ALIGNED(uaddr)) {
 		unsafe_get_user(c, uaddr, out);
->>>>>>> origin/linux_6.1.15_upstream
 		uaddr = (const char __user *)PAGE_ALIGN((unsigned long)uaddr);
 	}
 	end = (const char __user *)PAGE_ALIGN((unsigned long)start + size);
 	if (unlikely(end < start))
 		end = NULL;
 	while (uaddr != end) {
-<<<<<<< HEAD
-		if (unlikely(__get_user(c, uaddr) != 0))
-			goto out;
-=======
 		unsafe_get_user(c, uaddr, out);
->>>>>>> origin/linux_6.1.15_upstream
 		uaddr += PAGE_SIZE;
 	}
 
 out:
-<<<<<<< HEAD
-=======
 	user_read_access_end();
->>>>>>> origin/linux_6.1.15_upstream
 	(void)c;
 	if (size > uaddr - start)
 		return size - (uaddr - start);

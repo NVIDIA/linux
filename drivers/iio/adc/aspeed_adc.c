@@ -186,10 +186,7 @@ static int aspeed_adc_set_trim_data(struct iio_dev *indio_dev)
 		return -EOPNOTSUPP;
 	}
 	scu = syscon_node_to_regmap(syscon);
-<<<<<<< HEAD
-=======
 	of_node_put(syscon);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(scu)) {
 		dev_warn(data->dev, "Failed to get syscon regmap\n");
 		return -EOPNOTSUPP;
@@ -205,11 +202,8 @@ static int aspeed_adc_set_trim_data(struct iio_dev *indio_dev)
 				((scu_otp) &
 				 (data->model_data->trim_locate->field)) >>
 				__ffs(data->model_data->trim_locate->field);
-<<<<<<< HEAD
-=======
 			if (!trimming_val)
 				trimming_val = 0x8;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		dev_dbg(data->dev,
 			"trimming val = %d, offset = %08x, fields = %08x\n",
@@ -503,7 +497,6 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	data->dev = &pdev->dev;
 	data->model_data = of_device_get_match_data(&pdev->dev);
 	platform_set_drvdata(pdev, indio_dev);
-	data->model_data = of_device_get_match_data(&pdev->dev);
 
 	data->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(data->base))
@@ -549,13 +542,9 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	data->clk_scaler = devm_clk_hw_register_divider(
 		&pdev->dev, clk_name, clk_parent_name, scaler_flags,
 		data->base + ASPEED_REG_CLOCK_CONTROL, 0,
-<<<<<<< HEAD
-		data->model_data->scaler_bit_width, 0, &data->clk_lock);
-=======
 		data->model_data->scaler_bit_width,
 		data->model_data->need_prescaler ? CLK_DIVIDER_ONE_BASED : 0,
 		&data->clk_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(data->clk_scaler))
 		return PTR_ERR(data->clk_scaler);
 
@@ -571,64 +560,6 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 				       data->rst);
 	if (ret)
 		return ret;
-<<<<<<< HEAD
-
-	ret = aspeed_adc_vref_config(indio_dev);
-	if (ret)
-		return ret;
-
-	if (of_find_property(data->dev->of_node, "aspeed,trim-data-valid",
-			     NULL)) {
-		ret = aspeed_adc_set_trim_data(indio_dev);
-		if (ret)
-			return ret;
-	}
-
-	if (of_find_property(data->dev->of_node, "aspeed,battery-sensing",
-			     NULL)) {
-		if (data->model_data->bat_sense_sup) {
-			data->battery_sensing = 1;
-			if (readl(data->base + ASPEED_REG_ENGINE_CONTROL) &
-			    ASPEED_ADC_BAT_SENSING_DIV) {
-				data->battery_mode_gain.mult = 3;
-				data->battery_mode_gain.div = 1;
-			} else {
-				data->battery_mode_gain.mult = 3;
-				data->battery_mode_gain.div = 2;
-			}
-		} else
-			dev_warn(&pdev->dev,
-				 "Failed to enable battery-sensing mode\n");
-	}
-
-	ret = clk_prepare_enable(data->clk_scaler->clk);
-	if (ret)
-		return ret;
-	ret = devm_add_action_or_reset(data->dev,
-				       aspeed_adc_clk_disable_unprepare,
-				       data->clk_scaler->clk);
-	if (ret)
-		return ret;
-	ret = aspeed_adc_set_sampling_rate(indio_dev,
-					   ASPEED_ADC_DEF_SAMPLING_RATE);
-	if (ret)
-		return ret;
-
-	adc_engine_control_reg_val =
-		readl(data->base + ASPEED_REG_ENGINE_CONTROL);
-	adc_engine_control_reg_val |=
-		FIELD_PREP(ASPEED_ADC_OP_MODE, ASPEED_ADC_OP_MODE_NORMAL) |
-		ASPEED_ADC_ENGINE_ENABLE;
-	/* Enable engine in normal mode. */
-	writel(adc_engine_control_reg_val,
-	       data->base + ASPEED_REG_ENGINE_CONTROL);
-
-	ret = devm_add_action_or_reset(data->dev, aspeed_adc_power_down,
-					data);
-	if (ret)
-		return ret;
-
-=======
 
 	ret = aspeed_adc_vref_config(indio_dev);
 	if (ret)
@@ -682,7 +613,6 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (data->model_data->wait_init_sequence) {
 		/* Wait for initial sequence complete. */
 		ret = readl_poll_timeout(data->base + ASPEED_REG_ENGINE_CONTROL,

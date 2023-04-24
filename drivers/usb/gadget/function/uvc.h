@@ -133,11 +133,8 @@ struct uvc_device {
 	struct uvc_video video;
 	bool func_connected;
 	wait_queue_head_t func_connected_queue;
-<<<<<<< HEAD
-=======
 
 	struct uvcg_streaming_header *header;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Descriptors */
 	struct {

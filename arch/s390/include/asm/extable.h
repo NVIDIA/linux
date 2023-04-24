@@ -47,16 +47,6 @@ static inline void swap_ex_entry_fixup(struct exception_table_entry *a,
 {
 	a->fixup = b->fixup + delta;
 	b->fixup = tmp.fixup - delta;
-<<<<<<< HEAD
-	a->handler = b->handler;
-	if (a->handler)
-		a->handler += delta;
-	b->handler = tmp.handler;
-	if (b->handler)
-		b->handler -= delta;
-}
-#define swap_ex_entry_fixup swap_ex_entry_fixup
-=======
 	a->type = b->type;
 	b->type = tmp.type;
 	a->data = b->data;
@@ -78,6 +68,5 @@ static inline bool ex_handler_bpf(const struct exception_table_entry *ex, struct
 #endif /* CONFIG_BPF_JIT */
 
 bool fixup_exception(struct pt_regs *regs);
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif

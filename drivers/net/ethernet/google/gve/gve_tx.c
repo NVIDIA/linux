@@ -545,8 +545,6 @@ static int gve_tx_add_skb_no_copy(struct gve_priv *priv, struct gve_tx_ring *tx,
 	}
 	dma_unmap_len_set(info, len, len);
 	dma_unmap_addr_set(info, dma, addr);
-<<<<<<< HEAD
-=======
 
 	num_descriptors = 1 + shinfo->nr_frags;
 	if (hlen < len)
@@ -562,7 +560,6 @@ static int gve_tx_add_skb_no_copy(struct gve_priv *priv, struct gve_tx_ring *tx,
 		mtd_desc = &tx->desc[idx];
 		gve_tx_fill_mtd_desc(mtd_desc, skb);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (hlen < len) {
 		/* For gso the rest of the linear portion of the skb needs to

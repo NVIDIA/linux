@@ -230,8 +230,6 @@ The possible values in this file are:
      * - 'Mitigation: Clear CPU buffers'
        - The processor is vulnerable and the CPU buffer clearing mitigation is
          enabled.
-<<<<<<< HEAD
-=======
      * - 'Unknown: No mitigations'
        - The processor vulnerability status is unknown because it is
 	 out of Servicing period. Mitigation is not attempted.
@@ -246,7 +244,6 @@ process or other similar mechanisms.
 End of Servicing Updates (ESU): ESU is the date at which Intel will no
 longer provide Servicing, such as through IPU or other similar update
 processes. ESU dates will typically be aligned to end of quarter.
->>>>>>> origin/linux_6.1.15_upstream
 
 If the processor is vulnerable then the following information is appended to
 the above information:

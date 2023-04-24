@@ -1175,10 +1175,6 @@ static void dm_dmub_hw_resume(struct amdgpu_device *adev)
 	}
 }
 
-<<<<<<< HEAD
-#if defined(CONFIG_DRM_AMD_DC_DCN)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void mmhub_read_system_context(struct amdgpu_device *adev, struct dc_phy_addr_space_config *pa_config)
 {
 	uint64_t pt_base;
@@ -1508,24 +1504,6 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	switch (adev->asic_type) {
 	case CHIP_CARRIZO:
 	case CHIP_STONEY:
-<<<<<<< HEAD
-	case CHIP_RAVEN:
-	case CHIP_RENOIR:
-		init_data.flags.gpu_vm_support = true;
-		switch (adev->dm.dmcub_fw_version) {
-		case 0: /* development */
-		case 0x1: /* linux-firmware.git hash 6d9f399 */
-		case 0x01000000: /* linux-firmware.git hash 9a0b0f4 */
-			init_data.flags.disable_dmcu = false;
-			break;
-		default:
-			init_data.flags.disable_dmcu = true;
-		}
-		break;
-	case CHIP_VANGOGH:
-	case CHIP_YELLOW_CARP:
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		init_data.flags.gpu_vm_support = true;
 		break;
 	default:
@@ -2677,10 +2655,6 @@ static int dm_resume(void *handle)
 	if (amdgpu_in_reset(adev)) {
 		dc_state = dm->cached_dc_state;
 
-<<<<<<< HEAD
-		if (dc_enable_dmub_notifications(adev->dm.dc))
-			amdgpu_dm_outbox_init(adev);
-=======
 		/*
 		 * The dc->current_state is backed up into dm->cached_dc_state
 		 * before we commit 0 streams.
@@ -2697,7 +2671,6 @@ static int dm_resume(void *handle)
 		 * commit 0 streams anyway.
 		 */
 		link_enc_cfg_copy(adev->dm.dc->current_state, dc_state);
->>>>>>> origin/linux_6.1.15_upstream
 
 		r = dm_dmub_hw_init(adev);
 		if (r)
@@ -2748,15 +2721,12 @@ static int dm_resume(void *handle)
 
 	/* Before powering on DC we need to re-initialize DMUB. */
 	dm_dmub_hw_resume(adev);
-<<<<<<< HEAD
-=======
 
 	/* Re-enable outbox interrupts for DPIA. */
 	if (dc_is_dmub_outbox_supported(adev->dm.dc)) {
 		amdgpu_dm_outbox_init(adev);
 		dc_enable_dmub_outbox(adev->dm.dc);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* power on hardware */
 	dc_set_power_state(dm->dc, DC_ACPI_CM_POWER_STATE_D0);
@@ -2907,10 +2877,6 @@ static struct drm_mode_config_helper_funcs amdgpu_dm_mode_config_helperfuncs = {
 
 static void update_connector_ext_caps(struct amdgpu_dm_connector *aconnector)
 {
-<<<<<<< HEAD
-	u32 max_avg, min_cll, max, min, q, r;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct amdgpu_dm_backlight_caps *caps;
 	struct amdgpu_display_manager *dm;
 	struct drm_connector *conn_base;
@@ -2938,11 +2904,6 @@ static void update_connector_ext_caps(struct amdgpu_dm_connector *aconnector)
 	caps = &dm->backlight_caps[i];
 	caps->ext_caps = &aconnector->dc_link->dpcd_sink_ext_caps;
 	caps->aux_support = false;
-<<<<<<< HEAD
-	max_avg = conn_base->hdr_sink_metadata.hdmi_type1.max_fall;
-	min_cll = conn_base->hdr_sink_metadata.hdmi_type1.min_cll;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (caps->ext_caps->bits.oled == 1 /*||
 	    caps->ext_caps->bits.sdr_aux_backlight_control == 1 ||
@@ -2954,37 +2915,9 @@ static void update_connector_ext_caps(struct amdgpu_dm_connector *aconnector)
 	else if (amdgpu_backlight == 1)
 		caps->aux_support = true;
 
-<<<<<<< HEAD
-	/* From the specification (CTA-861-G), for calculating the maximum
-	 * luminance we need to use:
-	 *	Luminance = 50*2**(CV/32)
-	 * Where CV is a one-byte value.
-	 * For calculating this expression we may need float point precision;
-	 * to avoid this complexity level, we take advantage that CV is divided
-	 * by a constant. From the Euclids division algorithm, we know that CV
-	 * can be written as: CV = 32*q + r. Next, we replace CV in the
-	 * Luminance expression and get 50*(2**q)*(2**(r/32)), hence we just
-	 * need to pre-compute the value of r/32. For pre-computing the values
-	 * We just used the following Ruby line:
-	 *	(0...32).each {|cv| puts (50*2**(cv/32.0)).round}
-	 * The results of the above expressions can be verified at
-	 * pre_computed_values.
-	 */
-	q = max_avg >> 5;
-	r = max_avg % 32;
-	max = (1 << q) * pre_computed_values[r];
-
-	// min luminance: maxLum * (CV/255)^2 / 100
-	q = DIV_ROUND_CLOSEST(min_cll, 255);
-	min = max * DIV_ROUND_CLOSEST((q * q), 100);
-
-	caps->aux_max_input_signal = max;
-	caps->aux_min_input_signal = min;
-=======
 	luminance_range = &conn_base->display_info.luminance_range;
 	caps->aux_min_input_signal = luminance_range->min_luminance;
 	caps->aux_max_input_signal = luminance_range->max_luminance;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void amdgpu_dm_update_connector_after_detect(
@@ -4424,27 +4357,9 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 		} else {
 			bool ret = false;
 
-<<<<<<< HEAD
-		} else if (dc_link_detect(link, DETECT_REASON_BOOT)) {
-			amdgpu_dm_update_connector_after_detect(aconnector);
-			register_backlight_device(dm, link);
-
-			if (dm->num_of_edps)
-				update_connector_ext_caps(aconnector);
-			if (amdgpu_dc_feature_mask & DC_PSR_MASK)
-				amdgpu_dm_set_psr_caps(link);
-
-			/* TODO: Fix vblank control helpers to delay PSR entry to allow this when
-			 * PSR is also supported.
-			 */
-			if (link->psr_settings.psr_feature_enabled)
-				adev_to_drm(adev)->vblank_disable_immediate = false;
-		}
-=======
 			mutex_lock(&dm->dc_lock);
 			ret = dc_link_detect(link, DETECT_REASON_BOOT);
 			mutex_unlock(&dm->dc_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (ret) {
 				amdgpu_dm_update_connector_after_detect(aconnector);
@@ -5567,67 +5482,6 @@ static void dm_enable_per_frame_crtc_master_sync(struct dc_state *context)
 	}
 }
 
-<<<<<<< HEAD
-#if defined(CONFIG_DRM_AMD_DC_DCN)
-static void update_dsc_caps(struct amdgpu_dm_connector *aconnector,
-							struct dc_sink *sink, struct dc_stream_state *stream,
-							struct dsc_dec_dpcd_caps *dsc_caps)
-{
-	stream->timing.flags.DSC = 0;
-	dsc_caps->is_dsc_supported = false;
-
-	if (aconnector->dc_link && sink->sink_signal == SIGNAL_TYPE_DISPLAY_PORT) {
-		dc_dsc_parse_dsc_dpcd(aconnector->dc_link->ctx->dc,
-				      aconnector->dc_link->dpcd_caps.dsc_caps.dsc_basic_caps.raw,
-				      aconnector->dc_link->dpcd_caps.dsc_caps.dsc_branch_decoder_caps.raw,
-				      dsc_caps);
-	}
-}
-
-static void apply_dsc_policy_for_stream(struct amdgpu_dm_connector *aconnector,
-										struct dc_sink *sink, struct dc_stream_state *stream,
-										struct dsc_dec_dpcd_caps *dsc_caps)
-{
-	struct drm_connector *drm_connector = &aconnector->base;
-	uint32_t link_bandwidth_kbps;
-
-	link_bandwidth_kbps = dc_link_bandwidth_kbps(aconnector->dc_link,
-							dc_link_get_link_cap(aconnector->dc_link));
-	/* Set DSC policy according to dsc_clock_en */
-	dc_dsc_policy_set_enable_dsc_when_not_needed(
-		aconnector->dsc_settings.dsc_force_enable == DSC_CLK_FORCE_ENABLE);
-
-	if (aconnector->dc_link && sink->sink_signal == SIGNAL_TYPE_DISPLAY_PORT) {
-
-		if (dc_dsc_compute_config(aconnector->dc_link->ctx->dc->res_pool->dscs[0],
-						dsc_caps,
-						aconnector->dc_link->ctx->dc->debug.dsc_min_slice_height_override,
-						0,
-						link_bandwidth_kbps,
-						&stream->timing,
-						&stream->timing.dsc_cfg)) {
-			stream->timing.flags.DSC = 1;
-			DRM_DEBUG_DRIVER("%s: [%s] DSC is selected from SST RX\n", __func__, drm_connector->name);
-		}
-	}
-
-	/* Overwrite the stream flag if DSC is enabled through debugfs */
-	if (aconnector->dsc_settings.dsc_force_enable == DSC_CLK_FORCE_ENABLE)
-		stream->timing.flags.DSC = 1;
-
-	if (stream->timing.flags.DSC && aconnector->dsc_settings.dsc_num_slices_h)
-		stream->timing.dsc_cfg.num_slices_h = aconnector->dsc_settings.dsc_num_slices_h;
-
-	if (stream->timing.flags.DSC && aconnector->dsc_settings.dsc_num_slices_v)
-		stream->timing.dsc_cfg.num_slices_v = aconnector->dsc_settings.dsc_num_slices_v;
-
-	if (stream->timing.flags.DSC && aconnector->dsc_settings.dsc_bits_per_pixel)
-		stream->timing.dsc_cfg.bits_per_pixel = aconnector->dsc_settings.dsc_bits_per_pixel;
-}
-#endif
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /**
  * DOC: FreeSync Video
  *

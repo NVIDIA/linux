@@ -590,13 +590,8 @@ out:
 			sc->cmnd[5]);
 
 	FNIC_TRACE(fnic_queuecommand, sc->device->host->host_no,
-<<<<<<< HEAD
-		  tag, sc, io_req, sg_count, cmd_trace,
-		  (((u64)CMD_FLAGS(sc) << 32) | CMD_STATE(sc)));
-=======
 		   tag, sc, io_req, sg_count, cmd_trace,
 		   fnic_flags_and_state(sc));
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* if only we issued IO, will we have the io lock */
 	if (io_lock_acquired)

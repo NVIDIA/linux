@@ -494,12 +494,8 @@ static const struct v4l2_ioctl_ops sun6i_video_ioctl_ops = {
 
 static int sun6i_video_open(struct file *file)
 {
-<<<<<<< HEAD
-	struct sun6i_video *video = video_drvdata(file);
-=======
 	struct sun6i_csi_device *csi_dev = video_drvdata(file);
 	struct sun6i_video *video = &csi_dev->video;
->>>>>>> origin/linux_6.1.15_upstream
 	int ret = 0;
 
 	if (mutex_lock_interruptible(&video->lock))
@@ -513,18 +509,12 @@ static int sun6i_video_open(struct file *file)
 	if (ret < 0)
 		goto error_v4l2_fh;
 
-<<<<<<< HEAD
-	/* check if already powered */
-	if (!v4l2_fh_is_singular_file(file))
-		goto unlock;
-=======
 	/* Power on at first open. */
 	if (v4l2_fh_is_singular_file(file)) {
 		ret = sun6i_csi_set_power(csi_dev, true);
 		if (ret < 0)
 			goto error_v4l2_fh;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_unlock(&video->lock);
 

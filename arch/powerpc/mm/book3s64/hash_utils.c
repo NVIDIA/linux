@@ -1668,10 +1668,6 @@ DEFINE_INTERRUPT_HANDLER(do_hash_fault)
 	}
 }
 
-<<<<<<< HEAD
-#ifdef CONFIG_PPC_MM_SLICES
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static bool should_hash_preload(struct mm_struct *mm, unsigned long ea)
 {
 	int psize = get_slice_psize(mm, ea);

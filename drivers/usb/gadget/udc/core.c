@@ -1408,27 +1408,6 @@ int usb_add_gadget_udc(struct device *parent, struct usb_gadget *gadget)
 }
 EXPORT_SYMBOL_GPL(usb_add_gadget_udc);
 
-<<<<<<< HEAD
-static void usb_gadget_remove_driver(struct usb_udc *udc)
-{
-	dev_dbg(&udc->dev, "unregistering UDC driver [%s]\n",
-			udc->driver->function);
-
-	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
-
-	usb_gadget_disconnect(udc->gadget);
-	usb_gadget_disable_async_callbacks(udc);
-	if (udc->gadget->irq)
-		synchronize_irq(udc->gadget->irq);
-	udc->driver->unbind(udc->gadget);
-	usb_gadget_udc_stop(udc);
-
-	udc->driver = NULL;
-	udc->gadget->dev.driver = NULL;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /**
  * usb_del_gadget - deletes a gadget and unregisters its udc
  * @gadget: the gadget to be deleted.
@@ -1507,13 +1486,9 @@ static int gadget_bind_driver(struct device *dev)
 	}
 	driver->is_bound = true;
 	udc->driver = driver;
-<<<<<<< HEAD
-	udc->gadget->dev.driver = &driver->driver;
-=======
 	mutex_unlock(&udc_lock);
 
 	dev_dbg(&udc->dev, "binding gadget driver [%s]\n", driver->function);
->>>>>>> origin/linux_6.1.15_upstream
 
 	usb_gadget_udc_set_speed(udc, driver->max_speed);
 
@@ -1540,13 +1515,9 @@ static int gadget_bind_driver(struct device *dev)
 
 	mutex_lock(&udc_lock);
 	udc->driver = NULL;
-<<<<<<< HEAD
-	udc->gadget->dev.driver = NULL;
-=======
 	driver->is_bound = false;
 	mutex_unlock(&udc_lock);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

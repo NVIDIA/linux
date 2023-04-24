@@ -495,46 +495,6 @@ static int nested_vmx_check_tpr_shadow_controls(struct kvm_vcpu *vcpu,
 }
 
 /*
-<<<<<<< HEAD
- * If a msr is allowed by L0, we should check whether it is allowed by L1.
- * The corresponding bit will be cleared unless both of L0 and L1 allow it.
- */
-static void nested_vmx_disable_intercept_for_msr(unsigned long *msr_bitmap_l1,
-					       unsigned long *msr_bitmap_nested,
-					       u32 msr, int type)
-{
-	int f = sizeof(unsigned long);
-
-	/*
-	 * See Intel PRM Vol. 3, 20.6.9 (MSR-Bitmap Address). Early manuals
-	 * have the write-low and read-high bitmap offsets the wrong way round.
-	 * We can control MSRs 0x00000000-0x00001fff and 0xc0000000-0xc0001fff.
-	 */
-	if (msr <= 0x1fff) {
-		if (type & MSR_TYPE_R &&
-		   !test_bit(msr, msr_bitmap_l1 + 0x000 / f))
-			/* read-low */
-			__clear_bit(msr, msr_bitmap_nested + 0x000 / f);
-
-		if (type & MSR_TYPE_W &&
-		   !test_bit(msr, msr_bitmap_l1 + 0x800 / f))
-			/* write-low */
-			__clear_bit(msr, msr_bitmap_nested + 0x800 / f);
-
-	} else if ((msr >= 0xc0000000) && (msr <= 0xc0001fff)) {
-		msr &= 0x1fff;
-		if (type & MSR_TYPE_R &&
-		   !test_bit(msr, msr_bitmap_l1 + 0x400 / f))
-			/* read-high */
-			__clear_bit(msr, msr_bitmap_nested + 0x400 / f);
-
-		if (type & MSR_TYPE_W &&
-		   !test_bit(msr, msr_bitmap_l1 + 0xc00 / f))
-			/* write-high */
-			__clear_bit(msr, msr_bitmap_nested + 0xc00 / f);
-
-	}
-=======
  * For x2APIC MSRs, ignore the vmcs01 bitmap.  L1 can enable x2APIC without L1
  * itself utilizing x2APIC.  All MSRs were previously set to be intercepted,
  * only the "disable intercept" case needs to be handled.
@@ -548,7 +508,6 @@ static void nested_vmx_disable_intercept_for_x2apic_msr(unsigned long *msr_bitma
 
 	if (type & MSR_TYPE_W && !vmx_test_msr_bitmap_write(msr_bitmap_l1, msr))
 		vmx_clear_msr_bitmap_write(msr_bitmap_l0, msr);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline void enable_x2apic_msr_intercepts(unsigned long *msr_bitmap)
@@ -602,10 +561,7 @@ static inline bool nested_vmx_prepare_msr_bitmap(struct kvm_vcpu *vcpu,
 	int msr;
 	unsigned long *msr_bitmap_l1;
 	unsigned long *msr_bitmap_l0 = vmx->nested.vmcs02.msr_bitmap;
-<<<<<<< HEAD
-=======
 	struct hv_enlightened_vmcs *evmcs = vmx->nested.hv_evmcs;
->>>>>>> origin/linux_6.1.15_upstream
 	struct kvm_host_map *map = &vmx->nested.msr_bitmap_map;
 
 	/* Nothing to do if the MSR bitmap is not in use.  */
@@ -691,11 +647,8 @@ static inline bool nested_vmx_prepare_msr_bitmap(struct kvm_vcpu *vcpu,
 					 MSR_IA32_PRED_CMD, MSR_TYPE_W);
 
 	kvm_vcpu_unmap(vcpu, &vmx->nested.msr_bitmap_map, false);
-<<<<<<< HEAD
-=======
 
 	vmx->nested.force_msr_bitmap_recalc = false;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return true;
 }
@@ -3408,8 +3361,6 @@ enum nvmx_vmentry_status nested_vmx_enter_non_root_mode(struct kvm_vcpu *vcpu,
 	};
 	u32 failed_index;
 
-<<<<<<< HEAD
-=======
 	trace_kvm_nested_vmenter(kvm_rip_read(vcpu),
 				 vmx->nested.current_vmptr,
 				 vmcs12->guest_rip,
@@ -3420,7 +3371,6 @@ enum nvmx_vmentry_status nested_vmx_enter_non_root_mode(struct kvm_vcpu *vcpu,
 				 vmcs12->guest_cr3,
 				 KVM_ISA_VMX);
 
->>>>>>> origin/linux_6.1.15_upstream
 	kvm_service_local_tlb_flush_requests(vcpu);
 
 	evaluate_pending_interrupts = exec_controls_get(vmx) &
@@ -3769,11 +3719,7 @@ static void vmcs12_save_pending_event(struct kvm_vcpu *vcpu,
 	     is_double_fault(exit_intr_info))) {
 		vmcs12->idt_vectoring_info_field = 0;
 	} else if (vcpu->arch.exception.injected) {
-<<<<<<< HEAD
-		nr = vcpu->arch.exception.nr;
-=======
 		nr = vcpu->arch.exception.vector;
->>>>>>> origin/linux_6.1.15_upstream
 		idt_vectoring = nr | VECTORING_INFO_VALID_MASK;
 
 		if (kvm_exception_is_soft(nr)) {
@@ -7058,10 +7004,7 @@ __init int nested_vmx_hardware_setup(int (*exit_handlers[])(struct kvm_vcpu *))
 
 struct kvm_x86_nested_ops vmx_nested_ops = {
 	.leave_nested = vmx_leave_nested,
-<<<<<<< HEAD
-=======
 	.is_exception_vmexit = nested_vmx_is_exception_vmexit,
->>>>>>> origin/linux_6.1.15_upstream
 	.check_events = vmx_check_nested_events,
 	.has_events = vmx_has_nested_events,
 	.triple_fault = nested_vmx_triple_fault,

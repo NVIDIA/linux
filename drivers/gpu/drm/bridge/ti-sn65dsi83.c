@@ -568,26 +568,6 @@ static int sn65dsi83_parse_dt(struct sn65dsi83 *ctx, enum sn65dsi83_model model)
 {
 	struct drm_bridge *panel_bridge;
 	struct device *dev = ctx->dev;
-<<<<<<< HEAD
-	struct device_node *endpoint;
-	struct drm_panel *panel;
-	int ret;
-
-	endpoint = of_graph_get_endpoint_by_regs(dev->of_node, 0, 0);
-	ctx->dsi_lanes = of_property_count_u32_elems(endpoint, "data-lanes");
-	ctx->host_node = of_graph_get_remote_port_parent(endpoint);
-	of_node_put(endpoint);
-
-	if (ctx->dsi_lanes <= 0 || ctx->dsi_lanes > 4) {
-		ret = -EINVAL;
-		goto err_put_node;
-	}
-	if (!ctx->host_node) {
-		ret = -ENODEV;
-		goto err_put_node;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	ctx->lvds_dual_link = false;
 	ctx->lvds_dual_link_even_odd_swap = false;
@@ -612,22 +592,9 @@ static int sn65dsi83_parse_dt(struct sn65dsi83 *ctx, enum sn65dsi83_model model)
 		}
 	}
 
-<<<<<<< HEAD
-	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, &panel, &panel_bridge);
-	if (ret < 0)
-		goto err_put_node;
-	if (panel) {
-		panel_bridge = devm_drm_panel_bridge_add(dev, panel);
-		if (IS_ERR(panel_bridge)) {
-			ret = PTR_ERR(panel_bridge);
-			goto err_put_node;
-		}
-	}
-=======
 	panel_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 2, 0);
 	if (IS_ERR(panel_bridge))
 		return PTR_ERR(panel_bridge);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ctx->panel_bridge = panel_bridge;
 
@@ -724,15 +691,8 @@ static int sn65dsi83_probe(struct i2c_client *client,
 		return ret;
 
 	ctx->regmap = devm_regmap_init_i2c(client, &sn65dsi83_regmap_config);
-<<<<<<< HEAD
-	if (IS_ERR(ctx->regmap)) {
-		ret = PTR_ERR(ctx->regmap);
-		goto err_put_node;
-	}
-=======
 	if (IS_ERR(ctx->regmap))
 		return dev_err_probe(dev, PTR_ERR(ctx->regmap), "failed to get regmap\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev_set_drvdata(dev, ctx);
 	i2c_set_clientdata(client, ctx);
@@ -747,13 +707,8 @@ static int sn65dsi83_probe(struct i2c_client *client,
 
 	return 0;
 
-<<<<<<< HEAD
-err_put_node:
-	of_node_put(ctx->host_node);
-=======
 err_remove_bridge:
 	drm_bridge_remove(&ctx->bridge);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

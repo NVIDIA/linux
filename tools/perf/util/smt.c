@@ -13,15 +13,10 @@ bool smt_on(const struct cpu_topology *topology)
 	if (cached)
 		return cached_result;
 
-<<<<<<< HEAD
-	if (sysfs__read_int("devices/system/cpu/smt/active", &cached_result) >= 0)
-		goto done;
-=======
 	if (sysfs__read_int("devices/system/cpu/smt/active", &fs_value) >= 0)
 		cached_result = (fs_value == 1);
 	else
 		cached_result = cpu_topology__smt_on(topology);
->>>>>>> origin/linux_6.1.15_upstream
 
 	cached = true;
 	return cached_result;

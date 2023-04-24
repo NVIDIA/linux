@@ -212,10 +212,7 @@ TPROGLDLIBS_xdp_redirect	+= -lm
 TPROGLDLIBS_xdp_redirect_cpu	+= -lm
 TPROGLDLIBS_xdp_redirect_map	+= -lm
 TPROGLDLIBS_xdp_redirect_map_multi += -lm
-<<<<<<< HEAD
-=======
 TPROGLDLIBS_xdp_router_ipv4	+= -lm -pthread
->>>>>>> origin/linux_6.1.15_upstream
 TPROGLDLIBS_tracex4		+= -lrt
 TPROGLDLIBS_trace_output	+= -lrt
 TPROGLDLIBS_map_perf_test	+= -lrt
@@ -276,11 +273,7 @@ clean:
 	@find $(CURDIR) -type f -name '*~' -delete
 	@$(RM) -r $(CURDIR)/libbpf $(CURDIR)/bpftool
 
-<<<<<<< HEAD
-$(LIBBPF): FORCE | $(LIBBPF_OUTPUT)
-=======
 $(LIBBPF): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile) | $(LIBBPF_OUTPUT)
->>>>>>> origin/linux_6.1.15_upstream
 # Fix up variables inherited from Kbuild that tools/ build system won't like
 	$(MAKE) -C $(LIBBPF_SRC) RM='rm -rf' EXTRA_CFLAGS="$(TPROGS_CFLAGS)" \
 		LDFLAGS=$(TPROGS_LDFLAGS) srctree=$(BPF_SAMPLES_PATH)/../../ \
@@ -289,19 +282,10 @@ $(LIBBPF): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile) | $(LIBBPF_OU
 
 BPFTOOLDIR := $(TOOLS_PATH)/bpf/bpftool
 BPFTOOL_OUTPUT := $(abspath $(BPF_SAMPLES_PATH))/bpftool
-<<<<<<< HEAD
-BPFTOOL := $(BPFTOOL_OUTPUT)/bpftool
-$(BPFTOOL): $(LIBBPF) $(wildcard $(BPFTOOLDIR)/*.[ch] $(BPFTOOLDIR)/Makefile) | $(BPFTOOL_OUTPUT)
-	    $(MAKE) -C $(BPFTOOLDIR) srctree=$(BPF_SAMPLES_PATH)/../../ \
-		OUTPUT=$(BPFTOOL_OUTPUT)/ \
-		LIBBPF_OUTPUT=$(LIBBPF_OUTPUT)/ \
-		LIBBPF_DESTDIR=$(LIBBPF_DESTDIR)/
-=======
 BPFTOOL := $(BPFTOOL_OUTPUT)/bootstrap/bpftool
 $(BPFTOOL): $(wildcard $(BPFTOOLDIR)/*.[ch] $(BPFTOOLDIR)/Makefile) | $(BPFTOOL_OUTPUT)
 	$(MAKE) -C $(BPFTOOLDIR) srctree=$(BPF_SAMPLES_PATH)/../../ 		\
 		OUTPUT=$(BPFTOOL_OUTPUT)/ bootstrap
->>>>>>> origin/linux_6.1.15_upstream
 
 $(LIBBPF_OUTPUT) $(BPFTOOL_OUTPUT):
 	$(call msg,MKDIR,$@)

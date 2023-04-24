@@ -19,19 +19,7 @@ static LIST_HEAD(recv_list);
 static DECLARE_WAIT_QUEUE_HEAD(send_wq);
 static DECLARE_WAIT_QUEUE_HEAD(recv_wq);
 
-<<<<<<< HEAD
-struct plock_op {
-	struct list_head list;
-	int done;
-	struct dlm_plock_info info;
-	int (*callback)(struct file_lock *fl, int result);
-};
-
-struct plock_xop {
-	struct plock_op xop;
-=======
 struct plock_async_data {
->>>>>>> origin/linux_6.1.15_upstream
 	void *fl;
 	void *file;
 	struct file_lock flc;
@@ -151,13 +139,6 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
 		/* fl_owner is lockd which doesn't distinguish
 		   processes on the nfs client */
 		op->info.owner	= (__u64) fl->fl_pid;
-<<<<<<< HEAD
-		op->callback	= fl->fl_lmops->lm_grant;
-		locks_init_lock(&xop->flc);
-		locks_copy_lock(&xop->flc, fl);
-		xop->fl		= fl;
-		xop->file	= file;
-=======
 		op_data->callback = fl->fl_lmops->lm_grant;
 		locks_init_lock(&op_data->flc);
 		locks_copy_lock(&op_data->flc, fl);
@@ -169,22 +150,12 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
 		send_op(op);
 		rv = FILE_LOCK_DEFERRED;
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		op->info.owner	= (__u64)(long) fl->fl_owner;
 	}
 
 	send_op(op);
 
-<<<<<<< HEAD
-	if (!op->callback) {
-		rv = wait_event_interruptible(recv_wq, (op->done != 0));
-		if (rv == -ERESTARTSYS) {
-			log_debug(ls, "dlm_posix_lock: wait killed %llx",
-				  (unsigned long long)number);
-			spin_lock(&ops_lock);
-			list_del(&op->list);
-=======
 	rv = wait_event_interruptible(recv_wq, (op->done != 0));
 	if (rv == -ERESTARTSYS) {
 		spin_lock(&ops_lock);
@@ -192,7 +163,6 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
 		 * if so this interrupt case should be ignored
 		 */
 		if (op->done != 0) {
->>>>>>> origin/linux_6.1.15_upstream
 			spin_unlock(&ops_lock);
 			goto do_lock_wait;
 		}
@@ -237,17 +207,10 @@ static int dlm_plock_callback(struct plock_op *op)
 	WARN_ON(!list_empty(&op->list));
 
 	/* check if the following 2 are still valid or make a copy */
-<<<<<<< HEAD
-	file = xop->file;
-	flc = &xop->flc;
-	fl = xop->fl;
-	notify = op->callback;
-=======
 	file = op_data->file;
 	flc = &op_data->flc;
 	fl = op_data->fl;
 	notify = op_data->callback;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (op->info.rv) {
 		notify(fl, op->info.rv);
@@ -464,15 +427,6 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
 		return -EINVAL;
 
 	spin_lock(&ops_lock);
-<<<<<<< HEAD
-	list_for_each_entry(op, &recv_list, list) {
-		if (op->info.fsid == info.fsid &&
-		    op->info.number == info.number &&
-		    op->info.owner == info.owner) {
-			list_del_init(&op->list);
-			memcpy(&op->info, &info, sizeof(info));
-			if (op->callback)
-=======
 	list_for_each_entry(iter, &recv_list, list) {
 		if (iter->info.fsid == info.fsid &&
 		    iter->info.number == info.number &&
@@ -493,7 +447,6 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
 			list_del_init(&iter->list);
 			memcpy(&iter->info, &info, sizeof(info));
 			if (iter->data)
->>>>>>> origin/linux_6.1.15_upstream
 				do_callback = 1;
 			else
 				iter->done = 1;

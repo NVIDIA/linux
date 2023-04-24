@@ -1454,19 +1454,11 @@ static __net_init int nfsd_init_net(struct net *net)
 	nn->nfsd_versions = NULL;
 	nn->nfsd4_minorversions = NULL;
 	retval = nfsd4_init_leases_net(nn);
-<<<<<<< HEAD
-	if (retval)
-		goto out_drc_error;
-	retval = nfsd_reply_cache_init(nn);
-	if (retval)
-		goto out_drc_error;
-=======
 	if (retval)
 		goto out_drc_error;
 	retval = nfsd_reply_cache_init(nn);
 	if (retval)
 		goto out_cache_error;
->>>>>>> origin/linux_6.1.15_upstream
 	get_random_bytes(&nn->siphash_key, sizeof(nn->siphash_key));
 	seqlock_init(&nn->writeverf_lock);
 
@@ -1522,17 +1514,6 @@ static int __init init_nfsd(void)
 		goto out_free_lockd;
 	retval = register_pernet_subsys(&nfsd_net_ops);
 	if (retval < 0)
-<<<<<<< HEAD
-		goto out_free_filesystem;
-	retval = register_cld_notifier();
-	if (retval)
-		goto out_free_all;
-	return 0;
-out_free_all:
-	unregister_pernet_subsys(&nfsd_net_ops);
-out_free_filesystem:
-	unregister_filesystem(&nfsd_fs_type);
-=======
 		goto out_free_exports;
 	retval = register_cld_notifier();
 	if (retval)
@@ -1550,7 +1531,6 @@ out_free_cld:
 	unregister_cld_notifier();
 out_free_subsys:
 	unregister_pernet_subsys(&nfsd_net_ops);
->>>>>>> origin/linux_6.1.15_upstream
 out_free_exports:
 	remove_proc_entry("fs/nfs/exports", NULL);
 	remove_proc_entry("fs/nfs", NULL);
@@ -1568,11 +1548,8 @@ out_free_slabs:
 
 static void __exit exit_nfsd(void)
 {
-<<<<<<< HEAD
-=======
 	unregister_filesystem(&nfsd_fs_type);
 	nfsd4_destroy_laundry_wq();
->>>>>>> origin/linux_6.1.15_upstream
 	unregister_cld_notifier();
 	unregister_pernet_subsys(&nfsd_net_ops);
 	nfsd_drc_slab_free();
@@ -1582,10 +1559,6 @@ static void __exit exit_nfsd(void)
 	nfsd_lockd_shutdown();
 	nfsd4_free_slabs();
 	nfsd4_exit_pnfs();
-<<<<<<< HEAD
-	unregister_filesystem(&nfsd_fs_type);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");

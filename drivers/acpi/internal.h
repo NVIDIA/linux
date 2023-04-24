@@ -187,12 +187,8 @@ struct acpi_ec {
 	spinlock_t lock;
 	struct work_struct work;
 	unsigned long timestamp;
-<<<<<<< HEAD
-	unsigned long nr_pending_queries;
-=======
 	enum acpi_ec_event_state event_state;
 	unsigned int events_to_process;
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned int events_in_progress;
 	unsigned int queries_in_progress;
 	bool busy_polling;

@@ -160,13 +160,6 @@ static int em_create_perf_table(struct device *dev, struct em_perf_domain *pd,
 	/* Compute the cost of each performance state. */
 	fmax = (u64) table[nr_states - 1].frequency;
 	for (i = nr_states - 1; i >= 0; i--) {
-<<<<<<< HEAD
-		unsigned long power_res = em_scale_power(table[i].power);
-
-		table[i].cost = div64_u64(fmax * power_res,
-					  table[i].frequency);
-		if (table[i].cost >= prev_cost) {
-=======
 		unsigned long power_res, cost;
 
 		if (flags & EM_PERF_DOMAIN_ARTIFICIAL) {
@@ -185,7 +178,6 @@ static int em_create_perf_table(struct device *dev, struct em_perf_domain *pd,
 
 		if (table[i].cost >= prev_cost) {
 			table[i].flags = EM_PERF_STATE_INEFFICIENT;
->>>>>>> origin/linux_6.1.15_upstream
 			dev_dbg(dev, "EM: OPP:%lu is inefficient\n",
 				table[i].frequency);
 		} else {

@@ -975,13 +975,6 @@ static void mcr20a_hw_setup(struct mcr20a_local *lp)
 
 	dev_dbg(printdev(lp), "%s\n", __func__);
 
-<<<<<<< HEAD
-	phy->symbol_duration = 16;
-	phy->lifs_period = 40 * phy->symbol_duration;
-	phy->sifs_period = 12 * phy->symbol_duration;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	hw->flags = IEEE802154_HW_TX_OMIT_CKSUM |
 			IEEE802154_HW_AFILT |
 			IEEE802154_HW_PROMISCUOUS;

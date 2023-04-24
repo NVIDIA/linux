@@ -303,16 +303,11 @@ static int sp5100_tco_timer_init(struct sp5100_tco *tco)
 	if (val & SP5100_WDT_FIRED)
 		wdd->bootstatus = WDIOF_CARDRESET;
 
-<<<<<<< HEAD
-	/* Set watchdog action to reset the system */
-	val &= ~SP5100_WDT_ACTION_RESET;
-=======
 	/* Set watchdog action */
 	if (action)
 		val |= SP5100_WDT_ACTION_RESET;
 	else
 		val &= ~SP5100_WDT_ACTION_RESET;
->>>>>>> origin/linux_6.1.15_upstream
 	writel(val, SP5100_WDT_CONTROL(tco->tcobase));
 
 	/* Set a reasonable heartbeat before we stop the timer */
@@ -416,10 +411,7 @@ out:
 		iounmap(addr);
 
 	release_resource(res);
-<<<<<<< HEAD
-=======
 	kfree(res);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }

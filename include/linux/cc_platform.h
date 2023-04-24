@@ -61,8 +61,6 @@ enum cc_attr {
 	 * Examples include SEV-ES.
 	 */
 	CC_ATTR_GUEST_STATE_ENCRYPT,
-<<<<<<< HEAD
-=======
 
 	/**
 	 * @CC_ATTR_GUEST_UNROLL_STRING_IO: String I/O is implemented with
@@ -92,7 +90,6 @@ enum cc_attr {
 	 * Examples include TDX Guest.
 	 */
 	CC_ATTR_HOTPLUG_DISABLED,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #ifdef CONFIG_ARCH_HAS_CC_PLATFORM

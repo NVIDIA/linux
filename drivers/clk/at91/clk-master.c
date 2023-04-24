@@ -401,20 +401,7 @@ static u8 clk_master_pres_get_parent(struct clk_hw *hw)
 {
 	struct clk_master *master = to_clk_master(hw);
 	unsigned long flags;
-<<<<<<< HEAD
-	unsigned int pres;
-
-	pres = DIV_ROUND_CLOSEST(parent_rate, rate);
-	if (pres > MASTER_PRES_MAX)
-		return -EINVAL;
-
-	else if (pres == 3)
-		pres = MASTER_PRES_MAX;
-	else if (pres)
-		pres = ffs(pres) - 1;
-=======
 	unsigned int mckr;
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock_irqsave(master->lock, flags);
 	regmap_read(master->regmap, master->layout->offset, &mckr);
@@ -438,11 +425,7 @@ static int clk_master_pres_save_context(struct clk_hw *hw)
 
 	val &= master->layout->mask;
 	pres = (val >> master->layout->pres_shift) & MASTER_PRES_MASK;
-<<<<<<< HEAD
-	if (pres == MASTER_PRES_MAX && characteristics->have_div3_pres)
-=======
 	if (pres == MASTER_PRES_MAX && master->characteristics->have_div3_pres)
->>>>>>> origin/linux_6.1.15_upstream
 		pres = 3;
 	else
 		pres = (1 << pres);

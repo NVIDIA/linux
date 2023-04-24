@@ -19,11 +19,7 @@
  *   https://lists.openwall.net/linux-kernel/2011/01/09/56
  */
 
-<<<<<<< HEAD
-#include <linux/kernel.h>
-=======
 #include <linux/math.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/sched.h>
 
 extern unsigned long loops_per_jiffy;

@@ -3410,10 +3410,7 @@ static int __rtnl_newlink(struct sk_buff *skb, struct nlmsghdr *nlh,
 			  struct netlink_ext_ack *extack)
 {
 	struct nlattr *linkinfo[IFLA_INFO_MAX + 1];
-<<<<<<< HEAD
-=======
 	struct nlattr ** const tb = tbs->tb;
->>>>>>> origin/linux_6.1.15_upstream
 	const struct rtnl_link_ops *m_ops;
 	struct net_device *master_dev;
 	struct net *net = sock_net(skb->sk);

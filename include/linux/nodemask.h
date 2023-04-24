@@ -277,9 +277,6 @@ static inline unsigned int __next_node(int n, const nodemask_t *srcp)
  * the first node in src if needed.  Returns MAX_NUMNODES if src is empty.
  */
 #define next_node_in(n, src) __next_node_in((n), &(src))
-<<<<<<< HEAD
-unsigned int __next_node_in(int node, const nodemask_t *srcp);
-=======
 static inline unsigned int __next_node_in(int node, const nodemask_t *srcp)
 {
 	unsigned int ret = __next_node(node, srcp);
@@ -288,7 +285,6 @@ static inline unsigned int __next_node_in(int node, const nodemask_t *srcp)
 		ret = __first_node(srcp);
 	return ret;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 static inline void init_nodemask_of_node(nodemask_t *mask, int node)
 {

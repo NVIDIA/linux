@@ -227,11 +227,7 @@ void __post_watch_notification(struct watch_list *wlist,
 
 		if (lock_wqueue(wqueue)) {
 			post_one_notification(wqueue, n);
-<<<<<<< HEAD
-			unlock_wqueue(wqueue);;
-=======
 			unlock_wqueue(wqueue);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 
@@ -512,20 +508,8 @@ int add_watch_to_object(struct watch *watch, struct watch_list *wlist)
 		unlock_wqueue(wqueue);
 	}
 
-<<<<<<< HEAD
-	if (lock_wqueue(wqueue)) {
-		kref_get(&wqueue->usage);
-		kref_get(&watch->usage);
-		hlist_add_head(&watch->queue_node, &wqueue->watches);
-		unlock_wqueue(wqueue);
-	}
-
-	hlist_add_head(&watch->list_node, &wlist->watchers);
-	return 0;
-=======
 	rcu_read_unlock();
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(add_watch_to_object);
 

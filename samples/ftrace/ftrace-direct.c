@@ -33,8 +33,6 @@ asm (
 "	popq %rdi\n"
 "	leave\n"
 	ASM_RET
-<<<<<<< HEAD
-=======
 "	.size		my_tramp, .-my_tramp\n"
 "	.popsection\n"
 );
@@ -59,7 +57,6 @@ asm (
 "	lg		%r14,"__stringify(__SF_GPRS+8*8)"(%r15)\n"
 "	lgr		%r1,%r0\n"
 "	br		%r1\n"
->>>>>>> origin/linux_6.1.15_upstream
 "	.size		my_tramp, .-my_tramp\n"
 "	.popsection\n"
 );

@@ -851,11 +851,7 @@ void do_close_on_exec(struct files_struct *files)
 }
 
 static inline struct file *__fget_files_rcu(struct files_struct *files,
-<<<<<<< HEAD
-	unsigned int fd, fmode_t mask, unsigned int refs)
-=======
 	unsigned int fd, fmode_t mask)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	for (;;) {
 		struct file *file;
@@ -881,16 +877,9 @@ static inline struct file *__fget_files_rcu(struct files_struct *files,
 		 * Such a race can take two forms:
 		 *
 		 *  (a) the file ref already went down to zero,
-<<<<<<< HEAD
-		 *      and get_file_rcu_many() fails. Just try
-		 *      again:
-		 */
-		if (unlikely(!get_file_rcu_many(file, refs)))
-=======
 		 *      and get_file_rcu() fails. Just try again:
 		 */
 		if (unlikely(!get_file_rcu(file)))
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 
 		/*
@@ -899,19 +888,11 @@ static inline struct file *__fget_files_rcu(struct files_struct *files,
 		 *       pointer having changed, because it always goes
 		 *       hand-in-hand with 'fdt'.
 		 *
-<<<<<<< HEAD
-		 * If so, we need to put our refs and try again.
-		 */
-		if (unlikely(rcu_dereference_raw(files->fdt) != fdt) ||
-		    unlikely(rcu_dereference_raw(*fdentry) != file)) {
-			fput_many(file, refs);
-=======
 		 * If so, we need to put our ref and try again.
 		 */
 		if (unlikely(rcu_dereference_raw(files->fdt) != fdt) ||
 		    unlikely(rcu_dereference_raw(*fdentry) != file)) {
 			fput(file);
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 		}
 
@@ -929,11 +910,7 @@ static struct file *__fget_files(struct files_struct *files, unsigned int fd,
 	struct file *file;
 
 	rcu_read_lock();
-<<<<<<< HEAD
-	file = __fget_files_rcu(files, fd, mask, refs);
-=======
 	file = __fget_files_rcu(files, fd, mask);
->>>>>>> origin/linux_6.1.15_upstream
 	rcu_read_unlock();
 
 	return file;

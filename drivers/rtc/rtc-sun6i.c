@@ -149,10 +149,7 @@ struct sun6i_rtc_dev {
 	void __iomem *base;
 	int irq;
 	time64_t alarm;
-<<<<<<< HEAD
-=======
 	unsigned long flags;
->>>>>>> origin/linux_6.1.15_upstream
 
 	struct clk_hw hw;
 	struct clk_hw *int_osc;
@@ -532,28 +529,12 @@ static int sun6i_rtc_setalarm(struct device *dev, struct rtc_wkalrm *wkalrm)
 	struct sun6i_rtc_dev *chip = dev_get_drvdata(dev);
 	struct rtc_time *alrm_tm = &wkalrm->time;
 	struct rtc_time tm_now;
-<<<<<<< HEAD
-	time64_t time_now, time_set;
-	int ret;
-
-	ret = sun6i_rtc_gettime(dev, &tm_now);
-	if (ret < 0) {
-		dev_err(dev, "Error in getting time\n");
-		return -EINVAL;
-	}
-=======
 	time64_t time_set;
 	u32 counter_val, counter_val_hms;
 	int ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	time_set = rtc_tm_to_time64(alrm_tm);
 
-<<<<<<< HEAD
-	if ((time_set - time_now) > U32_MAX) {
-		dev_err(dev, "Date too far in the future\n");
-		return -EINVAL;
-=======
 	if (chip->flags & RTC_LINEAR_DAY) {
 		/*
 		 * The alarm registers hold the actual alarm time, encoded
@@ -585,7 +566,6 @@ static int sun6i_rtc_setalarm(struct device *dev, struct rtc_wkalrm *wkalrm)
 		}
 
 		counter_val = time_set - time_now;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	sun6i_rtc_setaie(0, chip);
@@ -594,13 +574,9 @@ static int sun6i_rtc_setalarm(struct device *dev, struct rtc_wkalrm *wkalrm)
 		writel(0, chip->base + SUN6I_ALRM_COUNTER_HMS);
 	usleep_range(100, 300);
 
-<<<<<<< HEAD
-	writel(time_set - time_now, chip->base + SUN6I_ALRM_COUNTER);
-=======
 	writel(counter_val, chip->base + SUN6I_ALRM_COUNTER);
 	if (chip->flags & RTC_LINEAR_DAY)
 		writel(counter_val_hms, chip->base + SUN6I_ALRM_COUNTER_HMS);
->>>>>>> origin/linux_6.1.15_upstream
 	chip->alarm = time_set;
 
 	sun6i_rtc_setaie(wkalrm->enabled, chip);

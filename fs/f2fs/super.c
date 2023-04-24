@@ -60,10 +60,7 @@ const char *f2fs_fault_name[FAULT_MAX] = {
 	[FAULT_WRITE_IO]	= "write IO error",
 	[FAULT_SLAB_ALLOC]	= "slab alloc",
 	[FAULT_DQUOT_INIT]	= "dquot initialize",
-<<<<<<< HEAD
-=======
 	[FAULT_LOCK_OP]		= "lock_op",
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 void f2fs_build_fault_attr(struct f2fs_sb_info *sbi, unsigned int rate,
@@ -1345,18 +1342,10 @@ default_check:
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	/* Not pass down write hints if the number of active logs is lesser
-	 * than NR_CURSEG_PERSIST_TYPE.
-	 */
-	if (F2FS_OPTION(sbi).active_logs != NR_CURSEG_PERSIST_TYPE)
-		F2FS_OPTION(sbi).whint_mode = WHINT_MODE_OFF;
-=======
 	if (test_opt(sbi, ATGC) && f2fs_lfs_mode(sbi)) {
 		f2fs_err(sbi, "LFS not compatible with ATGC");
 		return -EINVAL;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (f2fs_sb_has_readonly(sbi) && !f2fs_readonly(sbi->sb)) {
 		f2fs_err(sbi, "Allow to mount readonly mode only");
@@ -1682,14 +1671,8 @@ static int f2fs_freeze(struct super_block *sb)
 	if (is_sbi_flag_set(F2FS_SB(sb), SBI_IS_DIRTY))
 		return -EINVAL;
 
-<<<<<<< HEAD
-	/* ensure no checkpoint required */
-	if (!llist_empty(&F2FS_SB(sb)->cprc_info.issue_list))
-		return -EINVAL;
-=======
 	/* Let's flush checkpoints and stop the thread. */
 	f2fs_flush_ckpt_thread(F2FS_SB(sb));
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* to avoid deadlock on f2fs_evict_inode->SB_FREEZE_FS */
 	set_sbi_flag(F2FS_SB(sb), SBI_IS_FREEZING);

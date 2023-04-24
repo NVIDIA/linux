@@ -2201,8 +2201,6 @@ enum dc_status dc_remove_stream_from_ctx(
 				dc->res_pool,
 			del_pipe->stream_res.stream_enc,
 			false);
-<<<<<<< HEAD
-=======
 
 	if (is_dp_128b_132b_signal(del_pipe)) {
 		update_hpo_dp_stream_engine_usage(
@@ -2211,7 +2209,6 @@ enum dc_status dc_remove_stream_from_ctx(
 			false);
 		remove_hpo_dp_link_enc_from_ctx(&new_ctx->res_ctx, del_pipe, del_pipe->stream);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (del_pipe->stream_res.audio)
 		update_audio_usage(

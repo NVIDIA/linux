@@ -1654,12 +1654,6 @@ static int aldebaran_set_df_cstate(struct smu_context *smu,
 
 static int aldebaran_allow_xgmi_power_down(struct smu_context *smu, bool en)
 {
-<<<<<<< HEAD
-	return smu_cmn_send_smc_msg_with_param(smu,
-					       SMU_MSG_GmiPwrDnControl,
-					       en ? 0 : 1,
-					       NULL);
-=======
 	struct amdgpu_device *adev = smu->adev;
 
 	/* The message only works on master die and NACK will be sent
@@ -1672,7 +1666,6 @@ static int aldebaran_allow_xgmi_power_down(struct smu_context *smu, bool en)
 				   NULL);
 	else
 		return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct throttling_logging_label {

@@ -148,12 +148,8 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
 			    int *val, int *val2, long mask)
 {
 	struct rescale *rescale = iio_priv(indio_dev);
-<<<<<<< HEAD
-	s64 tmp;
-=======
 	int scale, scale2;
 	int schan_off = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	int ret;
 
 	switch (mask) {
@@ -179,28 +175,6 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
 		} else {
 			ret = iio_read_channel_scale(rescale->source, val, val2);
 		}
-<<<<<<< HEAD
-		switch (ret) {
-		case IIO_VAL_FRACTIONAL:
-			*val *= rescale->numerator;
-			*val2 *= rescale->denominator;
-			return ret;
-		case IIO_VAL_INT:
-			*val *= rescale->numerator;
-			if (rescale->denominator == 1)
-				return ret;
-			*val2 = rescale->denominator;
-			return IIO_VAL_FRACTIONAL;
-		case IIO_VAL_FRACTIONAL_LOG2:
-			tmp = (s64)*val * 1000000000LL;
-			tmp = div_s64(tmp, rescale->denominator);
-			tmp *= rescale->numerator;
-			tmp = div_s64(tmp, 1000000000LL);
-			*val = tmp;
-			return ret;
-		default:
-			return -EOPNOTSUPP;
-=======
 		return rescale_process_scale(rescale, ret, val, val2);
 	case IIO_CHAN_INFO_OFFSET:
 		/*
@@ -230,7 +204,6 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
 		if (rescale->chan_processed) {
 			*val = rescale->offset;
 			return IIO_VAL_INT;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		if (iio_channel_has_info(rescale->source->channel,

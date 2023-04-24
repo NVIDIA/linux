@@ -248,11 +248,6 @@ static void wilc_bus_remove(struct spi_device *spi)
 	clk_disable_unprepare(wilc->rtc_clk);
 	wilc_netdev_cleanup(wilc);
 	kfree(spi_priv);
-<<<<<<< HEAD
-
-	return 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id wilc_of_match[] = {

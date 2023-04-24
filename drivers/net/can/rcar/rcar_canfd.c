@@ -1785,16 +1785,9 @@ static int rcar_canfd_channel_probe(struct rcar_canfd_global *gpriv, u32 ch,
 	priv->can.do_get_berr_counter = rcar_canfd_get_berr_counter;
 	SET_NETDEV_DEV(ndev, &pdev->dev);
 
-<<<<<<< HEAD
-	netif_napi_add(ndev, &priv->napi, rcar_canfd_rx_poll,
-		       RCANFD_NAPI_WEIGHT);
-	spin_lock_init(&priv->tx_lock);
-	devm_can_led_init(ndev);
-=======
 	netif_napi_add_weight(ndev, &priv->napi, rcar_canfd_rx_poll,
 			      RCANFD_NAPI_WEIGHT);
 	spin_lock_init(&priv->tx_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	gpriv->ch[priv->channel] = priv;
 	err = register_candev(ndev);
 	if (err) {

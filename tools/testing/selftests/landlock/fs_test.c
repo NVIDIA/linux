@@ -1831,8 +1831,6 @@ TEST_F_FORK(layout1, link)
 	/* Checks that linkind doesn't require the ability to delete a file. */
 	ASSERT_EQ(0, link(file1_s1d2, file2_s1d2));
 	ASSERT_EQ(0, link(file1_s1d3, file2_s1d3));
-<<<<<<< HEAD
-=======
 }
 
 static int test_rename(const char *const oldpath, const char *const newpath)
@@ -1847,7 +1845,6 @@ static int test_exchange(const char *const oldpath, const char *const newpath)
 	if (renameat2(AT_FDCWD, oldpath, AT_FDCWD, newpath, RENAME_EXCHANGE))
 		return errno;
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 TEST_F_FORK(layout1, rename_file)
@@ -2009,13 +2006,8 @@ TEST_F_FORK(layout1, reparent_refer)
 		},
 		{},
 	};
-<<<<<<< HEAD
-	const int ruleset_fd =
-		create_ruleset(_metadata, rules[0].access, rules);
-=======
 	int ruleset_fd =
 		create_ruleset(_metadata, LANDLOCK_ACCESS_FS_REFER, layer1);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ASSERT_LE(0, ruleset_fd);
 	enforce_ruleset(_metadata, ruleset_fd);
@@ -2049,49 +2041,15 @@ static void refer_denied_by_default(struct __test_metadata *const _metadata,
 				    const int layer1_err,
 				    const struct rule layer2[])
 {
-<<<<<<< HEAD
-	const struct rule rules[] = {
-		{
-			.path = dir_s1d2,
-			.access = LANDLOCK_ACCESS_FS_REMOVE_FILE,
-		},
-		{},
-	};
-	const int ruleset_fd =
-		create_ruleset(_metadata, rules[0].access, rules);
-=======
 	int ruleset_fd;
 
 	ASSERT_EQ(0, unlink(file1_s1d2));
->>>>>>> origin/linux_6.1.15_upstream
 
 	ruleset_fd = create_ruleset(_metadata, layer1[0].access, layer1);
 	ASSERT_LE(0, ruleset_fd);
 	enforce_ruleset(_metadata, ruleset_fd);
 	ASSERT_EQ(0, close(ruleset_fd));
 
-<<<<<<< HEAD
-	ASSERT_EQ(-1, unlink(file1_s1d1));
-	ASSERT_EQ(EACCES, errno);
-	ASSERT_EQ(-1, unlinkat(AT_FDCWD, file1_s1d1, 0));
-	ASSERT_EQ(EACCES, errno);
-	ASSERT_EQ(0, unlink(file1_s1d2));
-	ASSERT_EQ(0, unlinkat(AT_FDCWD, file1_s1d3, 0));
-}
-
-static void test_make_file(struct __test_metadata *const _metadata,
-			   const __u64 access, const mode_t mode,
-			   const dev_t dev)
-{
-	const struct rule rules[] = {
-		{
-			.path = dir_s1d2,
-			.access = access,
-		},
-		{},
-	};
-	const int ruleset_fd = create_ruleset(_metadata, access, rules);
-=======
 	/*
 	 * If the first layer handles LANDLOCK_ACCESS_FS_REFER (according to
 	 * layer1_err), then it allows some different-parent renames and links.
@@ -2101,28 +2059,9 @@ static void test_make_file(struct __test_metadata *const _metadata,
 		ASSERT_EQ(layer1_err, test_rename(file1_s1d2, file1_s1d1));
 	ASSERT_EQ(layer1_err, test_exchange(file2_s1d1, file2_s1d2));
 	ASSERT_EQ(layer1_err, test_exchange(file2_s1d2, file2_s1d1));
->>>>>>> origin/linux_6.1.15_upstream
 
 	ruleset_fd = create_ruleset(_metadata, layer2[0].access, layer2);
 	ASSERT_LE(0, ruleset_fd);
-<<<<<<< HEAD
-
-	ASSERT_EQ(0, unlink(file1_s1d1));
-	ASSERT_EQ(0, unlink(file2_s1d1));
-	ASSERT_EQ(0, mknod(file2_s1d1, mode | 0400, dev))
-	{
-		TH_LOG("Failed to make file \"%s\": %s", file2_s1d1,
-		       strerror(errno));
-	};
-
-	ASSERT_EQ(0, unlink(file1_s1d2));
-	ASSERT_EQ(0, unlink(file2_s1d2));
-
-	ASSERT_EQ(0, unlink(file1_s1d3));
-	ASSERT_EQ(0, unlink(file2_s1d3));
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	enforce_ruleset(_metadata, ruleset_fd);
 	ASSERT_EQ(0, close(ruleset_fd));
 
@@ -2137,16 +2076,6 @@ static void test_make_file(struct __test_metadata *const _metadata,
 	ASSERT_EQ(EXDEV, test_exchange(file2_s1d2, file2_s1d1));
 }
 
-<<<<<<< HEAD
-	ASSERT_EQ(0, mknod(file1_s1d2, mode | 0400, dev))
-	{
-		TH_LOG("Failed to make file \"%s\": %s", file1_s1d2,
-		       strerror(errno));
-	};
-	ASSERT_EQ(0, link(file1_s1d2, file2_s1d2));
-	ASSERT_EQ(0, unlink(file2_s1d2));
-	ASSERT_EQ(0, rename(file1_s1d2, file2_s1d2));
-=======
 const struct rule layer_dir_s1d1_refer[] = {
 	{
 		.path = dir_s1d1,
@@ -2154,7 +2083,6 @@ const struct rule layer_dir_s1d1_refer[] = {
 	},
 	{},
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 const struct rule layer_dir_s1d1_execute[] = {
 	{
@@ -2165,8 +2093,6 @@ const struct rule layer_dir_s1d1_execute[] = {
 	{},
 };
 
-<<<<<<< HEAD
-=======
 const struct rule layer_dir_s2d1_execute[] = {
 	{
 		/* Does not match a parent directory. */
@@ -3445,8 +3371,6 @@ TEST_F_FORK(layout1_bind, same_content_same_file)
 	ASSERT_EQ(EACCES, test_open(bind_file1_s1d3, O_WRONLY));
 }
 
-<<<<<<< HEAD
-=======
 TEST_F_FORK(layout1_bind, reparent_cross_mount)
 {
 	const struct rule layer1[] = {
@@ -3485,7 +3409,6 @@ TEST_F_FORK(layout1_bind, reparent_cross_mount)
 	ASSERT_EQ(0, rename(bind_file1_s1d3, file1_s2d2));
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #define LOWER_BASE TMP_DIR "/lower"
 #define LOWER_DATA LOWER_BASE "/data"
 static const char lower_fl1[] = LOWER_DATA "/fl1";

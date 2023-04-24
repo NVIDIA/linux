@@ -420,19 +420,12 @@ def context_switch(ts, cpu, pid, tid, np_pid, np_tid, machine_pid, out, out_pree
 		machine_str = ""
 	elif vcpu is None:
 		machine_str = "machine PID %d" % machine_pid
-<<<<<<< HEAD
-	switch_str = "%16s %5d/%-5d [%03u] %9u.%09u %5d/%-5d %s %s" % \
-		(out_str, pid, tid, cpu, ts / 1000000000, ts %1000000000, np_pid, np_tid, machine_str, preempt_str)
-	if glb_args.all_switch_events:
-		print(switch_str);
-=======
 	else:
 		machine_str = "machine PID %d VCPU %d" % (machine_pid, vcpu)
 	switch_str = "%16s %5d/%-5d [%03u] %9u.%09u %5d/%-5d %s %s" % \
 		(out_str, pid, tid, cpu, ts / 1000000000, ts %1000000000, np_pid, np_tid, machine_str, preempt_str)
 	if glb_args.all_switch_events:
 		print(switch_str)
->>>>>>> origin/linux_6.1.15_upstream
 	else:
 		global glb_switch_str
 		glb_switch_str[cpu] = switch_str

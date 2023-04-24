@@ -733,149 +733,7 @@ out:
 static int
 mt7615_mcu_ctrl_pm_state(struct mt7615_dev *dev, int band, int state)
 {
-<<<<<<< HEAD
-#define ENTER_PM_STATE	1
-#define EXIT_PM_STATE	2
-	struct {
-		u8 pm_number;
-		u8 pm_state;
-		u8 bssid[ETH_ALEN];
-		u8 dtim_period;
-		u8 wlan_idx;
-		__le16 bcn_interval;
-		__le32 aid;
-		__le32 rx_filter;
-		u8 band_idx;
-		u8 rsv[3];
-		__le32 feature;
-		u8 omac_idx;
-		u8 wmm_idx;
-		u8 bcn_loss_cnt;
-		u8 bcn_sp_duration;
-	} __packed req = {
-		.pm_number = 5,
-		.pm_state = state ? ENTER_PM_STATE : EXIT_PM_STATE,
-		.band_idx = band,
-	};
-
-	return mt76_mcu_send_msg(&dev->mt76, MCU_EXT_CMD_PM_STATE_CTRL, &req,
-				 sizeof(req), true);
-}
-
-static int
-mt7615_mcu_bss_basic_tlv(struct sk_buff *skb, struct ieee80211_vif *vif,
-			 struct ieee80211_sta *sta, struct mt7615_phy *phy,
-			 bool enable)
-{
-	struct mt7615_vif *mvif = (struct mt7615_vif *)vif->drv_priv;
-	u32 type = vif->p2p ? NETWORK_P2P : NETWORK_INFRA;
-	struct bss_info_basic *bss;
-	u8 wlan_idx = mvif->sta.wcid.idx;
-	struct tlv *tlv;
-
-	tlv = mt76_connac_mcu_add_tlv(skb, BSS_INFO_BASIC, sizeof(*bss));
-
-	switch (vif->type) {
-	case NL80211_IFTYPE_MESH_POINT:
-	case NL80211_IFTYPE_AP:
-	case NL80211_IFTYPE_MONITOR:
-		break;
-	case NL80211_IFTYPE_STATION:
-		/* TODO: enable BSS_INFO_UAPSD & BSS_INFO_PM */
-		if (enable && sta) {
-			struct mt7615_sta *msta;
-
-			msta = (struct mt7615_sta *)sta->drv_priv;
-			wlan_idx = msta->wcid.idx;
-		}
-		break;
-	case NL80211_IFTYPE_ADHOC:
-		type = NETWORK_IBSS;
-		break;
-	default:
-		WARN_ON(1);
-		break;
-	}
-
-	bss = (struct bss_info_basic *)tlv;
-	bss->network_type = cpu_to_le32(type);
-	bss->bmc_tx_wlan_idx = wlan_idx;
-	bss->wmm_idx = mvif->mt76.wmm_idx;
-	bss->active = enable;
-
-	if (vif->type != NL80211_IFTYPE_MONITOR) {
-		memcpy(bss->bssid, vif->bss_conf.bssid, ETH_ALEN);
-		bss->bcn_interval = cpu_to_le16(vif->bss_conf.beacon_int);
-		bss->dtim_period = vif->bss_conf.dtim_period;
-	} else {
-		memcpy(bss->bssid, phy->mt76->macaddr, ETH_ALEN);
-	}
-
-	return 0;
-}
-
-static void
-mt7615_mcu_bss_omac_tlv(struct sk_buff *skb, struct ieee80211_vif *vif)
-{
-	struct mt7615_vif *mvif = (struct mt7615_vif *)vif->drv_priv;
-	u8 omac_idx = mvif->mt76.omac_idx;
-	struct bss_info_omac *omac;
-	struct tlv *tlv;
-	u32 type = 0;
-
-	tlv = mt76_connac_mcu_add_tlv(skb, BSS_INFO_OMAC, sizeof(*omac));
-
-	switch (vif->type) {
-	case NL80211_IFTYPE_MONITOR:
-	case NL80211_IFTYPE_MESH_POINT:
-	case NL80211_IFTYPE_AP:
-		if (vif->p2p)
-			type = CONNECTION_P2P_GO;
-		else
-			type = CONNECTION_INFRA_AP;
-		break;
-	case NL80211_IFTYPE_STATION:
-		if (vif->p2p)
-			type = CONNECTION_P2P_GC;
-		else
-			type = CONNECTION_INFRA_STA;
-		break;
-	case NL80211_IFTYPE_ADHOC:
-		type = CONNECTION_IBSS_ADHOC;
-		break;
-	default:
-		WARN_ON(1);
-		break;
-	}
-
-	omac = (struct bss_info_omac *)tlv;
-	omac->conn_type = cpu_to_le32(type);
-	omac->omac_idx = mvif->mt76.omac_idx;
-	omac->band_idx = mvif->mt76.band_idx;
-	omac->hw_bss_idx = omac_idx > EXT_BSSID_START ? HW_BSSID_0 : omac_idx;
-}
-
-/* SIFS 20us + 512 byte beacon tranmitted by 1Mbps (3906us) */
-#define BCN_TX_ESTIMATE_TIME (4096 + 20)
-static void
-mt7615_mcu_bss_ext_tlv(struct sk_buff *skb, struct mt7615_vif *mvif)
-{
-	struct bss_info_ext_bss *ext;
-	int ext_bss_idx, tsf_offset;
-	struct tlv *tlv;
-
-	ext_bss_idx = mvif->mt76.omac_idx - EXT_BSSID_START;
-	if (ext_bss_idx < 0)
-		return;
-
-	tlv = mt76_connac_mcu_add_tlv(skb, BSS_INFO_EXT_BSS, sizeof(*ext));
-
-	ext = (struct bss_info_ext_bss *)tlv;
-	tsf_offset = ext_bss_idx * BCN_TX_ESTIMATE_TIME;
-	ext->mbss_tsf_offset = cpu_to_le32(tsf_offset);
-=======
 	return mt76_connac_mcu_set_pm(&dev->mt76, band, state);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int
@@ -896,12 +754,8 @@ mt7615_mcu_add_bss(struct mt7615_phy *phy, struct ieee80211_vif *vif,
 	if (enable)
 		mt76_connac_mcu_bss_omac_tlv(skb, vif);
 
-<<<<<<< HEAD
-	mt7615_mcu_bss_basic_tlv(skb, vif, sta, phy, enable);
-=======
 	mt76_connac_mcu_bss_basic_tlv(skb, vif, sta, phy->mt76,
 				      mvif->sta.wcid.idx, enable);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (enable && mvif->mt76.omac_idx >= EXT_BSSID_START &&
 	    mvif->mt76.omac_idx < REPEATER_BSSID_START)

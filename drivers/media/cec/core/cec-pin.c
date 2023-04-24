@@ -1089,11 +1089,7 @@ static int cec_pin_thread_func(void *_adap)
 				    CEC_PIN_IRQ_UNCHANGED)) {
 		case CEC_PIN_IRQ_DISABLE:
 			if (irq_enabled) {
-<<<<<<< HEAD
-				pin->ops->disable_irq(adap);
-=======
 				call_void_pin_op(pin, disable_irq);
->>>>>>> origin/linux_6.1.15_upstream
 				irq_enabled = false;
 			}
 			cec_pin_high(pin);
@@ -1106,11 +1102,7 @@ static int cec_pin_thread_func(void *_adap)
 		case CEC_PIN_IRQ_ENABLE:
 			if (irq_enabled)
 				break;
-<<<<<<< HEAD
-			pin->enable_irq_failed = !pin->ops->enable_irq(adap);
-=======
 			pin->enable_irq_failed = !call_pin_op(pin, enable_irq);
->>>>>>> origin/linux_6.1.15_upstream
 			if (pin->enable_irq_failed) {
 				cec_pin_to_idle(pin);
 				hrtimer_start(&pin->timer, ns_to_ktime(0),
@@ -1122,11 +1114,6 @@ static int cec_pin_thread_func(void *_adap)
 		default:
 			break;
 		}
-<<<<<<< HEAD
-		if (kthread_should_stop())
-			break;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	if (pin->ops->disable_irq && irq_enabled)
 		pin->ops->disable_irq(adap);
@@ -1160,10 +1147,6 @@ static int cec_pin_adap_enable(struct cec_adapter *adap, bool enable)
 		}
 		hrtimer_start(&pin->timer, ns_to_ktime(0),
 			      HRTIMER_MODE_REL);
-<<<<<<< HEAD
-	} else {
-		kthread_stop(pin->kthread);
-=======
 	} else if (pin->kthread) {
 		hrtimer_cancel(&pin->timer);
 		cec_pin_high(pin);
@@ -1172,7 +1155,6 @@ static int cec_pin_adap_enable(struct cec_adapter *adap, bool enable)
 		pin->work_tx_status = 0;
 		atomic_set(&pin->work_irq_change, CEC_PIN_IRQ_DISABLE);
 		wake_up_interruptible(&pin->kthread_waitq);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return 0;
 }

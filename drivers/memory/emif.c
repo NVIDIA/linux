@@ -1025,12 +1025,7 @@ static struct emif_data *__init_or_module get_device_details(
 	temp	= devm_kzalloc(dev, sizeof(*pd), GFP_KERNEL);
 	dev_info = devm_kzalloc(dev, sizeof(*dev_info), GFP_KERNEL);
 
-<<<<<<< HEAD
-	if (!emif || !temp || !dev_info) {
-		dev_err(dev, "%s:%d: allocation error\n", __func__, __LINE__);
-=======
 	if (!emif || !temp || !dev_info)
->>>>>>> origin/linux_6.1.15_upstream
 		goto error;
 
 	memcpy(temp, pd, sizeof(*pd));
@@ -1112,10 +1107,6 @@ error:
 static int __init_or_module emif_probe(struct platform_device *pdev)
 {
 	struct emif_data	*emif;
-<<<<<<< HEAD
-	struct resource		*res;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	int			irq, ret;
 
 	if (pdev->dev.of_node)

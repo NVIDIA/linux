@@ -260,10 +260,6 @@ static inline const char *kbasename(const char *path)
 void memcpy_and_pad(void *dest, size_t dest_len, const void *src, size_t count,
 		    int pad);
 
-<<<<<<< HEAD
-void memcpy_and_pad(void *dest, size_t dest_len, const void *src, size_t count,
-		    int pad);
-=======
 /**
  * strtomem_pad - Copy NUL-terminated string to non-NUL-terminated buffer
  *
@@ -341,7 +337,6 @@ void memcpy_and_pad(void *dest, size_t dest_len, const void *src, size_t count,
 	memset(__ptr + offsetof(typeof(*(obj)), member), __val,		\
 	       sizeof(*(obj)) - offsetof(typeof(*(obj)), member));	\
 })
->>>>>>> origin/linux_6.1.15_upstream
 
 /**
  * str_has_prefix - Test if a string has a given prefix

@@ -346,19 +346,12 @@ int pci_bridge_emul_init(struct pci_bridge_emul *bridge,
 	BUILD_BUG_ON(sizeof(bridge->conf) != PCI_BRIDGE_CONF_END);
 
 	/*
-<<<<<<< HEAD
-	 * class_revision: Class is high 24 bits and revision is low 8 bit of this member,
-	 * while class for PCI Bridge Normal Decode has the 24-bit value: PCI_CLASS_BRIDGE_PCI << 8
-	 */
-	bridge->conf.class_revision |= cpu_to_le32((PCI_CLASS_BRIDGE_PCI << 8) << 8);
-=======
 	 * class_revision: Class is high 24 bits and revision is low 8 bit
 	 * of this member, while class for PCI Bridge Normal Decode has the
 	 * 24-bit value: PCI_CLASS_BRIDGE_PCI_NORMAL
 	 */
 	bridge->conf.class_revision |=
 		cpu_to_le32(PCI_CLASS_BRIDGE_PCI_NORMAL << 8);
->>>>>>> origin/linux_6.1.15_upstream
 	bridge->conf.header_type = PCI_HEADER_TYPE_BRIDGE;
 	bridge->conf.cache_line_size = 0x10;
 	bridge->conf.status = cpu_to_le16(PCI_STATUS_CAP_LIST);
@@ -392,15 +385,9 @@ int pci_bridge_emul_init(struct pci_bridge_emul *bridge,
 		bridge->conf.status |= cpu_to_le16(PCI_STATUS_CAP_LIST);
 
 	if (bridge->has_pcie) {
-<<<<<<< HEAD
-		bridge->conf.capabilities_pointer = PCI_CAP_PCIE_START;
-		bridge->conf.status |= cpu_to_le16(PCI_STATUS_CAP_LIST);
-		bridge->pcie_conf.cap_id = PCI_CAP_ID_EXP;
-=======
 		bridge->pcie_conf.cap_id = PCI_CAP_ID_EXP;
 		bridge->pcie_conf.next = (bridge->ssid_start > bridge->pcie_start) ?
 					 bridge->ssid_start : 0;
->>>>>>> origin/linux_6.1.15_upstream
 		bridge->pcie_conf.cap |= cpu_to_le16(PCI_EXP_TYPE_ROOT_PORT << 4);
 		bridge->pcie_cap_regs_behavior =
 			kmemdup(pcie_cap_regs_behavior,
@@ -619,17 +606,12 @@ int pci_bridge_emul_conf_write(struct pci_bridge_emul *bridge, int where,
 		 */
 		new &= ~(behavior[reg / 4].w1c & ~mask);
 
-<<<<<<< HEAD
-	/* Save the new value with the cleared W1C bits into the cfgspace */
-	cfgspace[reg / 4] = cpu_to_le32(new);
-=======
 		/*
 		 * Set the W1C bits specified by the write mask, so that write_op()
 		 * knows about that they are to be cleared.
 		 */
 		new |= (value << shift) & (behavior[reg / 4].w1c & mask);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Clear the W1C bits not specified by the write mask, so that the

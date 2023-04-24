@@ -551,11 +551,7 @@ int mt7615_init_debugfs(struct mt7615_dev *dev)
 {
 	struct dentry *dir;
 
-<<<<<<< HEAD
-	dir = mt76_register_debugfs_fops(&dev->mt76, &fops_regval);
-=======
 	dir = mt76_register_debugfs_fops(&dev->mphy, &fops_regval);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!dir)
 		return -ENOMEM;
 

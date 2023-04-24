@@ -70,10 +70,6 @@ struct nvmem_keepout {
  * @word_size:	Minimum read/write access granularity.
  * @stride:	Minimum read/write access stride.
  * @priv:	User context passed to read/write callbacks.
-<<<<<<< HEAD
- * @wp-gpio:	Write protect pin
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * @ignore_wp:  Write Protect pin is managed by the provider.
  *
  * Note: A default "nvmem<id>" name will be assigned to the device if

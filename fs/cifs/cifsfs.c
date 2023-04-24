@@ -284,37 +284,13 @@ out_no_root:
 static void cifs_kill_sb(struct super_block *sb)
 {
 	struct cifs_sb_info *cifs_sb = CIFS_SB(sb);
-<<<<<<< HEAD
-	struct cifs_tcon *tcon;
-	struct cached_fid *cfid;
-	struct rb_root *root = &cifs_sb->tlink_tree;
-	struct rb_node *node;
-	struct tcon_link *tlink;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * We ned to release all dentries for the cached directories
 	 * before we kill the sb.
 	 */
 	if (cifs_sb->root) {
-<<<<<<< HEAD
-		for (node = rb_first(root); node; node = rb_next(node)) {
-			tlink = rb_entry(node, struct tcon_link, tl_rbnode);
-			tcon = tlink_tcon(tlink);
-			if (IS_ERR(tcon))
-				continue;
-			cfid = &tcon->crfid;
-			mutex_lock(&cfid->fid_mutex);
-			if (cfid->dentry) {
-				dput(cfid->dentry);
-				cfid->dentry = NULL;
-			}
-			mutex_unlock(&cfid->fid_mutex);
-		}
-=======
 		close_all_cached_dirs(cifs_sb);
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* finally release root dentry */
 		dput(cifs_sb->root);

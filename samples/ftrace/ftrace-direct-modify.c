@@ -41,10 +41,7 @@ asm (
 "	leave\n"
 "	.size		my_tramp1, .-my_tramp1\n"
 	ASM_RET
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/linux_6.1.15_upstream
 "	.type		my_tramp2, @function\n"
 "	.globl		my_tramp2\n"
 "   my_tramp2:"

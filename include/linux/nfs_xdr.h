@@ -1809,11 +1809,8 @@ struct nfs_rpc_ops {
 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
 					   struct nfs_fattr *, rpc_authflavor_t);
 	int	(*discover_trunking)(struct nfs_server *, struct nfs_fh *);
-<<<<<<< HEAD
-=======
 	void	(*enable_swap)(struct inode *inode);
 	void	(*disable_swap)(struct inode *inode);
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /*

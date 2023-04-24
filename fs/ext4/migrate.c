@@ -438,11 +438,7 @@ int ext4_ext_migrate(struct inode *inode)
 
 	/*
 	 * Worst case we can touch the allocation bitmaps and a block
-<<<<<<< HEAD
-	 * group descriptor block.  We do need need to worry about
-=======
 	 * group descriptor block.  We do need to worry about
->>>>>>> origin/linux_6.1.15_upstream
 	 * credits for modifying the quota inode.
 	 */
 	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE,
@@ -469,10 +465,7 @@ int ext4_ext_migrate(struct inode *inode)
 	 * the migration.
 	 */
 	ei = EXT4_I(inode);
-<<<<<<< HEAD
-=======
 	tmp_csum_seed = EXT4_I(tmp_inode)->i_csum_seed;
->>>>>>> origin/linux_6.1.15_upstream
 	EXT4_I(tmp_inode)->i_csum_seed = ei->i_csum_seed;
 	i_size_write(tmp_inode, i_size_read(inode));
 	/*

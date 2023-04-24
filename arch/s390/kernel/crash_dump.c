@@ -151,41 +151,11 @@ int copy_oldmem_kernel(void *dst, unsigned long src, size_t count)
 	struct iov_iter iter;
 	struct kvec kvec;
 
-<<<<<<< HEAD
-	while (count) {
-		from = __pa(src);
-		if (!oldmem_data.start && from < sclp.hsa_size) {
-			/* Copy from zfcp/nvme dump HSA area */
-			len = min(count, sclp.hsa_size - from);
-			rc = memcpy_hsa_user(dst, from, len);
-			if (rc)
-				return rc;
-		} else {
-			/* Check for swapped kdump oldmem areas */
-			if (oldmem_data.start && from - oldmem_data.start < oldmem_data.size) {
-				from -= oldmem_data.start;
-				len = min(count, oldmem_data.size - from);
-			} else if (oldmem_data.start && from < oldmem_data.size) {
-				len = min(count, oldmem_data.size - from);
-				from += oldmem_data.start;
-			} else {
-				len = count;
-			}
-			rc = copy_to_user_real(dst, (void *) from, count);
-			if (rc)
-				return rc;
-		}
-		dst += len;
-		src += len;
-		count -= len;
-	}
-=======
 	kvec.iov_base = dst;
 	kvec.iov_len = count;
 	iov_iter_kvec(&iter, ITER_DEST, &kvec, 1, count);
 	if (copy_oldmem_iter(&iter, src, count) < count)
 		return -EFAULT;
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

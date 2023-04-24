@@ -178,10 +178,7 @@ bnxt_fill_coredump_seg_hdr(struct bnxt *bp,
 		seg_hdr->segment_id = (__force __le32)seg_rec->segment_id;
 		seg_hdr->low_version = seg_rec->version_low;
 		seg_hdr->high_version = seg_rec->version_hi;
-<<<<<<< HEAD
-=======
 		seg_hdr->flags = cpu_to_le32(seg_rec->compress_flags);
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		/* For hwrm_ver_get response Component id = 2
 		 * and Segment id = 0
@@ -197,8 +194,6 @@ bnxt_fill_coredump_seg_hdr(struct bnxt *bp,
 	seg_hdr->instance = cpu_to_le32(instance);
 }
 
-<<<<<<< HEAD
-=======
 static void bnxt_fill_cmdline(struct bnxt_coredump_record *record)
 {
 	struct mm_struct *mm = current->mm;
@@ -223,7 +218,6 @@ static void bnxt_fill_cmdline(struct bnxt_coredump_record *record)
 	strscpy(record->commandline, current->comm, TASK_COMM_LEN);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void
 bnxt_fill_coredump_record(struct bnxt *bp, struct bnxt_coredump_record *record,
 			  time64_t start, s16 start_utc, u16 total_segs,
@@ -249,11 +243,7 @@ bnxt_fill_coredump_record(struct bnxt *bp, struct bnxt_coredump_record *record,
 	record->minute = cpu_to_le16(tm.tm_min);
 	record->second = cpu_to_le16(tm.tm_sec);
 	record->utc_bias = cpu_to_le16(start_utc);
-<<<<<<< HEAD
-	strcpy(record->commandline, "ethtool -w");
-=======
 	bnxt_fill_cmdline(record);
->>>>>>> origin/linux_6.1.15_upstream
 	record->total_segments = cpu_to_le32(total_segs);
 
 	if (sscanf(utsname()->release, "%u.%u", &os_ver_major, &os_ver_minor) != 2)
@@ -395,8 +385,6 @@ int bnxt_get_coredump(struct bnxt *bp, u16 dump_type, void *buf, u32 *dump_len)
 	}
 }
 
-<<<<<<< HEAD
-=======
 static int bnxt_hwrm_get_dump_len(struct bnxt *bp, u16 dump_type, u32 *dump_len)
 {
 	struct hwrm_dbg_qcfg_output *resp;
@@ -442,23 +430,15 @@ get_dump_len_exit:
 	return rc;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 u32 bnxt_get_coredump_length(struct bnxt *bp, u16 dump_type)
 {
 	u32 len = 0;
 
-<<<<<<< HEAD
-	if (dump_type == BNXT_DUMP_CRASH)
-		len = BNXT_CRASH_DUMP_LEN;
-	else
-		__bnxt_get_coredump(bp, NULL, &len);
-=======
 	if (bnxt_hwrm_get_dump_len(bp, dump_type, &len)) {
 		if (dump_type == BNXT_DUMP_CRASH)
 			len = BNXT_CRASH_DUMP_LEN;
 		else
 			__bnxt_get_coredump(bp, NULL, &len);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	return len;
 }

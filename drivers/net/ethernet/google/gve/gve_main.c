@@ -1147,7 +1147,6 @@ static void gve_tx_timeout(struct net_device *dev, unsigned int txqueue)
 	ntfy_idx = gve_tx_idx_to_ntfy(priv, txqueue);
 	if (ntfy_idx >= priv->num_ntfy_blks)
 		goto reset;
-<<<<<<< HEAD
 
 	block = &priv->ntfy_blocks[ntfy_idx];
 	tx = block->tx;
@@ -1168,28 +1167,6 @@ static void gve_tx_timeout(struct net_device *dev, unsigned int txqueue)
 		goto out;
 	} // Else reset.
 
-=======
-
-	block = &priv->ntfy_blocks[ntfy_idx];
-	tx = block->tx;
-
-	current_time = jiffies_to_msecs(jiffies);
-	if (tx->last_kick_msec + MIN_TX_TIMEOUT_GAP > current_time)
-		goto reset;
-
-	/* Check to see if there are missed completions, which will allow us to
-	 * kick the queue.
-	 */
-	last_nic_done = gve_tx_load_event_counter(priv, tx);
-	if (last_nic_done - tx->done) {
-		netdev_info(dev, "Kicking queue %d", txqueue);
-		iowrite32be(GVE_IRQ_MASK, gve_irq_doorbell(priv, block));
-		napi_schedule(&block->napi);
-		tx->last_kick_msec = current_time;
-		goto out;
-	} // Else reset.
-
->>>>>>> origin/linux_6.1.15_upstream
 reset:
 	gve_schedule_reset(priv);
 

@@ -586,21 +586,6 @@ static int cec_open(struct inode *inode, struct file *filp)
 		return err;
 	}
 
-<<<<<<< HEAD
-	/* serialize adap_enable */
-	mutex_lock(&devnode->lock);
-	if (list_empty(&devnode->fhs) &&
-	    !adap->needs_hpd &&
-	    adap->phys_addr == CEC_PHYS_ADDR_INVALID) {
-		err = adap->ops->adap_enable(adap, true);
-		if (err) {
-			mutex_unlock(&devnode->lock);
-			kfree(fh);
-			return err;
-		}
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	filp->private_data = fh;
 
 	/* Queue up initial state events */
@@ -630,10 +615,7 @@ static int cec_open(struct inode *inode, struct file *filp)
 	}
 #endif
 
-<<<<<<< HEAD
-=======
 	mutex_lock(&devnode->lock);
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_lock(&devnode->lock_fhs);
 	list_add(&fh->list, &devnode->fhs);
 	mutex_unlock(&devnode->lock_fhs);
@@ -670,13 +652,6 @@ static int cec_release(struct inode *inode, struct file *filp)
 	mutex_lock(&devnode->lock_fhs);
 	list_del(&fh->list);
 	mutex_unlock(&devnode->lock_fhs);
-<<<<<<< HEAD
-	if (cec_is_registered(adap) && list_empty(&devnode->fhs) &&
-	    !adap->needs_hpd && adap->phys_addr == CEC_PHYS_ADDR_INVALID) {
-		WARN_ON(adap->ops->adap_enable(adap, false));
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&devnode->lock);
 
 	/* Unhook pending transmits from this filehandle. */

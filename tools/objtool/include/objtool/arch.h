@@ -27,10 +27,7 @@ enum insn_type {
 	INSN_STD,
 	INSN_CLD,
 	INSN_TRAP,
-<<<<<<< HEAD
-=======
 	INSN_ENDBR,
->>>>>>> origin/linux_6.1.15_upstream
 	INSN_OTHER,
 };
 

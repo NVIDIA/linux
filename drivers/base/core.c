@@ -487,9 +487,6 @@ static void device_link_release_fn(struct work_struct *work)
 	/* Ensure that all references to the link object have been dropped. */
 	device_link_synchronize_removal();
 
-<<<<<<< HEAD
-	pm_runtime_release_supplier(link, true);
-=======
 	pm_runtime_release_supplier(link);
 	/*
 	 * If supplier_preactivated is set, the link has been dropped between
@@ -502,7 +499,6 @@ static void device_link_release_fn(struct work_struct *work)
 		pm_runtime_put_noidle(link->supplier);
 
 	pm_request_idle(link->supplier);
->>>>>>> origin/linux_6.1.15_upstream
 
 	put_device(link->consumer);
 	put_device(link->supplier);

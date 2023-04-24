@@ -19,10 +19,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
-<<<<<<< HEAD
-=======
 #include <linux/pinctrl/consumer.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <linux/pinctrl/pinconf-generic.h>
 #include <linux/regmap.h>
 
@@ -761,14 +758,11 @@ static int rockchip_gpio_probe(struct platform_device *pdev)
 				dev_warn(dev, "setting output pin %u to %u failed\n", cfg->pin,
 					 cfg->arg);
 			break;
-<<<<<<< HEAD
-=======
 		case PIN_CONFIG_INPUT_ENABLE:
 			ret = rockchip_gpio_direction_input(&bank->gpio_chip, cfg->pin);
 			if (ret)
 				dev_warn(dev, "setting input pin %u failed\n", cfg->pin);
 			break;
->>>>>>> origin/linux_6.1.15_upstream
 		default:
 			dev_warn(dev, "unknown deferred config param %d\n", cfg->param);
 			break;

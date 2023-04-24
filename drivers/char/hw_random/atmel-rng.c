@@ -158,12 +158,6 @@ static int atmel_trng_probe(struct platform_device *pdev)
 #endif
 	}
 
-<<<<<<< HEAD
-err_register:
-	clk_disable_unprepare(trng->clk);
-	atmel_trng_disable(trng);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

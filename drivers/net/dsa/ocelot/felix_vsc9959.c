@@ -1055,8 +1055,6 @@ static void vsc9959_mdio_bus_free(struct ocelot *ocelot)
 	}
 	mdiobus_unregister(felix->imdio);
 	mdiobus_free(felix->imdio);
-<<<<<<< HEAD
-=======
 }
 
 /* The switch considers any frame (regardless of size) as eligible for
@@ -1329,7 +1327,6 @@ static void vsc9959_tas_guard_bands_update(struct ocelot *ocelot, int port)
 	ocelot->ops->cut_through_fwd(ocelot);
 
 	mutex_unlock(&ocelot->fwd_domain_lock);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void vsc9959_sched_speed_set(struct ocelot *ocelot, int port,

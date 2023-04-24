@@ -87,10 +87,6 @@ static int blk_ioctl_discard(struct block_device *bdev, fmode_t mode,
 {
 	uint64_t range[2];
 	uint64_t start, len;
-<<<<<<< HEAD
-	struct request_queue *q = bdev_get_queue(bdev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct inode *inode = bdev->bd_inode;
 	int err;
 
@@ -118,14 +114,6 @@ static int blk_ioctl_discard(struct block_device *bdev, fmode_t mode,
 	err = truncate_bdev_range(bdev, mode, start, start + len - 1);
 	if (err)
 		goto fail;
-<<<<<<< HEAD
-
-	err = blkdev_issue_discard(bdev, start >> 9, len >> 9,
-				   GFP_KERNEL, flags);
-
-fail:
-	filemap_invalidate_unlock(inode->i_mapping);
-=======
 	err = blkdev_issue_discard(bdev, start >> 9, len >> 9, GFP_KERNEL);
 fail:
 	filemap_invalidate_unlock(inode->i_mapping);
@@ -159,7 +147,6 @@ static int blk_ioctl_secure_erase(struct block_device *bdev, fmode_t mode,
 		err = blkdev_issue_secure_erase(bdev, start >> 9, len >> 9,
 						GFP_KERNEL);
 	filemap_invalidate_unlock(bdev->bd_inode->i_mapping);
->>>>>>> origin/linux_6.1.15_upstream
 	return err;
 }
 
@@ -670,12 +657,7 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		return compat_put_long(argp,
 			(bdev->bd_disk->bdi->ra_pages * PAGE_SIZE) / 512);
 	case BLKGETSIZE:
-<<<<<<< HEAD
-		size = i_size_read(bdev->bd_inode);
-		if ((size >> 9) > ~(compat_ulong_t)0)
-=======
 		if (bdev_nr_sectors(bdev) > ~(compat_ulong_t)0)
->>>>>>> origin/linux_6.1.15_upstream
 			return -EFBIG;
 		return compat_put_ulong(argp, bdev_nr_sectors(bdev));
 

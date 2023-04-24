@@ -32,8 +32,6 @@
 #include <linux/blk-cgroup.h>
 #include <linux/sched/mm.h>
 #include <linux/statfs.h>
-<<<<<<< HEAD
-=======
 #include <linux/uaccess.h>
 #include <linux/blk-mq.h>
 #include <linux/spinlock.h>
@@ -46,7 +44,6 @@ enum {
 	Lo_rundown,
 	Lo_deleting,
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 struct loop_func_table;
 

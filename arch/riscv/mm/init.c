@@ -211,15 +211,8 @@ static void __init setup_bootmem(void)
 	memblock_reserve(vmlinux_start, vmlinux_end - vmlinux_start);
 
 	phys_ram_end = memblock_end_of_DRAM();
-<<<<<<< HEAD
-#ifndef CONFIG_XIP_KERNEL
-	phys_ram_base = memblock_start_of_DRAM();
-#endif
-#ifndef CONFIG_64BIT
-=======
 	if (!IS_ENABLED(CONFIG_XIP_KERNEL))
 		phys_ram_base = memblock_start_of_DRAM();
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * memblock allocator is not aware of the fact that last 4K bytes of
 	 * the addressable memory can not be mapped because of IS_ERR_VALUE
@@ -687,11 +680,8 @@ static uintptr_t __init best_map_size(phys_addr_t base, phys_addr_t size)
 
 #ifdef CONFIG_XIP_KERNEL
 #define phys_ram_base  (*(phys_addr_t *)XIP_FIXUP(&phys_ram_base))
-<<<<<<< HEAD
-=======
 extern char _xiprom[], _exiprom[], __data_loc;
 
->>>>>>> origin/linux_6.1.15_upstream
 /* called from head.S with MMU off */
 asmlinkage void __init __copy_data(void)
 {

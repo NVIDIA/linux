@@ -788,10 +788,7 @@ static int xs_nospace(struct rpc_rqst *req, struct sock_xprt *transport)
 		rcu_read_unlock();
 
 		/* wait for more buffer space */
-<<<<<<< HEAD
-=======
 		set_bit(XPRT_SOCK_NOSPACE, &transport->sock_state);
->>>>>>> origin/linux_6.1.15_upstream
 		set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
 		sk->sk_write_pending++;
 		xprt_wait_for_buffer_space(xprt);
@@ -816,22 +813,15 @@ static int xs_sock_nospace(struct rpc_rqst *req)
 	return ret;
 }
 
-<<<<<<< HEAD
-static int xs_stream_nospace(struct rpc_rqst *req)
-=======
 static int xs_stream_nospace(struct rpc_rqst *req, bool vm_wait)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct sock_xprt *transport =
 		container_of(req->rq_xprt, struct sock_xprt, xprt);
 	struct sock *sk = transport->inet;
 	int ret = -EAGAIN;
 
-<<<<<<< HEAD
-=======
 	if (vm_wait)
 		return -ENOBUFS;
->>>>>>> origin/linux_6.1.15_upstream
 	lock_sock(sk);
 	if (!sk_stream_memory_free(sk))
 		ret = xs_nospace(req, transport);
@@ -922,11 +912,7 @@ static int xs_local_send_request(struct rpc_rqst *req)
 
 	switch (status) {
 	case -EAGAIN:
-<<<<<<< HEAD
-		status = xs_stream_nospace(req);
-=======
 		status = xs_stream_nospace(req, vm_wait);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	default:
 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
@@ -1109,11 +1095,7 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
 		/* Should we call xs_close() here? */
 		break;
 	case -EAGAIN:
-<<<<<<< HEAD
-		status = xs_stream_nospace(req);
-=======
 		status = xs_stream_nospace(req, vm_wait);
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	case -ECONNRESET:
 	case -ECONNREFUSED:
@@ -2296,27 +2278,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
 
 	/* Tell the socket layer to start connecting... */
 	set_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
-<<<<<<< HEAD
-	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
-	switch (ret) {
-	case 0:
-		xs_set_srcport(transport, sock);
-		fallthrough;
-	case -EINPROGRESS:
-		/* SYN_SENT! */
-		set_bit(XPRT_SOCK_CONNECT_SENT, &transport->sock_state);
-		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
-			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-		break;
-	case -EADDRNOTAVAIL:
-		/* Source port number is unavailable. Try a new one! */
-		transport->srcport = 0;
-	}
-out:
-	return ret;
-=======
 	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -2334,12 +2296,9 @@ static void xs_tcp_setup_socket(struct work_struct *work)
 	int status;
 	unsigned int pflags = current->flags;
 
-<<<<<<< HEAD
-=======
 	if (atomic_read(&xprt->swapper))
 		current->flags |= PF_MEMALLOC;
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (xprt_connected(xprt))
 		goto out;
 	if (test_and_clear_bit(XPRT_SOCK_CONNECT_SENT,

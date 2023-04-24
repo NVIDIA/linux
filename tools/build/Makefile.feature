@@ -100,14 +100,11 @@ FEATURE_TESTS_EXTRA :=                  \
          clang                          \
          libbpf                         \
          libbpf-btf__load_from_kernel_by_id \
-<<<<<<< HEAD
-=======
          libbpf-bpf_prog_load           \
          libbpf-bpf_object__next_program \
          libbpf-bpf_object__next_map    \
          libbpf-bpf_program__set_insns  \
          libbpf-bpf_create_map		\
->>>>>>> origin/linux_6.1.15_upstream
          libpfm4                        \
          libdebuginfod			\
          clang-bpf-co-re

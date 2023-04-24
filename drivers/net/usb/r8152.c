@@ -32,11 +32,7 @@
 #define NETNEXT_VERSION		"12"
 
 /* Information for net */
-<<<<<<< HEAD
-#define NET_VERSION		"12"
-=======
 #define NET_VERSION		"13"
->>>>>>> origin/linux_6.1.15_upstream
 
 #define DRIVER_VERSION		"v1." NETNEXT_VERSION "." NET_VERSION
 #define DRIVER_AUTHOR "Realtek linux nic maintainers <nic_swsd@realtek.com>"

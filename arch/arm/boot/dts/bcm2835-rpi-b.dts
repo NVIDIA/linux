@@ -50,38 +50,19 @@
 			  "STATUS_LED_N",
 			  "GPIO17",
 			  "GPIO18",
-<<<<<<< HEAD
-			  "NC", /* GPIO19 */
-			  "NC", /* GPIO20 */
-=======
 			  "", /* GPIO19 */
 			  "", /* GPIO20 */
->>>>>>> origin/linux_6.1.15_upstream
 			  "CAM_GPIO0",
 			  "GPIO22",
 			  "GPIO23",
 			  "GPIO24",
 			  "GPIO25",
-<<<<<<< HEAD
-			  "NC", /* GPIO26 */
-=======
 			  "", /* GPIO26 */
->>>>>>> origin/linux_6.1.15_upstream
 			  "GPIO27",
 			  "GPIO28",
 			  "GPIO29",
 			  "GPIO30",
 			  "GPIO31",
-<<<<<<< HEAD
-			  "NC", /* GPIO32 */
-			  "NC", /* GPIO33 */
-			  "NC", /* GPIO34 */
-			  "NC", /* GPIO35 */
-			  "NC", /* GPIO36 */
-			  "NC", /* GPIO37 */
-			  "NC", /* GPIO38 */
-			  "NC", /* GPIO39 */
-=======
 			  "", /* GPIO32 */
 			  "", /* GPIO33 */
 			  "", /* GPIO34 */
@@ -90,7 +71,6 @@
 			  "", /* GPIO37 */
 			  "", /* GPIO38 */
 			  "", /* GPIO39 */
->>>>>>> origin/linux_6.1.15_upstream
 			  "PWM0_OUT",
 			  "", /* GPIO41 */
 			  "", /* GPIO42 */

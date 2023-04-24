@@ -356,14 +356,6 @@ int ksmbd_smb2_check_message(struct ksmbd_work *work)
 	__u32 clc_len;  /* calculated length */
 	__u32 len = get_rfc1002_len(work->request_buf);
 
-<<<<<<< HEAD
-	if (work->next_smb2_rcv_hdr_off) {
-		pdu = ksmbd_req_buf_next(work);
-		hdr = &pdu->hdr;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (le32_to_cpu(hdr->NextCommand) > 0)
 		len = le32_to_cpu(hdr->NextCommand);
 	else if (work->next_smb2_rcv_hdr_off)

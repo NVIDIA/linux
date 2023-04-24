@@ -1490,11 +1490,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	if (!psinfo)
 		goto end_coredump;
 
-<<<<<<< HEAD
-	for (ct = current->mm->core_state->dumper.next;
-=======
 	for (ct = current->signal->core_state->dumper.next;
->>>>>>> origin/linux_6.1.15_upstream
 					ct; ct = ct->next) {
 		tmp = elf_dump_thread_status(cprm->siginfo->si_signo,
 					     ct->task, &thread_status_size);
@@ -1513,11 +1509,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	tmp->next = thread_list;
 	thread_list = tmp;
 
-<<<<<<< HEAD
-	segs = cprm->vma_count + elf_core_extra_phdrs();
-=======
 	segs = cprm->vma_count + elf_core_extra_phdrs(cprm);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* for notes section */
 	segs++;
@@ -1563,11 +1555,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	dataoff = offset = roundup(offset, ELF_EXEC_PAGESIZE);
 
 	offset += cprm->vma_data_size;
-<<<<<<< HEAD
-	offset += elf_core_extra_data_size();
-=======
 	offset += elf_core_extra_data_size(cprm);
->>>>>>> origin/linux_6.1.15_upstream
 	e_shoff = offset;
 
 	if (e_phnum == PN_XNUM) {

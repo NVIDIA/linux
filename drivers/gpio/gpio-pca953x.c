@@ -1226,25 +1226,15 @@ static int pca953x_regcache_sync(struct device *dev)
 	 * The ordering between direction and output is important,
 	 * sync these registers first and only then sync the rest.
 	 */
-<<<<<<< HEAD
-	regaddr = pca953x_recalc_addr(chip, chip->regs->direction, 0);
-	ret = regcache_sync_region(chip->regmap, regaddr, regaddr + NBANK(chip));
-=======
 	regaddr = chip->recalc_addr(chip, chip->regs->direction, 0);
 	ret = regcache_sync_region(chip->regmap, regaddr, regaddr + NBANK(chip) - 1);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret) {
 		dev_err(dev, "Failed to sync GPIO dir registers: %d\n", ret);
 		return ret;
 	}
 
-<<<<<<< HEAD
-	regaddr = pca953x_recalc_addr(chip, chip->regs->output, 0);
-	ret = regcache_sync_region(chip->regmap, regaddr, regaddr + NBANK(chip));
-=======
 	regaddr = chip->recalc_addr(chip, chip->regs->output, 0);
 	ret = regcache_sync_region(chip->regmap, regaddr, regaddr + NBANK(chip) - 1);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret) {
 		dev_err(dev, "Failed to sync GPIO out registers: %d\n", ret);
 		return ret;
@@ -1252,30 +1242,18 @@ static int pca953x_regcache_sync(struct device *dev)
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
 	if (chip->driver_data & PCA_PCAL) {
-<<<<<<< HEAD
-		regaddr = pca953x_recalc_addr(chip, PCAL953X_IN_LATCH, 0);
-		ret = regcache_sync_region(chip->regmap, regaddr,
-					   regaddr + NBANK(chip));
-=======
 		regaddr = chip->recalc_addr(chip, PCAL953X_IN_LATCH, 0);
 		ret = regcache_sync_region(chip->regmap, regaddr,
 					   regaddr + NBANK(chip) - 1);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret) {
 			dev_err(dev, "Failed to sync INT latch registers: %d\n",
 				ret);
 			return ret;
 		}
 
-<<<<<<< HEAD
-		regaddr = pca953x_recalc_addr(chip, PCAL953X_INT_MASK, 0);
-		ret = regcache_sync_region(chip->regmap, regaddr,
-					   regaddr + NBANK(chip));
-=======
 		regaddr = chip->recalc_addr(chip, PCAL953X_INT_MASK, 0);
 		ret = regcache_sync_region(chip->regmap, regaddr,
 					   regaddr + NBANK(chip) - 1);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret) {
 			dev_err(dev, "Failed to sync INT mask registers: %d\n",
 				ret);

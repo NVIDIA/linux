@@ -455,14 +455,11 @@ static inline struct rxe_mw *to_rmw(struct ib_mw *mw)
 	return mw ? container_of(mw, struct rxe_mw, ibmw) : NULL;
 }
 
-<<<<<<< HEAD
-=======
 static inline struct rxe_pd *rxe_ah_pd(struct rxe_ah *ah)
 {
 	return to_rpd(ah->ibah.pd);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static inline struct rxe_pd *mr_pd(struct rxe_mr *mr)
 {
 	return to_rpd(mr->ibmr.pd);

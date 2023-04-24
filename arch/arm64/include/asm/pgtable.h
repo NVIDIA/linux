@@ -1090,15 +1090,12 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
  */
 #define arch_wants_old_prefaulted_pte	cpu_has_hw_af
 
-<<<<<<< HEAD
-=======
 static inline bool pud_sect_supported(void)
 {
 	return PAGE_SIZE == SZ_4K;
 }
 
 
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* !__ASSEMBLY__ */
 
 #endif /* __ASM_PGTABLE_H */

@@ -101,15 +101,6 @@ static int dwc3_xlnx_init_zynqmp(struct dwc3_xlnx *priv_data)
 {
 	struct device		*dev = priv_data->dev;
 	struct reset_control	*crst, *hibrst, *apbrst;
-<<<<<<< HEAD
-	struct phy		*usb3_phy;
-	int			ret = 0;
-	u32			reg;
-
-	usb3_phy = devm_phy_optional_get(dev, "usb3-phy");
-	if (IS_ERR(usb3_phy)) {
-		ret = PTR_ERR(usb3_phy);
-=======
 	struct gpio_desc	*reset_gpio;
 	int			ret = 0;
 	u32			reg;
@@ -117,7 +108,6 @@ static int dwc3_xlnx_init_zynqmp(struct dwc3_xlnx *priv_data)
 	priv_data->usb3_phy = devm_phy_optional_get(dev, "usb3-phy");
 	if (IS_ERR(priv_data->usb3_phy)) {
 		ret = PTR_ERR(priv_data->usb3_phy);
->>>>>>> origin/linux_6.1.15_upstream
 		dev_err_probe(dev, ret,
 			      "failed to get USB3 PHY\n");
 		goto err;
@@ -132,11 +122,7 @@ static int dwc3_xlnx_init_zynqmp(struct dwc3_xlnx *priv_data)
 	 * in use but the usb3-phy entry is missing from the device tree.
 	 * Therefore, skip these operations in this case.
 	 */
-<<<<<<< HEAD
-	if (!usb3_phy)
-=======
 	if (!priv_data->usb3_phy)
->>>>>>> origin/linux_6.1.15_upstream
 		goto skip_usb3_phy;
 
 	crst = devm_reset_control_get_exclusive(dev, "usb_crst");
@@ -218,8 +204,6 @@ static int dwc3_xlnx_init_zynqmp(struct dwc3_xlnx *priv_data)
 	}
 
 skip_usb3_phy:
-<<<<<<< HEAD
-=======
 	/* ulpi reset via gpio-modepin or gpio-framework driver */
 	reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(reset_gpio)) {
@@ -235,7 +219,6 @@ skip_usb3_phy:
 		usleep_range(5000, 10000);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * This routes the USB DMA traffic to go through FPD path instead
 	 * of reaching DDR directly. This traffic routing is needed to

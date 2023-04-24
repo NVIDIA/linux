@@ -493,11 +493,7 @@ void fsnotify_free_mark(struct fsnotify_mark *mark)
 void fsnotify_destroy_mark(struct fsnotify_mark *mark,
 			   struct fsnotify_group *group)
 {
-<<<<<<< HEAD
-	mutex_lock(&group->mark_mutex);
-=======
 	fsnotify_group_lock(group);
->>>>>>> origin/linux_6.1.15_upstream
 	fsnotify_detach_mark(mark);
 	fsnotify_group_unlock(group);
 	fsnotify_free_mark(mark);
@@ -808,11 +804,7 @@ void fsnotify_clear_marks_by_group(struct fsnotify_group *group,
 	 * move marks to free to to_free list in one go and then free marks in
 	 * to_free list one by one.
 	 */
-<<<<<<< HEAD
-	mutex_lock(&group->mark_mutex);
-=======
 	fsnotify_group_lock(group);
->>>>>>> origin/linux_6.1.15_upstream
 	list_for_each_entry_safe(mark, lmark, &group->marks_list, g_list) {
 		if (mark->connector->type == obj_type)
 			list_move(&mark->g_list, &to_free);
@@ -821,11 +813,7 @@ void fsnotify_clear_marks_by_group(struct fsnotify_group *group,
 
 clear:
 	while (1) {
-<<<<<<< HEAD
-		mutex_lock(&group->mark_mutex);
-=======
 		fsnotify_group_lock(group);
->>>>>>> origin/linux_6.1.15_upstream
 		if (list_empty(head)) {
 			fsnotify_group_unlock(group);
 			break;

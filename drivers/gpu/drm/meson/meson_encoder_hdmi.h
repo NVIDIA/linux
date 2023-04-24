@@ -8,9 +8,6 @@
 #define __MESON_ENCODER_HDMI_H
 
 int meson_encoder_hdmi_init(struct meson_drm *priv);
-<<<<<<< HEAD
-=======
 void meson_encoder_hdmi_remove(struct meson_drm *priv);
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* __MESON_ENCODER_HDMI_H */

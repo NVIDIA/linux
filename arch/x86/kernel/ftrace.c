@@ -304,11 +304,7 @@ union ftrace_op_code_union {
 	} __attribute__((packed));
 };
 
-<<<<<<< HEAD
-#define RET_SIZE		1 + IS_ENABLED(CONFIG_SLS)
-=======
 #define RET_SIZE		(IS_ENABLED(CONFIG_RETPOLINE) ? 5 : 1 + IS_ENABLED(CONFIG_SLS))
->>>>>>> origin/linux_6.1.15_upstream
 
 static unsigned long
 create_trampoline(struct ftrace_ops *ops, unsigned int *tramp_size)

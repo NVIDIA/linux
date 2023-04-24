@@ -74,84 +74,6 @@ struct atusb_chip_data {
 	int (*set_txpower)(struct ieee802154_hw*, s32);
 };
 
-<<<<<<< HEAD
-/* ----- USB commands without data ----------------------------------------- */
-
-/* To reduce the number of error checks in the code, we record the first error
- * in atusb->err and reject all subsequent requests until the error is cleared.
- */
-
-static int atusb_control_msg(struct atusb *atusb, unsigned int pipe,
-			     __u8 request, __u8 requesttype,
-			     __u16 value, __u16 index,
-			     void *data, __u16 size, int timeout)
-{
-	struct usb_device *usb_dev = atusb->usb_dev;
-	int ret;
-
-	if (atusb->err)
-		return atusb->err;
-
-	ret = usb_control_msg(usb_dev, pipe, request, requesttype,
-			      value, index, data, size, timeout);
-	if (ret < size) {
-		ret = ret < 0 ? ret : -ENODATA;
-
-		atusb->err = ret;
-		dev_err(&usb_dev->dev,
-			"%s: req 0x%02x val 0x%x idx 0x%x, error %d\n",
-			__func__, request, value, index, ret);
-	}
-	return ret;
-}
-
-static int atusb_command(struct atusb *atusb, u8 cmd, u8 arg)
-{
-	struct usb_device *usb_dev = atusb->usb_dev;
-
-	dev_dbg(&usb_dev->dev, "%s: cmd = 0x%x\n", __func__, cmd);
-	return atusb_control_msg(atusb, usb_sndctrlpipe(usb_dev, 0),
-				 cmd, ATUSB_REQ_TO_DEV, arg, 0, NULL, 0, 1000);
-}
-
-static int atusb_write_reg(struct atusb *atusb, u8 reg, u8 value)
-{
-	struct usb_device *usb_dev = atusb->usb_dev;
-
-	dev_dbg(&usb_dev->dev, "%s: 0x%02x <- 0x%02x\n", __func__, reg, value);
-	return atusb_control_msg(atusb, usb_sndctrlpipe(usb_dev, 0),
-				 ATUSB_REG_WRITE, ATUSB_REQ_TO_DEV,
-				 value, reg, NULL, 0, 1000);
-}
-
-static int atusb_read_reg(struct atusb *atusb, u8 reg)
-{
-	struct usb_device *usb_dev = atusb->usb_dev;
-	int ret;
-	u8 *buffer;
-	u8 value;
-
-	buffer = kmalloc(1, GFP_KERNEL);
-	if (!buffer)
-		return -ENOMEM;
-
-	dev_dbg(&usb_dev->dev, "%s: reg = 0x%x\n", __func__, reg);
-	ret = atusb_control_msg(atusb, usb_rcvctrlpipe(usb_dev, 0),
-				ATUSB_REG_READ, ATUSB_REQ_FROM_DEV,
-				0, reg, buffer, 1, 1000);
-
-	if (ret >= 0) {
-		value = buffer[0];
-		kfree(buffer);
-		return value;
-	} else {
-		kfree(buffer);
-		return ret;
-	}
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int atusb_write_subreg(struct atusb *atusb, u8 reg, u8 mask,
 			      u8 shift, u8 value)
 {
@@ -848,10 +770,6 @@ static int atusb_get_and_show_build(struct atusb *atusb)
 	if (!build)
 		return -ENOMEM;
 
-<<<<<<< HEAD
-	/* We cannot call atusb_control_msg() here, since this request may read various length data */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	ret = usb_control_msg(atusb->usb_dev, usb_rcvctrlpipe(usb_dev, 0), ATUSB_BUILD,
 			      ATUSB_REQ_FROM_DEV, 0, 0, build, ATUSB_BUILD_SIZE, 1000);
 	if (ret >= 0) {

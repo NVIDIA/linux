@@ -518,11 +518,6 @@
 &io_domains {
 	audio-supply = <&vcca1v8_codec>;
 	bt656-supply = <&vcc_3v0>;
-<<<<<<< HEAD
-	audio-supply = <&vcc1v8_codec>;
-	sdmmc-supply = <&vcc_sdio>;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	gpio1830-supply = <&vcc_3v0>;
 	sdmmc-supply = <&vcc_sdio>;
 	status = "okay";

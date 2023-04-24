@@ -104,16 +104,6 @@ static void mdp5_plane_reset(struct drm_plane *plane)
 	mdp5_state = kzalloc(sizeof(*mdp5_state), GFP_KERNEL);
 	if (!mdp5_state)
 		return;
-<<<<<<< HEAD
-
-	if (plane->type == DRM_PLANE_TYPE_PRIMARY)
-		mdp5_state->base.zpos = STAGE_BASE;
-	else
-		mdp5_state->base.zpos = STAGE0 + drm_plane_index(plane);
-	mdp5_state->base.normalized_zpos = mdp5_state->base.zpos;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	__drm_atomic_helper_plane_reset(plane, &mdp5_state->base);
 }
 

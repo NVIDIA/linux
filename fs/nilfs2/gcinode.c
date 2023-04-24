@@ -129,14 +129,8 @@ int nilfs_gccache_submit_read_node(struct inode *inode, sector_t pbn,
 	struct inode *btnc_inode = NILFS_I(inode)->i_assoc_inode;
 	int ret;
 
-<<<<<<< HEAD
-	ret = nilfs_btnode_submit_block(btnc_inode->i_mapping,
-					vbn ? : pbn, pbn, REQ_OP_READ, 0,
-					out_bh, &pbn);
-=======
 	ret = nilfs_btnode_submit_block(btnc_inode->i_mapping, vbn ? : pbn, pbn,
 					REQ_OP_READ, out_bh, &pbn);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret == -EEXIST) /* internal code (cache hit) */
 		ret = 0;
 	return ret;

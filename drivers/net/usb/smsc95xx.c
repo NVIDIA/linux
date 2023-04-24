@@ -1083,10 +1083,7 @@ static void smsc95xx_handle_link_change(struct net_device *net)
 	struct usbnet *dev = netdev_priv(net);
 
 	phy_print_status(net->phydev);
-<<<<<<< HEAD
-=======
 	smsc95xx_mac_update_fullduplex(dev);
->>>>>>> origin/linux_6.1.15_upstream
 	usbnet_defer_kevent(dev, EVENT_LINK_CHANGE);
 }
 
@@ -1998,10 +1995,6 @@ static const struct driver_info smsc95xx_info = {
 	.description	= "smsc95xx USB 2.0 Ethernet",
 	.bind		= smsc95xx_bind,
 	.unbind		= smsc95xx_unbind,
-<<<<<<< HEAD
-	.link_reset	= smsc95xx_link_reset,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	.reset		= smsc95xx_reset,
 	.check_connect	= smsc95xx_start_phy,
 	.stop		= smsc95xx_stop,

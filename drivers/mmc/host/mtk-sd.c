@@ -930,10 +930,7 @@ static void msdc_set_mclk(struct msdc_host *host, unsigned char timing, u32 hz)
 			      MSDC_CFG_CKMOD_EXTRA | MSDC_CFG_CKDIV_EXTRA,
 			      (mode << 12) | div);
 
-<<<<<<< HEAD
-=======
 	clk_prepare_enable(host->src_clk_cg);
->>>>>>> origin/linux_6.1.15_upstream
 	readl_poll_timeout(host->base + MSDC_CFG, val, (val & MSDC_CFG_CKSTB), 0, 0);
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_CKPDN);
 	mmc->actual_clock = sclk;
@@ -1406,14 +1403,6 @@ static void msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP,
 				1);
 
-<<<<<<< HEAD
-		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
-						!(val & MSDC_DMA_CFG_STS), 1, 20000);
-		if (ret) {
-			dev_dbg(host->dev, "DMA stop timed out\n");
-			return false;
-		}
-=======
 		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
 						!(val & MSDC_DMA_CTRL_STOP), 1, 20000);
 		if (ret)
@@ -1423,7 +1412,6 @@ static void msdc_data_xfer_done(struct msdc_host *host, u32 events,
 						!(val & MSDC_DMA_CFG_STS), 1, 20000);
 		if (ret)
 			dev_dbg(host->dev, "DMA inactive timed out\n");
->>>>>>> origin/linux_6.1.15_upstream
 
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
 		dev_dbg(host->dev, "DMA stop\n");
@@ -2479,12 +2467,9 @@ static void msdc_cqe_disable(struct mmc_host *mmc, bool recovery)
 	if (recovery) {
 		sdr_set_field(host->base + MSDC_DMA_CTRL,
 			      MSDC_DMA_CTRL_STOP, 1);
-<<<<<<< HEAD
-=======
 		if (WARN_ON(readl_poll_timeout(host->base + MSDC_DMA_CTRL, val,
 			!(val & MSDC_DMA_CTRL_STOP), 1, 3000)))
 			return;
->>>>>>> origin/linux_6.1.15_upstream
 		if (WARN_ON(readl_poll_timeout(host->base + MSDC_DMA_CFG, val,
 			!(val & MSDC_DMA_CFG_STS), 1, 3000)))
 			return;

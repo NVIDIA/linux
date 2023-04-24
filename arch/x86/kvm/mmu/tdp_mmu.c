@@ -219,11 +219,7 @@ static struct kvm_mmu_page *tdp_mmu_next_root(struct kvm *kvm,
 
 	while (next_root) {
 		if ((!only_valid || !next_root->role.invalid) &&
-<<<<<<< HEAD
-		    kvm_tdp_mmu_get_root(kvm, next_root))
-=======
 		    kvm_tdp_mmu_get_root(next_root))
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 
 		next_root = list_next_or_null_rcu(&kvm->arch.tdp_mmu_roots,
@@ -252,29 +248,12 @@ static struct kvm_mmu_page *tdp_mmu_next_root(struct kvm *kvm,
 	for (_root = tdp_mmu_next_root(_kvm, NULL, _shared, _only_valid);	\
 	     _root;								\
 	     _root = tdp_mmu_next_root(_kvm, _root, _shared, _only_valid))	\
-<<<<<<< HEAD
-		if (kvm_mmu_page_as_id(_root) != _as_id) {			\
-=======
 		if (kvm_lockdep_assert_mmu_lock_held(_kvm, _shared) &&		\
 		    kvm_mmu_page_as_id(_root) != _as_id) {			\
->>>>>>> origin/linux_6.1.15_upstream
 		} else
 
 #define for_each_valid_tdp_mmu_root_yield_safe(_kvm, _root, _as_id, _shared)	\
 	__for_each_tdp_mmu_root_yield_safe(_kvm, _root, _as_id, _shared, true)
-<<<<<<< HEAD
-
-#define for_each_tdp_mmu_root_yield_safe(_kvm, _root, _as_id, _shared)		\
-	__for_each_tdp_mmu_root_yield_safe(_kvm, _root, _as_id, _shared, false)
-
-#define for_each_tdp_mmu_root(_kvm, _root, _as_id)				\
-	list_for_each_entry_rcu(_root, &_kvm->arch.tdp_mmu_roots, link,		\
-				lockdep_is_held_type(&kvm->mmu_lock, 0) ||	\
-				lockdep_is_held(&kvm->arch.tdp_mmu_pages_lock))	\
-		if (kvm_mmu_page_as_id(_root) != _as_id) {		\
-		} else
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 #define for_each_tdp_mmu_root_yield_safe(_kvm, _root, _as_id)			\
 	__for_each_tdp_mmu_root_yield_safe(_kvm, _root, _as_id, false, false)
@@ -337,11 +316,6 @@ hpa_t kvm_tdp_mmu_get_vcpu_root_hpa(struct kvm_vcpu *vcpu)
 
 	lockdep_assert_held_write(&kvm->mmu_lock);
 
-<<<<<<< HEAD
-	role = page_role_for_level(vcpu, vcpu->arch.mmu->shadow_root_level);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Check for an existing root before allocating a new one.  Note, the
 	 * role check prevents consuming an invalid root.
@@ -462,17 +436,10 @@ static void handle_removed_pt(struct kvm *kvm, tdp_ptep_t pt, bool shared)
 
 	tdp_mmu_unlink_sp(kvm, sp, shared);
 
-<<<<<<< HEAD
-	for (i = 0; i < PT64_ENT_PER_PAGE; i++) {
-		u64 *sptep = rcu_dereference(pt) + i;
-		gfn_t gfn = base_gfn + i * KVM_PAGES_PER_HPAGE(level);
-		u64 old_child_spte;
-=======
 	for (i = 0; i < SPTE_ENT_PER_PAGE; i++) {
 		tdp_ptep_t sptep = pt + i;
 		gfn_t gfn = base_gfn + i * KVM_PAGES_PER_HPAGE(level);
 		u64 old_spte;
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (shared) {
 			/*
@@ -538,12 +505,6 @@ static void handle_removed_pt(struct kvm *kvm, tdp_ptep_t pt, bool shared)
 				    old_spte, REMOVED_SPTE, level, shared);
 	}
 
-<<<<<<< HEAD
-	kvm_flush_remote_tlbs_with_address(kvm, base_gfn,
-					   KVM_PAGES_PER_HPAGE(level + 1));
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	call_rcu(&sp->rcu_head, tdp_mmu_free_sp_rcu_callback);
 }
 
@@ -682,13 +643,7 @@ static inline int tdp_mmu_set_spte_atomic(struct kvm *kvm,
 					  struct tdp_iter *iter,
 					  u64 new_spte)
 {
-<<<<<<< HEAD
-	WARN_ON_ONCE(iter->yielded);
-
-	lockdep_assert_held_read(&kvm->mmu_lock);
-=======
 	u64 *sptep = rcu_dereference(iter->sptep);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * The caller is responsible for ensuring the old SPTE is not a REMOVED
@@ -1277,18 +1232,8 @@ int kvm_tdp_mmu_map(struct kvm_vcpu *vcpu, struct kvm_page_fault *fault)
 bool kvm_tdp_mmu_unmap_gfn_range(struct kvm *kvm, struct kvm_gfn_range *range,
 				 bool flush)
 {
-<<<<<<< HEAD
-	struct kvm_mmu_page *root;
-
-	for_each_tdp_mmu_root(kvm, root, range->slot->as_id)
-		flush = zap_gfn_range(kvm, root, range->start, range->end,
-				      range->may_block, flush, false);
-
-	return flush;
-=======
 	return kvm_tdp_mmu_zap_leafs(kvm, range->slot->as_id, range->start,
 				     range->end, range->may_block, flush);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 typedef bool (*tdp_handler_t)(struct kvm *kvm, struct tdp_iter *iter,
@@ -1786,13 +1731,6 @@ void kvm_tdp_mmu_clear_dirty_pt_masked(struct kvm *kvm,
 		clear_dirty_pt_masked(kvm, root, gfn, mask, wrprot);
 }
 
-<<<<<<< HEAD
-/*
- * Clear leaf entries which could be replaced by large mappings, for
- * GFNs within the slot.
- */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void zap_collapsible_spte_range(struct kvm *kvm,
 				       struct kvm_mmu_page *root,
 				       const struct kvm_memory_slot *slot)
@@ -1821,17 +1759,6 @@ retry:
 		if (is_last_spte(iter.old_spte, iter.level))
 			continue;
 
-<<<<<<< HEAD
-		/* Note, a successful atomic zap also does a remote TLB flush. */
-		if (!tdp_mmu_zap_spte_atomic(kvm, &iter)) {
-			/*
-			 * The iter must explicitly re-read the SPTE because
-			 * the atomic cmpxchg failed.
-			 */
-			iter.old_spte = READ_ONCE(*rcu_dereference(iter.sptep));
-			goto retry;
-		}
-=======
 		/*
 		 * If iter.gfn resides outside of the slot, i.e. the page for
 		 * the current level overlaps but is not contained by the slot,
@@ -1850,7 +1777,6 @@ retry:
 		/* Note, a successful atomic zap also does a remote TLB flush. */
 		if (tdp_mmu_zap_spte_atomic(kvm, &iter))
 			goto retry;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	rcu_read_unlock();

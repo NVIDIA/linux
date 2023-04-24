@@ -1004,8 +1004,6 @@ static irqreturn_t phy_interrupt(int irq, void *phy_dat)
 	struct phy_device *phydev = phy_dat;
 	struct phy_driver *drv = phydev->drv;
 	irqreturn_t ret;
-<<<<<<< HEAD
-=======
 
 	/* Wakeup interrupts may occur during a system sleep transition.
 	 * Postpone handling until the PHY has resumed.
@@ -1028,7 +1026,6 @@ static irqreturn_t phy_interrupt(int irq, void *phy_dat)
 		disable_irq_nosync(irq);
 		return IRQ_HANDLED;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_lock(&phydev->lock);
 	ret = drv->handle_interrupt(phydev);

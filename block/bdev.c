@@ -1050,11 +1050,7 @@ void sync_bdevs(bool wait)
 		bdev = I_BDEV(inode);
 
 		mutex_lock(&bdev->bd_disk->open_mutex);
-<<<<<<< HEAD
-		if (!bdev->bd_openers) {
-=======
 		if (!atomic_read(&bdev->bd_openers)) {
->>>>>>> origin/linux_6.1.15_upstream
 			; /* skip */
 		} else if (wait) {
 			/*

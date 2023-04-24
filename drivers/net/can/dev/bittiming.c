@@ -14,11 +14,7 @@
 static int can_fixup_bittiming(const struct net_device *dev, struct can_bittiming *bt,
 			       const struct can_bittiming_const *btc)
 {
-<<<<<<< HEAD
-	struct can_priv *priv = netdev_priv(dev);
-=======
 	const struct can_priv *priv = netdev_priv(dev);
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned int tseg1, alltseg;
 	u64 brp64;
 

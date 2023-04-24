@@ -149,12 +149,6 @@ void __init mpc8xx_pic_init(void)
 	mpc8xx_pic_host = irq_domain_add_linear(np, 64, &mpc8xx_pic_host_ops, NULL);
 	if (!mpc8xx_pic_host)
 		printk(KERN_ERR "MPC8xx PIC: failed to allocate irq host!\n");
-<<<<<<< HEAD
-		ret = -ENOMEM;
-		goto out;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 out:
 	of_node_put(np);

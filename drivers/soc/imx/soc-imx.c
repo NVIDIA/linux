@@ -38,12 +38,6 @@ static int __init imx_soc_device_init(void)
 
 	/* Return early if this is running on devices with different SoCs */
 	if (!__mxc_cpu_type)
-<<<<<<< HEAD
-		return 0;
-
-	if (of_machine_is_compatible("fsl,ls1021a"))
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 
 	soc_dev_attr = kzalloc(sizeof(*soc_dev_attr), GFP_KERNEL);

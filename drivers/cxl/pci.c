@@ -283,15 +283,9 @@ static int cxl_map_regblock(struct pci_dev *pdev, struct cxl_register_map *map)
 
 	/* Basic sanity check that BAR is big enough */
 	if (pci_resource_len(pdev, bar) < offset) {
-<<<<<<< HEAD
-		dev_err(dev, "BAR%d: %pr: too small (offset: %#llx)\n", bar,
-			&pdev->resource[bar], (unsigned long long)offset);
-		return NULL;
-=======
 		dev_err(dev, "BAR%d: %pr: too small (offset: %pa)\n", bar,
 			&pdev->resource[bar], &offset);
 		return -ENXIO;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	addr = pci_iomap(pdev, bar, 0);

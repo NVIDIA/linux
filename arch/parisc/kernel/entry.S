@@ -1738,11 +1738,7 @@ syscall_restore:
 	mfctl	%cr30,%r1
 
 	/* Are we being ptraced? */
-<<<<<<< HEAD
-	LDREG	TI_FLAGS-THREAD_SZ_ALGN-FRAME_SIZE(%r30),%r19
-=======
 	LDREG	TASK_TI_FLAGS(%r1),%r19
->>>>>>> origin/linux_6.1.15_upstream
 	ldi	_TIF_SINGLESTEP|_TIF_BLOCKSTEP,%r2
 	and,COND(=)	%r19,%r2,%r0
 	b,n	syscall_restore_rfi

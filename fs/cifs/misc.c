@@ -77,10 +77,7 @@ sesInfoAlloc(void)
 		INIT_LIST_HEAD(&ret_buf->tcon_list);
 		mutex_init(&ret_buf->session_mutex);
 		spin_lock_init(&ret_buf->iface_lock);
-<<<<<<< HEAD
-=======
 		INIT_LIST_HEAD(&ret_buf->iface_list);
->>>>>>> origin/linux_6.1.15_upstream
 		spin_lock_init(&ret_buf->chan_lock);
 	}
 	return ret_buf;

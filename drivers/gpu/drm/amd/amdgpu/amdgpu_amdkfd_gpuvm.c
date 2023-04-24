@@ -2780,14 +2780,9 @@ int amdgpu_amdkfd_gpuvm_restore_process_bos(void *info, struct dma_fence **ef)
 		if (mem->bo->tbo.pin_count)
 			continue;
 
-<<<<<<< HEAD
-		amdgpu_bo_fence(mem->bo,
-			&process_info->eviction_fence->base, true);
-=======
 		dma_resv_add_fence(mem->bo->tbo.base.resv,
 				   &process_info->eviction_fence->base,
 				   DMA_RESV_USAGE_BOOKKEEP);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	/* Attach eviction fence to PD / PT BOs */
 	list_for_each_entry(peer_vm, &process_info->vm_list_head,

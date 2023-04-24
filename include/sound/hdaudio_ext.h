@@ -84,15 +84,9 @@ void snd_hdac_link_free_all(struct hdac_bus *bus);
 struct hdac_ext_stream *snd_hdac_ext_stream_assign(struct hdac_bus *bus,
 					   struct snd_pcm_substream *substream,
 					   int type);
-<<<<<<< HEAD
-void snd_hdac_ext_stream_release(struct hdac_ext_stream *azx_dev, int type);
-void snd_hdac_ext_stream_decouple_locked(struct hdac_bus *bus,
-				  struct hdac_ext_stream *azx_dev, bool decouple);
-=======
 void snd_hdac_ext_stream_release(struct hdac_ext_stream *hext_stream, int type);
 void snd_hdac_ext_stream_decouple_locked(struct hdac_bus *bus,
 					 struct hdac_ext_stream *hext_stream, bool decouple);
->>>>>>> origin/linux_6.1.15_upstream
 void snd_hdac_ext_stream_decouple(struct hdac_bus *bus,
 				struct hdac_ext_stream *azx_dev, bool decouple);
 

@@ -5,10 +5,7 @@
 #include "en/params.h"
 #include "en/txrx.h"
 #include "en/health.h"
-<<<<<<< HEAD
-=======
 #include <net/xdp_sock_drv.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 /* The limitation of 2048 can be altered, but shouldn't go beyond the minimal
  * stride size of striding RQ.
@@ -176,11 +173,6 @@ void mlx5e_activate_xsk(struct mlx5e_channel *c)
 	mlx5e_reporter_icosq_suspend_recovery(c);
 	set_bit(MLX5E_RQ_STATE_ENABLED, &c->xskrq.state);
 	mlx5e_reporter_icosq_resume_recovery(c);
-<<<<<<< HEAD
-
-	/* TX queue is created active. */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* TX queue is created active. */
 }

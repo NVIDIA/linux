@@ -53,8 +53,6 @@ static int mv88e6xxx_serdes_pcs_get_state(struct mv88e6xxx_chip *chip,
 					  u16 bmsr, u16 lpa, u16 status,
 					  struct phylink_link_state *state)
 {
-<<<<<<< HEAD
-=======
 	state->link = false;
 
 	/* If the BMSR reports that the link had failed, report this to
@@ -63,7 +61,6 @@ static int mv88e6xxx_serdes_pcs_get_state(struct mv88e6xxx_chip *chip,
 	if (!(bmsr & BMSR_LSTATUS))
 		return 0;
 
->>>>>>> origin/linux_6.1.15_upstream
 	state->link = !!(status & MV88E6390_SGMII_PHY_STATUS_LINK);
 	state->an_complete = !!(bmsr & BMSR_ANEGCOMPLETE);
 
@@ -202,11 +199,7 @@ int mv88e6352_serdes_pcs_get_state(struct mv88e6xxx_chip *chip, int port,
 
 	err = mv88e6352_serdes_read(chip, MII_BMSR, &bmsr);
 	if (err) {
-<<<<<<< HEAD
-		dev_err(chip->dev, "can't read Serdes BMSR: %d\n", err);
-=======
 		dev_err(chip->dev, "can't read Serdes PHY BMSR: %d\n", err);
->>>>>>> origin/linux_6.1.15_upstream
 		return err;
 	}
 
@@ -1323,11 +1316,6 @@ void mv88e6390_serdes_get_regs(struct mv88e6xxx_chip *chip, int port, void *_p)
 	}
 }
 
-<<<<<<< HEAD
-static int mv88e6393x_serdes_power_lane(struct mv88e6xxx_chip *chip, int lane,
-					bool on)
-{
-=======
 static const int mv88e6352_serdes_p2p_to_reg[] = {
 	/* Index of value in microvolts corresponds to the register value */
 	14000, 112000, 210000, 308000, 406000, 504000, 602000, 700000,
@@ -1369,7 +1357,6 @@ int mv88e6352_serdes_set_tx_amplitude(struct mv88e6xxx_chip *chip, int port,
 static int mv88e6393x_serdes_power_lane(struct mv88e6xxx_chip *chip, int lane,
 					bool on)
 {
->>>>>>> origin/linux_6.1.15_upstream
 	u16 reg;
 	int err;
 
@@ -1540,7 +1527,6 @@ static int mv88e6393x_serdes_fix_2500basex_an(struct mv88e6xxx_chip *chip,
 	 */
 	err = mv88e6390_serdes_read(chip, lane, MDIO_MMD_PHYXS,
 				    MV88E6393X_SERDES_POC, &reg);
-<<<<<<< HEAD
 	if (err)
 		return err;
 
@@ -1561,28 +1547,6 @@ static int mv88e6393x_serdes_fix_2500basex_an(struct mv88e6xxx_chip *chip,
 	if (err)
 		return err;
 
-=======
-	if (err)
-		return err;
-
-	reg &= ~(MV88E6393X_SERDES_POC_PCS_MASK | MV88E6393X_SERDES_POC_AN);
-	if (on)
-		reg |= MV88E6393X_SERDES_POC_PCS_1000BASEX |
-		       MV88E6393X_SERDES_POC_AN;
-	else
-		reg |= MV88E6393X_SERDES_POC_PCS_2500BASEX;
-	reg |= MV88E6393X_SERDES_POC_RESET;
-
-	err = mv88e6390_serdes_write(chip, lane, MDIO_MMD_PHYXS,
-				     MV88E6393X_SERDES_POC, reg);
-	if (err)
-		return err;
-
-	err = mv88e6390_serdes_write(chip, lane, MDIO_MMD_VEND1, 0x8000, 0x58);
-	if (err)
-		return err;
-
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

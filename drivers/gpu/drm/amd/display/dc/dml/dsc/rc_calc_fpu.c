@@ -61,19 +61,6 @@ static double dsc_roundf(double num)
 	return (int)(num);
 }
 
-<<<<<<< HEAD
-static double dsc_ceil(double num)
-{
-	double retval = (int)num;
-
-	if (retval != num && num > 0)
-		retval = num + 1;
-
-	return (int)retval;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void get_qp_set(qp_set qps, enum colour_mode cm, enum bits_per_comp bpc,
 		       enum max_min max_min, float bpp)
 {
@@ -81,11 +68,7 @@ static void get_qp_set(qp_set qps, enum colour_mode cm, enum bits_per_comp bpc,
 	int sel = table_hash(mode, bpc, max_min);
 	int table_size = 0;
 	int index;
-<<<<<<< HEAD
-	const struct qp_entry *table = 0L;
-=======
 	const struct qp_entry *table = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	// alias enum
 	enum { min = DAL_MM_MIN, max = DAL_MM_MAX };
@@ -110,11 +93,7 @@ static void get_qp_set(qp_set qps, enum colour_mode cm, enum bits_per_comp bpc,
 		TABLE_CASE(420, 12, min);
 	}
 
-<<<<<<< HEAD
-	if (table == 0)
-=======
 	if (!table)
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	index = (bpp - table[0].bpp) * 2;
@@ -279,27 +258,3 @@ void _do_calc_rc_params(struct rc_params *rc,
 	rc->rc_buf_thresh[13] = 8064;
 }
 
-<<<<<<< HEAD
-u32 _do_bytes_per_pixel_calc(int slice_width,
-		u16 drm_bpp,
-		bool is_navite_422_or_420)
-{
-	float bpp;
-	u32 bytes_per_pixel;
-	double d_bytes_per_pixel;
-
-	dc_assert_fp_enabled();
-
-	bpp = ((float)drm_bpp / 16.0);
-	d_bytes_per_pixel = dsc_ceil(bpp * slice_width / 8.0) / slice_width;
-	// TODO: Make sure the formula for calculating this is precise (ceiling
-	// vs. floor, and at what point they should be applied)
-	if (is_navite_422_or_420)
-		d_bytes_per_pixel /= 2;
-
-	bytes_per_pixel = (u32)dsc_ceil(d_bytes_per_pixel * 0x10000000);
-
-	return bytes_per_pixel;
-}
-=======
->>>>>>> origin/linux_6.1.15_upstream

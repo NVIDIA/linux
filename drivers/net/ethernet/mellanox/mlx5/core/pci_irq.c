@@ -330,37 +330,6 @@ struct mlx5_irq_pool *mlx5_irq_pool_get(struct mlx5_core_dev *dev)
 	struct mlx5_irq_table *irq_table = mlx5_irq_table_get(dev);
 	struct mlx5_irq_pool *pool = NULL;
 
-<<<<<<< HEAD
-	mutex_lock(&pool->lock);
-	least_loaded_irq = irq_pool_find_least_loaded(pool, affinity);
-	if (least_loaded_irq &&
-	    least_loaded_irq->refcount < pool->min_threshold)
-		goto out;
-	new_irq = irq_pool_create_irq(pool, affinity);
-	if (IS_ERR(new_irq)) {
-		if (!least_loaded_irq) {
-			mlx5_core_err(pool->dev, "Didn't find a matching IRQ. err = %ld\n",
-				      PTR_ERR(new_irq));
-			mutex_unlock(&pool->lock);
-			return new_irq;
-		}
-		/* We failed to create a new IRQ for the requested affinity,
-		 * sharing existing IRQ.
-		 */
-		goto out;
-	}
-	least_loaded_irq = new_irq;
-	goto unlock;
-out:
-	irq_get_locked(least_loaded_irq);
-	if (least_loaded_irq->refcount > pool->max_threshold)
-		mlx5_core_dbg(pool->dev, "IRQ %u overloaded, pool_name: %s, %u EQs on this irq\n",
-			      least_loaded_irq->irqn, pool->name,
-			      least_loaded_irq->refcount / MLX5_EQ_REFS_PER_IRQ);
-unlock:
-	mutex_unlock(&pool->lock);
-	return least_loaded_irq;
-=======
 	if (mlx5_core_is_sf(dev))
 		pool = sf_irq_pool_get(irq_table);
 
@@ -368,7 +337,6 @@ unlock:
 	 * the PF IRQs pool in case the SF pool doesn't exist.
 	 */
 	return pool ? pool : irq_table->pf_pool;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct mlx5_irq_pool *ctrl_irq_pool_get(struct mlx5_core_dev *dev)

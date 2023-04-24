@@ -74,10 +74,7 @@ for current_test in ${TESTS:-$ALL_TESTS}; do
 			else
 				log_test "'$current_test' [$profile] overflow $target"
 			fi
-<<<<<<< HEAD
-=======
 			${current_test}_cleanup $target
->>>>>>> origin/linux_6.1.15_upstream
 			RET_FIN=$(( RET_FIN || RET ))
 		done
 	done

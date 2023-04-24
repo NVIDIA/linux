@@ -1099,20 +1099,12 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
 
 skip:
 		if (!ingress) {
-<<<<<<< HEAD
-			notify_and_destroy(net, skb, n, classid,
-					   rtnl_dereference(dev->qdisc), new);
-			if (new && !new->ops->attach)
-				qdisc_refcount_inc(new);
-			rcu_assign_pointer(dev->qdisc, new ? : &noop_qdisc);
-=======
 			old = rtnl_dereference(dev->qdisc);
 			if (new && !new->ops->attach)
 				qdisc_refcount_inc(new);
 			rcu_assign_pointer(dev->qdisc, new ? : &noop_qdisc);
 
 			notify_and_destroy(net, skb, n, classid, old, new);
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (new && new->ops->attach)
 				new->ops->attach(new);

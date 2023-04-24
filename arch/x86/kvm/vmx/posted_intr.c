@@ -19,10 +19,6 @@
  * wake the target vCPUs.  vCPUs are removed from the list and the notification
  * vector is reset when the vCPU is scheduled in.
  */
-<<<<<<< HEAD
-static DEFINE_PER_CPU(struct list_head, blocked_vcpu_on_cpu);
-static DEFINE_PER_CPU(raw_spinlock_t, blocked_vcpu_on_cpu_lock);
-=======
 static DEFINE_PER_CPU(struct list_head, wakeup_vcpus_on_cpu);
 /*
  * Protect the per-CPU list with a per-CPU spinlock to handle task migration.
@@ -32,7 +28,6 @@ static DEFINE_PER_CPU(struct list_head, wakeup_vcpus_on_cpu);
  * occur if a wakeup IRQ arrives and attempts to acquire the lock.
  */
 static DEFINE_PER_CPU(raw_spinlock_t, wakeup_vcpus_on_cpu_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 static inline struct pi_desc *vcpu_to_pi_desc(struct kvm_vcpu *vcpu)
 {
@@ -84,13 +79,7 @@ void vmx_vcpu_pi_load(struct kvm_vcpu *vcpu, int cpu)
 		return;
 	}
 
-<<<<<<< HEAD
-	/* The full case.  */
-	do {
-		old.control = new.control = READ_ONCE(pi_desc->control);
-=======
 	local_irq_save(flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * If the vCPU was waiting for wakeup, remove the vCPU from the wakeup
@@ -142,60 +131,10 @@ after_clear_sn:
 }
 
 static bool vmx_can_use_vtd_pi(struct kvm *kvm)
-<<<<<<< HEAD
 {
 	return irqchip_in_kernel(kvm) && enable_apicv &&
 		kvm_arch_has_assigned_device(kvm) &&
 		irq_remapping_cap(IRQ_POSTING_CAP);
-}
-
-void vmx_vcpu_pi_put(struct kvm_vcpu *vcpu)
-{
-	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
-
-	if (!vmx_can_use_vtd_pi(vcpu->kvm))
-		return;
-
-	/* Set SN when the vCPU is preempted */
-	if (vcpu->preempted)
-		pi_set_sn(pi_desc);
-}
-
-static void __pi_post_block(struct kvm_vcpu *vcpu)
-{
-	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
-	struct pi_desc old, new;
-	unsigned int dest;
-
-	do {
-		old.control = new.control = READ_ONCE(pi_desc->control);
-		WARN(old.nv != POSTED_INTR_WAKEUP_VECTOR,
-		     "Wakeup handler not enabled while the VCPU is blocked\n");
-
-		dest = cpu_physical_id(vcpu->cpu);
-
-		if (x2apic_mode)
-			new.ndst = dest;
-		else
-			new.ndst = (dest << 8) & 0xFF00;
-
-		/* set 'NV' to 'notification vector' */
-		new.nv = POSTED_INTR_VECTOR;
-	} while (cmpxchg64(&pi_desc->control, old.control,
-			   new.control) != old.control);
-
-	if (!WARN_ON_ONCE(vcpu->pre_pcpu == -1)) {
-		raw_spin_lock(&per_cpu(blocked_vcpu_on_cpu_lock, vcpu->pre_pcpu));
-		list_del(&vcpu->blocked_vcpu_list);
-		raw_spin_unlock(&per_cpu(blocked_vcpu_on_cpu_lock, vcpu->pre_pcpu));
-		vcpu->pre_pcpu = -1;
-	}
-=======
-{
-	return irqchip_in_kernel(kvm) && enable_apicv &&
-		kvm_arch_has_assigned_device(kvm) &&
-		irq_remapping_cap(IRQ_POSTING_CAP);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -209,31 +148,7 @@ static void pi_enable_wakeup_handler(struct kvm_vcpu *vcpu)
 	struct pi_desc old, new;
 	unsigned long flags;
 
-<<<<<<< HEAD
-	if (!vmx_can_use_vtd_pi(vcpu->kvm) ||
-	    vmx_interrupt_blocked(vcpu))
-		return 0;
-
-	WARN_ON(irqs_disabled());
-	local_irq_disable();
-	if (!WARN_ON_ONCE(vcpu->pre_pcpu != -1)) {
-		vcpu->pre_pcpu = vcpu->cpu;
-		raw_spin_lock(&per_cpu(blocked_vcpu_on_cpu_lock, vcpu->pre_pcpu));
-		list_add_tail(&vcpu->blocked_vcpu_list,
-			      &per_cpu(blocked_vcpu_on_cpu,
-				       vcpu->pre_pcpu));
-		raw_spin_unlock(&per_cpu(blocked_vcpu_on_cpu_lock, vcpu->pre_pcpu));
-	}
-
-	do {
-		old.control = new.control = READ_ONCE(pi_desc->control);
-
-		WARN((pi_desc->sn == 1),
-		     "Warning: SN field of posted-interrupts "
-		     "is set before blocking\n");
-=======
 	local_irq_save(flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	raw_spin_lock(&per_cpu(wakeup_vcpus_on_cpu_lock, vcpu->cpu));
 	list_add_tail(&vmx->pi_wakeup_list,
@@ -305,35 +220,18 @@ void pi_wakeup_handler(void)
 	raw_spinlock_t *spinlock = &per_cpu(wakeup_vcpus_on_cpu_lock, cpu);
 	struct vcpu_vmx *vmx;
 
-<<<<<<< HEAD
-	raw_spin_lock(&per_cpu(blocked_vcpu_on_cpu_lock, cpu));
-	list_for_each_entry(vcpu, &per_cpu(blocked_vcpu_on_cpu, cpu),
-			blocked_vcpu_list) {
-		struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
-=======
 	raw_spin_lock(spinlock);
 	list_for_each_entry(vmx, wakeup_list, pi_wakeup_list) {
->>>>>>> origin/linux_6.1.15_upstream
-
 		if (pi_test_on(&vmx->pi_desc))
 			kvm_vcpu_wake_up(&vmx->vcpu);
 	}
-<<<<<<< HEAD
-	raw_spin_unlock(&per_cpu(blocked_vcpu_on_cpu_lock, cpu));
-=======
 	raw_spin_unlock(spinlock);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void __init pi_init_cpu(int cpu)
 {
-<<<<<<< HEAD
-	INIT_LIST_HEAD(&per_cpu(blocked_vcpu_on_cpu, cpu));
-	raw_spin_lock_init(&per_cpu(blocked_vcpu_on_cpu_lock, cpu));
-=======
 	INIT_LIST_HEAD(&per_cpu(wakeup_vcpus_on_cpu, cpu));
 	raw_spin_lock_init(&per_cpu(wakeup_vcpus_on_cpu_lock, cpu));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 bool pi_has_pending_interrupt(struct kvm_vcpu *vcpu)

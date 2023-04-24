@@ -259,11 +259,7 @@
 		samsung,pin-drv = <EXYNOS4_PIN_DRV_LV1>;
 	};
 
-<<<<<<< HEAD
-	uart3_data: uart3-data {
-=======
 	uart3_data: uart3-data-pins {
->>>>>>> origin/linux_6.1.15_upstream
 		samsung,pins = "gpa1-4", "gpa1-5";
 		samsung,pin-function = <EXYNOS_PIN_FUNC_2>;
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;

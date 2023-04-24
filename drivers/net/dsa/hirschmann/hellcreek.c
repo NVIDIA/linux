@@ -1156,7 +1156,6 @@ static int hellcreek_setup_fdb(struct hellcreek *hellcreek)
 	if (ret)
 		goto out;
 	ret = __hellcreek_fdb_add(hellcreek, &l2_p2p);
-<<<<<<< HEAD
 	if (ret)
 		goto out;
 	ret = __hellcreek_fdb_add(hellcreek, &udp4_p2p);
@@ -1165,16 +1164,6 @@ static int hellcreek_setup_fdb(struct hellcreek *hellcreek)
 	ret = __hellcreek_fdb_add(hellcreek, &udp6_p2p);
 	if (ret)
 		goto out;
-=======
-	if (ret)
-		goto out;
-	ret = __hellcreek_fdb_add(hellcreek, &udp4_p2p);
-	if (ret)
-		goto out;
-	ret = __hellcreek_fdb_add(hellcreek, &udp6_p2p);
-	if (ret)
-		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	ret = __hellcreek_fdb_add(hellcreek, &stp);
 out:
 	mutex_unlock(&hellcreek->reg_lock);

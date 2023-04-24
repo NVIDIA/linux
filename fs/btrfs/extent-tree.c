@@ -2369,11 +2369,7 @@ int btrfs_cross_ref_exist(struct btrfs_root *root, u64 objectid, u64 offset,
 	} while (ret == -EAGAIN);
 
 out:
-<<<<<<< HEAD
-	btrfs_free_path(path);
-=======
 	btrfs_release_path(path);
->>>>>>> origin/linux_6.1.15_upstream
 	if (btrfs_is_data_reloc_root(root))
 		WARN_ON(ret > 0);
 	return ret;
@@ -3779,8 +3775,6 @@ static int do_allocation_zoned(struct btrfs_block_group *block_group,
 	if (skip)
 		return 1;
 
-<<<<<<< HEAD
-=======
 	/* Check RO and no space case before trying to activate it */
 	spin_lock(&block_group->lock);
 	if (block_group->ro || btrfs_zoned_bg_is_full(block_group)) {
@@ -3800,17 +3794,13 @@ static int do_allocation_zoned(struct btrfs_block_group *block_group,
 		 */
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	spin_lock(&space_info->lock);
 	spin_lock(&block_group->lock);
 	spin_lock(&fs_info->treelog_bg_lock);
 	spin_lock(&fs_info->relocation_bg_lock);
-<<<<<<< HEAD
-=======
 
 	if (ret)
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ASSERT(!ffe_ctl->for_treelog ||
 	       block_group->start == fs_info->treelog_bg ||
@@ -3845,12 +3835,8 @@ static int do_allocation_zoned(struct btrfs_block_group *block_group,
 		goto out;
 	}
 
-<<<<<<< HEAD
-	avail = block_group->length - block_group->alloc_offset;
-=======
 	WARN_ON_ONCE(block_group->alloc_offset > block_group->zone_capacity);
 	avail = block_group->zone_capacity - block_group->alloc_offset;
->>>>>>> origin/linux_6.1.15_upstream
 	if (avail < num_bytes) {
 		if (ffe_ctl->max_extent_size < avail) {
 			/*
@@ -3886,10 +3872,6 @@ static int do_allocation_zoned(struct btrfs_block_group *block_group,
 out:
 	if (ret && ffe_ctl->for_treelog)
 		fs_info->treelog_bg = 0;
-<<<<<<< HEAD
-	if (ret && ffe_ctl->for_data_reloc)
-		fs_info->data_reloc_bg = 0;
-=======
 	if (ret && ffe_ctl->for_data_reloc &&
 	    fs_info->data_reloc_bg == block_group->start) {
 		/*
@@ -3908,7 +3890,6 @@ out:
 		set_bit(BLOCK_GROUP_FLAG_ZONED_DATA_RELOC, &block_group->runtime_flags);
 		fs_info->data_reloc_bg = 0;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock(&fs_info->relocation_bg_lock);
 	spin_unlock(&fs_info->treelog_bg_lock);
 	spin_unlock(&block_group->lock);
@@ -4280,30 +4261,8 @@ static noinline int find_free_extent(struct btrfs_root *root,
 	struct btrfs_block_group *block_group = NULL;
 	struct btrfs_space_info *space_info;
 	bool full_search = false;
-<<<<<<< HEAD
-	bool for_treelog = (root->root_key.objectid == BTRFS_TREE_LOG_OBJECTID);
-	bool for_data_reloc = (btrfs_is_data_reloc_root(root) &&
-				       flags & BTRFS_BLOCK_GROUP_DATA);
-
-	WARN_ON(num_bytes < fs_info->sectorsize);
-
-	ffe_ctl.num_bytes = num_bytes;
-	ffe_ctl.empty_size = empty_size;
-	ffe_ctl.flags = flags;
-	ffe_ctl.search_start = 0;
-	ffe_ctl.delalloc = delalloc;
-	ffe_ctl.index = btrfs_bg_flags_to_raid_index(flags);
-	ffe_ctl.have_caching_bg = false;
-	ffe_ctl.orig_have_caching_bg = false;
-	ffe_ctl.found_offset = 0;
-	ffe_ctl.hint_byte = hint_byte_orig;
-	ffe_ctl.for_treelog = for_treelog;
-	ffe_ctl.for_data_reloc = for_data_reloc;
-	ffe_ctl.policy = BTRFS_EXTENT_ALLOC_CLUSTERED;
-=======
 
 	WARN_ON(ffe_ctl->num_bytes < fs_info->sectorsize);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ffe_ctl->search_start = 0;
 	/* For clustered allocation */
@@ -4394,11 +4353,7 @@ search:
 		if (unlikely(block_group->ro)) {
 			if (ffe_ctl->for_treelog)
 				btrfs_clear_treelog_bg(block_group);
-<<<<<<< HEAD
-			if (ffe_ctl.for_data_reloc)
-=======
 			if (ffe_ctl->for_data_reloc)
->>>>>>> origin/linux_6.1.15_upstream
 				btrfs_clear_data_reloc_bg(block_group);
 			continue;
 		}

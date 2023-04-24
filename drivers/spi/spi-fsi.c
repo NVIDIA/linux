@@ -24,12 +24,7 @@
 #define FSI2SPI_IRQ			0x20
 
 #define SPI_FSI_BASE			0x70000
-<<<<<<< HEAD
-#define SPI_FSI_INIT_TIMEOUT_MS		1000
-#define SPI_FSI_STATUS_TIMEOUT_MS	100
-=======
 #define SPI_FSI_TIMEOUT_MS		1000
->>>>>>> origin/linux_6.1.15_upstream
 #define SPI_FSI_MAX_RX_SIZE		8
 #define SPI_FSI_MAX_TX_SIZE		40
 
@@ -322,16 +317,10 @@ static int fsi_spi_transfer_data(struct fsi_spi *ctx,
 			if (rc)
 				return rc;
 
-<<<<<<< HEAD
-			end = jiffies + msecs_to_jiffies(SPI_FSI_STATUS_TIMEOUT_MS);
-			do {
-				if (time_after(jiffies, end))
-=======
 			loops = 0;
 			end = jiffies + msecs_to_jiffies(SPI_FSI_TIMEOUT_MS);
 			do {
 				if (loops++ && time_after(jiffies, end))
->>>>>>> origin/linux_6.1.15_upstream
 					return -ETIMEDOUT;
 
 				rc = fsi_spi_status(ctx, &status, "TX");
@@ -347,16 +336,10 @@ static int fsi_spi_transfer_data(struct fsi_spi *ctx,
 		u8 *rx = transfer->rx_buf;
 
 		while (transfer->len > recv) {
-<<<<<<< HEAD
-			end = jiffies + msecs_to_jiffies(SPI_FSI_STATUS_TIMEOUT_MS);
-			do {
-				if (time_after(jiffies, end))
-=======
 			loops = 0;
 			end = jiffies + msecs_to_jiffies(SPI_FSI_TIMEOUT_MS);
 			do {
 				if (loops++ && time_after(jiffies, end))
->>>>>>> origin/linux_6.1.15_upstream
 					return -ETIMEDOUT;
 
 				rc = fsi_spi_status(ctx, &status, "RX");

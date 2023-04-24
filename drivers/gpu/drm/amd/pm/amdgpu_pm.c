@@ -3340,15 +3340,9 @@ static umode_t hwmon_attributes_visible(struct kobject *kobj,
 	    (attr == &sensor_dev_attr_power2_average.dev_attr.attr ||
 	     attr == &sensor_dev_attr_power2_cap_max.dev_attr.attr ||
 	     attr == &sensor_dev_attr_power2_cap_min.dev_attr.attr ||
-<<<<<<< HEAD
-		 attr == &sensor_dev_attr_power2_cap.dev_attr.attr ||
-		 attr == &sensor_dev_attr_power2_cap_default.dev_attr.attr ||
-		 attr == &sensor_dev_attr_power2_label.dev_attr.attr))
-=======
 	     attr == &sensor_dev_attr_power2_cap.dev_attr.attr ||
 	     attr == &sensor_dev_attr_power2_cap_default.dev_attr.attr ||
 	     attr == &sensor_dev_attr_power2_label.dev_attr.attr))
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 
 	return effective_mode;

@@ -195,10 +195,7 @@ static void wilc_sdio_remove(struct sdio_func *func)
 
 	clk_disable_unprepare(wilc->rtc_clk);
 	wilc_netdev_cleanup(wilc);
-<<<<<<< HEAD
-=======
 	kfree(sdio_priv->cmd53_buf);
->>>>>>> origin/linux_6.1.15_upstream
 	kfree(sdio_priv);
 }
 

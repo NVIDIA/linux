@@ -672,16 +672,11 @@ static int rtsx_usb_probe(struct usb_interface *intf,
 
 out_init_fail:
 	usb_set_intfdata(ucr->pusb_intf, NULL);
-<<<<<<< HEAD
-	usb_free_coherent(ucr->pusb_dev, IOBUF_SIZE, ucr->iobuf,
-			ucr->iobuf_dma);
-=======
 	kfree(ucr->rsp_buf);
 	ucr->rsp_buf = NULL;
 out_free_cmd_buf:
 	kfree(ucr->cmd_buf);
 	ucr->cmd_buf = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

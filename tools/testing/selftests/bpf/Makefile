@@ -76,11 +76,7 @@ TEST_PROGS := test_kmod.sh \
 	test_xsk.sh
 
 TEST_PROGS_EXTENDED := with_addr.sh \
-<<<<<<< HEAD
-	with_tunnels.sh ima_setup.sh \
-=======
 	with_tunnels.sh ima_setup.sh verify_sig_setup.sh \
->>>>>>> origin/linux_6.1.15_upstream
 	test_xdp_vlan.sh test_bpftool.py
 
 # Compile but not part of 'make run_tests'

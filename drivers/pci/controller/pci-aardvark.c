@@ -531,11 +531,7 @@ static void advk_pcie_setup_hw(struct advk_pcie *pcie)
 	 */
 	reg = advk_readl(pcie, PCIE_CORE_DEV_REV_REG);
 	reg &= ~0xffffff00;
-<<<<<<< HEAD
-	reg |= (PCI_CLASS_BRIDGE_PCI << 8) << 8;
-=======
 	reg |= PCI_CLASS_BRIDGE_PCI_NORMAL << 8;
->>>>>>> origin/linux_6.1.15_upstream
 	advk_writel(pcie, reg, PCIE_CORE_DEV_REV_REG);
 
 	/* Disable Root Bridge I/O space, memory space and bus mastering */
@@ -780,7 +776,6 @@ static int advk_pcie_wait_pio(struct advk_pcie *pcie)
 	return -ETIMEDOUT;
 }
 
-<<<<<<< HEAD
 static pci_bridge_emul_read_status_t
 advk_pci_bridge_emul_base_conf_read(struct pci_bridge_emul *bridge,
 				    int reg, u32 *value)
@@ -792,92 +787,6 @@ advk_pci_bridge_emul_base_conf_read(struct pci_bridge_emul *bridge,
 		*value = advk_readl(pcie, PCIE_CORE_CMD_STATUS_REG);
 		return PCI_BRIDGE_EMUL_HANDLED;
 
-	case PCI_INTERRUPT_LINE: {
-		/*
-		 * From the whole 32bit register we support reading from HW only
-		 * two bits: PCI_BRIDGE_CTL_BUS_RESET and PCI_BRIDGE_CTL_SERR.
-		 * Other bits are retrieved only from emulated config buffer.
-		 */
-		__le32 *cfgspace = (__le32 *)&bridge->conf;
-		u32 val = le32_to_cpu(cfgspace[PCI_INTERRUPT_LINE / 4]);
-		if (advk_readl(pcie, PCIE_ISR0_MASK_REG) & PCIE_ISR0_ERR_MASK)
-			val &= ~(PCI_BRIDGE_CTL_SERR << 16);
-		else
-			val |= PCI_BRIDGE_CTL_SERR << 16;
-		if (advk_readl(pcie, PCIE_CORE_CTRL1_REG) & HOT_RESET_GEN)
-			val |= PCI_BRIDGE_CTL_BUS_RESET << 16;
-		else
-			val &= ~(PCI_BRIDGE_CTL_BUS_RESET << 16);
-		*value = val;
-		return PCI_BRIDGE_EMUL_HANDLED;
-	}
-
-	default:
-		return PCI_BRIDGE_EMUL_NOT_HANDLED;
-	}
-}
-
-static void
-advk_pci_bridge_emul_base_conf_write(struct pci_bridge_emul *bridge,
-				     int reg, u32 old, u32 new, u32 mask)
-{
-	struct advk_pcie *pcie = bridge->data;
-
-	switch (reg) {
-	case PCI_COMMAND:
-		advk_writel(pcie, new, PCIE_CORE_CMD_STATUS_REG);
-		break;
-
-	case PCI_INTERRUPT_LINE:
-		/*
-		 * According to Figure 6-3: Pseudo Logic Diagram for Error
-		 * Message Controls in PCIe base specification, SERR# Enable bit
-		 * in Bridge Control register enable receiving of ERR_* messages
-		 */
-		if (mask & (PCI_BRIDGE_CTL_SERR << 16)) {
-			u32 val = advk_readl(pcie, PCIE_ISR0_MASK_REG);
-			if (new & (PCI_BRIDGE_CTL_SERR << 16))
-				val &= ~PCIE_ISR0_ERR_MASK;
-			else
-				val |= PCIE_ISR0_ERR_MASK;
-			advk_writel(pcie, val, PCIE_ISR0_MASK_REG);
-		}
-		if (mask & (PCI_BRIDGE_CTL_BUS_RESET << 16)) {
-			u32 val = advk_readl(pcie, PCIE_CORE_CTRL1_REG);
-			if (new & (PCI_BRIDGE_CTL_BUS_RESET << 16))
-				val |= HOT_RESET_GEN;
-			else
-				val &= ~HOT_RESET_GEN;
-			advk_writel(pcie, val, PCIE_CORE_CTRL1_REG);
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
-static pci_bridge_emul_read_status_t
-advk_pci_bridge_emul_base_conf_read(struct pci_bridge_emul *bridge,
-				    int reg, u32 *value)
-{
-	struct advk_pcie *pcie = bridge->data;
-
-	switch (reg) {
-	case PCI_COMMAND:
-		*value = advk_readl(pcie, PCIE_CORE_CMD_STATUS_REG);
-		return PCI_BRIDGE_EMUL_HANDLED;
-
-<<<<<<< HEAD
-	/*
-	 * PCI_EXP_RTCTL and PCI_EXP_RTSTA are also supported, but do not need
-	 * to be handled here, because their values are stored in emulated
-	 * config space buffer, and we read them from there when needed.
-	 */
-
-=======
 	case PCI_INTERRUPT_LINE: {
 		/*
 		 * From the whole 32bit register we support reading from HW only
@@ -958,7 +867,6 @@ advk_pci_bridge_emul_pcie_conf_read(struct pci_bridge_emul *bridge,
 	 * from there when needed.
 	 */
 
->>>>>>> origin/linux_6.1.15_upstream
 	case PCI_EXP_LNKCAP: {
 		u32 val = advk_readl(pcie, PCIE_CORE_PCIEXP_CAP + reg);
 		/*
@@ -1036,9 +944,6 @@ advk_pci_bridge_emul_pcie_conf_write(struct pci_bridge_emul *bridge,
 	}
 }
 
-<<<<<<< HEAD
-static struct pci_bridge_emul_ops advk_pci_bridge_emul_ops = {
-=======
 static pci_bridge_emul_read_status_t
 advk_pci_bridge_emul_ext_conf_read(struct pci_bridge_emul *bridge,
 				   int reg, u32 *value)
@@ -1116,7 +1021,6 @@ advk_pci_bridge_emul_ext_conf_write(struct pci_bridge_emul *bridge,
 }
 
 static const struct pci_bridge_emul_ops advk_pci_bridge_emul_ops = {
->>>>>>> origin/linux_6.1.15_upstream
 	.read_base = advk_pci_bridge_emul_base_conf_read,
 	.write_base = advk_pci_bridge_emul_base_conf_write,
 	.read_pcie = advk_pci_bridge_emul_pcie_conf_read,
@@ -1151,10 +1055,8 @@ static int advk_sw_pci_bridge_init(struct advk_pcie *pcie)
 	/* Support interrupt A for MSI feature */
 	bridge->conf.intpin = PCI_INTERRUPT_INTA;
 
-<<<<<<< HEAD
 	/* Aardvark HW provides PCIe Capability structure in version 2 */
 	bridge->pcie_conf.cap = cpu_to_le16(2);
-=======
 	/*
 	 * Aardvark HW provides PCIe Capability structure in version 2 and
 	 * indicate slot support, which is emulated.
@@ -1174,19 +1076,14 @@ static int advk_sw_pci_bridge_init(struct advk_pcie *pcie)
 	bridge->pcie_conf.slotcap = cpu_to_le32(FIELD_PREP(PCI_EXP_SLTCAP_PSN,
 							   1));
 	bridge->pcie_conf.slotsta = cpu_to_le16(PCI_EXP_SLTSTA_PDS);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Indicates supports for Completion Retry Status */
 	bridge->pcie_conf.rootcap = cpu_to_le16(PCI_EXP_RTCAP_CRSVIS);
 
-<<<<<<< HEAD
-	bridge->has_pcie = true;
-=======
 	bridge->subsystem_vendor_id = advk_readl(pcie, PCIE_CORE_SSDEV_ID_REG) & 0xffff;
 	bridge->subsystem_id = advk_readl(pcie, PCIE_CORE_SSDEV_ID_REG) >> 16;
 	bridge->has_pcie = true;
 	bridge->pcie_start = PCIE_CORE_PCIEXP_CAP;
->>>>>>> origin/linux_6.1.15_upstream
 	bridge->data = pcie;
 	bridge->ops = &advk_pci_bridge_emul_ops;
 

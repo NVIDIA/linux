@@ -281,11 +281,7 @@ static inline unsigned long __cmpxchg64(volatile void *ptr,
 	/* Attempt to store new at ptr */
 	"	scd	%L1, %2				\n"
 	/* If we failed, loop! */
-<<<<<<< HEAD
-	"\t" __SC_BEQZ "%L1, 1b				\n"
-=======
 	"\t" __stringify(SC_BEQZ) "	%L1, 1b		\n"
->>>>>>> origin/linux_6.1.15_upstream
 	"2:	" __SYNC(full, loongson3_war) "		\n"
 	"	.set	pop				\n"
 	: "=&r"(ret),

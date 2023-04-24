@@ -690,11 +690,8 @@ static int __f2fs_setxattr(struct inode *inode, int index,
 					inode->i_ino, ENTRY_SIZE(last));
 			set_sbi_flag(F2FS_I_SB(inode), SBI_NEED_FSCK);
 			error = -EFSCORRUPTED;
-<<<<<<< HEAD
-=======
 			f2fs_handle_error(F2FS_I_SB(inode),
 						ERROR_CORRUPTED_XATTR);
->>>>>>> origin/linux_6.1.15_upstream
 			goto exit;
 		}
 		last = XATTR_NEXT_ENTRY(last);

@@ -73,46 +73,11 @@ static bool is_module_cfi_trap(unsigned long addr)
 
 	rcu_read_lock_sched_notrace();
 
-<<<<<<< HEAD
-	return fn;
-}
-
-static inline cfi_check_fn find_check_fn(unsigned long ptr)
-{
-	cfi_check_fn fn = NULL;
-	unsigned long flags;
-	bool rcu_idle;
-
-	if (is_kernel_text(ptr))
-		return __cfi_check;
-
-	/*
-	 * Indirect call checks can happen when RCU is not watching. Both
-	 * the shadow and __module_address use RCU, so we need to wake it
-	 * up if necessary.
-	 */
-	rcu_idle = !rcu_is_watching();
-	if (rcu_idle) {
-		local_irq_save(flags);
-		rcu_irq_enter();
-	}
-
-	if (IS_ENABLED(CONFIG_CFI_CLANG_SHADOW))
-		fn = find_shadow_check_fn(ptr);
-	if (!fn)
-		fn = find_module_check_fn(ptr);
-
-	if (rcu_idle) {
-		rcu_irq_exit();
-		local_irq_restore(flags);
-	}
-=======
 	mod = __module_address(addr);
 	if (mod)
 		found = is_trap(addr, mod->kcfi_traps, mod->kcfi_traps_end);
 
 	rcu_read_unlock_sched_notrace();
->>>>>>> origin/linux_6.1.15_upstream
 
 	return found;
 }

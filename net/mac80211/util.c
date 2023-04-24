@@ -2011,8 +2011,6 @@ static int ieee80211_build_preq_ies_band(struct ieee80211_sub_if_data *sdata,
 	    cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
 					 IEEE80211_CHAN_NO_HE)) {
 		pos = ieee80211_ie_build_he_cap(0, pos, he_cap, end);
-<<<<<<< HEAD
-=======
 		if (!pos)
 			goto out_err;
 	}
@@ -2026,7 +2024,6 @@ static int ieee80211_build_preq_ies_band(struct ieee80211_sub_if_data *sdata,
 					 IEEE80211_CHAN_NO_EHT)) {
 		pos = ieee80211_ie_build_eht_cap(pos, he_cap, eht_cap, end,
 						 sdata->vif.type == NL80211_IFTYPE_AP);
->>>>>>> origin/linux_6.1.15_upstream
 		if (!pos)
 			goto out_err;
 	}
@@ -2995,11 +2992,7 @@ u8 ieee80211_ie_len_he_cap(struct ieee80211_sub_if_data *sdata, u8 iftype)
 				     he_cap->he_cap_elem.phy_cap_info);
 }
 
-<<<<<<< HEAD
-u8 *ieee80211_ie_build_he_cap(u32 disable_flags, u8 *pos,
-=======
 u8 *ieee80211_ie_build_he_cap(ieee80211_conn_flags_t disable_flags, u8 *pos,
->>>>>>> origin/linux_6.1.15_upstream
 			      const struct ieee80211_sta_he_cap *he_cap,
 			      u8 *end)
 {
@@ -3019,28 +3012,16 @@ u8 *ieee80211_ie_build_he_cap(ieee80211_conn_flags_t disable_flags, u8 *pos,
 	/* modify on stack first to calculate 'n' and 'ie_len' correctly */
 	elem = he_cap->he_cap_elem;
 
-<<<<<<< HEAD
-	if (disable_flags & IEEE80211_STA_DISABLE_40MHZ)
-=======
 	if (disable_flags & IEEE80211_CONN_DISABLE_40MHZ)
->>>>>>> origin/linux_6.1.15_upstream
 		elem.phy_cap_info[0] &=
 			~(IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
 			  IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G);
 
-<<<<<<< HEAD
-	if (disable_flags & IEEE80211_STA_DISABLE_160MHZ)
-		elem.phy_cap_info[0] &=
-			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
-
-	if (disable_flags & IEEE80211_STA_DISABLE_80P80MHZ)
-=======
 	if (disable_flags & IEEE80211_CONN_DISABLE_160MHZ)
 		elem.phy_cap_info[0] &=
 			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
 
 	if (disable_flags & IEEE80211_CONN_DISABLE_80P80MHZ)
->>>>>>> origin/linux_6.1.15_upstream
 		elem.phy_cap_info[0] &=
 			~IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G;
 

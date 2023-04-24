@@ -562,11 +562,7 @@ static int handle_hca_cap(struct mlx5_core_dev *dev, void *set_ctx)
 
 	/* Check log_max_qp from HCA caps to set in current profile */
 	if (prof->log_max_qp == LOG_MAX_SUPPORTED_QPS) {
-<<<<<<< HEAD
-		prof->log_max_qp = min_t(u8, 17, MLX5_CAP_GEN_MAX(dev, log_max_qp));
-=======
 		prof->log_max_qp = min_t(u8, 18, MLX5_CAP_GEN_MAX(dev, log_max_qp));
->>>>>>> origin/linux_6.1.15_upstream
 	} else if (MLX5_CAP_GEN_MAX(dev, log_max_qp) < prof->log_max_qp) {
 		mlx5_core_warn(dev, "log_max_qp value in current profile is %d, changing it to HCA capability limit (%d)\n",
 			       prof->log_max_qp,
@@ -2016,11 +2012,7 @@ int mlx5_recover_device(struct mlx5_core_dev *dev)
 			return -EIO;
 	}
 
-<<<<<<< HEAD
-	return mlx5_load_one(dev);
-=======
 	return mlx5_load_one_devl_locked(dev, true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct pci_driver mlx5_core_driver = {

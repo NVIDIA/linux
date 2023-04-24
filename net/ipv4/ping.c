@@ -336,18 +336,10 @@ static int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 			 sk, &addr->sin_addr.s_addr, ntohs(addr->sin_port));
 
 		if (addr->sin_addr.s_addr == htonl(INADDR_ANY))
-<<<<<<< HEAD
-			chk_addr_ret = RTN_LOCAL;
-		else {
-			tb_id = l3mdev_fib_table_by_index(net, sk->sk_bound_dev_if) ? : tb_id;
-			chk_addr_ret = inet_addr_type_table(net, addr->sin_addr.s_addr, tb_id);
-		}
-=======
 			return 0;
 
 		tb_id = l3mdev_fib_table_by_index(net, sk->sk_bound_dev_if) ? : tb_id;
 		chk_addr_ret = inet_addr_type_table(net, addr->sin_addr.s_addr, tb_id);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (chk_addr_ret == RTN_MULTICAST ||
 		    chk_addr_ret == RTN_BROADCAST ||

@@ -104,10 +104,7 @@ TRACE_DEFINE_ENUM(EXT4_FC_REASON_RESIZE);
 TRACE_DEFINE_ENUM(EXT4_FC_REASON_RENAME_DIR);
 TRACE_DEFINE_ENUM(EXT4_FC_REASON_FALLOC_RANGE);
 TRACE_DEFINE_ENUM(EXT4_FC_REASON_INODE_JOURNAL_DATA);
-<<<<<<< HEAD
-=======
 TRACE_DEFINE_ENUM(EXT4_FC_REASON_ENCRYPTED_FILENAME);
->>>>>>> origin/linux_6.1.15_upstream
 TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX);
 
 #define show_fc_reason(reason)						\
@@ -2769,11 +2766,7 @@ TRACE_EVENT(ext4_fc_stats,
 	),
 
 	TP_printk("dev %d,%d fc ineligible reasons:\n"
-<<<<<<< HEAD
-		  "%s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u "
-=======
 		  "%s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u, %s:%u"
->>>>>>> origin/linux_6.1.15_upstream
 		  "num_commits:%lu, ineligible: %lu, numblks: %lu",
 		  MAJOR(__entry->dev), MINOR(__entry->dev),
 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_XATTR),
@@ -2785,38 +2778,11 @@ TRACE_EVENT(ext4_fc_stats,
 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_RENAME_DIR),
 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_FALLOC_RANGE),
 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_INODE_JOURNAL_DATA),
-<<<<<<< HEAD
-=======
 		  FC_REASON_NAME_STAT(EXT4_FC_REASON_ENCRYPTED_FILENAME),
->>>>>>> origin/linux_6.1.15_upstream
 		  __entry->fc_commits, __entry->fc_ineligible_commits,
 		  __entry->fc_numblks)
 );
 
-<<<<<<< HEAD
-#define DEFINE_TRACE_DENTRY_EVENT(__type)				\
-	TRACE_EVENT(ext4_fc_track_##__type,				\
-	    TP_PROTO(struct inode *inode, struct dentry *dentry, int ret), \
-									\
-	    TP_ARGS(inode, dentry, ret),				\
-									\
-	    TP_STRUCT__entry(						\
-		    __field(dev_t, dev)					\
-		    __field(int, ino)					\
-		    __field(int, error)					\
-		    ),							\
-									\
-	    TP_fast_assign(						\
-		    __entry->dev = inode->i_sb->s_dev;			\
-		    __entry->ino = inode->i_ino;			\
-		    __entry->error = ret;				\
-		    ),							\
-									\
-	    TP_printk("dev %d:%d, inode %d, error %d, fc_%s",		\
-		      MAJOR(__entry->dev), MINOR(__entry->dev),		\
-		      __entry->ino, __entry->error,			\
-		      #__type)						\
-=======
 DECLARE_EVENT_CLASS(ext4_fc_track_dentry,
 
 	TP_PROTO(handle_t *handle, struct inode *inode,
@@ -2846,7 +2812,6 @@ DECLARE_EVENT_CLASS(ext4_fc_track_dentry,
 		  MAJOR(__entry->dev), MINOR(__entry->dev),
 		  __entry->t_tid, __entry->i_ino, __entry->i_sync_tid,
 		  __entry->error
->>>>>>> origin/linux_6.1.15_upstream
 	)
 );
 

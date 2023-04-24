@@ -3407,11 +3407,7 @@
 			};
 		};
 
-<<<<<<< HEAD
-		cam-thermal-bottom {
-=======
 		cam-bottom-thermal {
->>>>>>> origin/linux_6.1.15_upstream
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 

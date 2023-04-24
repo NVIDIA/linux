@@ -192,47 +192,5 @@ SYM_FUNC_START(__pi_dcache_clean_pop)
 	alternative_else_nop_endif
 	dcache_by_line_op cvap, sy, x0, x1, x2, x3
 	ret
-<<<<<<< HEAD
-SYM_FUNC_END_PI(dcache_clean_pop)
-
-/*
- *	__dma_flush_area(start, size)
- *
- *	clean & invalidate D / U line
- *
- *	- start   - virtual start address of region
- *	- size    - size in question
- */
-SYM_FUNC_START_PI(__dma_flush_area)
-	add	x1, x0, x1
-	dcache_by_line_op civac, sy, x0, x1, x2, x3
-	ret
-SYM_FUNC_END_PI(__dma_flush_area)
-
-/*
- *	__dma_map_area(start, size, dir)
- *	- start	- kernel virtual start address
- *	- size	- size of region
- *	- dir	- DMA direction
- */
-SYM_FUNC_START_PI(__dma_map_area)
-	add	x1, x0, x1
-	b	__dma_clean_area
-SYM_FUNC_END_PI(__dma_map_area)
-
-/*
- *	__dma_unmap_area(start, size, dir)
- *	- start	- kernel virtual start address
- *	- size	- size of region
- *	- dir	- DMA direction
- */
-SYM_FUNC_START_PI(__dma_unmap_area)
-	add	x1, x0, x1
-	cmp	w2, #DMA_TO_DEVICE
-	b.ne	__dma_inv_area
-	ret
-SYM_FUNC_END_PI(__dma_unmap_area)
-=======
 SYM_FUNC_END(__pi_dcache_clean_pop)
 SYM_FUNC_ALIAS(dcache_clean_pop, __pi_dcache_clean_pop)
->>>>>>> origin/linux_6.1.15_upstream

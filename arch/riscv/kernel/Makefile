@@ -70,10 +70,6 @@ obj-$(CONFIG_DYNAMIC_FTRACE)	+= mcount-dyn.o
 
 obj-$(CONFIG_TRACE_IRQFLAGS)	+= trace_irq.o
 
-<<<<<<< HEAD
-obj-$(CONFIG_RISCV_BASE_PMU)	+= perf_event.o
-=======
->>>>>>> origin/linux_6.1.15_upstream
 obj-$(CONFIG_PERF_EVENTS)	+= perf_callchain.o
 obj-$(CONFIG_HAVE_PERF_REGS)	+= perf_regs.o
 obj-$(CONFIG_RISCV_SBI)		+= sbi.o

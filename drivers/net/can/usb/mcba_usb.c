@@ -860,11 +860,6 @@ static int mcba_usb_probe(struct usb_interface *intf,
 
 	priv->rx_pipe = usb_rcvbulkpipe(priv->udev, in->bEndpointAddress);
 	priv->tx_pipe = usb_sndbulkpipe(priv->udev, out->bEndpointAddress);
-<<<<<<< HEAD
-
-	devm_can_led_init(netdev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Start USB dev only if we have successfully registered CAN device */
 	err = mcba_usb_start(priv);

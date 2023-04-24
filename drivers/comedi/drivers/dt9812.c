@@ -241,7 +241,6 @@ static int dt9812_read_info(struct comedi_device *dev,
 	size_t tbuf_size;
 	int count, ret;
 	void *tbuf;
-<<<<<<< HEAD
 
 	tbuf_size = max(sizeof(*cmd), buf_size);
 
@@ -249,15 +248,6 @@ static int dt9812_read_info(struct comedi_device *dev,
 	if (!tbuf)
 		return -ENOMEM;
 
-=======
-
-	tbuf_size = max(sizeof(*cmd), buf_size);
-
-	tbuf = kzalloc(tbuf_size, GFP_KERNEL);
-	if (!tbuf)
-		return -ENOMEM;
-
->>>>>>> origin/linux_6.1.15_upstream
 	cmd = tbuf;
 
 	cmd->cmd = cpu_to_le32(DT9812_R_FLASH_DATA);
@@ -295,7 +285,7 @@ static int dt9812_read_multiple_registers(struct comedi_device *dev,
 	int i, count, ret;
 	size_t buf_size;
 	void *buf;
-<<<<<<< HEAD
+
 
 	buf_size = max_t(size_t, sizeof(*cmd), reg_count);
 
@@ -303,15 +293,6 @@ static int dt9812_read_multiple_registers(struct comedi_device *dev,
 	if (!buf)
 		return -ENOMEM;
 
-=======
-
-	buf_size = max_t(size_t, sizeof(*cmd), reg_count);
-
-	buf = kzalloc(buf_size, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
->>>>>>> origin/linux_6.1.15_upstream
 	cmd = buf;
 
 	cmd->cmd = cpu_to_le32(DT9812_R_MULTI_BYTE_REG);

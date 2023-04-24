@@ -380,12 +380,9 @@ int wcn36xx_rx_skb(struct wcn36xx *wcn, struct sk_buff *skb)
 		status.freq = WCN36XX_CENTER_FREQ(wcn);
 	}
 
-<<<<<<< HEAD
-=======
 	wcn36xx_update_survey(wcn, status.signal, get_snr(bd),
 			      status.band, status.freq);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (bd->rate_id < ARRAY_SIZE(wcn36xx_rate_table)) {
 		rate = &wcn36xx_rate_table[bd->rate_id];
 		status.encoding = rate->encoding;

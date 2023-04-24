@@ -1392,11 +1392,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 
 error:
 	mutex_lock(&local->mtx);
-<<<<<<< HEAD
-	ieee80211_vif_release_channel(sdata);
-=======
 	ieee80211_link_release_channel(link);
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&local->mtx);
 
 	return err;

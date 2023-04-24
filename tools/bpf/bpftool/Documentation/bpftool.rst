@@ -23,12 +23,7 @@ SYNOPSIS
 	*OBJECT* := { **map** | **program** | **link** | **cgroup** | **perf** | **net** | **feature** |
 	**btf** | **gen** | **struct_ops** | **iter** }
 
-<<<<<<< HEAD
-	*OPTIONS* := { { **-V** | **--version** } |
-	{ **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } }
-=======
 	*OPTIONS* := { { **-V** | **--version** } | |COMMON_OPTIONS| }
->>>>>>> origin/linux_6.1.15_upstream
 
 	*MAP-COMMANDS* :=
 	{ **show** | **list** | **create** | **dump** | **update** | **lookup** | **getnext** |
@@ -36,11 +31,8 @@ SYNOPSIS
 
 	*PROG-COMMANDS* := { **show** | **list** | **dump jited** | **dump xlated** | **pin** |
 	**load** | **attach** | **detach** | **help** }
-<<<<<<< HEAD
-=======
 
 	*LINK-COMMANDS* := { **show** | **list** | **pin** | **detach** | **help** }
->>>>>>> origin/linux_6.1.15_upstream
 
 	*CGROUP-COMMANDS* := { **show** | **list** | **attach** | **detach** | **help** }
 

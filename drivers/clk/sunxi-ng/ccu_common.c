@@ -18,16 +18,9 @@
 
 struct sunxi_ccu {
 	const struct sunxi_ccu_desc	*desc;
-<<<<<<< HEAD
-	struct ccu_reset		reset;
-};
-
-static DEFINE_SPINLOCK(ccu_lock);
-=======
 	spinlock_t			lock;
 	struct ccu_reset		reset;
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 void ccu_helper_wait_for_lock(struct ccu_common *common, u32 lock)
 {
@@ -103,11 +96,8 @@ static int sunxi_ccu_probe(struct sunxi_ccu *ccu, struct device *dev,
 
 	ccu->desc = desc;
 
-<<<<<<< HEAD
-=======
 	spin_lock_init(&ccu->lock);
 
->>>>>>> origin/linux_6.1.15_upstream
 	for (i = 0; i < desc->num_ccu_clks; i++) {
 		struct ccu_common *cclk = desc->ccu_clks[i];
 
@@ -207,10 +197,7 @@ int devm_sunxi_ccu_probe(struct device *dev, void __iomem *reg,
 
 	return 0;
 }
-<<<<<<< HEAD
-=======
 EXPORT_SYMBOL_NS_GPL(devm_sunxi_ccu_probe, SUNXI_CCU);
->>>>>>> origin/linux_6.1.15_upstream
 
 void of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 			const struct sunxi_ccu_desc *desc)
@@ -228,8 +215,5 @@ void of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 		kfree(ccu);
 	}
 }
-<<<<<<< HEAD
-=======
 
 MODULE_LICENSE("GPL");
->>>>>>> origin/linux_6.1.15_upstream

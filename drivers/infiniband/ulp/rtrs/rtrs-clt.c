@@ -864,15 +864,9 @@ static struct rtrs_clt_path *get_next_path_min_inflight(struct path_it *it)
  */
 static struct rtrs_clt_path *get_next_path_min_latency(struct path_it *it)
 {
-<<<<<<< HEAD
-	struct rtrs_clt_sess *min_path = NULL;
-	struct rtrs_clt *clt = it->clt;
-	struct rtrs_clt_sess *sess;
-=======
 	struct rtrs_clt_path *min_path = NULL;
 	struct rtrs_clt_sess *clt = it->clt;
 	struct rtrs_clt_path *clt_path;
->>>>>>> origin/linux_6.1.15_upstream
 	ktime_t min_latency = KTIME_MAX;
 	ktime_t latency;
 

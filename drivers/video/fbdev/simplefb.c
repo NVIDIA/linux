@@ -99,12 +99,9 @@ static void simplefb_destroy(struct fb_info *info)
 		iounmap(info->screen_base);
 
 	framebuffer_release(info);
-<<<<<<< HEAD
-=======
 
 	if (mem)
 		release_mem_region(mem->start, resource_size(mem));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct fb_ops simplefb_ops = {

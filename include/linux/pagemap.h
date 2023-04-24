@@ -1093,18 +1093,10 @@ void folio_add_wait_queue(struct folio *folio, wait_queue_entry_t *waiter);
  * Fault in userspace address range.
  */
 size_t fault_in_writeable(char __user *uaddr, size_t size);
-<<<<<<< HEAD
-size_t fault_in_safe_writeable(const char __user *uaddr, size_t size);
-size_t fault_in_readable(const char __user *uaddr, size_t size);
-
-int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
-				pgoff_t index, gfp_t gfp_mask);
-=======
 size_t fault_in_subpage_writeable(char __user *uaddr, size_t size);
 size_t fault_in_safe_writeable(const char __user *uaddr, size_t size);
 size_t fault_in_readable(const char __user *uaddr, size_t size);
 
->>>>>>> origin/linux_6.1.15_upstream
 int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 		pgoff_t index, gfp_t gfp);
 int filemap_add_folio(struct address_space *mapping, struct folio *folio,

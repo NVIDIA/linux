@@ -37,12 +37,8 @@ static void ath11k_dbring_fill_magic_value(struct ath11k *ar,
 
 static int ath11k_dbring_bufs_replenish(struct ath11k *ar,
 					struct ath11k_dbring *ring,
-<<<<<<< HEAD
-					struct ath11k_dbring_element *buff)
-=======
 					struct ath11k_dbring_element *buff,
 					enum wmi_direct_buffer_module id)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ath11k_base *ab = ar->ab;
 	struct hal_srng *srng;
@@ -107,12 +103,8 @@ err:
 }
 
 static int ath11k_dbring_fill_bufs(struct ath11k *ar,
-<<<<<<< HEAD
-				   struct ath11k_dbring *ring)
-=======
 				   struct ath11k_dbring *ring,
 				   enum wmi_direct_buffer_module id)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ath11k_dbring_element *buff;
 	struct hal_srng *srng;
@@ -131,13 +123,6 @@ static int ath11k_dbring_fill_bufs(struct ath11k *ar,
 	size = ring->buf_sz + align - 1;
 
 	while (num_remain > 0) {
-<<<<<<< HEAD
-		buff = kzalloc(size, GFP_ATOMIC);
-		if (!buff)
-			break;
-
-		ret = ath11k_dbring_bufs_replenish(ar, ring, buff);
-=======
 		buff = kzalloc(sizeof(*buff), GFP_ATOMIC);
 		if (!buff)
 			break;
@@ -148,7 +133,6 @@ static int ath11k_dbring_fill_bufs(struct ath11k *ar,
 			break;
 		}
 		ret = ath11k_dbring_bufs_replenish(ar, ring, buff, id);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret) {
 			ath11k_warn(ar->ab, "failed to replenish db ring num_remain %d req_ent %d\n",
 				    num_remain, req_entries);
@@ -229,11 +213,7 @@ int ath11k_dbring_buf_setup(struct ath11k *ar,
 	ring->hp_addr = ath11k_hal_srng_get_hp_addr(ar->ab, srng);
 	ring->tp_addr = ath11k_hal_srng_get_tp_addr(ar->ab, srng);
 
-<<<<<<< HEAD
-	ret = ath11k_dbring_fill_bufs(ar, ring);
-=======
 	ret = ath11k_dbring_fill_bufs(ar, ring, db_cap->id);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ret;
 }
@@ -382,14 +362,9 @@ int ath11k_dbring_buffer_release_event(struct ath11k_base *ab,
 			ring->handler(ar, &handler_data);
 		}
 
-<<<<<<< HEAD
-		memset(buff, 0, size);
-		ath11k_dbring_bufs_replenish(ar, ring, buff);
-=======
 		buff->paddr = 0;
 		memset(buff->payload, 0, size);
 		ath11k_dbring_bufs_replenish(ar, ring, buff, module_id);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	spin_unlock_bh(&srng->lock);

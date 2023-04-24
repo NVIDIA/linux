@@ -42,10 +42,7 @@
 #define IRQ_IOP32X_XINT2	IOP_IRQ(29)
 #define IRQ_IOP32X_XINT3	IOP_IRQ(30)
 #define IRQ_IOP32X_HPI		IOP_IRQ(31)
-<<<<<<< HEAD
-=======
 
 #define IOP32X_NR_IRQS		(IRQ_IOP32X_HPI + 1)
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif

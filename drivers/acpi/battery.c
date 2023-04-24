@@ -52,11 +52,6 @@ static bool battery_driver_registered;
 static int battery_bix_broken_package;
 static int battery_notification_delay_ms;
 static int battery_ac_is_broken;
-<<<<<<< HEAD
-static int battery_check_pmic = 1;
-static int battery_quirk_notcharging;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static unsigned int cache_time = 1000;
 module_param(cache_time, uint, 0644);
 MODULE_PARM_DESC(cache_time, "cache time in milliseconds");
@@ -1109,22 +1104,6 @@ battery_ac_is_broken_quirk(const struct dmi_system_id *d)
 	return 0;
 }
 
-<<<<<<< HEAD
-static int __init
-battery_do_not_check_pmic_quirk(const struct dmi_system_id *d)
-{
-	battery_check_pmic = 0;
-	return 0;
-}
-
-static int __init battery_quirk_not_charging(const struct dmi_system_id *d)
-{
-	battery_quirk_notcharging = 1;
-	return 0;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static const struct dmi_system_id bat_dmi_table[] __initconst = {
 	{
 		/* NEC LZ750/LS */

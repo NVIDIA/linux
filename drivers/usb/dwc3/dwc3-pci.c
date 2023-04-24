@@ -45,13 +45,9 @@
 #define PCI_DEVICE_ID_INTEL_ADLN		0x465e
 #define PCI_DEVICE_ID_INTEL_ADLN_PCH		0x54ee
 #define PCI_DEVICE_ID_INTEL_ADLS		0x7ae1
-<<<<<<< HEAD
-#define PCI_DEVICE_ID_INTEL_RPLS		0x7a61
-=======
 #define PCI_DEVICE_ID_INTEL_RPL			0xa70e
 #define PCI_DEVICE_ID_INTEL_RPLS		0x7a61
 #define PCI_DEVICE_ID_INTEL_MTLM		0x7eb1
->>>>>>> origin/linux_6.1.15_upstream
 #define PCI_DEVICE_ID_INTEL_MTLP		0x7ec1
 #define PCI_DEVICE_ID_INTEL_MTL			0x7e7e
 #define PCI_DEVICE_ID_INTEL_TGL			0x9a15
@@ -130,8 +126,6 @@ static const struct property_entry dwc3_pci_intel_properties[] = {
 	{}
 };
 
-<<<<<<< HEAD
-=======
 static const struct property_entry dwc3_pci_intel_phy_charger_detect_properties[] = {
 	PROPERTY_ENTRY_STRING("dr_mode", "peripheral"),
 	PROPERTY_ENTRY_BOOL("snps,dis_u2_susphy_quirk"),
@@ -140,7 +134,6 @@ static const struct property_entry dwc3_pci_intel_phy_charger_detect_properties[
 	{}
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct property_entry dwc3_pci_intel_byt_properties[] = {
 	PROPERTY_ENTRY_STRING("dr_mode", "peripheral"),
 	PROPERTY_ENTRY_BOOL("snps,dis_u2_susphy_quirk"),
@@ -190,13 +183,10 @@ static const struct software_node dwc3_pci_intel_swnode = {
 	.properties = dwc3_pci_intel_properties,
 };
 
-<<<<<<< HEAD
-=======
 static const struct software_node dwc3_pci_intel_phy_charger_detect_swnode = {
 	.properties = dwc3_pci_intel_phy_charger_detect_properties,
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct software_node dwc3_pci_intel_byt_swnode = {
 	.properties = dwc3_pci_intel_byt_properties,
 };
@@ -472,11 +462,6 @@ static const struct pci_device_id dwc3_pci_id_table[] = {
 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_ADLS),
 	  (kernel_ulong_t) &dwc3_pci_intel_swnode, },
 
-<<<<<<< HEAD
-	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_RPLS),
-	  (kernel_ulong_t) &dwc3_pci_intel_swnode, },
-
-=======
 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_RPL),
 	  (kernel_ulong_t) &dwc3_pci_intel_swnode, },
 
@@ -486,7 +471,6 @@ static const struct pci_device_id dwc3_pci_id_table[] = {
 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_MTLM),
 	  (kernel_ulong_t) &dwc3_pci_intel_swnode, },
 
->>>>>>> origin/linux_6.1.15_upstream
 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_MTLP),
 	  (kernel_ulong_t) &dwc3_pci_intel_swnode, },
 

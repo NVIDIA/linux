@@ -551,13 +551,7 @@ static void vhost_vsock_handle_tx_kick(struct vhost_work *work)
 		else
 			virtio_transport_free_pkt(pkt);
 
-<<<<<<< HEAD
-		len += sizeof(pkt->hdr);
 		vhost_add_used(vq, head, 0);
-		total_len += len;
-=======
-		vhost_add_used(vq, head, 0);
->>>>>>> origin/linux_6.1.15_upstream
 		added = true;
 	} while(likely(!vhost_exceeds_weight(vq, ++pkts, total_len)));
 

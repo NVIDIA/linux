@@ -65,11 +65,7 @@ static inline int nf_conntrack_confirm(struct sk_buff *skb)
 				ct = (struct nf_conn *)skb_nfct(skb);
 		}
 
-<<<<<<< HEAD
-		if (likely(ret == NF_ACCEPT))
-=======
 		if (ret == NF_ACCEPT && nf_ct_ecache_exist(ct))
->>>>>>> origin/linux_6.1.15_upstream
 			nf_ct_deliver_cached_events(ct);
 	}
 	return ret;

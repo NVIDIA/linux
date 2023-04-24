@@ -793,50 +793,6 @@ out:
 }
 
 static void smc_fback_state_change(struct sock *clcsk)
-<<<<<<< HEAD
-{
-	struct smc_sock *smc =
-		smc_clcsock_user_data(clcsk);
-
-	if (!smc)
-		return;
-	smc_fback_forward_wakeup(smc, clcsk, smc->clcsk_state_change);
-}
-
-static void smc_fback_data_ready(struct sock *clcsk)
-{
-	struct smc_sock *smc =
-		smc_clcsock_user_data(clcsk);
-
-	if (!smc)
-		return;
-	smc_fback_forward_wakeup(smc, clcsk, smc->clcsk_data_ready);
-}
-
-static void smc_fback_write_space(struct sock *clcsk)
-{
-	struct smc_sock *smc =
-		smc_clcsock_user_data(clcsk);
-
-	if (!smc)
-		return;
-	smc_fback_forward_wakeup(smc, clcsk, smc->clcsk_write_space);
-}
-
-static void smc_fback_error_report(struct sock *clcsk)
-{
-	struct smc_sock *smc =
-		smc_clcsock_user_data(clcsk);
-
-	if (!smc)
-		return;
-	smc_fback_forward_wakeup(smc, clcsk, smc->clcsk_error_report);
-}
-
-static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)
-{
-	struct sock *clcsk;
-=======
 {
 	struct smc_sock *smc;
 
@@ -905,7 +861,6 @@ static void smc_fback_replace_callbacks(struct smc_sock *smc)
 
 static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)
 {
->>>>>>> origin/linux_6.1.15_upstream
 	int rc = 0;
 
 	mutex_lock(&smc->clcsock_release_lock);
@@ -913,14 +868,7 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)
 		rc = -EBADF;
 		goto out;
 	}
-<<<<<<< HEAD
-	clcsk = smc->clcsock->sk;
 
-	if (smc->use_fallback)
-		goto out;
-=======
-
->>>>>>> origin/linux_6.1.15_upstream
 	smc->use_fallback = true;
 	smc->fallback_rsn = reason_code;
 	smc_stat_fallback(smc);
@@ -935,22 +883,7 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)
 		 * in smc sk->sk_wq and they should be woken up
 		 * as clcsock's wait queue is woken up.
 		 */
-<<<<<<< HEAD
-		smc->clcsk_state_change = clcsk->sk_state_change;
-		smc->clcsk_data_ready = clcsk->sk_data_ready;
-		smc->clcsk_write_space = clcsk->sk_write_space;
-		smc->clcsk_error_report = clcsk->sk_error_report;
-
-		clcsk->sk_state_change = smc_fback_state_change;
-		clcsk->sk_data_ready = smc_fback_data_ready;
-		clcsk->sk_write_space = smc_fback_write_space;
-		clcsk->sk_error_report = smc_fback_error_report;
-
-		smc->clcsock->sk->sk_user_data =
-			(void *)((uintptr_t)smc | SK_USER_DATA_NOCOPY);
-=======
 		smc_fback_replace_callbacks(smc);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 out:
 	mutex_unlock(&smc->clcsock_release_lock);
@@ -1006,11 +939,6 @@ static void smc_conn_abort(struct smc_sock *smc, int local_first)
 {
 	struct smc_connection *conn = &smc->conn;
 	struct smc_link_group *lgr = conn->lgr;
-<<<<<<< HEAD
-
-	smc_conn_free(conn);
-	if (local_first)
-=======
 	bool lgr_valid = false;
 
 	if (smc_conn_lgr_valid(conn))
@@ -1018,7 +946,6 @@ static void smc_conn_abort(struct smc_sock *smc, int local_first)
 
 	smc_conn_free(conn);
 	if (local_first && lgr_valid)
->>>>>>> origin/linux_6.1.15_upstream
 		smc_lgr_cleanup_early(lgr);
 }
 
@@ -1696,15 +1623,10 @@ static int smc_connect(struct socket *sock, struct sockaddr *addr,
 	if (rc && rc != -EINPROGRESS)
 		goto out;
 
-<<<<<<< HEAD
-	if (smc->use_fallback)
-		goto out;
-=======
 	if (smc->use_fallback) {
 		sock->state = rc ? SS_CONNECTING : SS_CONNECTED;
 		goto out;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	sock_hold(&smc->sk); /* sock put in passive closing */
 	if (flags & O_NONBLOCK) {
 		if (queue_work(smc_hs_wq, &smc->connect_work))
@@ -2554,11 +2476,8 @@ static void smc_clcsock_data_ready(struct sock *listen_clcsock)
 	struct smc_sock *lsmc =
 		smc_clcsock_user_data(listen_clcsock);
 
-<<<<<<< HEAD
-=======
 	read_lock_bh(&listen_clcsock->sk_callback_lock);
 	lsmc = smc_clcsock_user_data(listen_clcsock);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!lsmc)
 		goto out;
 	lsmc->clcsk_data_ready(listen_clcsock);
@@ -2620,15 +2539,11 @@ static int smc_listen(struct socket *sock, int backlog)
 
 	rc = kernel_listen(smc->clcsock, backlog);
 	if (rc) {
-<<<<<<< HEAD
-		smc->clcsock->sk->sk_data_ready = smc->clcsk_data_ready;
-=======
 		write_lock_bh(&smc->clcsock->sk->sk_callback_lock);
 		smc_clcsock_restore_cb(&smc->clcsock->sk->sk_data_ready,
 				       &smc->clcsk_data_ready);
 		smc->clcsock->sk->sk_user_data = NULL;
 		write_unlock_bh(&smc->clcsock->sk->sk_callback_lock);
->>>>>>> origin/linux_6.1.15_upstream
 		goto out;
 	}
 	sk->sk_max_ack_backlog = backlog;
@@ -2902,10 +2817,7 @@ static int smc_shutdown(struct socket *sock, int how)
 		sk->sk_shutdown = smc->clcsock->sk->sk_shutdown;
 		if (sk->sk_shutdown == SHUTDOWN_MASK) {
 			sk->sk_state = SMC_CLOSED;
-<<<<<<< HEAD
-=======
 			sk->sk_socket->state = SS_UNCONNECTED;
->>>>>>> origin/linux_6.1.15_upstream
 			sock_put(sk);
 		}
 		goto out;
@@ -3097,12 +3009,9 @@ static int smc_getsockopt(struct socket *sock, int level, int optname,
 {
 	struct smc_sock *smc;
 	int rc;
-<<<<<<< HEAD
-=======
 
 	if (level == SOL_SMC)
 		return __smc_getsockopt(sock, level, optname, optval, optlen);
->>>>>>> origin/linux_6.1.15_upstream
 
 	smc = smc_sk(sock->sk);
 	mutex_lock(&smc->clcsock_release_lock);

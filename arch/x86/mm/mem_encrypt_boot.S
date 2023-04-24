@@ -65,14 +65,10 @@ SYM_FUNC_START(sme_encrypt_execute)
 	movq	%rbp, %rsp		/* Restore original stack pointer */
 	pop	%rbp
 
-<<<<<<< HEAD
-	RET
-=======
 	/* Offset to __x86_return_thunk would be wrong here */
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 SYM_FUNC_END(sme_encrypt_execute)
 
 SYM_FUNC_START(__enc_copy)
@@ -158,13 +154,9 @@ SYM_FUNC_START(__enc_copy)
 	pop	%r12
 	pop	%r15
 
-<<<<<<< HEAD
-	RET
-=======
 	/* Offset to __x86_return_thunk would be wrong here */
 	ANNOTATE_UNRET_SAFE
 	ret
 	int3
->>>>>>> origin/linux_6.1.15_upstream
 .L__enc_copy_end:
 SYM_FUNC_END(__enc_copy)

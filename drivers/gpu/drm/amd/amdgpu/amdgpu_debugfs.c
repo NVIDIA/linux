@@ -37,12 +37,9 @@
 #include "amdgpu_fw_attestation.h"
 #include "amdgpu_umr.h"
 
-<<<<<<< HEAD
-=======
 #include "amdgpu_reset.h"
 #include "amdgpu_psp_ta.h"
 
->>>>>>> origin/linux_6.1.15_upstream
 #if defined(CONFIG_DEBUG_FS)
 
 /**

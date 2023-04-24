@@ -1257,13 +1257,9 @@ static int sun6i_a31_ccu_probe(struct platform_device *pdev)
 	val |= 0x3 << 12;
 	writel(val, reg + SUN6I_A31_AHB1_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, &sun6i_a31_ccu_desc);
-=======
 	ret = devm_sunxi_ccu_probe(&pdev->dev, reg, &sun6i_a31_ccu_desc);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ccu_mux_notifier_register(pll_cpu_clk.common.hw.clk,
 				  &sun6i_a31_cpu_nb);

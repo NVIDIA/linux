@@ -196,11 +196,8 @@ static inline int nct6775_write_value(struct nct6775_data *data, u16 reg, u16 va
 	return regmap_write(data->regmap, reg, value);
 }
 
-<<<<<<< HEAD
-=======
 struct nct6775_data *nct6775_update_device(struct device *dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 bool nct6775_reg_is_word_sized(struct nct6775_data *data, u16 reg);
 int nct6775_probe(struct device *dev, struct nct6775_data *data,
 		  const struct regmap_config *regmapcfg);

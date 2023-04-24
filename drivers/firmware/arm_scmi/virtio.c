@@ -238,11 +238,7 @@ static int scmi_vio_feed_vq_rx(struct scmi_vio_channel *vioch,
 
 	rc = virtqueue_add_inbuf(vioch->vqueue, &sg_in, 1, msg, GFP_ATOMIC);
 	if (rc)
-<<<<<<< HEAD
-		dev_err_once(dev, "failed to add to virtqueue (%d)\n", rc);
-=======
 		dev_err(dev, "failed to add to RX virtqueue (%d)\n", rc);
->>>>>>> origin/linux_6.1.15_upstream
 	else
 		virtqueue_kick(vioch->vqueue);
 
@@ -258,21 +254,10 @@ static int scmi_vio_feed_vq_rx(struct scmi_vio_channel *vioch,
 static void scmi_finalize_message(struct scmi_vio_channel *vioch,
 				  struct scmi_vio_msg *msg)
 {
-<<<<<<< HEAD
-	if (vioch->is_rx) {
-		scmi_vio_feed_vq_rx(vioch, msg, vioch->cinfo->dev);
-	} else {
-		/* Here IRQs are assumed to be already disabled by the caller */
-		spin_lock(&vioch->lock);
-		list_add(&msg->list, &vioch->free_list);
-		spin_unlock(&vioch->lock);
-	}
-=======
 	if (vioch->is_rx)
 		scmi_vio_feed_vq_rx(vioch, msg);
 	else
 		scmi_vio_msg_release(vioch, msg);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void scmi_vio_complete_cb(struct virtqueue *vqueue)
@@ -484,17 +469,7 @@ static int virtio_chan_setup(struct scmi_chan_info *cinfo, struct device *dev,
 		if (!msg->input)
 			return -ENOMEM;
 
-<<<<<<< HEAD
-		if (tx) {
-			spin_lock_irqsave(&vioch->lock, flags);
-			list_add_tail(&msg->list, &vioch->free_list);
-			spin_unlock_irqrestore(&vioch->lock, flags);
-		} else {
-			scmi_vio_feed_vq_rx(vioch, msg, cinfo->dev);
-		}
-=======
 		scmi_finalize_message(vioch, msg);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	scmi_vio_channel_ready(vioch, cinfo);

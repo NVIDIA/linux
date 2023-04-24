@@ -1668,17 +1668,6 @@ static ssize_t analogix_dpaux_transfer(struct drm_dp_aux *aux,
 	int ret;
 
 	pm_runtime_get_sync(dp->dev);
-<<<<<<< HEAD
-
-	ret = analogix_dp_detect_hpd(dp);
-	if (ret)
-		goto out;
-
-	ret = analogix_dp_transfer(dp, msg);
-out:
-	pm_runtime_put(dp->dev);
-
-=======
 
 	ret = analogix_dp_detect_hpd(dp);
 	if (ret)
@@ -1689,7 +1678,6 @@ out:
 	pm_runtime_mark_last_busy(dp->dev);
 	pm_runtime_put_autosuspend(dp->dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

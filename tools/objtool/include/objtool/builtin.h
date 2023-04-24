@@ -8,10 +8,6 @@
 #include <subcmd/parse-options.h>
 
 extern const struct option check_options[];
-<<<<<<< HEAD
-extern bool no_fp, no_unreachable, retpoline, module, backtrace, uaccess, stats,
-            validate_dup, vmlinux, mcount, noinstr, backup, sls;
-=======
 
 struct opts {
 	/* actions: */
@@ -42,7 +38,6 @@ struct opts {
 };
 
 extern struct opts opts;
->>>>>>> origin/linux_6.1.15_upstream
 
 extern int cmd_parse_options(int argc, const char **argv, const char * const usage[]);
 

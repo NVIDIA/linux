@@ -1741,8 +1741,6 @@ static int parse_vm_time_correlation(const struct option *opt, const char *str, 
 	return inject->itrace_synth_opts.vm_tm_corr_args ? 0 : -ENOMEM;
 }
 
-<<<<<<< HEAD
-=======
 static int parse_guest_data(const struct option *opt, const char *str, int unset)
 {
 	struct perf_inject *inject = opt->value;

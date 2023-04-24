@@ -10,34 +10,6 @@
 #include <linux/spinlock.h>
 #include "virt-dma.h"
 
-<<<<<<< HEAD
-#define HISI_DMA_SQ_BASE_L		0x0
-#define HISI_DMA_SQ_BASE_H		0x4
-#define HISI_DMA_SQ_DEPTH		0x8
-#define HISI_DMA_SQ_TAIL_PTR		0xc
-#define HISI_DMA_CQ_BASE_L		0x10
-#define HISI_DMA_CQ_BASE_H		0x14
-#define HISI_DMA_CQ_DEPTH		0x18
-#define HISI_DMA_CQ_HEAD_PTR		0x1c
-#define HISI_DMA_CTRL0			0x20
-#define HISI_DMA_CTRL0_QUEUE_EN_S	0
-#define HISI_DMA_CTRL0_QUEUE_PAUSE_S	4
-#define HISI_DMA_CTRL1			0x24
-#define HISI_DMA_CTRL1_QUEUE_RESET_S	0
-#define HISI_DMA_Q_FSM_STS		0x30
-#define HISI_DMA_FSM_STS_MASK		GENMASK(3, 0)
-#define HISI_DMA_INT_STS		0x40
-#define HISI_DMA_INT_STS_MASK		GENMASK(12, 0)
-#define HISI_DMA_INT_MSK		0x44
-#define HISI_DMA_MODE			0x217c
-#define HISI_DMA_OFFSET			0x100
-
-#define HISI_DMA_MSI_NUM		32
-#define HISI_DMA_CHAN_NUM		30
-#define HISI_DMA_Q_DEPTH_VAL		1024
-
-#define PCI_BAR_2			2
-=======
 /* HiSilicon DMA register common field define */
 #define HISI_DMA_Q_SQ_BASE_L			0x0
 #define HISI_DMA_Q_SQ_BASE_H			0x4
@@ -119,7 +91,6 @@ enum hisi_dma_reg_layout {
 	HISI_DMA_REG_LAYOUT_HIP08,
 	HISI_DMA_REG_LAYOUT_HIP09
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 enum hisi_dma_mode {
 	EP = 0,

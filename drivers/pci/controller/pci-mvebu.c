@@ -55,16 +55,10 @@
 	 PCIE_CONF_ADDR_EN)
 #define PCIE_CONF_DATA_OFF	0x18fc
 #define PCIE_INT_CAUSE_OFF	0x1900
-<<<<<<< HEAD
-#define  PCIE_INT_PM_PME		BIT(28)
-#define PCIE_MASK_OFF		0x1910
-#define  PCIE_MASK_ENABLE_INTS          0x0f000000
-=======
 #define PCIE_INT_UNMASK_OFF	0x1910
 #define  PCIE_INT_INTX(i)		BIT(24+i)
 #define  PCIE_INT_PM_PME		BIT(28)
 #define  PCIE_INT_ALL_MASK		GENMASK(31, 0)
->>>>>>> origin/linux_6.1.15_upstream
 #define PCIE_CTRL_OFF		0x1a00
 #define  PCIE_CTRL_X1_MODE		0x0001
 #define  PCIE_CTRL_RC_MODE		BIT(1)
@@ -254,18 +248,12 @@ static void mvebu_pcie_setup_wins(struct mvebu_pcie_port *port)
 
 static void mvebu_pcie_setup_hw(struct mvebu_pcie_port *port)
 {
-<<<<<<< HEAD
-	u32 ctrl, cmd, mask;
-=======
 	u32 ctrl, lnkcap, cmd, dev_rev, unmask, sspl;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Setup PCIe controller to Root Complex mode. */
 	ctrl = mvebu_readl(port, PCIE_CTRL_OFF);
 	ctrl |= PCIE_CTRL_RC_MODE;
 	mvebu_writel(port, ctrl, PCIE_CTRL_OFF);
-<<<<<<< HEAD
-=======
 
 	/*
 	 * Set Maximum Link Width to X1 or X4 in Root Port's PCIe Link
@@ -278,22 +266,12 @@ static void mvebu_pcie_setup_hw(struct mvebu_pcie_port *port)
 	lnkcap &= ~PCI_EXP_LNKCAP_MLW;
 	lnkcap |= (port->is_x4 ? 4 : 1) << 4;
 	mvebu_writel(port, lnkcap, PCIE_CAP_PCIEXP + PCI_EXP_LNKCAP);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Disable Root Bridge I/O space, memory space and bus mastering. */
 	cmd = mvebu_readl(port, PCIE_CMD_OFF);
 	cmd &= ~(PCI_COMMAND_IO | PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER);
 	mvebu_writel(port, cmd, PCIE_CMD_OFF);
 
-<<<<<<< HEAD
-	/* Point PCIe unit MBUS decode windows to DRAM space. */
-	mvebu_pcie_setup_wins(port);
-
-	/* Enable interrupt lines A-D. */
-	mask = mvebu_readl(port, PCIE_MASK_OFF);
-	mask |= PCIE_MASK_ENABLE_INTS;
-	mvebu_writel(port, mask, PCIE_MASK_OFF);
-=======
 	/*
 	 * Change Class Code of PCI Bridge device to PCI Bridge (0x6004)
 	 * because default value is Memory controller (0x5080).
@@ -361,7 +339,6 @@ static void mvebu_pcie_setup_hw(struct mvebu_pcie_port *port)
 	unmask |= PCIE_INT_INTX(0) | PCIE_INT_INTX(1) |
 		  PCIE_INT_INTX(2) | PCIE_INT_INTX(3);
 	mvebu_writel(port, unmask, PCIE_INT_UNMASK_OFF);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct mvebu_pcie_port *mvebu_pcie_find_port(struct mvebu_pcie *pcie,
@@ -546,23 +523,9 @@ static int mvebu_pcie_handle_iobase_change(struct mvebu_pcie_port *port)
 
 	/* Are the new iobase/iolimit values invalid? */
 	if (conf->iolimit < conf->iobase ||
-<<<<<<< HEAD
-	    conf->iolimitupper < conf->iobaseupper) {
-		mvebu_pcie_set_window(port, port->io_target, port->io_attr,
-				      &desired, &port->iowin);
-		return;
-	}
-
-	if (!mvebu_has_ioport(port)) {
-		dev_WARN(&port->pcie->pdev->dev,
-			 "Attempt to set IO when IO is disabled\n");
-		return;
-	}
-=======
 	    le16_to_cpu(conf->iolimitupper) < le16_to_cpu(conf->iobaseupper))
 		return mvebu_pcie_set_window(port, port->io_target, port->io_attr,
 					     &desired, &port->iowin);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * We read the PCI-to-PCI bridge emulated registers, and
@@ -589,17 +552,9 @@ static int mvebu_pcie_handle_membase_change(struct mvebu_pcie_port *port)
 	struct pci_bridge_emul_conf *conf = &port->bridge.conf;
 
 	/* Are the new membase/memlimit values invalid? */
-<<<<<<< HEAD
-	if (conf->memlimit < conf->membase) {
-		mvebu_pcie_set_window(port, port->mem_target, port->mem_attr,
-				      &desired, &port->memwin);
-		return;
-	}
-=======
 	if (le16_to_cpu(conf->memlimit) < le16_to_cpu(conf->membase))
 		return mvebu_pcie_set_window(port, port->mem_target, port->mem_attr,
 					     &desired, &port->memwin);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * We read the PCI-to-PCI bridge emulated registers, and
@@ -779,8 +734,6 @@ mvebu_pci_bridge_emul_pcie_conf_read(struct pci_bridge_emul *bridge,
 		*value = mvebu_readl(port, PCIE_CAP_PCIEXP + PCI_EXP_LNKCTL2);
 		break;
 
-<<<<<<< HEAD
-=======
 	default:
 		return PCI_BRIDGE_EMUL_NOT_HANDLED;
 	}
@@ -812,7 +765,6 @@ mvebu_pci_bridge_emul_ext_conf_read(struct pci_bridge_emul *bridge,
 		*value = mvebu_readl(port, PCIE_CAP_PCIERR_OFF + reg);
 		break;
 
->>>>>>> origin/linux_6.1.15_upstream
 	default:
 		return PCI_BRIDGE_EMUL_NOT_HANDLED;
 	}
@@ -829,22 +781,10 @@ mvebu_pci_bridge_emul_base_conf_write(struct pci_bridge_emul *bridge,
 
 	switch (reg) {
 	case PCI_COMMAND:
-<<<<<<< HEAD
-		if (!mvebu_has_ioport(port)) {
-			conf->command = cpu_to_le16(
-				le16_to_cpu(conf->command) & ~PCI_COMMAND_IO);
-			new &= ~PCI_COMMAND_IO;
-		}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		mvebu_writel(port, new, PCIE_CMD_OFF);
 		break;
 
 	case PCI_IO_BASE:
-<<<<<<< HEAD
-		mvebu_pcie_handle_iobase_change(port);
-=======
 		if ((mask & 0xffff) && mvebu_has_ioport(port) &&
 		    mvebu_pcie_handle_iobase_change(port)) {
 			/* On error disable IO range */
@@ -854,7 +794,6 @@ mvebu_pci_bridge_emul_base_conf_write(struct pci_bridge_emul *bridge,
 			conf->iobaseupper = cpu_to_le16(0x0000);
 			conf->iolimitupper = cpu_to_le16(0x0000);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 
 	case PCI_MEMORY_BASE:
@@ -961,9 +900,6 @@ mvebu_pci_bridge_emul_pcie_conf_write(struct pci_bridge_emul *bridge,
 	}
 }
 
-<<<<<<< HEAD
-static struct pci_bridge_emul_ops mvebu_pci_bridge_emul_ops = {
-=======
 static void
 mvebu_pci_bridge_emul_ext_conf_write(struct pci_bridge_emul *bridge,
 				     int reg, u32 old, u32 new, u32 mask)
@@ -997,7 +933,6 @@ mvebu_pci_bridge_emul_ext_conf_write(struct pci_bridge_emul *bridge,
 }
 
 static const struct pci_bridge_emul_ops mvebu_pci_bridge_emul_ops = {
->>>>>>> origin/linux_6.1.15_upstream
 	.read_base = mvebu_pci_bridge_emul_base_conf_read,
 	.write_base = mvebu_pci_bridge_emul_base_conf_write,
 	.read_pcie = mvebu_pci_bridge_emul_pcie_conf_read,
@@ -1014,12 +949,9 @@ static int mvebu_pci_bridge_emul_init(struct mvebu_pcie_port *port)
 {
 	unsigned int bridge_flags = PCI_BRIDGE_EMUL_NO_PREFMEM_FORWARD;
 	struct pci_bridge_emul *bridge = &port->bridge;
-<<<<<<< HEAD
-=======
 	u32 dev_id = mvebu_readl(port, PCIE_DEV_ID_OFF);
 	u32 dev_rev = mvebu_readl(port, PCIE_DEV_REV_OFF);
 	u32 ssdev_id = mvebu_readl(port, PCIE_SSDEV_ID_OFF);
->>>>>>> origin/linux_6.1.15_upstream
 	u32 pcie_cap = mvebu_readl(port, PCIE_CAP_PCIEXP);
 	u8 pcie_cap_ver = ((pcie_cap >> 16) & PCI_EXP_FLAGS_VERS);
 
@@ -1038,11 +970,6 @@ static int mvebu_pci_bridge_emul_init(struct mvebu_pcie_port *port)
 	/*
 	 * Older mvebu hardware provides PCIe Capability structure only in
 	 * version 1. New hardware provides it in version 2.
-<<<<<<< HEAD
-	 */
-	bridge->pcie_conf.cap = cpu_to_le16(pcie_cap_ver);
-
-=======
 	 * Enable slot support which is emulated.
 	 */
 	bridge->pcie_conf.cap = cpu_to_le16(pcie_cap_ver | PCI_EXP_FLAGS_SLOT);
@@ -1066,17 +993,12 @@ static int mvebu_pci_bridge_emul_init(struct mvebu_pcie_port *port)
 
 	bridge->subsystem_vendor_id = ssdev_id & 0xffff;
 	bridge->subsystem_id = ssdev_id >> 16;
->>>>>>> origin/linux_6.1.15_upstream
 	bridge->has_pcie = true;
 	bridge->pcie_start = PCIE_CAP_PCIEXP;
 	bridge->data = port;
 	bridge->ops = &mvebu_pci_bridge_emul_ops;
 
-<<<<<<< HEAD
-	return pci_bridge_emul_init(bridge, PCI_BRIDGE_EMUL_NO_PREFETCHABLE_BAR);
-=======
 	return pci_bridge_emul_init(bridge, bridge_flags);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline struct mvebu_pcie *sys_to_pcie(struct pci_sys_data *sys)
@@ -1686,8 +1608,6 @@ static int mvebu_pcie_probe(struct platform_device *pdev)
 			continue;
 		}
 
-<<<<<<< HEAD
-=======
 		if (irq > 0) {
 			ret = mvebu_pcie_init_irq_domain(port);
 			if (ret) {
@@ -1704,7 +1624,6 @@ static int mvebu_pcie_probe(struct platform_device *pdev)
 							 port);
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * PCIe topology exported by mvebu hw is quite complicated. In
 		 * reality has something like N fully independent host bridges

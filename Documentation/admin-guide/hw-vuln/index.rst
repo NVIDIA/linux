@@ -18,7 +18,4 @@ are configurable at compile, boot or run time.
    core-scheduling.rst
    l1d_flush.rst
    processor_mmio_stale_data.rst
-<<<<<<< HEAD
-=======
    cross-thread-rsb.rst
->>>>>>> origin/linux_6.1.15_upstream

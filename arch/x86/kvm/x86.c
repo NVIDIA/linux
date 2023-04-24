@@ -3475,10 +3475,7 @@ static void record_steal_time(struct kvm_vcpu *vcpu)
 	struct gfn_to_hva_cache *ghc = &vcpu->arch.st.cache;
 	struct kvm_steal_time __user *st;
 	struct kvm_memslots *slots;
-<<<<<<< HEAD
-=======
 	gpa_t gpa = vcpu->arch.st.msr_val & KVM_STEAL_VALID_BITS;
->>>>>>> origin/linux_6.1.15_upstream
 	u64 steal;
 	u32 version;
 
@@ -3496,22 +3493,12 @@ static void record_steal_time(struct kvm_vcpu *vcpu)
 	slots = kvm_memslots(vcpu->kvm);
 
 	if (unlikely(slots->generation != ghc->generation ||
-<<<<<<< HEAD
-		     kvm_is_error_hva(ghc->hva) || !ghc->memslot)) {
-		gfn_t gfn = vcpu->arch.st.msr_val & KVM_STEAL_VALID_BITS;
-
-		/* We rely on the fact that it fits in a single page. */
-		BUILD_BUG_ON((sizeof(*st) - 1) & KVM_STEAL_VALID_BITS);
-
-		if (kvm_gfn_to_hva_cache_init(vcpu->kvm, ghc, gfn, sizeof(*st)) ||
-=======
 		     gpa != ghc->gpa ||
 		     kvm_is_error_hva(ghc->hva) || !ghc->memslot)) {
 		/* We rely on the fact that it fits in a single page. */
 		BUILD_BUG_ON((sizeof(*st) - 1) & KVM_STEAL_VALID_BITS);
 
 		if (kvm_gfn_to_hva_cache_init(vcpu->kvm, ghc, gpa, sizeof(*st)) ||
->>>>>>> origin/linux_6.1.15_upstream
 		    kvm_is_error_hva(ghc->hva) || !ghc->memslot)
 			return;
 	}
@@ -4794,8 +4781,6 @@ static void kvm_steal_time_set_preempted(struct kvm_vcpu *vcpu)
 	struct kvm_steal_time __user *st;
 	struct kvm_memslots *slots;
 	static const u8 preempted = KVM_VCPU_PREEMPTED;
-<<<<<<< HEAD
-=======
 	gpa_t gpa = vcpu->arch.st.msr_val & KVM_STEAL_VALID_BITS;
 
 	/*
@@ -4809,7 +4794,6 @@ static void kvm_steal_time_set_preempted(struct kvm_vcpu *vcpu)
 		vcpu->stat.preemption_other++;
 		return;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	vcpu->stat.preemption_reported++;
 	if (!(vcpu->arch.st.msr_val & KVM_MSR_ENABLED))
@@ -4825,10 +4809,7 @@ static void kvm_steal_time_set_preempted(struct kvm_vcpu *vcpu)
 	slots = kvm_memslots(vcpu->kvm);
 
 	if (unlikely(slots->generation != ghc->generation ||
-<<<<<<< HEAD
-=======
 		     gpa != ghc->gpa ||
->>>>>>> origin/linux_6.1.15_upstream
 		     kvm_is_error_hva(ghc->hva) || !ghc->memslot))
 		return;
 
@@ -5255,11 +5236,7 @@ static int kvm_vcpu_ioctl_x86_set_vcpu_events(struct kvm_vcpu *vcpu,
 
 	if (events->flags & KVM_VCPUEVENT_VALID_SMM) {
 		if (!!(vcpu->arch.hflags & HF_SMM_MASK) != events->smi.smm) {
-<<<<<<< HEAD
-			kvm_x86_ops.nested_ops->leave_nested(vcpu);
-=======
 			kvm_leave_nested(vcpu);
->>>>>>> origin/linux_6.1.15_upstream
 			kvm_smm_changed(vcpu, events->smi.smm);
 		}
 
@@ -7850,32 +7827,6 @@ static void complete_emulator_pio_in(struct kvm_vcpu *vcpu, void *val)
 	vcpu->arch.pio.count = 0;
 }
 
-<<<<<<< HEAD
-static int emulator_pio_in(struct kvm_vcpu *vcpu, int size,
-			   unsigned short port, void *val, unsigned int count)
-{
-	if (vcpu->arch.pio.count) {
-		/*
-		 * Complete a previous iteration that required userspace I/O.
-		 * Note, @count isn't guaranteed to match pio.count as userspace
-		 * can modify ECX before rerunning the vCPU.  Ignore any such
-		 * shenanigans as KVM doesn't support modifying the rep count,
-		 * and the emulator ensures @count doesn't overflow the buffer.
-		 */
-	} else {
-		int r = __emulator_pio_in(vcpu, size, port, count);
-		if (!r)
-			return r;
-
-		/* Results already available, fall through.  */
-	}
-
-	complete_emulator_pio_in(vcpu, val);
-	return 1;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int emulator_pio_in_emulated(struct x86_emulate_ctxt *ctxt,
 				    int size, unsigned short port, void *val,
 				    unsigned int count)
@@ -8759,9 +8710,6 @@ int kvm_skip_emulated_instruction(struct kvm_vcpu *vcpu)
 }
 EXPORT_SYMBOL_GPL(kvm_skip_emulated_instruction);
 
-<<<<<<< HEAD
-static bool kvm_vcpu_check_code_breakpoint(struct kvm_vcpu *vcpu, int *r)
-=======
 static bool kvm_is_code_breakpoint_inhibited(struct kvm_vcpu *vcpu)
 {
 	u32 shadow;
@@ -8781,7 +8729,6 @@ static bool kvm_is_code_breakpoint_inhibited(struct kvm_vcpu *vcpu)
 
 static bool kvm_vcpu_check_code_breakpoint(struct kvm_vcpu *vcpu,
 					   int emulation_type, int *r)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	WARN_ON_ONCE(emulation_type & EMULTYPE_NO_DECODE);
 
@@ -8924,12 +8871,7 @@ int x86_emulate_instruction(struct kvm_vcpu *vcpu, gpa_t cr2_or_gpa,
 		 * are fault-like and are higher priority than any faults on
 		 * the code fetch itself.
 		 */
-<<<<<<< HEAD
-		if (!(emulation_type & EMULTYPE_SKIP) &&
-		    kvm_vcpu_check_code_breakpoint(vcpu, &r))
-=======
 		if (kvm_vcpu_check_code_breakpoint(vcpu, emulation_type, &r))
->>>>>>> origin/linux_6.1.15_upstream
 			return r;
 
 		r = x86_decode_emulated_instruction(vcpu, emulation_type,
@@ -8978,14 +8920,11 @@ int x86_emulate_instruction(struct kvm_vcpu *vcpu, gpa_t cr2_or_gpa,
 		else
 			ctxt->eip = ctxt->_eip;
 
-<<<<<<< HEAD
-=======
 		if (emulation_type & EMULTYPE_COMPLETE_USER_EXIT) {
 			r = 1;
 			goto writeback;
 		}
 
->>>>>>> origin/linux_6.1.15_upstream
 		kvm_rip_write(vcpu, ctxt->eip);
 		if (ctxt->eflags & X86_EFLAGS_RF)
 			kvm_set_rflags(vcpu, ctxt->eflags & ~X86_EFLAGS_RF);
@@ -9380,53 +9319,6 @@ static void kvm_timer_init(void)
 			  kvmclock_cpu_online, kvmclock_cpu_down_prep);
 }
 
-<<<<<<< HEAD
-DEFINE_PER_CPU(struct kvm_vcpu *, current_vcpu);
-EXPORT_PER_CPU_SYMBOL_GPL(current_vcpu);
-
-int kvm_is_in_guest(void)
-{
-	return __this_cpu_read(current_vcpu) != NULL;
-}
-
-static int kvm_is_user_mode(void)
-{
-	int user_mode = 3;
-
-	if (__this_cpu_read(current_vcpu))
-		user_mode = static_call(kvm_x86_get_cpl)(__this_cpu_read(current_vcpu));
-
-	return user_mode != 0;
-}
-
-static unsigned long kvm_get_guest_ip(void)
-{
-	unsigned long ip = 0;
-
-	if (__this_cpu_read(current_vcpu))
-		ip = kvm_rip_read(__this_cpu_read(current_vcpu));
-
-	return ip;
-}
-
-static void kvm_handle_intel_pt_intr(void)
-{
-	struct kvm_vcpu *vcpu = __this_cpu_read(current_vcpu);
-
-	kvm_make_request(KVM_REQ_PMI, vcpu);
-	__set_bit(MSR_CORE_PERF_GLOBAL_OVF_CTRL_TRACE_TOPA_PMI_BIT,
-			(unsigned long *)&vcpu->arch.pmu.global_status);
-}
-
-static struct perf_guest_info_callbacks kvm_guest_cbs = {
-	.is_in_guest		= kvm_is_in_guest,
-	.is_user_mode		= kvm_is_user_mode,
-	.get_guest_ip		= kvm_get_guest_ip,
-	.handle_intel_pt_intr	= NULL,
-};
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_X86_64
 static void pvclock_gtod_update_fn(struct work_struct *work)
 {
@@ -10614,19 +10506,11 @@ static void vcpu_load_eoi_exitmap(struct kvm_vcpu *vcpu)
 		bitmap_or((ulong *)eoi_exit_bitmap,
 			  vcpu->arch.ioapic_handled_vectors,
 			  to_hv_synic(vcpu)->vec_bitmap, 256);
-<<<<<<< HEAD
-		static_call(kvm_x86_load_eoi_exitmap)(vcpu, eoi_exit_bitmap);
-		return;
-	}
-
-	static_call(kvm_x86_load_eoi_exitmap)(
-=======
 		static_call_cond(kvm_x86_load_eoi_exitmap)(vcpu, eoi_exit_bitmap);
 		return;
 	}
 
 	static_call_cond(kvm_x86_load_eoi_exitmap)(
->>>>>>> origin/linux_6.1.15_upstream
 		vcpu, (u64 *)vcpu->arch.ioapic_handled_vectors);
 }
 
@@ -10877,18 +10761,11 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	smp_mb__after_srcu_read_unlock();
 
 	/*
-<<<<<<< HEAD
-	 * This handles the case where a posted interrupt was
-	 * notified with kvm_vcpu_kick.  Assigned devices can
-	 * use the POSTED_INTR_VECTOR even if APICv is disabled,
-	 * so do it even if APICv is disabled on this vCPU.
-=======
 	 * Process pending posted interrupts to handle the case where the
 	 * notification IRQ arrived in the host, or was never sent (because the
 	 * target vCPU wasn't running).  Do this regardless of the vCPU's APICv
 	 * status, KVM doesn't update assigned devices when APICv is inhibited,
 	 * i.e. they can post interrupts even if APICv is temporarily disabled.
->>>>>>> origin/linux_6.1.15_upstream
 	 */
 	if (kvm_lapic_enabled(vcpu))
 		static_call_cond(kvm_x86_sync_pir_to_irr)(vcpu);
@@ -12031,11 +11908,7 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 		 * will ensure the vCPU gets the correct state before VM-Entry.
 		 */
 		if (enable_apicv) {
-<<<<<<< HEAD
-			vcpu->arch.apicv_active = true;
-=======
 			vcpu->arch.apic->apicv_active = true;
->>>>>>> origin/linux_6.1.15_upstream
 			kvm_make_request(KVM_REQ_APICV_UPDATE, vcpu);
 		}
 	} else
@@ -12259,15 +12132,8 @@ void kvm_vcpu_reset(struct kvm_vcpu *vcpu, bool init_event)
 	 * i.e. it's impossible for kvm_find_cpuid_entry() to find a valid entry
 	 * on RESET.  But, go through the motions in case that's ever remedied.
 	 */
-<<<<<<< HEAD
-	eax = 1;
-	if (!kvm_cpuid(vcpu, &eax, &dummy, &dummy, &dummy, true))
-		eax = 0x600;
-	kvm_rdx_write(vcpu, eax);
-=======
 	cpuid_0x1 = kvm_find_cpuid_entry(vcpu, 1);
 	kvm_rdx_write(vcpu, cpuid_0x1 ? cpuid_0x1->eax : 0x600);
->>>>>>> origin/linux_6.1.15_upstream
 
 	static_call(kvm_x86_vcpu_reset)(vcpu, init_event);
 
@@ -12496,12 +12362,7 @@ int kvm_arch_hardware_setup(void *opaque)
 
 void kvm_arch_hardware_unsetup(void)
 {
-<<<<<<< HEAD
-	perf_unregister_guest_info_callbacks(&kvm_guest_cbs);
-	kvm_guest_cbs.handle_intel_pt_intr = NULL;
-=======
 	kvm_unregister_perf_callbacks();
->>>>>>> origin/linux_6.1.15_upstream
 
 	static_call(kvm_x86_hardware_unsetup)();
 }
@@ -13920,10 +13781,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_vmgexit_msr_protocol_exit);
 static int __init kvm_x86_init(void)
 {
 	kvm_mmu_x86_module_init();
-<<<<<<< HEAD
-=======
 	mitigate_smt_rsb &= boot_cpu_has_bug(X86_BUG_SMT_RSB) && cpu_smt_possible();
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 module_init(kvm_x86_init);

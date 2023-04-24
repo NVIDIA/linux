@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 /*
  * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
-<<<<<<< HEAD
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
-=======
  * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
->>>>>>> origin/linux_6.1.15_upstream
  */
 
 #include <net/mac80211.h>
@@ -925,35 +921,9 @@ static int ath11k_mac_monitor_vdev_start(struct ath11k *ar, int vdev_id,
 	struct wmi_vdev_start_req_arg arg = {};
 	int ret;
 
-<<<<<<< HEAD
-	if (arvif->vdev_type != WMI_VDEV_TYPE_AP)
-		return 0;
-
-	bcn = ieee80211_beacon_get_template(hw, vif, &offs);
-	if (!bcn) {
-		ath11k_warn(ab, "failed to get beacon template from mac80211\n");
-		return -EPERM;
-	}
-
-	ies = bcn->data + ieee80211_get_hdrlen_from_skb(bcn);
-	ies += sizeof(mgmt->u.beacon);
-
-	if (cfg80211_find_ie(WLAN_EID_RSN, ies, (skb_tail_pointer(bcn) - ies)))
-		arvif->rsnie_present = true;
-	else
-		arvif->rsnie_present = false;
-
-	if (cfg80211_find_vendor_ie(WLAN_OUI_MICROSOFT,
-				    WLAN_OUI_TYPE_MICROSOFT_WPA,
-				    ies, (skb_tail_pointer(bcn) - ies)))
-		arvif->wpaie_present = true;
-	else
-		arvif->wpaie_present = false;
-=======
 	lockdep_assert_held(&ar->conf_mutex);
 
 	channel = chandef->chan;
->>>>>>> origin/linux_6.1.15_upstream
 
 	arg.vdev_id = vdev_id;
 	arg.channel.freq = channel->center_freq;
@@ -3171,12 +3141,6 @@ static void ath11k_mac_op_bss_info_changed(struct ieee80211_hw *hw,
 				   "Set staggered beacon mode for VDEV: %d\n",
 				   arvif->vdev_id);
 
-<<<<<<< HEAD
-		ret = ath11k_mac_setup_bcn_tmpl(arvif);
-		if (ret)
-			ath11k_warn(ar->ab, "failed to update bcn template: %d\n",
-				    ret);
-=======
 		if (!arvif->do_not_send_tmpl || !arvif->bcca_zero_sent) {
 			ret = ath11k_mac_setup_bcn_tmpl(arvif);
 			if (ret)
@@ -3189,7 +3153,6 @@ static void ath11k_mac_op_bss_info_changed(struct ieee80211_hw *hw,
 		else
 			arvif->do_not_send_tmpl = false;
 
->>>>>>> origin/linux_6.1.15_upstream
 		if (vif->bss_conf.he_support) {
 			ret = ath11k_wmi_vdev_set_param_cmd(ar, arvif->vdev_id,
 							    WMI_VDEV_PARAM_BA_MODE,
@@ -5520,8 +5483,6 @@ static int __ath11k_set_antenna(struct ath11k *ar, u32 tx_ant, u32 rx_ant)
 	return 0;
 }
 
-<<<<<<< HEAD
-=======
 static void ath11k_mgmt_over_wmi_tx_drop(struct ath11k *ar, struct sk_buff *skb)
 {
 	int num_mgmt;
@@ -5537,7 +5498,6 @@ static void ath11k_mgmt_over_wmi_tx_drop(struct ath11k *ar, struct sk_buff *skb)
 		wake_up(&ar->txmgmt_empty_waitq);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void ath11k_mac_tx_mgmt_free(struct ath11k *ar, int buf_id)
 {
 	struct sk_buff *msdu;
@@ -5556,11 +5516,7 @@ static void ath11k_mac_tx_mgmt_free(struct ath11k *ar, int buf_id)
 	info = IEEE80211_SKB_CB(msdu);
 	memset(&info->status, 0, sizeof(info->status));
 
-<<<<<<< HEAD
-	ieee80211_free_txskb(ar->hw, msdu);
-=======
 	ath11k_mgmt_over_wmi_tx_drop(ar, msdu);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int ath11k_mac_tx_mgmt_pending_free(int buf_id, void *skb, void *ctx)
@@ -7250,8 +7206,6 @@ ath11k_mac_op_unassign_vif_chanctx(struct ieee80211_hw *hw,
 		if (peer)
 			ath11k_peer_delete(ar, arvif->vdev_id, ar->mac_addr);
 	}
-<<<<<<< HEAD
-=======
 
 	if (arvif->vdev_type == WMI_VDEV_TYPE_MONITOR) {
 		ret = ath11k_mac_monitor_stop(ar);
@@ -7266,7 +7220,6 @@ ath11k_mac_op_unassign_vif_chanctx(struct ieee80211_hw *hw,
 		mutex_unlock(&ar->conf_mutex);
 		return;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = ath11k_mac_vdev_stop(arvif);
 	if (ret)

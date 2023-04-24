@@ -3248,10 +3248,7 @@
 					       no_entry_flush [PPC]
 					       no_uaccess_flush [PPC]
 					       mmio_stale_data=off [X86]
-<<<<<<< HEAD
-=======
 					       retbleed=off [X86]
->>>>>>> origin/linux_6.1.15_upstream
 
 				Exceptions:
 					       This does not have any effect on
@@ -3274,10 +3271,7 @@
 					       mds=full,nosmt [X86]
 					       tsx_async_abort=full,nosmt [X86]
 					       mmio_stale_data=full,nosmt [X86]
-<<<<<<< HEAD
-=======
 					       retbleed=auto,nosmt [X86]
->>>>>>> origin/linux_6.1.15_upstream
 
 	mminit_loglevel=
 			[KNL] When CONFIG_DEBUG_MEMORY_INIT is set, this
@@ -3321,8 +3315,6 @@
 			For details see:
 			Documentation/admin-guide/hw-vuln/processor_mmio_stale_data.rst
 
-<<<<<<< HEAD
-=======
 	module.async_probe=<bool>
 			[KNL] When set to true, modules will use async probing
 			by default. To enable/disable async probing for a
@@ -3332,7 +3324,6 @@
 			specified, <module>.async_probe takes precedence for
 			the specific module.
 
->>>>>>> origin/linux_6.1.15_upstream
 	module.sig_enforce
 			[KNL] When CONFIG_MODULE_SIG is set, this means that
 			modules without (valid) signatures will fail to load.
@@ -5730,10 +5721,7 @@
 			eibrs		  - enhanced IBRS
 			eibrs,retpoline   - enhanced IBRS + Retpolines
 			eibrs,lfence      - enhanced IBRS + LFENCE
-<<<<<<< HEAD
-=======
 			ibrs		  - use IBRS to protect kernel
->>>>>>> origin/linux_6.1.15_upstream
 
 			Not specifying this option is equivalent to
 			spectre_v2=auto.

@@ -1875,27 +1875,13 @@ static __init int init_kprobe_trace(void)
 	if (ret)
 		return 0;
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("kprobe_events", TRACE_MODE_WRITE,
-				    NULL, NULL, &kprobe_events_ops);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/* Event list interface */
 	trace_create_file("kprobe_events", TRACE_MODE_WRITE,
 			  NULL, NULL, &kprobe_events_ops);
 
 	/* Profile interface */
-<<<<<<< HEAD
-	entry = tracefs_create_file("kprobe_profile", TRACE_MODE_READ,
-				    NULL, NULL, &kprobe_profile_ops);
-
-	if (!entry)
-		pr_warn("Could not create tracefs 'kprobe_profile' entry\n");
-=======
 	trace_create_file("kprobe_profile", TRACE_MODE_READ,
 			  NULL, NULL, &kprobe_profile_ops);
->>>>>>> origin/linux_6.1.15_upstream
 
 	setup_boot_kprobe_events();
 

@@ -192,17 +192,10 @@
 			reg = <0x108000 0x1000>;
 			qcom,ipc = <&l2cc 0x8 2>;
 
-<<<<<<< HEAD
-			interrupts	= <GIC_SPI 19 IRQ_TYPE_EDGE_RISING>,
-					  <GIC_SPI 21 IRQ_TYPE_EDGE_RISING>,
-					  <GIC_SPI 22 IRQ_TYPE_EDGE_RISING>;
-			interrupt-names	= "ack", "err", "wakeup";
-=======
 			interrupts = <GIC_SPI 19 IRQ_TYPE_EDGE_RISING>,
 				     <GIC_SPI 21 IRQ_TYPE_EDGE_RISING>,
 				     <GIC_SPI 22 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "ack", "err", "wakeup";
->>>>>>> origin/linux_6.1.15_upstream
 
 			regulators {
 				compatible = "qcom,rpm-pm8921-regulators";

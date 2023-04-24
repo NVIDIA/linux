@@ -568,18 +568,10 @@ static void unix_sock_destructor(struct sock *sk)
 	struct unix_sock *u = unix_sk(sk);
 
 	skb_queue_purge(&sk->sk_receive_queue);
-<<<<<<< HEAD
-	
-	WARN_ON(refcount_read(&sk->sk_wmem_alloc));
-	WARN_ON(!sk_unhashed(sk));
-	WARN_ON(sk->sk_socket);
-
-=======
 
 	DEBUG_NET_WARN_ON_ONCE(refcount_read(&sk->sk_wmem_alloc));
 	DEBUG_NET_WARN_ON_ONCE(!sk_unhashed(sk));
 	DEBUG_NET_WARN_ON_ONCE(sk->sk_socket);
->>>>>>> origin/linux_6.1.15_upstream
 	if (!sock_flag(sk, SOCK_DEAD)) {
 		pr_info("Attempt to release alive unix socket: %p\n", sk);
 		return;

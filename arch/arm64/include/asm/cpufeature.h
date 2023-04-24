@@ -656,11 +656,7 @@ static inline bool supports_csv2p3(int scope)
 		pfr0 = read_sanitised_ftr_reg(SYS_ID_AA64PFR0_EL1);
 
 	csv2_val = cpuid_feature_extract_unsigned_field(pfr0,
-<<<<<<< HEAD
-							ID_AA64PFR0_CSV2_SHIFT);
-=======
 							ID_AA64PFR0_EL1_CSV2_SHIFT);
->>>>>>> origin/linux_6.1.15_upstream
 	return csv2_val == 3;
 }
 
@@ -674,11 +670,7 @@ static inline bool supports_clearbhb(int scope)
 		isar2 = read_sanitised_ftr_reg(SYS_ID_AA64ISAR2_EL1);
 
 	return cpuid_feature_extract_unsigned_field(isar2,
-<<<<<<< HEAD
-						    ID_AA64ISAR2_CLEARBHB_SHIFT);
-=======
 						    ID_AA64ISAR2_EL1_BC_SHIFT);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 const struct cpumask *system_32bit_el0_cpumask(void);

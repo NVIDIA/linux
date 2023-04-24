@@ -622,13 +622,7 @@ static int stm32_cryp_hw_init(struct stm32_cryp *cryp)
 	}
 
 	/* Enable now */
-<<<<<<< HEAD
-	cfg |= CR_CRYPEN;
-
-	stm32_cryp_write(cryp, CRYP_CR, cfg);
-=======
 	stm32_cryp_enable(cryp);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -1854,11 +1848,7 @@ err_engine1:
 	spin_lock(&cryp_list.lock);
 	list_del(&cryp->list);
 	spin_unlock(&cryp_list.lock);
-<<<<<<< HEAD
-
-=======
 err_rst:
->>>>>>> origin/linux_6.1.15_upstream
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
 

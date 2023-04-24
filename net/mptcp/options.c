@@ -1306,19 +1306,6 @@ static __sum16 mptcp_make_csum(const struct mptcp_ext *mpext)
 {
 	return __mptcp_make_csum(mpext->data_seq, mpext->subflow_seq, mpext->data_len,
 				 ~csum_unfold(mpext->csum));
-<<<<<<< HEAD
-}
-
-static void put_len_csum(u16 len, __sum16 csum, void *data)
-{
-	__sum16 *sumptr = data + 2;
-	__be16 *ptr = data;
-
-	put_unaligned_be16(len, ptr);
-
-	put_unaligned(csum, sumptr);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void put_len_csum(u16 len, __sum16 csum, void *data)
@@ -1406,16 +1393,11 @@ void mptcp_write_options(struct tcphdr *th, __be32 *ptr, struct tcp_sock *tp,
 			put_unaligned_be32(mpext->subflow_seq, ptr);
 			ptr += 1;
 			if (opts->csum_reqd) {
-<<<<<<< HEAD
-				put_len_csum(mpext->data_len,
-					     mptcp_make_csum(mpext),
-=======
 				/* data_len == 0 is reserved for the infinite mapping,
 				 * the checksum will also be set to 0.
 				 */
 				put_len_csum(mpext->data_len,
 					     (mpext->data_len ? mptcp_make_csum(mpext) : 0),
->>>>>>> origin/linux_6.1.15_upstream
 					     ptr);
 			} else {
 				put_unaligned_be32(mpext->data_len << 16 |

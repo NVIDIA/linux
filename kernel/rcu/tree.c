@@ -279,21 +279,7 @@ static void rcu_dynticks_eqs_online(void)
 {
 	if (ct_dynticks() & RCU_DYNTICKS_IDX)
 		return;
-<<<<<<< HEAD
-	rcu_dynticks_inc(1);
-}
-
-/*
- * Is the current CPU in an extended quiescent state?
- *
- * No ordering, as we are sampling CPU-local information.
- */
-static __always_inline bool rcu_dynticks_curr_cpu_in_eqs(void)
-{
-	return !(arch_atomic_read(this_cpu_ptr(&rcu_data.dynticks)) & 0x1);
-=======
 	ct_state_inc(RCU_DYNTICKS_IDX);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -2269,15 +2255,8 @@ static void rcu_do_batch(struct rcu_data *rdp)
 		 * Stop only if limit reached and CPU has something to do.
 		 */
 		if (in_serving_softirq()) {
-<<<<<<< HEAD
-			if (count >= bl && (need_resched() ||
-					(!is_idle_task(current) && !rcu_is_callbacks_kthread())))
-				break;
-
-=======
 			if (count >= bl && (need_resched() || !is_idle_task(current)))
 				break;
->>>>>>> origin/linux_6.1.15_upstream
 			/*
 			 * Make sure we don't spend too much time here and deprive other
 			 * softirq vectors of CPU cycles.

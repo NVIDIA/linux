@@ -539,15 +539,8 @@ static void bnx2fc_recv_frame(struct sk_buff *skb)
 	skb_pull(skb, sizeof(struct fcoe_hdr));
 	fr_len = skb->len - sizeof(struct fcoe_crc_eof);
 
-<<<<<<< HEAD
-	stats = per_cpu_ptr(lport->stats, get_cpu());
-	stats->RxFrames++;
-	stats->RxWords += fr_len / FCOE_WORD_TO_BYTE;
-	put_cpu();
-=======
 	this_cpu_inc(lport->stats->RxFrames);
 	this_cpu_add(lport->stats->RxWords, fr_len / FCOE_WORD_TO_BYTE);
->>>>>>> origin/linux_6.1.15_upstream
 
 	fp = (struct fc_frame *)skb;
 	fc_frame_init(fp);
@@ -634,13 +627,7 @@ static void bnx2fc_recv_frame(struct sk_buff *skb)
 	fr_crc = le32_to_cpu(fr_crc(fp));
 
 	if (unlikely(fr_crc != ~crc32(~0, skb->data, fr_len))) {
-<<<<<<< HEAD
-		stats = per_cpu_ptr(lport->stats, get_cpu());
-		crc_err = (stats->InvalidCRCCount++);
-		put_cpu();
-=======
 		crc_err = this_cpu_inc_return(lport->stats->InvalidCRCCount);
->>>>>>> origin/linux_6.1.15_upstream
 		if (crc_err < 5)
 			printk(KERN_WARNING PFX "dropping frame with "
 			       "CRC error\n");

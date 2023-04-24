@@ -110,19 +110,7 @@ SYM_FUNC_START(__hyp_do_panic)
 	b	__host_enter_for_panic
 SYM_FUNC_END(__hyp_do_panic)
 
-<<<<<<< HEAD
-.macro host_el1_sync_vect
-	.align 7
-.L__vect_start\@:
-	stp	x0, x1, [sp, #-16]!
-	mrs	x0, esr_el2
-	ubfx	x0, x0, #ESR_ELx_EC_SHIFT, #ESR_ELx_EC_WIDTH
-	cmp	x0, #ESR_ELx_EC_HVC64
-	b.ne	__host_exit
-
-=======
 SYM_FUNC_START(__host_hvc)
->>>>>>> origin/linux_6.1.15_upstream
 	ldp	x0, x1, [sp]		// Don't fixup the stack yet
 
 	/* No stub for you, sonny Jim */

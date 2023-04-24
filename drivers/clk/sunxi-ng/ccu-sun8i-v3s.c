@@ -754,16 +754,7 @@ static int sun8i_v3s_ccu_probe(struct platform_device *pdev)
 	val &= ~GENMASK(19, 16);
 	writel(val, reg + SUN8I_V3S_PLL_AUDIO_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, ccu_desc);
-}
-
-static void __init sun8i_v3s_ccu_setup(struct device_node *node)
-{
-	sun8i_v3_v3s_ccu_init(node, &sun8i_v3s_ccu_desc);
-=======
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, desc);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id sun8i_v3s_ccu_ids[] = {

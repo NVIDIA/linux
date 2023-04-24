@@ -268,11 +268,7 @@ void ax25_disconnect(ax25_cb *ax25, int reason)
 		del_timer_sync(&ax25->t3timer);
 		del_timer_sync(&ax25->idletimer);
 	} else {
-<<<<<<< HEAD
-		if (!ax25->sk || !sock_flag(ax25->sk, SOCK_DESTROY))
-=======
 		if (ax25->sk && !sock_flag(ax25->sk, SOCK_DESTROY))
->>>>>>> origin/linux_6.1.15_upstream
 			ax25_stop_heartbeat(ax25);
 		ax25_stop_t1timer(ax25);
 		ax25_stop_t2timer(ax25);

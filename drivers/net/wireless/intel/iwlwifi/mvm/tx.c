@@ -314,10 +314,7 @@ static u32 iwl_mvm_get_tx_rate(struct iwl_mvm *mvm,
 	int rate_idx = -1;
 	u8 rate_plcp;
 	u32 rate_flags = 0;
-<<<<<<< HEAD
-=======
 	bool is_cck;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* info->control is only relevant for non HW rate control */
 	if (!ieee80211_hw_check(mvm->hw, HAS_RATE_CONTROL)) {

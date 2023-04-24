@@ -960,8 +960,6 @@ static void __init early_init_dt_check_for_elfcorehdr(unsigned long node)
 }
 
 static unsigned long chosen_node_offset = -FDT_ERR_NOTFOUND;
-<<<<<<< HEAD
-=======
 
 /*
  * The main usage of linux,usable-memory-range is for crash dump kernel.
@@ -971,7 +969,6 @@ static unsigned long chosen_node_offset = -FDT_ERR_NOTFOUND;
  * region is always the last range of linux,usable-memory-range if exist.
  */
 #define MAX_USABLE_RANGES		2
->>>>>>> origin/linux_6.1.15_upstream
 
 /**
  * early_init_dt_check_for_usable_mem_range - Decode usable memory range
@@ -979,16 +976,9 @@ static unsigned long chosen_node_offset = -FDT_ERR_NOTFOUND;
  */
 void __init early_init_dt_check_for_usable_mem_range(void)
 {
-<<<<<<< HEAD
-	const __be32 *prop;
-	int len;
-	phys_addr_t cap_mem_addr;
-	phys_addr_t cap_mem_size;
-=======
 	struct memblock_region rgn[MAX_USABLE_RANGES] = {0};
 	const __be32 *prop, *endp;
 	int len, i;
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long node = chosen_node_offset;
 
 	if ((long)node < 0)
@@ -1009,16 +999,9 @@ void __init early_init_dt_check_for_usable_mem_range(void)
 			 i, &rgn[i].base, &rgn[i].size);
 	}
 
-<<<<<<< HEAD
-	pr_debug("cap_mem_start=%pa cap_mem_size=%pa\n", &cap_mem_addr,
-		 &cap_mem_size);
-
-	memblock_cap_memory_range(cap_mem_addr, cap_mem_size);
-=======
 	memblock_cap_memory_range(rgn[0].base, rgn[0].size);
 	for (i = 1; i < MAX_USABLE_RANGES && rgn[i].size; i++)
 		memblock_add(rgn[i].base, rgn[i].size);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #ifdef CONFIG_SERIAL_EARLYCON
@@ -1185,8 +1168,6 @@ int __init early_init_dt_scan_chosen(char *cmdline)
 
 	early_init_dt_check_for_initrd(node);
 	early_init_dt_check_for_elfcorehdr(node);
-<<<<<<< HEAD
-=======
 
 	rng_seed = of_get_flat_dt_prop(node, "rng-seed", &l);
 	if (rng_seed && l > 0) {
@@ -1199,7 +1180,6 @@ int __init early_init_dt_scan_chosen(char *cmdline)
 		of_fdt_crc32 = crc32_be(~0, initial_boot_params,
 				fdt_totalsize(initial_boot_params));
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Retrieve command line */
 	p = of_get_flat_dt_prop(node, "bootargs", &l);

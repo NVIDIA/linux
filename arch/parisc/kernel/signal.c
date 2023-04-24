@@ -271,38 +271,12 @@ setup_rt_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *regs,
 	if (err)
 		return -EFAULT;
 
-<<<<<<< HEAD
-	/* Set up to return from userspace.  If provided, use a stub
-	   already in userspace. The first words of tramp are used to
-	   save the previous sigrestartblock trampoline that might be
-	   on the stack. We start the sigreturn trampoline at 
-	   SIGRESTARTBLOCK_TRAMP+X. */
-	err |= __put_user(in_syscall ? INSN_LDI_R25_1 : INSN_LDI_R25_0,
-			&frame->tramp[SIGRESTARTBLOCK_TRAMP+0]);
-	err |= __put_user(INSN_LDI_R20,
-			&frame->tramp[SIGRESTARTBLOCK_TRAMP+1]);
-	err |= __put_user(INSN_BLE_SR2_R0,
-			&frame->tramp[SIGRESTARTBLOCK_TRAMP+2]);
-	err |= __put_user(INSN_NOP, &frame->tramp[SIGRESTARTBLOCK_TRAMP+3]);
-
-	start = (unsigned long) &frame->tramp[0];
-	end = (unsigned long) &frame->tramp[TRAMP_SIZE];
-	flush_user_dcache_range_asm(start, end);
-	flush_user_icache_range_asm(start, end);
-
-	/* TRAMP Words 0-4, Length 5 = SIGRESTARTBLOCK_TRAMP
-	 * TRAMP Words 5-9, Length 4 = SIGRETURN_TRAMP
-	 * So the SIGRETURN_TRAMP is at the end of SIGRESTARTBLOCK_TRAMP
-	 */
-	rp = (unsigned long) &frame->tramp[SIGRESTARTBLOCK_TRAMP];
-=======
 #ifdef CONFIG_64BIT
 	if (!is_compat_task())
 		rp = VDSO64_SYMBOL(current, sigtramp_rt);
 	else
 #endif
 		rp = VDSO32_SYMBOL(current, sigtramp_rt);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (in_syscall)
 		rp += 4*4; /* skip 4 instructions and start at ldi 1,%r25 */

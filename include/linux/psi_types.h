@@ -24,38 +24,18 @@ enum psi_task_count {
 	 * distinguish between regular running (i.e. productive)
 	 * threads and memstall ones.
 	 */
-<<<<<<< HEAD
-	NR_ONCPU,
-	/*
-	 * For IO and CPU stalls the presence of running/oncpu tasks
-	 * in the domain means a partial rather than a full stall.
-	 * For memory it's not so simple because of page reclaimers:
-	 * they are running/oncpu while representing a stall. To tell
-	 * whether a domain has productivity left or not, we need to
-	 * distinguish between regular running (i.e. productive)
-	 * threads and memstall ones.
-	 */
-	NR_MEMSTALL_RUNNING,
-	NR_PSI_TASK_COUNTS = 5,
-=======
 	NR_MEMSTALL_RUNNING,
 	NR_PSI_TASK_COUNTS = 4,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /* Task state bitmasks */
 #define TSK_IOWAIT	(1 << NR_IOWAIT)
 #define TSK_MEMSTALL	(1 << NR_MEMSTALL)
 #define TSK_RUNNING	(1 << NR_RUNNING)
-<<<<<<< HEAD
-#define TSK_ONCPU	(1 << NR_ONCPU)
-#define TSK_MEMSTALL_RUNNING	(1 << NR_MEMSTALL_RUNNING)
-=======
 #define TSK_MEMSTALL_RUNNING	(1 << NR_MEMSTALL_RUNNING)
 
 /* Only one task can be scheduled, no corresponding task count */
 #define TSK_ONCPU	(1 << NR_PSI_TASK_COUNTS)
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Resources that workloads could be stalled on */
 enum psi_res {
@@ -165,12 +145,9 @@ struct psi_trigger {
 	 * events to one per window
 	 */
 	u64 last_event_time;
-<<<<<<< HEAD
-=======
 
 	/* Deferred event(s) from previous ratelimit window */
 	bool pending_event;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct psi_group {

@@ -535,17 +535,10 @@ static int ov6650_set_selection(struct v4l2_subdev *sd,
 		struct v4l2_mbus_framefmt *mf = &sd_state->pads->try_fmt;
 		/* detect current pad config scaling factor */
 		bool half_scale = !is_unscaled_ok(mf->width, mf->height, crop);
-<<<<<<< HEAD
 
 		/* store new crop rectangle */
 		*crop = sel->r;
 
-=======
-
-		/* store new crop rectangle */
-		*crop = sel->r;
-
->>>>>>> origin/linux_6.1.15_upstream
 		/* adjust frame size */
 		mf->width = crop->width >> half_scale;
 		mf->height = crop->height >> half_scale;

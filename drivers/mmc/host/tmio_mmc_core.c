@@ -977,11 +977,7 @@ static void tmio_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		tmio_mmc_power_off(host);
 		/* For R-Car Gen2+, we need to reset SDHI specific SCC */
 		if (host->pdata->flags & TMIO_MMC_MIN_RCAR2)
-<<<<<<< HEAD
-			tmio_mmc_reset(host);
-=======
 			tmio_mmc_reset(host, false);
->>>>>>> origin/linux_6.1.15_upstream
 
 		host->set_clock(host, 0);
 		break;

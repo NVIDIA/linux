@@ -363,11 +363,7 @@ static int old_deviceless(struct net *net, void __user *data)
 
 		args[2] = get_bridge_ifindices(net, indices, args[2]);
 
-<<<<<<< HEAD
-		ret = copy_to_user((void __user *)args[1], indices,
-=======
 		ret = copy_to_user(argp, indices,
->>>>>>> origin/linux_6.1.15_upstream
 				   array_size(args[2], sizeof(int)))
 			? -EFAULT : args[2];
 

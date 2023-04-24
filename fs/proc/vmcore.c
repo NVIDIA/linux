@@ -150,30 +150,14 @@ ssize_t read_from_oldmem(struct iov_iter *iter, size_t count,
 			nr_bytes = count;
 
 		/* If pfn is not ram, return zeros for sparse dump files */
-<<<<<<< HEAD
-		if (pfn_is_ram(pfn) == 0) {
-			tmp = 0;
-			if (!userbuf)
-				memset(buf, 0, nr_bytes);
-			else if (clear_user(buf, nr_bytes))
-				tmp = -EFAULT;
-=======
 		if (!pfn_is_ram(pfn)) {
 			tmp = iov_iter_zero(nr_bytes, iter);
->>>>>>> origin/linux_6.1.15_upstream
 		} else {
 			if (encrypted)
 				tmp = copy_oldmem_page_encrypted(iter, pfn,
 								 nr_bytes,
 								 offset);
 			else
-<<<<<<< HEAD
-				tmp = copy_oldmem_page(pfn, buf, nr_bytes,
-						       offset, userbuf);
-		}
-		if (tmp < 0)
-			return tmp;
-=======
 				tmp = copy_oldmem_page(iter, pfn, nr_bytes,
 						       offset);
 		}
@@ -181,7 +165,6 @@ ssize_t read_from_oldmem(struct iov_iter *iter, size_t count,
 			srcu_read_unlock(&vmcore_cb_srcu, idx);
 			return -EFAULT;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		*ppos += nr_bytes;
 		count -= nr_bytes;

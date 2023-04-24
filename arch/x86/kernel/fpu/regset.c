@@ -115,15 +115,9 @@ int xfpregs_set(struct task_struct *target, const struct user_regset *regset,
 	memcpy(&fpu->fpstate->regs.fxsave, &newstate, sizeof(newstate));
 
 	/* Clear xmm8..15 for 32-bit callers */
-<<<<<<< HEAD
-	BUILD_BUG_ON(sizeof(fpu->state.fxsave.xmm_space) != 16 * 16);
-	if (in_ia32_syscall())
-		memset(&fpu->state.fxsave.xmm_space[8*4], 0, 8 * 16);
-=======
 	BUILD_BUG_ON(sizeof(fpu->__fpstate.regs.fxsave.xmm_space) != 16 * 16);
 	if (in_ia32_syscall())
 		memset(&fpu->fpstate->regs.fxsave.xmm_space[8*4], 0, 8 * 16);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Mark FP and SSE as in use when XSAVE is enabled */
 	if (use_xsave())

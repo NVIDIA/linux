@@ -281,12 +281,7 @@ static int sco_connect(struct hci_dev *hdev, struct sock *sk)
 	return err;
 }
 
-<<<<<<< HEAD
-static int sco_send_frame(struct sock *sk, void *buf, int len,
-			  unsigned int msg_flags)
-=======
 static int sco_send_frame(struct sock *sk, struct sk_buff *skb)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct sco_conn *conn = sco_pi(sk)->conn;
 	int len = skb->len;
@@ -297,14 +292,6 @@ static int sco_send_frame(struct sock *sk, struct sk_buff *skb)
 
 	BT_DBG("sk %p len %d", sk, len);
 
-<<<<<<< HEAD
-	skb = bt_skb_send_alloc(sk, len, msg_flags & MSG_DONTWAIT, &err);
-	if (!skb)
-		return err;
-
-	memcpy(skb_put(skb, len), buf, len);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	hci_send_sco(conn->hcon, skb);
 
 	return len;
@@ -739,11 +726,7 @@ static int sco_sock_sendmsg(struct socket *sock, struct msghdr *msg,
 			    size_t len)
 {
 	struct sock *sk = sock->sk;
-<<<<<<< HEAD
-	void *buf;
-=======
 	struct sk_buff *skb;
->>>>>>> origin/linux_6.1.15_upstream
 	int err;
 
 	BT_DBG("sock %p, sk %p", sock, sk);
@@ -755,40 +738,21 @@ static int sco_sock_sendmsg(struct socket *sock, struct msghdr *msg,
 	if (msg->msg_flags & MSG_OOB)
 		return -EOPNOTSUPP;
 
-<<<<<<< HEAD
-	buf = kmalloc(len, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	if (memcpy_from_msg(buf, msg, len)) {
-		kfree(buf);
-		return -EFAULT;
-	}
-=======
 	skb = bt_skb_sendmsg(sk, msg, len, len, 0, 0);
 	if (IS_ERR(skb))
 		return PTR_ERR(skb);
->>>>>>> origin/linux_6.1.15_upstream
 
 	lock_sock(sk);
 
 	if (sk->sk_state == BT_CONNECTED)
-<<<<<<< HEAD
-		err = sco_send_frame(sk, buf, len, msg->msg_flags);
-=======
 		err = sco_send_frame(sk, skb);
->>>>>>> origin/linux_6.1.15_upstream
 	else
 		err = -ENOTCONN;
 
 	release_sock(sk);
-<<<<<<< HEAD
-	kfree(buf);
-=======
 
 	if (err < 0)
 		kfree_skb(skb);
->>>>>>> origin/linux_6.1.15_upstream
 	return err;
 }
 

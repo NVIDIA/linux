@@ -1129,14 +1129,6 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 	atomisp_init_subdev_pipe(asd, &asd->video_out_video_capture,
 				 V4L2_BUF_TYPE_VIDEO_CAPTURE);
 
-<<<<<<< HEAD
-	atomisp_init_acc_pipe(asd, &asd->video_acc);
-
-	ret = atomisp_video_init(&asd->video_in, "MEMORY",
-				 ATOMISP_RUN_MODE_SDV);
-	if (ret < 0)
-		return ret;
-
 	ret = atomisp_video_init(&asd->video_out_capture, "CAPTURE",
 				 ATOMISP_RUN_MODE_STILL_CAPTURE);
 	if (ret < 0)
@@ -1157,30 +1149,6 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 	if (ret < 0)
 		return ret;
 
-	atomisp_acc_init(&asd->video_acc, "ACC");
-
-=======
-	ret = atomisp_video_init(&asd->video_out_capture, "CAPTURE",
-				 ATOMISP_RUN_MODE_STILL_CAPTURE);
-	if (ret < 0)
-		return ret;
-
-	ret = atomisp_video_init(&asd->video_out_vf, "VIEWFINDER",
-				 ATOMISP_RUN_MODE_CONTINUOUS_CAPTURE);
-	if (ret < 0)
-		return ret;
-
-	ret = atomisp_video_init(&asd->video_out_preview, "PREVIEW",
-				 ATOMISP_RUN_MODE_PREVIEW);
-	if (ret < 0)
-		return ret;
-
-	ret = atomisp_video_init(&asd->video_out_video_capture, "VIDEO",
-				 ATOMISP_RUN_MODE_VIDEO);
-	if (ret < 0)
-		return ret;
-
->>>>>>> origin/linux_6.1.15_upstream
 	ret = v4l2_ctrl_handler_init(&asd->ctrl_handler, 1);
 	if (ret)
 		return ret;

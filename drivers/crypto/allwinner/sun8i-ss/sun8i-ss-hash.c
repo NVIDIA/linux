@@ -549,14 +549,6 @@ int sun8i_ss_hash_run(struct crypto_engine *engine, void *breq)
 			sg = sg_next(sg);
 			continue;
 		}
-<<<<<<< HEAD
-		rctx->t_src[i].addr = sg_dma_address(sg);
-		todo = min(len, sg_dma_len(sg));
-		rctx->t_src[i].len = todo / 4;
-		len -= todo;
-		rctx->t_dst[i].addr = addr_res;
-		rctx->t_dst[i].len = digestsize / 4;
-=======
 		todo = min(len, sg_dma_len(sg));
 		/* only the last SG could be with a size not modulo64 */
 		if (todo % 64 == 0) {
@@ -570,7 +562,6 @@ int sun8i_ss_hash_run(struct crypto_engine *engine, void *breq)
 			j += todo / 4;
 			len -= todo;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		sg = sg_next(sg);
 		i++;
 	}
@@ -711,11 +702,6 @@ err_dma_result:
 	if (!err)
 		memcpy(areq->result, result, algt->alg.hash.halg.digestsize);
 theend:
-<<<<<<< HEAD
-	kfree(pad);
-	kfree(result);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	local_bh_disable();
 	crypto_finalize_hash_request(engine, breq, err);
 	local_bh_enable();

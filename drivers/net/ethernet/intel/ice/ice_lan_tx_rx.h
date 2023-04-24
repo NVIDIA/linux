@@ -571,12 +571,9 @@ struct ice_tx_ctx_desc {
 
 #define ICE_TXD_CTX_QW1_MSS_S	50
 #define ICE_TXD_CTX_MIN_MSS	64
-<<<<<<< HEAD
-=======
 
 #define ICE_TXD_CTX_QW1_VSI_S	50
 #define ICE_TXD_CTX_QW1_VSI_M	(0x3FFULL << ICE_TXD_CTX_QW1_VSI_S)
->>>>>>> origin/linux_6.1.15_upstream
 
 enum ice_tx_ctx_desc_cmd_bits {
 	ICE_TX_CTX_DESC_TSO		= 0x01,

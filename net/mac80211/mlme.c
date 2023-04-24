@@ -699,21 +699,12 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 				ieee80211_conn_flags_t conn_flags)
 {
 	u8 *pos, *pre_he_pos;
-<<<<<<< HEAD
-	const struct ieee80211_sta_he_cap *he_cap = NULL;
-	struct ieee80211_chanctx_conf *chanctx_conf;
-=======
 	const struct ieee80211_sta_he_cap *he_cap;
->>>>>>> origin/linux_6.1.15_upstream
 	u8 he_cap_size;
 
 	he_cap = ieee80211_get_he_iftype_cap(sband,
 					     ieee80211_vif_type_p2p(&sdata->vif));
-<<<<<<< HEAD
-	if (!he_cap || !chanctx_conf || !reg_cap)
-=======
 	if (WARN_ON(!he_cap))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 
 	/* get a max size estimate */
@@ -724,11 +715,7 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 				      he_cap->he_cap_elem.phy_cap_info);
 	pos = skb_put(skb, he_cap_size);
 	pre_he_pos = pos;
-<<<<<<< HEAD
-	pos = ieee80211_ie_build_he_cap(sdata->u.mgd.flags,
-=======
 	pos = ieee80211_ie_build_he_cap(conn_flags,
->>>>>>> origin/linux_6.1.15_upstream
 					pos, he_cap, pos + he_cap_size);
 	/* trim excess if any */
 	skb_trim(skb, skb->len - (pre_he_pos + he_cap_size - pos));
@@ -736,35 +723,6 @@ static void ieee80211_add_he_ie(struct ieee80211_sub_if_data *sdata,
 	ieee80211_ie_build_he_6ghz_cap(sdata, smps_mode, skb);
 }
 
-<<<<<<< HEAD
-static int ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata)
-{
-	struct ieee80211_local *local = sdata->local;
-	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
-	struct ieee80211_mgd_assoc_data *assoc_data = ifmgd->assoc_data;
-	struct sk_buff *skb;
-	struct ieee80211_mgmt *mgmt;
-	u8 *pos, qos_info, *ie_start;
-	size_t offset = 0, noffset;
-	int i, count, rates_len, supp_rates_len, shift;
-	u16 capab;
-	struct ieee80211_supported_band *sband;
-	struct ieee80211_chanctx_conf *chanctx_conf;
-	struct ieee80211_channel *chan;
-	u32 rates = 0;
-	__le16 listen_int;
-	struct element *ext_capa = NULL;
-	enum nl80211_iftype iftype = ieee80211_vif_type_p2p(&sdata->vif);
-	const struct ieee80211_sband_iftype_data *iftd;
-	struct ieee80211_prep_tx_info info = {};
-	int ret;
-
-	/* we know it's writable, cast away the const */
-	if (assoc_data->ie_len)
-		ext_capa = (void *)cfg80211_find_elem(WLAN_EID_EXT_CAPABILITY,
-						      assoc_data->ie,
-						      assoc_data->ie_len);
-=======
 static void ieee80211_add_eht_ie(struct ieee80211_sub_if_data *sdata,
 				 struct sk_buff *skb,
 				 struct ieee80211_supported_band *sband)
@@ -773,25 +731,12 @@ static void ieee80211_add_eht_ie(struct ieee80211_sub_if_data *sdata,
 	const struct ieee80211_sta_he_cap *he_cap;
 	const struct ieee80211_sta_eht_cap *eht_cap;
 	u8 eht_cap_size;
->>>>>>> origin/linux_6.1.15_upstream
 
 	he_cap = ieee80211_get_he_iftype_cap(sband,
 					     ieee80211_vif_type_p2p(&sdata->vif));
 	eht_cap = ieee80211_get_eht_iftype_cap(sband,
 					       ieee80211_vif_type_p2p(&sdata->vif));
 
-<<<<<<< HEAD
-	rcu_read_lock();
-	chanctx_conf = rcu_dereference(sdata->vif.chanctx_conf);
-	if (WARN_ON(!chanctx_conf)) {
-		rcu_read_unlock();
-		return -EINVAL;
-	}
-	chan = chanctx_conf->def.chan;
-	rcu_read_unlock();
-	sband = local->hw.wiphy->bands[chan->band];
-	shift = ieee80211_vif_get_shift(&sdata->vif);
-=======
 	/*
 	 * EHT capabilities element is only added if the HE capabilities element
 	 * was added so assume that 'he_cap' is valid and don't check it.
@@ -821,7 +766,6 @@ static void ieee80211_assoc_add_rates(struct sk_buff *skb,
 	u32 rates = 0;
 	int i, count;
 	u8 *pos;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (assoc_data->supp_rates_len) {
 		/*
@@ -843,78 +787,6 @@ static void ieee80211_assoc_add_rates(struct sk_buff *skb,
 		rates_len = sband->n_bitrates;
 		for (i = 0; i < sband->n_bitrates; i++)
 			rates |= BIT(i);
-<<<<<<< HEAD
-			rates_len++;
-		}
-	}
-
-	iftd = ieee80211_get_sband_iftype_data(sband, iftype);
-
-	skb = alloc_skb(local->hw.extra_tx_headroom +
-			sizeof(*mgmt) + /* bit too much but doesn't matter */
-			2 + assoc_data->ssid_len + /* SSID */
-			4 + rates_len + /* (extended) rates */
-			4 + /* power capability */
-			2 + 2 * sband->n_channels + /* supported channels */
-			2 + sizeof(struct ieee80211_ht_cap) + /* HT */
-			2 + sizeof(struct ieee80211_vht_cap) + /* VHT */
-			2 + 1 + sizeof(struct ieee80211_he_cap_elem) + /* HE */
-				sizeof(struct ieee80211_he_mcs_nss_supp) +
-				IEEE80211_HE_PPE_THRES_MAX_LEN +
-			2 + 1 + sizeof(struct ieee80211_he_6ghz_capa) +
-			assoc_data->ie_len + /* extra IEs */
-			(assoc_data->fils_kek_len ? 16 /* AES-SIV */ : 0) +
-			9 + /* WMM */
-			(iftd ? iftd->vendor_elems.len : 0),
-			GFP_KERNEL);
-	if (!skb)
-		return -ENOMEM;
-
-	skb_reserve(skb, local->hw.extra_tx_headroom);
-
-	capab = WLAN_CAPABILITY_ESS;
-
-	if (sband->band == NL80211_BAND_2GHZ) {
-		capab |= WLAN_CAPABILITY_SHORT_SLOT_TIME;
-		capab |= WLAN_CAPABILITY_SHORT_PREAMBLE;
-	}
-
-	if (assoc_data->capability & WLAN_CAPABILITY_PRIVACY)
-		capab |= WLAN_CAPABILITY_PRIVACY;
-
-	if ((assoc_data->capability & WLAN_CAPABILITY_SPECTRUM_MGMT) &&
-	    ieee80211_hw_check(&local->hw, SPECTRUM_MGMT))
-		capab |= WLAN_CAPABILITY_SPECTRUM_MGMT;
-
-	if (ifmgd->flags & IEEE80211_STA_ENABLE_RRM)
-		capab |= WLAN_CAPABILITY_RADIO_MEASURE;
-
-	mgmt = skb_put_zero(skb, 24);
-	memcpy(mgmt->da, assoc_data->bss->bssid, ETH_ALEN);
-	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
-	memcpy(mgmt->bssid, assoc_data->bss->bssid, ETH_ALEN);
-
-	listen_int = cpu_to_le16(sband->band == NL80211_BAND_S1GHZ ?
-			ieee80211_encode_usf(local->hw.conf.listen_interval) :
-			local->hw.conf.listen_interval);
-	if (!is_zero_ether_addr(assoc_data->prev_bssid)) {
-		skb_put(skb, 10);
-		mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
-						  IEEE80211_STYPE_REASSOC_REQ);
-		mgmt->u.reassoc_req.capab_info = cpu_to_le16(capab);
-		mgmt->u.reassoc_req.listen_interval = listen_int;
-		memcpy(mgmt->u.reassoc_req.current_ap, assoc_data->prev_bssid,
-		       ETH_ALEN);
-		info.subtype = IEEE80211_STYPE_REASSOC_REQ;
-	} else {
-		skb_put(skb, 4);
-		mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
-						  IEEE80211_STYPE_ASSOC_REQ);
-		mgmt->u.assoc_req.capab_info = cpu_to_le16(capab);
-		mgmt->u.assoc_req.listen_interval = listen_int;
-		info.subtype = IEEE80211_STYPE_ASSOC_REQ;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	supp_rates_len = rates_len;
@@ -1260,46 +1132,10 @@ static size_t ieee80211_assoc_link_elems(struct ieee80211_sub_if_data *sdata,
 	if (iftd && iftd->vendor_elems.data && iftd->vendor_elems.len)
 		skb_put_data(skb, iftd->vendor_elems.data, iftd->vendor_elems.len);
 
-<<<<<<< HEAD
-	/* add any remaining custom (i.e. vendor specific here) IEs */
-	if (assoc_data->ie_len) {
-		noffset = assoc_data->ie_len;
-		skb_put_data(skb, assoc_data->ie + offset, noffset - offset);
-	}
-
-	if (assoc_data->fils_kek_len) {
-		ret = fils_encrypt_assoc_req(skb, assoc_data);
-		if (ret < 0) {
-			dev_kfree_skb(skb);
-			return ret;
-		}
-	}
-
-	pos = skb_tail_pointer(skb);
-	kfree(ifmgd->assoc_req_ies);
-	ifmgd->assoc_req_ies = kmemdup(ie_start, pos - ie_start, GFP_ATOMIC);
-	if (!ifmgd->assoc_req_ies) {
-		dev_kfree_skb(skb);
-		return -ENOMEM;
-	}
-
-	ifmgd->assoc_req_ies_len = pos - ie_start;
-
-	drv_mgd_prepare_tx(local, sdata, &info);
-
-	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT;
-	if (ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS))
-		IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_CTL_REQ_TX_STATUS |
-						IEEE80211_TX_INTFL_MLME_CONN_TX;
-	ieee80211_tx_skb(sdata, skb);
-
-	return 0;
-=======
 	if (link)
 		link->u.mgd.conn_flags = assoc_data->link[link_id].conn_flags;
 
 	return offset;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void ieee80211_add_non_inheritance_elem(struct sk_buff *skb,
@@ -6663,12 +6499,6 @@ static int ieee80211_prep_connection(struct ieee80211_sub_if_data *sdata,
 	 * it might need the new channel for that.
 	 */
 	if (new_sta) {
-<<<<<<< HEAD
-		u32 rates = 0, basic_rates = 0;
-		bool have_higher_than_11mbit = false;
-		int min_rate = INT_MAX, min_rate_index = -1;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		const struct cfg80211_bss_ies *ies;
 		struct link_sta_info *link_sta;
 

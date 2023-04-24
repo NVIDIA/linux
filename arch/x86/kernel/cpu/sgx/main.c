@@ -371,17 +371,7 @@ skip:
 		kref_put(&encl_page->encl->refcount, sgx_encl_release);
 		epc_page->flags &= ~SGX_EPC_PAGE_RECLAIMER_TRACKED;
 
-<<<<<<< HEAD
-		section = &sgx_epc_sections[epc_page->section];
-		node = section->node;
-
-		spin_lock(&node->lock);
-		list_add_tail(&epc_page->list, &node->free_page_list);
-		spin_unlock(&node->lock);
-		atomic_long_inc(&sgx_nr_free_pages);
-=======
 		sgx_free_epc_page(epc_page);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -389,8 +379,6 @@ static bool sgx_should_reclaim(unsigned long watermark)
 {
 	return atomic_long_read(&sgx_nr_free_pages) < watermark &&
 	       !list_empty(&sgx_active_page_list);
-<<<<<<< HEAD
-=======
 }
 
 /*
@@ -402,7 +390,6 @@ void sgx_reclaim_direct(void)
 {
 	if (sgx_should_reclaim(SGX_NR_LOW_PAGES))
 		sgx_reclaim_pages();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int ksgxd(void *p)
@@ -465,10 +452,7 @@ static struct sgx_epc_page *__sgx_alloc_epc_page_from_node(int nid)
 
 	page = list_first_entry(&node->free_page_list, struct sgx_epc_page, list);
 	list_del_init(&page->list);
-<<<<<<< HEAD
-=======
 	page->flags = 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_unlock(&node->lock);
 	atomic_long_dec(&sgx_nr_free_pages);
@@ -622,16 +606,12 @@ void sgx_free_epc_page(struct sgx_epc_page *page)
 
 	spin_lock(&node->lock);
 
-<<<<<<< HEAD
-	list_add_tail(&page->list, &node->free_page_list);
-=======
 	page->owner = NULL;
 	if (page->poison)
 		list_add(&page->list, &node->sgx_poison_page_list);
 	else
 		list_add_tail(&page->list, &node->free_page_list);
 	page->flags = SGX_EPC_PAGE_IS_FREE;
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_unlock(&node->lock);
 	atomic_long_inc(&sgx_nr_free_pages);

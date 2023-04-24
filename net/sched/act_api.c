@@ -1075,19 +1075,12 @@ restart_act_graph:
 			continue;
 		}
 
-<<<<<<< HEAD
-		repeat_ttl = 32;
-repeat:
-		ret = a->ops->act(skb, a, res);
-
-=======
 		if (tc_act_skip_sw(a->tcfa_flags))
 			continue;
 
 		repeat_ttl = 32;
 repeat:
 		ret = a->ops->act(skb, a, res);
->>>>>>> origin/linux_6.1.15_upstream
 		if (unlikely(ret == TC_ACT_REPEAT)) {
 			if (--repeat_ttl != 0)
 				goto repeat;
@@ -1095,10 +1088,6 @@ repeat:
 			net_warn_ratelimited("TC_ACT_REPEAT abuse ?\n");
 			return TC_ACT_OK;
 		}
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		if (TC_ACT_EXT_CMP(ret, TC_ACT_JUMP)) {
 			jmp_prgcnt = ret & TCA_ACT_MAX_PRIO_MASK;
 			if (!jmp_prgcnt || (jmp_prgcnt > nr_actions)) {

@@ -53,12 +53,7 @@ struct flow_offload *flow_offload_alloc(struct nf_conn *ct)
 {
 	struct flow_offload *flow;
 
-<<<<<<< HEAD
-	if (unlikely(nf_ct_is_dying(ct) ||
-	    !refcount_inc_not_zero(&ct->ct_general.use)))
-=======
 	if (unlikely(nf_ct_is_dying(ct)))
->>>>>>> origin/linux_6.1.15_upstream
 		return NULL;
 
 	flow = kzalloc(sizeof(*flow), GFP_ATOMIC);
@@ -452,11 +447,7 @@ static void nf_flow_offload_work_gc(struct work_struct *work)
 	struct nf_flowtable *flow_table;
 
 	flow_table = container_of(work, struct nf_flowtable, gc_work.work);
-<<<<<<< HEAD
-	nf_flow_table_iterate(flow_table, nf_flow_offload_gc_step, NULL);
-=======
 	nf_flow_table_gc_run(flow_table);
->>>>>>> origin/linux_6.1.15_upstream
 	queue_delayed_work(system_power_efficient_wq, &flow_table->gc_work, HZ);
 }
 
@@ -614,19 +605,11 @@ void nf_flow_table_free(struct nf_flowtable *flow_table)
 	mutex_unlock(&flowtable_lock);
 
 	cancel_delayed_work_sync(&flow_table->gc_work);
-<<<<<<< HEAD
-	nf_flow_table_iterate(flow_table, nf_flow_table_do_cleanup, NULL);
-	nf_flow_table_iterate(flow_table, nf_flow_offload_gc_step, NULL);
-	nf_flow_table_offload_flush(flow_table);
-	if (nf_flowtable_hw_offload(flow_table))
-		nf_flow_table_iterate(flow_table, nf_flow_offload_gc_step, NULL);
-=======
 	nf_flow_table_offload_flush(flow_table);
 	/* ... no more pending work after this stage ... */
 	nf_flow_table_iterate(flow_table, nf_flow_table_do_cleanup, NULL);
 	nf_flow_table_gc_run(flow_table);
 	nf_flow_table_offload_flush_cleanup(flow_table);
->>>>>>> origin/linux_6.1.15_upstream
 	rhashtable_destroy(&flow_table->rhashtable);
 }
 EXPORT_SYMBOL_GPL(nf_flow_table_free);

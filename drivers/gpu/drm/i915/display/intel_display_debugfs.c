@@ -16,10 +16,7 @@
 #include "intel_display_types.h"
 #include "intel_dmc.h"
 #include "intel_dp.h"
-<<<<<<< HEAD
-=======
 #include "intel_dp_mst.h"
->>>>>>> origin/linux_6.1.15_upstream
 #include "intel_drrs.h"
 #include "intel_fbc.h"
 #include "intel_fbdev.h"

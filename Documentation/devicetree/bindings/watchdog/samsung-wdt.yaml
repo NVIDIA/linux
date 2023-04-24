@@ -48,11 +48,7 @@ properties:
     $ref: /schemas/types.yaml#/definitions/phandle
     description:
       Phandle to the PMU system controller node (in case of Exynos5250,
-<<<<<<< HEAD
-      Exynos5420 and Exynos7).
-=======
       Exynos5420, Exynos7 and Exynos850).
->>>>>>> origin/linux_6.1.15_upstream
 
 required:
   - compatible
@@ -71,11 +67,8 @@ allOf:
               - samsung,exynos5250-wdt
               - samsung,exynos5420-wdt
               - samsung,exynos7-wdt
-<<<<<<< HEAD
-=======
               - samsung,exynos850-wdt
               - samsung,exynosautov9-wdt
->>>>>>> origin/linux_6.1.15_upstream
     then:
       required:
         - samsung,syscon-phandle

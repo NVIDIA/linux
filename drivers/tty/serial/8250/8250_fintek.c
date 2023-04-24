@@ -206,10 +206,6 @@ static int fintek_8250_rs485_config(struct uart_port *port, struct ktermios *ter
 		if (!(rs485->flags & SER_RS485_RTS_ON_SEND) ==
 		    !(rs485->flags & SER_RS485_RTS_AFTER_SEND))
 			return -EINVAL;
-<<<<<<< HEAD
-		memset(rs485->padding, 0, sizeof(rs485->padding));
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		config |= RS485_URA;
 	}
 

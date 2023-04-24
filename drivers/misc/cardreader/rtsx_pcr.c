@@ -1730,8 +1730,6 @@ static int rtsx_pci_runtime_idle(struct device *device)
 
 	mutex_lock(&pcr->pcr_mutex);
 
-<<<<<<< HEAD
-=======
 	pcr->state = PDEV_STAT_IDLE;
 
 	if (pcr->ops->disable_auto_blink)
@@ -1741,7 +1739,6 @@ static int rtsx_pci_runtime_idle(struct device *device)
 
 	rtsx_pm_power_saving(pcr);
 
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&pcr->pcr_mutex);
 
 	if (pcr->rtd3_en)
@@ -1779,12 +1776,6 @@ static int rtsx_pci_runtime_resume(struct device *device)
 	mutex_lock(&pcr->pcr_mutex);
 
 	rtsx_pci_write_register(pcr, HOST_SLEEP_STATE, 0x03, 0x00);
-<<<<<<< HEAD
-
-	if (pcr->ops->fetch_vendor_settings)
-		pcr->ops->fetch_vendor_settings(pcr);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	rtsx_pci_init_hw(pcr);
 

@@ -427,24 +427,6 @@ static int lpc18xx_pwm_probe(struct platform_device *pdev)
 	lpc18xx_pwm_writel(lpc18xx_pwm, LPC18XX_PWM_LIMIT,
 			   BIT(lpc18xx_pwm->period_event));
 
-<<<<<<< HEAD
-	for (i = 0; i < lpc18xx_pwm->chip.npwm; i++) {
-		struct lpc18xx_pwm_data *data;
-
-		pwm = &lpc18xx_pwm->chip.pwms[i];
-
-		data = devm_kzalloc(lpc18xx_pwm->dev, sizeof(*data),
-				    GFP_KERNEL);
-		if (!data) {
-			ret = -ENOMEM;
-			goto disable_pwmclk;
-		}
-
-		pwm_set_chip_data(pwm, data);
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	val = lpc18xx_pwm_readl(lpc18xx_pwm, LPC18XX_PWM_CTRL);
 	val &= ~LPC18XX_PWM_BIDIR;
 	val &= ~LPC18XX_PWM_CTRL_HALT;
@@ -454,11 +436,7 @@ static int lpc18xx_pwm_probe(struct platform_device *pdev)
 
 	ret = pwmchip_add(&lpc18xx_pwm->chip);
 	if (ret < 0) {
-<<<<<<< HEAD
-		dev_err(&pdev->dev, "pwmchip_add failed: %d\n", ret);
-=======
 		dev_err_probe(&pdev->dev, ret, "pwmchip_add failed\n");
->>>>>>> origin/linux_6.1.15_upstream
 		goto disable_pwmclk;
 	}
 

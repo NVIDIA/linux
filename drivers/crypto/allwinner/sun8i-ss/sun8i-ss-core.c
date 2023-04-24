@@ -528,23 +528,14 @@ static int allocate_flows(struct sun8i_ss_dev *ss)
 
 		ss->flows[i].biv = devm_kmalloc(ss->dev, AES_BLOCK_SIZE,
 						GFP_KERNEL | GFP_DMA);
-<<<<<<< HEAD
-		if (!ss->flows[i].biv)
-			goto error_engine;
-=======
 		if (!ss->flows[i].biv) {
 			err = -ENOMEM;
 			goto error_engine;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		for (j = 0; j < MAX_SG; j++) {
 			ss->flows[i].iv[j] = devm_kmalloc(ss->dev, AES_BLOCK_SIZE,
 							  GFP_KERNEL | GFP_DMA);
-<<<<<<< HEAD
-			if (!ss->flows[i].iv[j])
-				goto error_engine;
-=======
 			if (!ss->flows[i].iv[j]) {
 				err = -ENOMEM;
 				goto error_engine;
@@ -563,7 +554,6 @@ static int allocate_flows(struct sun8i_ss_dev *ss)
 		if (!ss->flows[i].result) {
 			err = -ENOMEM;
 			goto error_engine;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		ss->flows[i].engine = crypto_engine_alloc_init(ss->dev, true);

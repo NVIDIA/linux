@@ -213,11 +213,8 @@ static void __snd_card_release(struct device *dev, void *data)
  * via snd_card_free() call in the error; otherwise it may lead to UAF due to
  * devres call orders.  You can use snd_card_free_on_error() helper for
  * handling it more easily.
-<<<<<<< HEAD
-=======
  *
  * Return: zero if successful, or a negative error code
->>>>>>> origin/linux_6.1.15_upstream
  */
 int snd_devm_card_new(struct device *parent, int idx, const char *xid,
 		      struct module *module, size_t extra_size,
@@ -252,11 +249,8 @@ EXPORT_SYMBOL_GPL(snd_devm_card_new);
  * This function handles the explicit snd_card_free() call at the error from
  * the probe callback.  It's just a small helper for simplifying the error
  * handling with the managed devices.
-<<<<<<< HEAD
-=======
  *
  * Return: zero if successful, or a negative error code
->>>>>>> origin/linux_6.1.15_upstream
  */
 int snd_card_free_on_error(struct device *dev, int ret)
 {

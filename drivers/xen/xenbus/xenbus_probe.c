@@ -989,27 +989,6 @@ static int __init xenbus_init(void)
 		 * been properly initialized. Instead of attempting to map a
 		 * wrong guest physical address return error.
 		 *
-<<<<<<< HEAD
-		 * Also recognize all bits set as an invalid value.
-		 */
-		if (!v || !~v) {
-			err = -ENOENT;
-			goto out_error;
-		}
-		/* Avoid truncation on 32-bit. */
-#if BITS_PER_LONG == 32
-		if (v > ULONG_MAX) {
-			pr_err("%s: cannot handle HVM_PARAM_STORE_PFN=%llx > ULONG_MAX\n",
-			       __func__, v);
-			err = -EINVAL;
-			goto out_error;
-		}
-#endif
-		xen_store_gfn = (unsigned long)v;
-		xen_store_interface =
-			xen_remap(xen_store_gfn << XEN_PAGE_SHIFT,
-				  XEN_PAGE_SIZE);
-=======
 		 * Also recognize all bits set as an invalid/uninitialized value.
 		 */
 		if (!v) {
@@ -1048,7 +1027,6 @@ static int __init xenbus_init(void)
 
 			xs_init_irq = err;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	default:
 		pr_warn("Xenstore state unknown\n");

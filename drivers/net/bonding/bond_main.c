@@ -5188,17 +5188,10 @@ static netdev_tx_t bond_xmit_broadcast(struct sk_buff *skb,
 
 	bond_for_each_slave_rcu(bond, slave, iter) {
 		struct sk_buff *skb2;
-<<<<<<< HEAD
 
 		if (!(bond_slave_is_up(slave) && slave->link == BOND_LINK_UP))
 			continue;
 
-=======
-
-		if (!(bond_slave_is_up(slave) && slave->link == BOND_LINK_UP))
-			continue;
-
->>>>>>> origin/linux_6.1.15_upstream
 		if (bond_is_last_slave(bond, slave)) {
 			skb2 = skb;
 			skb_used = true;
@@ -5221,11 +5214,7 @@ static netdev_tx_t bond_xmit_broadcast(struct sk_buff *skb,
 	if (xmit_suc)
 		return NETDEV_TX_OK;
 
-<<<<<<< HEAD
-	atomic_long_inc(&bond_dev->tx_dropped);
-=======
 	dev_core_stats_tx_dropped_inc(bond_dev);
->>>>>>> origin/linux_6.1.15_upstream
 	return NET_XMIT_DROP;
 }
 

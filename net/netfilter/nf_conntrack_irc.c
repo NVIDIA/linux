@@ -165,17 +165,6 @@ static int help(struct sk_buff *skb, unsigned int protoff,
 			break;
 	}
 
-<<<<<<< HEAD
-	/* Skip any whitespace */
-	while (data < data_limit - 10) {
-		if (*data == ' ' || *data == '\r' || *data == '\n')
-			data++;
-		else
-			break;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/* strlen("PRIVMSG x ")=10 */
 	if (data < data_limit - 10) {
 		if (strncasecmp("PRIVMSG ", data, 8))

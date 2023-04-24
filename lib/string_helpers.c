@@ -775,8 +775,6 @@ void kfree_strarray(char **array, size_t n)
 }
 EXPORT_SYMBOL_GPL(kfree_strarray);
 
-<<<<<<< HEAD
-=======
 struct strarray {
 	char **array;
 	size_t n;
@@ -996,7 +994,6 @@ char *strreplace(char *s, char old, char new)
 }
 EXPORT_SYMBOL(strreplace);
 
->>>>>>> origin/linux_6.1.15_upstream
 /**
  * memcpy_and_pad - Copy one buffer to another with padding
  * @dest: Where to copy to
@@ -1016,8 +1013,6 @@ void memcpy_and_pad(void *dest, size_t dest_len, const void *src, size_t count,
 	}
 }
 EXPORT_SYMBOL(memcpy_and_pad);
-<<<<<<< HEAD
-=======
 
 #ifdef CONFIG_FORTIFY_SOURCE
 /* These are placeholders for fortify compile-time warnings. */
@@ -1033,4 +1028,3 @@ void fortify_panic(const char *name)
 }
 EXPORT_SYMBOL(fortify_panic);
 #endif /* CONFIG_FORTIFY_SOURCE */
->>>>>>> origin/linux_6.1.15_upstream

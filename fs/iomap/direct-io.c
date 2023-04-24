@@ -483,11 +483,7 @@ static loff_t iomap_dio_iter(const struct iomap_iter *iter,
 struct iomap_dio *
 __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
-<<<<<<< HEAD
-		unsigned int dio_flags, size_t done_before)
-=======
 		unsigned int dio_flags, void *private, size_t done_before)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct address_space *mapping = iocb->ki_filp->f_mapping;
 	struct inode *inode = file_inode(iocb->ki_filp);
@@ -687,20 +683,12 @@ EXPORT_SYMBOL_GPL(__iomap_dio_rw);
 ssize_t
 iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
-<<<<<<< HEAD
-		unsigned int dio_flags, size_t done_before)
-{
-	struct iomap_dio *dio;
-
-	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, done_before);
-=======
 		unsigned int dio_flags, void *private, size_t done_before)
 {
 	struct iomap_dio *dio;
 
 	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, private,
 			     done_before);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR_OR_NULL(dio))
 		return PTR_ERR_OR_ZERO(dio);
 	return iomap_dio_complete(dio);

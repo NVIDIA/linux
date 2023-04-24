@@ -3827,11 +3827,8 @@ static int nand_read_oob(struct mtd_info *mtd, loff_t from,
 		return -ENOTSUPP;
 
 	nand_get_device(chip);
-<<<<<<< HEAD
-=======
 
 	old_stats = mtd->ecc_stats;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!ops->datbuf)
 		ret = nand_do_read_oob(chip, from, ops);

@@ -109,11 +109,7 @@ struct rkvdec_h264_run {
 	const struct v4l2_ctrl_h264_sps *sps;
 	const struct v4l2_ctrl_h264_pps *pps;
 	const struct v4l2_ctrl_h264_scaling_matrix *scaling_matrix;
-<<<<<<< HEAD
-	int ref_buf_idx[V4L2_H264_NUM_DPB_ENTRIES];
-=======
 	struct vb2_buffer *ref_buf[V4L2_H264_NUM_DPB_ENTRIES];
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct rkvdec_h264_ctx {
@@ -746,15 +742,6 @@ static void lookup_ref_buf_idx(struct rkvdec_ctx *ctx,
 		struct v4l2_m2m_ctx *m2m_ctx = ctx->fh.m2m_ctx;
 		const struct v4l2_h264_dpb_entry *dpb = run->decode_params->dpb;
 		struct vb2_queue *cap_q = &m2m_ctx->cap_q_ctx.q;
-<<<<<<< HEAD
-		int buf_idx = -1;
-
-		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE)
-			buf_idx = vb2_find_timestamp(cap_q,
-						     dpb[i].reference_ts, 0);
-
-		run->ref_buf_idx[i] = buf_idx;
-=======
 		struct vb2_buffer *buf = NULL;
 
 		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE) {
@@ -765,7 +752,6 @@ static void lookup_ref_buf_idx(struct rkvdec_ctx *ctx,
 		}
 
 		run->ref_buf[i] = buf;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -798,16 +784,10 @@ static void assemble_hw_rps(struct rkvdec_ctx *ctx,
 	}
 
 	for (j = 0; j < RKVDEC_NUM_REFLIST; j++) {
-<<<<<<< HEAD
-		for (i = 0; i < h264_ctx->reflists.num_valid; i++) {
-			bool dpb_valid = run->ref_buf_idx[i] >= 0;
-			u8 idx = 0;
-=======
 		for (i = 0; i < builder->num_valid; i++) {
 			struct v4l2_h264_reference *ref;
 			bool dpb_valid;
 			bool bottom;
->>>>>>> origin/linux_6.1.15_upstream
 
 			switch (j) {
 			case 0:
@@ -823,12 +803,9 @@ static void assemble_hw_rps(struct rkvdec_ctx *ctx,
 
 			if (WARN_ON(ref->index >= ARRAY_SIZE(dec_params->dpb)))
 				continue;
-<<<<<<< HEAD
-=======
 
 			dpb_valid = run->ref_buf[ref->index] != NULL;
 			bottom = ref->fields == V4L2_H264_BOTTOM_FIELD_REF;
->>>>>>> origin/linux_6.1.15_upstream
 
 			set_ps_field(hw_rps, DPB_INFO(i, j),
 				     ref->index | dpb_valid << 4);
@@ -903,27 +880,6 @@ static const u32 poc_reg_tbl_bottom_field[16] = {
 	RKVDEC_REG_H264_POC_REFER2(1)
 };
 
-<<<<<<< HEAD
-static struct vb2_buffer *
-get_ref_buf(struct rkvdec_ctx *ctx, struct rkvdec_h264_run *run,
-	    unsigned int dpb_idx)
-{
-	struct v4l2_m2m_ctx *m2m_ctx = ctx->fh.m2m_ctx;
-	struct vb2_queue *cap_q = &m2m_ctx->cap_q_ctx.q;
-	int buf_idx = run->ref_buf_idx[dpb_idx];
-
-	/*
-	 * If a DPB entry is unused or invalid, address of current destination
-	 * buffer is returned.
-	 */
-	if (buf_idx < 0)
-		return &run->base.bufs.dst->vb2_buf;
-
-	return vb2_get_buffer(cap_q, buf_idx);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static void config_registers(struct rkvdec_ctx *ctx,
 			     struct rkvdec_h264_run *run)
 {
@@ -1067,8 +1023,6 @@ static int rkvdec_h264_adjust_fmt(struct rkvdec_ctx *ctx,
 	if (!fmt->plane_fmt[0].sizeimage)
 		fmt->plane_fmt[0].sizeimage = fmt->width * fmt->height *
 					      RKVDEC_H264_MAX_DEPTH_IN_BYTES;
-<<<<<<< HEAD
-=======
 	return 0;
 }
 
@@ -1107,7 +1061,6 @@ static int rkvdec_h264_validate_sps(struct rkvdec_ctx *ctx,
 	    height > ctx->coded_fmt.fmt.pix_mp.height)
 		return -EINVAL;
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -1202,11 +1155,7 @@ static int rkvdec_h264_run(struct rkvdec_ctx *ctx)
 	assemble_hw_scaling_list(ctx, &run);
 	assemble_hw_pps(ctx, &run);
 	lookup_ref_buf_idx(ctx, &run);
-<<<<<<< HEAD
-	assemble_hw_rps(ctx, &run);
-=======
 	assemble_hw_rps(ctx, &reflist_builder, &run);
->>>>>>> origin/linux_6.1.15_upstream
 	config_registers(ctx, &run);
 
 	rkvdec_run_postamble(ctx, &run.base);

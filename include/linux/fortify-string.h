@@ -600,11 +600,7 @@ char *strcpy(char * const POS p, const char * const POS q)
 		return __underlying_strcpy(p, q);
 	size = strlen(q) + 1;
 	/* Compile-time check for const size overflow. */
-<<<<<<< HEAD
-	if (__builtin_constant_p(size) && p_size < size)
-=======
 	if (__compiletime_lessthan(p_size, size))
->>>>>>> origin/linux_6.1.15_upstream
 		__write_overflow();
 	/* Run-time check for dynamic size overflow. */
 	if (p_size < size)

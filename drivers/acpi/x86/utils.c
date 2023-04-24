@@ -27,19 +27,11 @@
  *
  * Likewise sometimes some not-actually present devices are sometimes
  * reported as present, which may cause issues.
-<<<<<<< HEAD
  *
  * We work around this by using the below quirk list to override the status
  * reported by the _STA method with a fixed value (ACPI_STA_DEFAULT or 0).
  * Note this MUST only be done for devices where this is safe.
  *
-=======
- *
- * We work around this by using the below quirk list to override the status
- * reported by the _STA method with a fixed value (ACPI_STA_DEFAULT or 0).
- * Note this MUST only be done for devices where this is safe.
- *
->>>>>>> origin/linux_6.1.15_upstream
  * This status overriding is limited to specific CPU (SoC) models both to
  * avoid potentially causing trouble on other models and because some HIDs
  * are re-used on different SoCs for completely different devices.
@@ -81,15 +73,12 @@ static const struct override_status_id override_status_ids[] = {
 	 */
 	PRESENT_ENTRY_HID("80860F09", "1", ATOM_SILVERMONT, {}),
 	PRESENT_ENTRY_HID("80862288", "1", ATOM_AIRMONT, {}),
-<<<<<<< HEAD
-=======
 
 	/* The Xiaomi Mi Pad 2 uses PWM2 for touchkeys backlight control */
 	PRESENT_ENTRY_HID("80862289", "2", ATOM_AIRMONT, {
 		DMI_MATCH(DMI_SYS_VENDOR, "Xiaomi Inc"),
 		DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
 	      }),
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * The INT0002 device is necessary to clear wakeup interrupt sources
@@ -184,21 +173,12 @@ bool acpi_device_override_status(struct acpi_device *adev, unsigned long long *s
 		} else {
 			if (acpi_match_device_ids(adev, override_status_ids[i].hid))
 				continue;
-<<<<<<< HEAD
 
 			if (!adev->pnp.unique_id ||
 			    strcmp(adev->pnp.unique_id, override_status_ids[i].uid))
 				continue;
 		}
 
-=======
-
-			if (!adev->pnp.unique_id ||
-			    strcmp(adev->pnp.unique_id, override_status_ids[i].uid))
-				continue;
-		}
-
->>>>>>> origin/linux_6.1.15_upstream
 		*status = override_status_ids[i].status;
 		ret = true;
 		break;

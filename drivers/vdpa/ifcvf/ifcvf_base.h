@@ -84,17 +84,11 @@ struct ifcvf_hw {
 	void __iomem * const *base;
 	char config_msix_name[256];
 	struct vdpa_callback config_cb;
-<<<<<<< HEAD
-	unsigned int config_irq;
-	/* virtio-net or virtio-blk device config size */
-	u32 config_size;
-=======
 	int config_irq;
 	int vqs_reused_irq;
 	u16 nr_vring;
 	/* VIRTIO_PCI_CAP_DEVICE_CFG size */
 	u32 cap_dev_config_size;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct ifcvf_adapter {
@@ -139,9 +133,6 @@ int ifcvf_set_vq_state(struct ifcvf_hw *hw, u16 qid, u16 num);
 struct ifcvf_adapter *vf_to_adapter(struct ifcvf_hw *hw);
 int ifcvf_probed_virtio_net(struct ifcvf_hw *hw);
 u32 ifcvf_get_config_size(struct ifcvf_hw *hw);
-<<<<<<< HEAD
-=======
 u16 ifcvf_set_vq_vector(struct ifcvf_hw *hw, u16 qid, int vector);
 u16 ifcvf_set_config_vector(struct ifcvf_hw *hw, int vector);
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* _IFCVF_H_ */

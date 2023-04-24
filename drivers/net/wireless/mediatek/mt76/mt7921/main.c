@@ -352,10 +352,7 @@ static int mt7921_add_interface(struct ieee80211_hw *hw,
 		mtxq->wcid = idx;
 	}
 
-<<<<<<< HEAD
-=======
 	vif->driver_flags |= IEEE80211_VIF_BEACON_FILTER;
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	mt7921_mutex_release(dev);
 

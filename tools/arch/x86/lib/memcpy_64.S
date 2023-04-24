@@ -39,13 +39,7 @@ SYM_TYPED_FUNC_START(__memcpy)
 	movl %edx, %ecx
 	rep movsb
 	RET
-<<<<<<< HEAD
-SYM_FUNC_END(memcpy)
-SYM_FUNC_END_ALIAS(__memcpy)
-EXPORT_SYMBOL(memcpy)
-=======
 SYM_FUNC_END(__memcpy)
->>>>>>> origin/linux_6.1.15_upstream
 EXPORT_SYMBOL(__memcpy)
 
 SYM_FUNC_ALIAS_WEAK(memcpy, __memcpy)

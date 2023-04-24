@@ -308,20 +308,10 @@ static int rpm_get_suppliers(struct device *dev)
 /**
  * pm_runtime_release_supplier - Drop references to device link's supplier.
  * @link: Target device link.
-<<<<<<< HEAD
- * @check_idle: Whether or not to check if the supplier device is idle.
- *
- * Drop all runtime PM references associated with @link to its supplier device
- * and if @check_idle is set, check if that device is idle (and so it can be
- * suspended).
- */
-void pm_runtime_release_supplier(struct device_link *link, bool check_idle)
-=======
  *
  * Drop all runtime PM references associated with @link to its supplier device.
  */
 void pm_runtime_release_supplier(struct device_link *link)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct device *supplier = link->supplier;
 
@@ -334,12 +324,6 @@ void pm_runtime_release_supplier(struct device_link *link)
 	while (refcount_dec_not_one(&link->rpm_active) &&
 	       atomic_read(&supplier->power.usage_count) > 0)
 		pm_runtime_put_noidle(supplier);
-<<<<<<< HEAD
-
-	if (check_idle)
-		pm_request_idle(supplier);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void __rpm_put_suppliers(struct device *dev, bool try_to_suspend)
@@ -347,16 +331,11 @@ static void __rpm_put_suppliers(struct device *dev, bool try_to_suspend)
 	struct device_link *link;
 
 	list_for_each_entry_rcu(link, &dev->links.suppliers, c_node,
-<<<<<<< HEAD
-				device_links_read_lock_held())
-		pm_runtime_release_supplier(link, try_to_suspend);
-=======
 				device_links_read_lock_held()) {
 		pm_runtime_release_supplier(link);
 		if (try_to_suspend)
 			pm_request_idle(link->supplier);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void rpm_put_suppliers(struct device *dev)
@@ -1857,12 +1836,8 @@ void pm_runtime_drop_link(struct device_link *link)
 		return;
 
 	pm_runtime_drop_link_count(link->consumer);
-<<<<<<< HEAD
-	pm_runtime_release_supplier(link, true);
-=======
 	pm_runtime_release_supplier(link);
 	pm_request_idle(link->supplier);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool pm_runtime_need_not_resume(struct device *dev)

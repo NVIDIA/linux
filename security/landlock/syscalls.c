@@ -129,11 +129,7 @@ static const struct file_operations ruleset_fops = {
 	.write = fop_dummy_write,
 };
 
-<<<<<<< HEAD
-#define LANDLOCK_ABI_VERSION 1
-=======
 #define LANDLOCK_ABI_VERSION 2
->>>>>>> origin/linux_6.1.15_upstream
 
 /**
  * sys_landlock_create_ruleset - Create a new ruleset
@@ -294,19 +290,6 @@ out_fdput:
  *
  * Possible returned errors are:
  *
-<<<<<<< HEAD
- * - EOPNOTSUPP: Landlock is supported by the kernel but disabled at boot time;
- * - EINVAL: @flags is not 0, or inconsistent access in the rule (i.e.
- *   &landlock_path_beneath_attr.allowed_access is not a subset of the
- *   ruleset handled accesses);
- * - ENOMSG: Empty accesses (e.g. &landlock_path_beneath_attr.allowed_access);
- * - EBADF: @ruleset_fd is not a file descriptor for the current thread, or a
- *   member of @rule_attr is not a file descriptor as expected;
- * - EBADFD: @ruleset_fd is not a ruleset file descriptor, or a member of
- *   @rule_attr is not the expected file descriptor type;
- * - EPERM: @ruleset_fd has no write access to the underlying ruleset;
- * - EFAULT: @rule_attr inconsistency.
-=======
  * - %EOPNOTSUPP: Landlock is supported by the kernel but disabled at boot time;
  * - %EINVAL: @flags is not 0, or inconsistent access in the rule (i.e.
  *   &landlock_path_beneath_attr.allowed_access is not a subset of the
@@ -318,7 +301,6 @@ out_fdput:
  *   @rule_attr is not the expected file descriptor type;
  * - %EPERM: @ruleset_fd has no write access to the underlying ruleset;
  * - %EFAULT: @rule_attr inconsistency.
->>>>>>> origin/linux_6.1.15_upstream
  */
 SYSCALL_DEFINE4(landlock_add_rule, const int, ruleset_fd,
 		const enum landlock_rule_type, rule_type,

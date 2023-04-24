@@ -176,12 +176,7 @@ int main(const int argc, char *const argv[], char *const *const envp)
 	__u64 access_fs_ro = ACCESS_FS_ROUGHLY_READ,
 	      access_fs_rw = ACCESS_FS_ROUGHLY_READ | ACCESS_FS_ROUGHLY_WRITE;
 	struct landlock_ruleset_attr ruleset_attr = {
-<<<<<<< HEAD
-		.handled_access_fs = ACCESS_FS_ROUGHLY_READ |
-				     ACCESS_FS_ROUGHLY_WRITE,
-=======
 		.handled_access_fs = access_fs_rw,
->>>>>>> origin/linux_6.1.15_upstream
 	};
 
 	if (argc < 2) {
@@ -202,16 +197,6 @@ int main(const int argc, char *const argv[], char *const *const envp)
 			"\nexample:\n"
 			"%s=\"/bin:/lib:/usr:/proc:/etc:/dev/urandom\" "
 			"%s=\"/dev/null:/dev/full:/dev/zero:/dev/pts:/tmp\" "
-<<<<<<< HEAD
-			"%s bash -i\n",
-			ENV_FS_RO_NAME, ENV_FS_RW_NAME, argv[0]);
-		return 1;
-	}
-
-	ruleset_fd =
-		landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
-	if (ruleset_fd < 0) {
-=======
 			"%s bash -i\n\n",
 			ENV_FS_RO_NAME, ENV_FS_RW_NAME, argv[0]);
 		fprintf(stderr,
@@ -223,7 +208,6 @@ int main(const int argc, char *const argv[], char *const *const envp)
 
 	abi = landlock_create_ruleset(NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
 	if (abi < 0) {
->>>>>>> origin/linux_6.1.15_upstream
 		const int err = errno;
 
 		perror("Failed to check Landlock compatibility");
@@ -246,15 +230,6 @@ int main(const int argc, char *const argv[], char *const *const envp)
 		}
 		return 1;
 	}
-<<<<<<< HEAD
-	if (populate_ruleset(ENV_FS_RO_NAME, ruleset_fd,
-			     ACCESS_FS_ROUGHLY_READ)) {
-		goto err_close_ruleset;
-	}
-	if (populate_ruleset(ENV_FS_RW_NAME, ruleset_fd,
-			     ACCESS_FS_ROUGHLY_READ |
-				     ACCESS_FS_ROUGHLY_WRITE)) {
-=======
 
 	/* Best-effort security. */
 	switch (abi) {
@@ -290,7 +265,6 @@ int main(const int argc, char *const argv[], char *const *const envp)
 		goto err_close_ruleset;
 	}
 	if (populate_ruleset(ENV_FS_RW_NAME, ruleset_fd, access_fs_rw)) {
->>>>>>> origin/linux_6.1.15_upstream
 		goto err_close_ruleset;
 	}
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {

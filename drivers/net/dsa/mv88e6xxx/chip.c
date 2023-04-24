@@ -787,22 +787,6 @@ static void mv88e6390x_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 static void mv88e6393x_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 					struct phylink_config *config)
 {
-<<<<<<< HEAD
-	bool is_6191x =
-		chip->info->prod_num == MV88E6XXX_PORT_SWITCH_ID_PROD_6191X;
-
-	if (((port == 0 || port == 9) && !is_6191x) || port == 10) {
-		phylink_set(mask, 10000baseT_Full);
-		phylink_set(mask, 10000baseKR_Full);
-		phylink_set(mask, 10000baseCR_Full);
-		phylink_set(mask, 10000baseSR_Full);
-		phylink_set(mask, 10000baseLR_Full);
-		phylink_set(mask, 10000baseLRM_Full);
-		phylink_set(mask, 10000baseER_Full);
-		phylink_set(mask, 5000baseT_Full);
-		phylink_set(mask, 2500baseX_Full);
-		phylink_set(mask, 2500baseT_Full);
-=======
 	unsigned long *supported = config->supported_interfaces;
 	bool is_6191x =
 		chip->info->prod_num == MV88E6XXX_PORT_SWITCH_ID_PROD_6191X;
@@ -828,7 +812,6 @@ static void mv88e6393x_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 			config->mac_capabilities |= MAC_2500FD | MAC_5000FD |
 				MAC_10000FD;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (port == 0) {

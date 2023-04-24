@@ -763,12 +763,9 @@ int acpi_disable_wakeup_device_power(struct acpi_device *dev)
 
 	mutex_lock(&acpi_device_lock);
 
-<<<<<<< HEAD
-=======
 	dev_dbg(&dev->dev, "Disabling wakeup power (count %d)\n",
 		dev->wakeup.prepare_count);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Do nothing if wakeup power has not been enabled for this device. */
 	if (dev->wakeup.prepare_count <= 0)
 		goto out;
@@ -794,10 +791,7 @@ int acpi_disable_wakeup_device_power(struct acpi_device *dev)
 	if (err) {
 		dev_err(&dev->dev, "Cannot turn off wakeup power resources\n");
 		dev->wakeup.flags.valid = 0;
-<<<<<<< HEAD
-=======
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	dev_dbg(&dev->dev, "Wakeup power disabled\n");

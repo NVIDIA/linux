@@ -233,11 +233,7 @@ retry:
 	fpregs_unlock();
 
 	if (ret) {
-<<<<<<< HEAD
-		if (!fault_in_writeable(buf_fx, fpu_user_xstate_size))
-=======
 		if (!__clear_user(buf_fx, fpstate->user_size))
->>>>>>> origin/linux_6.1.15_upstream
 			goto retry;
 		return false;
 	}
@@ -315,11 +311,7 @@ retry:
 
 		if (!fault_in_readable(buf, size))
 			goto retry;
-<<<<<<< HEAD
-		return -EFAULT;
-=======
 		return false;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/*

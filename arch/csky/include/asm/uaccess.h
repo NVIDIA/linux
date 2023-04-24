@@ -3,19 +3,6 @@
 #ifndef __ASM_CSKY_UACCESS_H
 #define __ASM_CSKY_UACCESS_H
 
-<<<<<<< HEAD
-#define user_addr_max() (current_thread_info()->addr_limit.seg)
-
-static inline int __access_ok(unsigned long addr, unsigned long size)
-{
-	unsigned long limit = user_addr_max();
-
-	return (size <= limit) && (addr <= (limit - size));
-}
-#define __access_ok __access_ok
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * __put_user_fn
  */

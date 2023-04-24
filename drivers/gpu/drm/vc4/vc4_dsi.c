@@ -1807,11 +1807,8 @@ static int vc4_dsi_dev_remove(struct platform_device *pdev)
 	struct vc4_dsi *dsi = dev_get_drvdata(dev);
 
 	mipi_dsi_host_unregister(&dsi->dsi_host);
-<<<<<<< HEAD
-=======
 	vc4_dsi_put(dsi);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

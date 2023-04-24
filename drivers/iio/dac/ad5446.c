@@ -530,7 +530,6 @@ static int ad5622_write(struct ad5446_state *st, unsigned val)
 	struct i2c_client *client = to_i2c_client(st->dev);
 	__be16 data = cpu_to_be16(val);
 	int ret;
-<<<<<<< HEAD
 
 	ret = i2c_master_send(client, (char *)&data, sizeof(data));
 	if (ret < 0)
@@ -538,15 +537,6 @@ static int ad5622_write(struct ad5446_state *st, unsigned val)
 	if (ret != sizeof(data))
 		return -EIO;
 
-=======
-
-	ret = i2c_master_send(client, (char *)&data, sizeof(data));
-	if (ret < 0)
-		return ret;
-	if (ret != sizeof(data))
-		return -EIO;
-
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

@@ -228,10 +228,7 @@ typedef struct ax25_dev {
 	ax25_dama_info		dama;
 #endif
 	refcount_t		refcount;
-<<<<<<< HEAD
-=======
 	bool device_up;
->>>>>>> origin/linux_6.1.15_upstream
 } ax25_dev;
 
 typedef struct ax25_cb {

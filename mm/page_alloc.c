@@ -5474,12 +5474,8 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
 								pcp, pcp_list);
 		if (unlikely(!page)) {
 			/* Try and allocate at least one page */
-<<<<<<< HEAD
-			if (!nr_account)
-=======
 			if (!nr_account) {
 				pcp_spin_unlock_irqrestore(pcp, flags);
->>>>>>> origin/linux_6.1.15_upstream
 				goto failed_irq;
 			}
 			break;

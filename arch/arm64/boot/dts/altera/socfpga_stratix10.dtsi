@@ -594,11 +594,7 @@
 		};
 
 		qspi: spi@ff8d2000 {
-<<<<<<< HEAD
-			compatible =  "intel,socfpga-qspi", "cdns,qspi-nor";
-=======
 			compatible = "intel,socfpga-qspi", "cdns,qspi-nor";
->>>>>>> origin/linux_6.1.15_upstream
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0xff8d2000 0x100>,

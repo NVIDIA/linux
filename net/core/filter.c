@@ -5086,55 +5086,6 @@ static int bpf_sol_tcp_setsockopt(struct sock *sk, int optname,
 	case TCP_BPF_IW:
 		if (val <= 0 || tp->data_segs_out > tp->syn_data)
 			return -EINVAL;
-<<<<<<< HEAD
-		val = *((int *)optval);
-		valbool = val ? 1 : 0;
-
-		/* Only some socketops are supported */
-		switch (optname) {
-		case SO_RCVBUF:
-			val = min_t(u32, val, sysctl_rmem_max);
-			val = min_t(int, val, INT_MAX / 2);
-			sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
-			WRITE_ONCE(sk->sk_rcvbuf,
-				   max_t(int, val * 2, SOCK_MIN_RCVBUF));
-			break;
-		case SO_SNDBUF:
-			val = min_t(u32, val, sysctl_wmem_max);
-			val = min_t(int, val, INT_MAX / 2);
-			sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
-			WRITE_ONCE(sk->sk_sndbuf,
-				   max_t(int, val * 2, SOCK_MIN_SNDBUF));
-			break;
-		case SO_MAX_PACING_RATE: /* 32bit version */
-			if (val != ~0U)
-				cmpxchg(&sk->sk_pacing_status,
-					SK_PACING_NONE,
-					SK_PACING_NEEDED);
-			sk->sk_max_pacing_rate = (val == ~0U) ?
-						 ~0UL : (unsigned int)val;
-			sk->sk_pacing_rate = min(sk->sk_pacing_rate,
-						 sk->sk_max_pacing_rate);
-			break;
-		case SO_PRIORITY:
-			sk->sk_priority = val;
-			break;
-		case SO_RCVLOWAT:
-			if (val < 0)
-				val = INT_MAX;
-			WRITE_ONCE(sk->sk_rcvlowat, val ? : 1);
-			break;
-		case SO_MARK:
-			if (sk->sk_mark != val) {
-				sk->sk_mark = val;
-				sk_dst_reset(sk);
-			}
-			break;
-		case SO_BINDTODEVICE:
-			optlen = min_t(long, optlen, IFNAMSIZ - 1);
-			strncpy(devname, optval, optlen);
-			devname[optlen] = 0;
-=======
 		tcp_snd_cwnd_set(tp, val);
 		break;
 	case TCP_BPF_SNDCWND_CLAMP:
@@ -5163,7 +5114,6 @@ static int bpf_sol_tcp_setsockopt(struct sock *sk, int optname,
 
 	return 0;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 static int sol_tcp_sockopt_congestion(struct sock *sk, char *optval,
 				      int *optlen, bool getopt)
@@ -5259,89 +5209,11 @@ static int sol_tcp_sockopt(struct sock *sk, int optname,
 			if (!tp->saved_syn ||
 			    *optlen > tcp_saved_syn_len(tp->saved_syn))
 				return -EINVAL;
-<<<<<<< HEAD
-
-			val = *((int *)optval);
-			/* Only some options are supported */
-			switch (optname) {
-			case TCP_BPF_IW:
-				if (val <= 0 || tp->data_segs_out > tp->syn_data)
-					ret = -EINVAL;
-				else
-					tcp_snd_cwnd_set(tp, val);
-				break;
-			case TCP_BPF_SNDCWND_CLAMP:
-				if (val <= 0) {
-					ret = -EINVAL;
-				} else {
-					tp->snd_cwnd_clamp = val;
-					tp->snd_ssthresh = val;
-				}
-				break;
-			case TCP_BPF_DELACK_MAX:
-				timeout = usecs_to_jiffies(val);
-				if (timeout > TCP_DELACK_MAX ||
-				    timeout < TCP_TIMEOUT_MIN)
-					return -EINVAL;
-				inet_csk(sk)->icsk_delack_max = timeout;
-				break;
-			case TCP_BPF_RTO_MIN:
-				timeout = usecs_to_jiffies(val);
-				if (timeout > TCP_RTO_MIN ||
-				    timeout < TCP_TIMEOUT_MIN)
-					return -EINVAL;
-				inet_csk(sk)->icsk_rto_min = timeout;
-				break;
-			case TCP_SAVE_SYN:
-				if (val < 0 || val > 1)
-					ret = -EINVAL;
-				else
-					tp->save_syn = val;
-				break;
-			case TCP_KEEPIDLE:
-				ret = tcp_sock_set_keepidle_locked(sk, val);
-				break;
-			case TCP_KEEPINTVL:
-				if (val < 1 || val > MAX_TCP_KEEPINTVL)
-					ret = -EINVAL;
-				else
-					tp->keepalive_intvl = val * HZ;
-				break;
-			case TCP_KEEPCNT:
-				if (val < 1 || val > MAX_TCP_KEEPCNT)
-					ret = -EINVAL;
-				else
-					tp->keepalive_probes = val;
-				break;
-			case TCP_SYNCNT:
-				if (val < 1 || val > MAX_TCP_SYNCNT)
-					ret = -EINVAL;
-				else
-					icsk->icsk_syn_retries = val;
-				break;
-			case TCP_USER_TIMEOUT:
-				if (val < 0)
-					ret = -EINVAL;
-				else
-					icsk->icsk_user_timeout = val;
-				break;
-			case TCP_NOTSENT_LOWAT:
-				tp->notsent_lowat = val;
-				sk->sk_write_space(sk);
-				break;
-			case TCP_WINDOW_CLAMP:
-				ret = tcp_set_window_clamp(sk, val);
-				break;
-			default:
-				ret = -EINVAL;
-			}
-=======
 			memcpy(optval, tp->saved_syn->data, *optlen);
 			/* It cannot free tp->saved_syn here because it
 			 * does not know if the user space still needs it.
 			 */
 			return 0;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		return do_tcp_getsockopt(sk, SOL_TCP, optname,
@@ -8881,15 +8753,9 @@ void bpf_warn_invalid_xdp_action(struct net_device *dev, struct bpf_prog *prog, 
 {
 	const u32 act_max = XDP_REDIRECT;
 
-<<<<<<< HEAD
-	pr_warn_once("%s XDP return value %u, expect packet loss!\n",
-		     act > act_max ? "Illegal" : "Driver unsupported",
-		     act);
-=======
 	pr_warn_once("%s XDP return value %u on prog %s (id %d) dev %s, expect packet loss!\n",
 		     act > act_max ? "Illegal" : "Driver unsupported",
 		     act, prog->aux->name, prog->aux->id, dev ? dev->name : "N/A");
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(bpf_warn_invalid_xdp_action);
 
@@ -11347,11 +11213,6 @@ static bool sk_lookup_is_valid_access(int off, int size,
 	case bpf_ctx_range(struct bpf_sk_lookup, local_ip4):
 	case bpf_ctx_range_till(struct bpf_sk_lookup, remote_ip6[0], remote_ip6[3]):
 	case bpf_ctx_range_till(struct bpf_sk_lookup, local_ip6[0], local_ip6[3]):
-<<<<<<< HEAD
-	case offsetof(struct bpf_sk_lookup, remote_port) ...
-	     offsetof(struct bpf_sk_lookup, local_ip4) - 1:
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	case bpf_ctx_range(struct bpf_sk_lookup, local_port):
 	case bpf_ctx_range(struct bpf_sk_lookup, ingress_ifindex):
 		bpf_ctx_record_field_size(info, sizeof(__u32));
@@ -11679,15 +11540,12 @@ bpf_sk_base_func_proto(enum bpf_func_id func_id)
 	case BPF_FUNC_skc_to_udp6_sock:
 		func = &bpf_skc_to_udp6_sock_proto;
 		break;
-<<<<<<< HEAD
-=======
 	case BPF_FUNC_skc_to_unix_sock:
 		func = &bpf_skc_to_unix_sock_proto;
 		break;
 	case BPF_FUNC_skc_to_mptcp_sock:
 		func = &bpf_skc_to_mptcp_sock_proto;
 		break;
->>>>>>> origin/linux_6.1.15_upstream
 	case BPF_FUNC_ktime_get_coarse_ns:
 		return &bpf_ktime_get_coarse_ns_proto;
 	default:

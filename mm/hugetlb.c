@@ -5234,10 +5234,7 @@ static void __unmap_hugepage_range(struct mmu_gather *tlb, struct vm_area_struct
 	struct hstate *h = hstate_vma(vma);
 	unsigned long sz = huge_page_size(h);
 	struct mmu_notifier_range range;
-<<<<<<< HEAD
-=======
 	unsigned long last_addr_mask;
->>>>>>> origin/linux_6.1.15_upstream
 	bool force_flush = false;
 
 	WARN_ON(!is_vm_hugetlb_page(vma));
@@ -5272,10 +5269,7 @@ static void __unmap_hugepage_range(struct mmu_gather *tlb, struct vm_area_struct
 			spin_unlock(ptl);
 			tlb_flush_pmd_range(tlb, address & PUD_MASK, PUD_SIZE);
 			force_flush = true;
-<<<<<<< HEAD
-=======
 			address |= last_addr_mask;
->>>>>>> origin/linux_6.1.15_upstream
 			continue;
 		}
 
@@ -7073,17 +7067,6 @@ int huge_pmd_unshare(struct mm_struct *mm, struct vm_area_struct *vma,
 	pud_clear(pud);
 	put_page(virt_to_page(ptep));
 	mm_dec_nr_pmds(mm);
-<<<<<<< HEAD
-	/*
-	 * This update of passed address optimizes loops sequentially
-	 * processing addresses in increments of huge page size (PMD_SIZE
-	 * in this case).  By clearing the pud, a PUD_SIZE area is unmapped.
-	 * Update address to the 'last page' in the cleared area so that
-	 * calling loop can move to first page past this area.
-	 */
-	*addr |= PUD_SIZE - PMD_SIZE;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 1;
 }
 
@@ -7257,14 +7240,6 @@ retry:
 	if (pte_present(pte)) {
 		page = pte_page(pte) +
 			((address & ~huge_page_mask(h)) >> PAGE_SHIFT);
-<<<<<<< HEAD
-		if (flags & FOLL_GET)
-			get_page(page);
-	} else {
-		if (is_hugetlb_entry_migration(pte)) {
-			spin_unlock(ptl);
-			__migration_entry_wait(mm, ptep, ptl);
-=======
 		/*
 		 * try_grab_page() should always succeed here, because: a) we
 		 * hold the pmd (ptl) lock, and b) we've just checked that the
@@ -7281,7 +7256,6 @@ retry:
 		if (is_hugetlb_entry_migration(pte)) {
 			spin_unlock(ptl);
 			__migration_entry_wait_huge(ptep, ptl);
->>>>>>> origin/linux_6.1.15_upstream
 			goto retry;
 		}
 		/*

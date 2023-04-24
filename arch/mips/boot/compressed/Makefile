@@ -54,17 +54,6 @@ endif
 vmlinuzobjs-$(CONFIG_KERNEL_XZ) += $(obj)/ashldi3.o
 
 vmlinuzobjs-$(CONFIG_KERNEL_ZSTD) += $(obj)/bswapdi.o $(obj)/ashldi3.o $(obj)/clz_ctz.o
-<<<<<<< HEAD
-
-extra-y += ashldi3.c
-$(obj)/ashldi3.c: $(obj)/%.c: $(srctree)/lib/%.c FORCE
-	$(call if_changed,shipped)
-
-extra-y += bswapsi.c
-$(obj)/bswapsi.c: $(obj)/%.c: $(srctree)/arch/mips/lib/%.c FORCE
-	$(call if_changed,shipped)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 extra-y += bswapdi.c
 $(obj)/bswapdi.c: $(obj)/%.c: $(srctree)/arch/mips/lib/%.c FORCE

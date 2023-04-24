@@ -1417,12 +1417,7 @@ int gfs2_fitrim(struct file *filp, void __user *argp)
 	start = r.start >> bs_shift;
 	end = start + (r.len >> bs_shift);
 	minlen = max_t(u64, r.minlen, sdp->sd_sb.sb_bsize);
-<<<<<<< HEAD
-	minlen = max_t(u64, minlen,
-		       q->limits.discard_granularity) >> bs_shift;
-=======
 	minlen = max_t(u64, minlen, bdev_discard_granularity(bdev)) >> bs_shift;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (end <= start || minlen > sdp->sd_max_rg_data)
 		return -EINVAL;

@@ -34,71 +34,6 @@
 .section .noinstr.text, "ax"
 
 /**
-<<<<<<< HEAD
- * vmx_vmenter - VM-Enter the current loaded VMCS
- *
- * %RFLAGS.ZF:	!VMCS.LAUNCHED, i.e. controls VMLAUNCH vs. VMRESUME
- *
- * Returns:
- *	%RFLAGS.CF is set on VM-Fail Invalid
- *	%RFLAGS.ZF is set on VM-Fail Valid
- *	%RFLAGS.{CF,ZF} are cleared on VM-Success, i.e. VM-Exit
- *
- * Note that VMRESUME/VMLAUNCH fall-through and return directly if
- * they VM-Fail, whereas a successful VM-Enter + VM-Exit will jump
- * to vmx_vmexit.
- */
-SYM_FUNC_START_LOCAL(vmx_vmenter)
-	/* EFLAGS.ZF is set if VMCS.LAUNCHED == 0 */
-	je 2f
-
-1:	vmresume
-	RET
-
-2:	vmlaunch
-	RET
-
-3:	cmpb $0, kvm_rebooting
-	je 4f
-	RET
-4:	ud2
-
-	_ASM_EXTABLE(1b, 3b)
-	_ASM_EXTABLE(2b, 3b)
-
-SYM_FUNC_END(vmx_vmenter)
-
-/**
- * vmx_vmexit - Handle a VMX VM-Exit
- *
- * Returns:
- *	%RFLAGS.{CF,ZF} are cleared on VM-Success, i.e. VM-Exit
- *
- * This is vmx_vmenter's partner in crime.  On a VM-Exit, control will jump
- * here after hardware loads the host's state, i.e. this is the destination
- * referred to by VMCS.HOST_RIP.
- */
-SYM_FUNC_START(vmx_vmexit)
-#ifdef CONFIG_RETPOLINE
-	ALTERNATIVE "jmp .Lvmexit_skip_rsb", "", X86_FEATURE_RETPOLINE
-	/* Preserve guest's RAX, it's used to stuff the RSB. */
-	push %_ASM_AX
-
-	/* IMPORTANT: Stuff the RSB immediately after VM-Exit, before RET! */
-	FILL_RETURN_BUFFER %_ASM_AX, RSB_CLEAR_LOOPS, X86_FEATURE_RETPOLINE
-
-	/* Clear RFLAGS.CF and RFLAGS.ZF to preserve VM-Exit, i.e. !VM-Fail. */
-	or $1, %_ASM_AX
-
-	pop %_ASM_AX
-.Lvmexit_skip_rsb:
-#endif
-	RET
-SYM_FUNC_END(vmx_vmexit)
-
-/**
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * __vmx_vcpu_run - Run a vCPU via a transition to VMX guest mode
  * @vmx:	struct vcpu_vmx *
  * @regs:	unsigned long * (to guest registers)
@@ -319,8 +254,6 @@ SYM_INNER_LABEL(vmx_vmexit, SYM_L_GLOBAL)
 #endif
 	pop %_ASM_BP
 	RET
-<<<<<<< HEAD
-=======
 
 .Lfixup:
 	cmpb $0, kvm_rebooting
@@ -330,7 +263,6 @@ SYM_INNER_LABEL(vmx_vmexit, SYM_L_GLOBAL)
 	/* VM-Fail: set return value to 1 */
 	mov $1, %_ASM_BX
 	jmp .Lclear_regs
->>>>>>> origin/linux_6.1.15_upstream
 
 SYM_FUNC_END(__vmx_vcpu_run)
 

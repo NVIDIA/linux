@@ -688,15 +688,6 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 		/*
 		 * Allocate clusters, do not change 'valid' size.
 		 */
-<<<<<<< HEAD
-		loff_t new_size = max(end, i_size);
-
-		err = inode_newsize_ok(inode, new_size);
-		if (err)
-			goto out;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		err = ntfs_set_size(inode, new_size);
 		if (err)
 			goto out;

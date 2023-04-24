@@ -781,10 +781,6 @@ static inline void update_cgrp_time_from_cpuctx(struct perf_cpu_context *cpuctx,
 static inline void update_cgrp_time_from_event(struct perf_event *event)
 {
 	struct perf_cgroup_info *info;
-<<<<<<< HEAD
-	struct perf_cgroup *cgrp;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * ensure we access cgroup data only when needed and
@@ -797,15 +793,8 @@ static inline void update_cgrp_time_from_event(struct perf_event *event)
 	/*
 	 * Do not update time when cgroup is not active
 	 */
-<<<<<<< HEAD
-	if (cgroup_is_descendant(cgrp->css.cgroup, event->cgrp->css.cgroup)) {
-		info = this_cpu_ptr(event->cgrp->info);
-		__update_cgrp_time(info, perf_clock(), true);
-	}
-=======
 	if (info->active)
 		__update_cgrp_time(info, perf_clock(), true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline void
@@ -841,10 +830,7 @@ static DEFINE_PER_CPU(struct list_head, cgrp_cpuctx_list);
  */
 static void perf_cgroup_switch(struct task_struct *task)
 {
-<<<<<<< HEAD
-=======
 	struct perf_cgroup *cgrp;
->>>>>>> origin/linux_6.1.15_upstream
 	struct perf_cpu_context *cpuctx, *tmp;
 	struct list_head *list;
 	unsigned long flags;
@@ -1033,19 +1019,6 @@ static inline void update_cgrp_time_from_event(struct perf_event *event)
 
 static inline void update_cgrp_time_from_cpuctx(struct perf_cpu_context *cpuctx,
 						bool final)
-<<<<<<< HEAD
-{
-}
-
-static inline void perf_cgroup_sched_out(struct task_struct *task,
-					 struct task_struct *next)
-{
-}
-
-static inline void perf_cgroup_sched_in(struct task_struct *prev,
-					struct task_struct *task)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 }
 
@@ -1061,14 +1034,6 @@ perf_cgroup_set_timestamp(struct perf_cpu_context *cpuctx)
 {
 }
 
-<<<<<<< HEAD
-static inline void
-perf_cgroup_switch(struct task_struct *task, struct task_struct *next)
-{
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static inline u64 perf_cgroup_event_time(struct perf_event *event)
 {
 	return 0;
@@ -1504,11 +1469,8 @@ static void __update_context_time(struct perf_event_context *ctx, bool adv)
 {
 	u64 now = perf_clock();
 
-<<<<<<< HEAD
-=======
 	lockdep_assert_held(&ctx->lock);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (adv)
 		ctx->time += now - ctx->timestamp;
 	ctx->timestamp = now;
@@ -2535,14 +2497,8 @@ EXPORT_SYMBOL_GPL(perf_event_disable);
 
 void perf_event_disable_inatomic(struct perf_event *event)
 {
-<<<<<<< HEAD
-	WRITE_ONCE(event->pending_disable, smp_processor_id());
-	/* can fail, see perf_pending_event_disable() */
-	irq_work_queue(&event->pending);
-=======
 	event->pending_disable = 1;
 	irq_work_queue(&event->pending_irq);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #define MAX_INTERRUPTS (~0ULL)
@@ -3877,11 +3833,7 @@ ctx_sched_in(struct perf_event_context *ctx,
 	if (is_active ^ EVENT_TIME) {
 		/* start ctx time */
 		__update_context_time(ctx, false);
-<<<<<<< HEAD
-		perf_cgroup_set_timestamp(task, ctx);
-=======
 		perf_cgroup_set_timestamp(cpuctx);
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * CPU-release for the below ->is_active store,
 		 * see __load_acquire() in perf_event_time_now()
@@ -4551,11 +4503,7 @@ int perf_event_read_local(struct perf_event *event, u64 *value,
 
 	*value = local64_read(&event->count);
 	if (enabled || running) {
-<<<<<<< HEAD
-		u64 __enabled, __running, __now;;
-=======
 		u64 __enabled, __running, __now;
->>>>>>> origin/linux_6.1.15_upstream
 
 		calc_timer_values(event, &__now, &__enabled, &__running);
 		if (enabled)
@@ -6615,13 +6563,6 @@ static void perf_pending_irq(struct irq_work *entry)
 		perf_swevent_put_recursion_context(rctx);
 }
 
-<<<<<<< HEAD
-/*
- * We assume there is only KVM supporting the callbacks.
- * Later on, we might change it to a list if there is
- * another virtualization implementation supporting the callbacks.
- */
-=======
 static void perf_pending_task(struct callback_head *head)
 {
 	struct perf_event *event = container_of(head, struct perf_event, pending_task);
@@ -6648,7 +6589,6 @@ static void perf_pending_task(struct callback_head *head)
 }
 
 #ifdef CONFIG_GUEST_PERF_EVENTS
->>>>>>> origin/linux_6.1.15_upstream
 struct perf_guest_info_callbacks __rcu *perf_guest_cbs;
 
 DEFINE_STATIC_CALL_RET0(__perf_guest_state, *perf_guest_cbs->state);
@@ -6658,12 +6598,6 @@ DEFINE_STATIC_CALL_RET0(__perf_guest_handle_intel_pt_intr, *perf_guest_cbs->hand
 void perf_register_guest_info_callbacks(struct perf_guest_info_callbacks *cbs)
 {
 	if (WARN_ON_ONCE(rcu_access_pointer(perf_guest_cbs)))
-<<<<<<< HEAD
-		return -EBUSY;
-
-	rcu_assign_pointer(perf_guest_cbs, cbs);
-	return 0;
-=======
 		return;
 
 	rcu_assign_pointer(perf_guest_cbs, cbs);
@@ -6674,20 +6608,12 @@ void perf_register_guest_info_callbacks(struct perf_guest_info_callbacks *cbs)
 	if (cbs->handle_intel_pt_intr)
 		static_call_update(__perf_guest_handle_intel_pt_intr,
 				   cbs->handle_intel_pt_intr);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(perf_register_guest_info_callbacks);
 
 void perf_unregister_guest_info_callbacks(struct perf_guest_info_callbacks *cbs)
 {
 	if (WARN_ON_ONCE(rcu_access_pointer(perf_guest_cbs) != cbs))
-<<<<<<< HEAD
-		return -EINVAL;
-
-	rcu_assign_pointer(perf_guest_cbs, NULL);
-	synchronize_rcu();
-	return 0;
-=======
 		return;
 
 	rcu_assign_pointer(perf_guest_cbs, NULL);
@@ -6696,7 +6622,6 @@ void perf_unregister_guest_info_callbacks(struct perf_guest_info_callbacks *cbs)
 	static_call_update(__perf_guest_handle_intel_pt_intr,
 			   (void *)&__static_call_return0);
 	synchronize_rcu();
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(perf_unregister_guest_info_callbacks);
 #endif
@@ -11793,12 +11718,6 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 
 	if (parent_event)
 		event->event_caps = parent_event->event_caps;
-<<<<<<< HEAD
-
-	if (event->attr.sigtrap)
-		atomic_set(&event->event_limit, 1);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (task) {
 		event->attach_state = PERF_ATTACH_TASK;

@@ -4842,11 +4842,7 @@ hisi_sas_v3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	rc = scsi_add_host(shost, dev);
 	if (rc)
-<<<<<<< HEAD
-		goto err_out_debugfs;
-=======
 		goto err_out_undo_debugfs;
->>>>>>> origin/linux_6.1.15_upstream
 
 	rc = sas_register_ha(sha);
 	if (rc)
@@ -4877,11 +4873,7 @@ err_out_unregister_ha:
 	sas_unregister_ha(sha);
 err_out_remove_host:
 	scsi_remove_host(shost);
-<<<<<<< HEAD
-err_out_debugfs:
-=======
 err_out_undo_debugfs:
->>>>>>> origin/linux_6.1.15_upstream
 	debugfs_exit_v3_hw(hisi_hba);
 err_out_free_host:
 	hisi_sas_free(hisi_hba);

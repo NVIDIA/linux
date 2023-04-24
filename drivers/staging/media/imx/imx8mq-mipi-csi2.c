@@ -694,11 +694,7 @@ err_parse:
  * Suspend/resume
  */
 
-<<<<<<< HEAD
-static int imx8mq_mipi_csi_pm_suspend(struct device *dev)
-=======
 static void imx8mq_mipi_csi_pm_suspend(struct device *dev)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct csi_state *state = mipi_sd_to_csi2_state(sd);
@@ -712,11 +708,6 @@ static void imx8mq_mipi_csi_pm_suspend(struct device *dev)
 	}
 
 	mutex_unlock(&state->lock);
-<<<<<<< HEAD
-
-	return ret ? -EAGAIN : 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int imx8mq_mipi_csi_pm_resume(struct device *dev)
@@ -749,24 +740,12 @@ static int __maybe_unused imx8mq_mipi_csi_suspend(struct device *dev)
 {
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct csi_state *state = mipi_sd_to_csi2_state(sd);
-<<<<<<< HEAD
-	int ret;
-
-	ret = imx8mq_mipi_csi_pm_suspend(dev);
-	if (ret)
-		return ret;
-
-	state->state |= ST_SUSPENDED;
-
-	return ret;
-=======
 
 	imx8mq_mipi_csi_pm_suspend(dev);
 
 	state->state |= ST_SUSPENDED;
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int __maybe_unused imx8mq_mipi_csi_resume(struct device *dev)
@@ -786,13 +765,7 @@ static int __maybe_unused imx8mq_mipi_csi_runtime_suspend(struct device *dev)
 	struct csi_state *state = mipi_sd_to_csi2_state(sd);
 	int ret;
 
-<<<<<<< HEAD
-	ret = imx8mq_mipi_csi_pm_suspend(dev);
-	if (ret)
-		return ret;
-=======
 	imx8mq_mipi_csi_pm_suspend(dev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = icc_set_bw(state->icc_path, 0, 0);
 	if (ret)

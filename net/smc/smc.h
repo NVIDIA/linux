@@ -193,10 +193,7 @@ struct smc_connection {
 						 * - dec on polled tx cqe
 						 */
 	wait_queue_head_t	cdc_pend_tx_wq; /* wakeup on no cdc_pend_tx_wr*/
-<<<<<<< HEAD
-=======
 	atomic_t		tx_pushing;     /* nr_threads trying tx push */
->>>>>>> origin/linux_6.1.15_upstream
 	struct delayed_work	tx_work;	/* retry of smc_cdc_msg_send */
 	u32			tx_off;		/* base offset in peer rmb */
 
@@ -291,9 +288,6 @@ static inline struct smc_sock *smc_sk(const struct sock *sk)
 	return (struct smc_sock *)sk;
 }
 
-<<<<<<< HEAD
-static inline struct smc_sock *smc_clcsock_user_data(struct sock *clcsk)
-=======
 static inline void smc_init_saved_callbacks(struct smc_sock *smc)
 {
 	smc->clcsk_state_change	= NULL;
@@ -303,14 +297,11 @@ static inline void smc_init_saved_callbacks(struct smc_sock *smc)
 }
 
 static inline struct smc_sock *smc_clcsock_user_data(const struct sock *clcsk)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return (struct smc_sock *)
 	       ((uintptr_t)clcsk->sk_user_data & ~SK_USER_DATA_NOCOPY);
 }
 
-<<<<<<< HEAD
-=======
 /* save target_cb in saved_cb, and replace target_cb with new_cb */
 static inline void smc_clcsock_replace_cb(void (**target_cb)(struct sock *),
 					  void (*new_cb)(struct sock *),
@@ -332,7 +323,6 @@ static inline void smc_clcsock_restore_cb(void (**target_cb)(struct sock *),
 	*saved_cb = NULL;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 extern struct workqueue_struct	*smc_hs_wq;	/* wq for handshake work */
 extern struct workqueue_struct	*smc_close_wq;	/* wq for close work */
 

@@ -788,10 +788,7 @@ static int vma_replace_policy(struct vm_area_struct *vma,
 static int mbind_range(struct mm_struct *mm, unsigned long start,
 		       unsigned long end, struct mempolicy *new_pol)
 {
-<<<<<<< HEAD
-=======
 	MA_STATE(mas, &mm->mm_mt, start, start);
->>>>>>> origin/linux_6.1.15_upstream
 	struct vm_area_struct *prev;
 	struct vm_area_struct *vma;
 	int err = 0;
@@ -808,15 +805,9 @@ static int mbind_range(struct mm_struct *mm, unsigned long start,
 	if (start > vma->vm_start)
 		prev = vma;
 
-<<<<<<< HEAD
-	for (; vma && vma->vm_start < end; prev = vma, vma = vma->vm_next) {
-		vmstart = max(start, vma->vm_start);
-		vmend   = min(end, vma->vm_end);
-=======
 	for (; vma; vma = mas_next(&mas, end - 1)) {
 		unsigned long vmstart = max(start, vma->vm_start);
 		unsigned long vmend = min(end, vma->vm_end);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (mpol_equal(vma_policy(vma), new_pol))
 			goto next;
@@ -2244,14 +2235,9 @@ struct folio *vma_alloc_folio(gfp_t gfp, int order, struct vm_area_struct *vma,
 			 * to prefer hugepage backing, retry allowing remote
 			 * memory with both reclaim and compact as well.
 			 */
-<<<<<<< HEAD
-			if (!page && (gfp & __GFP_DIRECT_RECLAIM))
-				page = __alloc_pages(gfp, order, hpage_node, nmask);
-=======
 			if (!folio && (gfp & __GFP_DIRECT_RECLAIM))
 				folio = __folio_alloc(gfp, order, hpage_node,
 						      nmask);
->>>>>>> origin/linux_6.1.15_upstream
 
 			goto out;
 		}

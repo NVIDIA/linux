@@ -293,11 +293,8 @@ static int fsl_ifc_ctrl_probe(struct platform_device *dev)
 
 	return 0;
 
-<<<<<<< HEAD
-=======
 err_free_nandirq:
 	free_irq(fsl_ifc_ctrl_dev->nand_irq, fsl_ifc_ctrl_dev);
->>>>>>> origin/linux_6.1.15_upstream
 err_free_irq:
 	free_irq(fsl_ifc_ctrl_dev->irq, fsl_ifc_ctrl_dev);
 err_unmap_nandirq:

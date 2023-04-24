@@ -2045,46 +2045,6 @@ static bool canon_copy_from_read_buf(struct tty_struct *tty,
  * If we finished a read at the exact location of an
  * EOF (special EOL character that's a __DISABLED_CHAR)
  * in the stream, silently eat the EOF.
-<<<<<<< HEAD
- */
-static void canon_skip_eof(struct tty_struct *tty)
-{
-	struct n_tty_data *ldata = tty->disc_data;
-	size_t tail, canon_head;
-
-	canon_head = smp_load_acquire(&ldata->canon_head);
-	tail = ldata->read_tail;
-
-	// No data?
-	if (tail == canon_head)
-		return;
-
-	// See if the tail position is EOF in the circular buffer
-	tail &= (N_TTY_BUF_SIZE - 1);
-	if (!test_bit(tail, ldata->read_flags))
-		return;
-	if (read_buf(ldata, tail) != __DISABLED_CHAR)
-		return;
-
-	// Clear the EOL bit, skip the EOF char.
-	clear_bit(tail, ldata->read_flags);
-	smp_store_release(&ldata->read_tail, ldata->read_tail + 1);
-}
-
-/**
- *	job_control		-	check job control
- *	@tty: tty
- *	@file: file handle
- *
- *	Perform job control management checks on this file/tty descriptor
- *	and if appropriate send any needed signals and return a negative
- *	error code if action should be taken.
- *
- *	Locking: redirected write test is safe
- *		 current->signal->tty check is safe
- *		 ctrl.lock to safely reference tty->ctrl.pgrp
-=======
->>>>>>> origin/linux_6.1.15_upstream
  */
 static void canon_skip_eof(struct tty_struct *tty)
 {

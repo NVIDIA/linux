@@ -596,17 +596,8 @@ lpfc_rcv_plogi(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 		 * a default RPI.
 		 */
 		if (phba->sli_rev == LPFC_SLI_REV4) {
-<<<<<<< HEAD
-			mp = (struct lpfc_dmabuf *)login_mbox->ctx_buf;
-			if (mp) {
-				lpfc_mbuf_free(phba, mp->virt, mp->phys);
-				kfree(mp);
-			}
-			mempool_free(login_mbox, phba->mbox_mem_pool);
-=======
 			lpfc_mbox_rsrc_cleanup(phba, login_mbox,
 					       MBOX_THD_UNLOCKED);
->>>>>>> origin/linux_6.1.15_upstream
 			login_mbox = NULL;
 		} else {
 			/* In order to preserve RPIs, we want to cleanup

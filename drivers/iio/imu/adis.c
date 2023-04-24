@@ -431,9 +431,6 @@ int __adis_initial_startup(struct adis *adis)
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	adis_enable_irq(adis, false);
-=======
 	/*
 	 * don't bother calling this if we can't unmask the IRQ as in this case
 	 * the IRQ is most likely not yet requested and we will request it
@@ -441,7 +438,6 @@ int __adis_initial_startup(struct adis *adis)
 	 */
 	if (!adis->data->unmasked_drdy)
 		__adis_enable_irq(adis, false);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!adis->data->prod_id_reg)
 		return 0;

@@ -288,8 +288,6 @@ enum ip_power_state {
 	POWER_STATE_OFF,
 };
 
-<<<<<<< HEAD
-=======
 /* Used to mask smu debug modes */
 #define SMU_DEBUG_HALT_ON_ERROR		0x1
 
@@ -314,7 +312,6 @@ struct config_table_setting
 	uint16_t fclk_average_tau;
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 struct amdgpu_pm {
 	struct mutex		mutex;
 	u32                     current_sclk;
@@ -351,12 +348,6 @@ struct amdgpu_pm {
 	struct i2c_adapter     *ras_eeprom_i2c_bus;
 	struct i2c_adapter     *fru_eeprom_i2c_bus;
 	struct list_head	pm_attr_list;
-<<<<<<< HEAD
-
-	atomic_t		pwr_state[AMD_IP_BLOCK_TYPE_NUM];
-};
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	atomic_t		pwr_state[AMD_IP_BLOCK_TYPE_NUM];
 

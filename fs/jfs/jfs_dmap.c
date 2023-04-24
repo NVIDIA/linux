@@ -181,14 +181,8 @@ int dbMount(struct inode *ipbmap)
 	bmp->db_l2nbperpage = le32_to_cpu(dbmp_le->dn_l2nbperpage);
 	bmp->db_numag = le32_to_cpu(dbmp_le->dn_numag);
 	if (!bmp->db_numag) {
-<<<<<<< HEAD
-		release_metapage(mp);
-		kfree(bmp);
-		return -EINVAL;
-=======
 		err = -EINVAL;
 		goto err_release_metapage;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	bmp->db_maxlevel = le32_to_cpu(dbmp_le->dn_maxlevel);

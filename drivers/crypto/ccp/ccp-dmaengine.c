@@ -641,13 +641,10 @@ static void ccp_dma_release(struct ccp_device *ccp)
 	for (i = 0; i < ccp->cmd_q_count; i++) {
 		chan = ccp->ccp_dma_chan + i;
 		dma_chan = &chan->dma_chan;
-<<<<<<< HEAD
-=======
 
 		if (dma_chan->client_count)
 			dma_release_channel(dma_chan);
 
->>>>>>> origin/linux_6.1.15_upstream
 		tasklet_kill(&chan->cleanup_tasklet);
 		list_del_rcu(&dma_chan->device_node);
 	}

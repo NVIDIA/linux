@@ -39,10 +39,7 @@
 #include "ipoib/ipoib.h"
 #include "en_accel/en_accel.h"
 #include "en_accel/ipsec_rxtx.h"
-<<<<<<< HEAD
-=======
 #include "en_accel/macsec.h"
->>>>>>> origin/linux_6.1.15_upstream
 #include "en/ptp.h"
 #include <net/ipv6.h>
 
@@ -112,14 +109,10 @@ static inline void mlx5e_insert_vlan(void *start, struct sk_buff *skb, u16 ihs)
 	memcpy(&vhdr->addrs, skb->data, cpy1_sz);
 	vhdr->h_vlan_proto = skb->vlan_proto;
 	vhdr->h_vlan_TCI = cpu_to_be16(skb_vlan_tag_get(skb));
-<<<<<<< HEAD
-	memcpy(&vhdr->h_vlan_encapsulated_proto, skb->data + cpy1_sz, cpy2_sz);
-=======
 	unsafe_memcpy(&vhdr->h_vlan_encapsulated_proto,
 		      skb->data + cpy1_sz,
 		      cpy2_sz,
 		      MLX5_UNSAFE_MEMCPY_DISCLAIMER);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline void

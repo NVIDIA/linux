@@ -1345,9 +1345,6 @@ static inline bool should_zap_cows(struct zap_details *details)
 		return true;
 
 	/* Or, we zap COWed pages only if the caller wants to */
-<<<<<<< HEAD
-	return !details->check_mapping;
-=======
 	return details->even_cows;
 }
 
@@ -1389,7 +1386,6 @@ zap_install_uffd_wp_if_needed(struct vm_area_struct *vma,
 
 	pte_install_uffd_wp_if_needed(vma, addr, pte, pteval);
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static unsigned long zap_pte_range(struct mmu_gather *tlb,
@@ -1472,32 +1468,16 @@ again:
 			if (is_device_private_entry(entry))
 				page_remove_rmap(page, vma, false);
 			put_page(page);
-<<<<<<< HEAD
-			continue;
-		}
-
-		if (!non_swap_entry(entry)) {
-=======
 		} else if (!non_swap_entry(entry)) {
->>>>>>> origin/linux_6.1.15_upstream
 			/* Genuine swap entry, hence a private anon page */
 			if (!should_zap_cows(details))
 				continue;
 			rss[MM_SWAPENTS]--;
-<<<<<<< HEAD
-		} else if (is_migration_entry(entry)) {
-			struct page *page;
-
-			page = pfn_swap_entry_to_page(entry);
-			if (details && details->check_mapping &&
-			    details->check_mapping != page_rmapping(page))
-=======
 			if (unlikely(!free_swap_and_cache(entry)))
 				print_bad_pte(vma, addr, ptent, NULL);
 		} else if (is_migration_entry(entry)) {
 			page = pfn_swap_entry_to_page(entry);
 			if (!should_zap_page(details, page))
->>>>>>> origin/linux_6.1.15_upstream
 				continue;
 			rss[mm_counter(page)]--;
 		} else if (pte_marker_entry_uffd_wp(entry)) {

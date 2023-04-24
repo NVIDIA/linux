@@ -1815,21 +1815,7 @@ static struct nbd_device *nbd_dev_add(int index, unsigned int refs)
 	refcount_set(&nbd->refs, 0);
 	INIT_LIST_HEAD(&nbd->list);
 	disk->major = NBD_MAJOR;
-<<<<<<< HEAD
-
-	/* Too big first_minor can cause duplicate creation of
-	 * sysfs files/links, since index << part_shift might overflow, or
-	 * MKDEV() expect that the max bits of first_minor is 20.
-	 */
 	disk->first_minor = index << part_shift;
-	if (disk->first_minor < index || disk->first_minor > MINORMASK) {
-		err = -EINVAL;
-		goto out_free_work;
-	}
-
-=======
-	disk->first_minor = index << part_shift;
->>>>>>> origin/linux_6.1.15_upstream
 	disk->minors = 1 << part_shift;
 	disk->fops = &nbd_fops;
 	disk->private_data = nbd;
@@ -1848,11 +1834,7 @@ static struct nbd_device *nbd_dev_add(int index, unsigned int refs)
 out_free_work:
 	destroy_workqueue(nbd->recv_workq);
 out_err_disk:
-<<<<<<< HEAD
-	blk_cleanup_disk(disk);
-=======
 	put_disk(disk);
->>>>>>> origin/linux_6.1.15_upstream
 out_free_idr:
 	mutex_lock(&nbd_index_mutex);
 	idr_remove(&nbd_index_idr, index);
@@ -2004,11 +1986,7 @@ again:
 	if (IS_ERR(config)) {
 		mutex_unlock(&nbd->config_lock);
 		nbd_put(nbd);
-<<<<<<< HEAD
-		printk(KERN_ERR "nbd: couldn't allocate config\n");
-=======
 		pr_err("couldn't allocate config\n");
->>>>>>> origin/linux_6.1.15_upstream
 		return PTR_ERR(config);
 	}
 	nbd->config = config;
@@ -2582,11 +2560,7 @@ static void __exit nbd_cleanup(void)
 		nbd = list_first_entry(&del_list, struct nbd_device, list);
 		list_del_init(&nbd->list);
 		if (refcount_read(&nbd->config_refs))
-<<<<<<< HEAD
-			printk(KERN_ERR "nbd: possibly leaking nbd_config (ref %d)\n",
-=======
 			pr_err("possibly leaking nbd_config (ref %d)\n",
->>>>>>> origin/linux_6.1.15_upstream
 					refcount_read(&nbd->config_refs));
 		if (refcount_read(&nbd->refs) != 1)
 			pr_err("possibly leaking a device\n");

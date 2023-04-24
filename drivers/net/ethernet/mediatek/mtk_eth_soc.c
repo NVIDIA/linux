@@ -219,15 +219,6 @@ static int _mtk_mdio_write(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg,
 	if (ret < 0)
 		return ret;
 
-<<<<<<< HEAD
-	mtk_w32(eth, PHY_IAC_ACCESS |
-		     PHY_IAC_START_C22 |
-		     PHY_IAC_CMD_WRITE |
-		     PHY_IAC_REG(phy_reg) |
-		     PHY_IAC_ADDR(phy_addr) |
-		     PHY_IAC_DATA(write_data),
-		MTK_PHY_IAC);
-=======
 	if (phy_reg & MII_ADDR_C45) {
 		mtk_w32(eth, PHY_IAC_ACCESS |
 			     PHY_IAC_START_C45 |
@@ -257,7 +248,6 @@ static int _mtk_mdio_write(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg,
 			     PHY_IAC_DATA(write_data),
 			MTK_PHY_IAC);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = mtk_mdio_busy_wait(eth);
 	if (ret < 0)
@@ -269,20 +259,6 @@ static int _mtk_mdio_write(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg,
 static int _mtk_mdio_read(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg)
 {
 	int ret;
-<<<<<<< HEAD
-
-	ret = mtk_mdio_busy_wait(eth);
-	if (ret < 0)
-		return ret;
-
-	mtk_w32(eth, PHY_IAC_ACCESS |
-		     PHY_IAC_START_C22 |
-		     PHY_IAC_CMD_C22_READ |
-		     PHY_IAC_REG(phy_reg) |
-		     PHY_IAC_ADDR(phy_addr),
-		MTK_PHY_IAC);
-
-=======
 
 	ret = mtk_mdio_busy_wait(eth);
 	if (ret < 0)
@@ -316,7 +292,6 @@ static int _mtk_mdio_read(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg)
 			MTK_PHY_IAC);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = mtk_mdio_busy_wait(eth);
 	if (ret < 0)
 		return ret;
@@ -426,13 +401,8 @@ static void mtk_mac_config(struct phylink_config *config, unsigned int mode,
 	struct mtk_mac *mac = container_of(config, struct mtk_mac,
 					   phylink_config);
 	struct mtk_eth *eth = mac->hw;
-<<<<<<< HEAD
-	u32 mcr_cur, mcr_new, sid, i;
-	int val, ge_mode, err = 0;
-=======
 	int val, ge_mode, err = 0;
 	u32 i;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* MT76x8 has no hardware settings between for the MAC */
 	if (!MTK_HAS_CAPS(eth->soc->caps, MTK_SOC_MT7628) &&
@@ -1857,26 +1827,6 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 		pktlen = RX_DMA_GET_PLEN0(trxd.rxd2);
 
 		/* alloc new buffer */
-<<<<<<< HEAD
-		if (ring->frag_size <= PAGE_SIZE)
-			new_data = napi_alloc_frag(ring->frag_size);
-		else
-			new_data = mtk_max_lro_buf_alloc(GFP_ATOMIC);
-		if (unlikely(!new_data)) {
-			netdev->stats.rx_dropped++;
-			goto release_desc;
-		}
-		dma_addr = dma_map_single(eth->dev,
-					  new_data + NET_SKB_PAD +
-					  eth->ip_align,
-					  ring->buf_size,
-					  DMA_FROM_DEVICE);
-		if (unlikely(dma_mapping_error(eth->dev, dma_addr))) {
-			skb_free_frag(new_data);
-			netdev->stats.rx_dropped++;
-			goto release_desc;
-		}
-=======
 		if (ring->page_pool) {
 			struct page *page = virt_to_head_page(data);
 			struct xdp_buff xdp;
@@ -1902,7 +1852,6 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 			ret = mtk_xdp_run(eth, ring, &xdp, netdev);
 			if (ret == XDP_REDIRECT)
 				xdp_flush = true;
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (ret != XDP_PASS)
 				goto skip_rx;
@@ -2388,15 +2337,6 @@ static int mtk_rx_alloc(struct mtk_eth *eth, int ring_no, int rx_flag)
 	if (!ring->data)
 		return -ENOMEM;
 
-<<<<<<< HEAD
-	for (i = 0; i < rx_dma_size; i++) {
-		if (ring->frag_size <= PAGE_SIZE)
-			ring->data[i] = netdev_alloc_frag(ring->frag_size);
-		else
-			ring->data[i] = mtk_max_lro_buf_alloc(GFP_KERNEL);
-		if (!ring->data[i])
-			return -ENOMEM;
-=======
 	if (mtk_page_pool_enabled(eth)) {
 		struct page_pool *pp;
 
@@ -2406,7 +2346,6 @@ static int mtk_rx_alloc(struct mtk_eth *eth, int ring_no, int rx_flag)
 			return PTR_ERR(pp);
 
 		ring->page_pool = pp;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	ring->dma = dma_alloc_coherent(eth->dma_dev,

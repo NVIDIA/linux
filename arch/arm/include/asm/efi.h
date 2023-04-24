@@ -17,10 +17,7 @@
 
 #ifdef CONFIG_EFI
 void efi_init(void);
-<<<<<<< HEAD
-=======
 void arm_efi_init(void);
->>>>>>> origin/linux_6.1.15_upstream
 
 int efi_create_mapping(struct mm_struct *mm, efi_memory_desc_t *md);
 int efi_set_mapping_permissions(struct mm_struct *mm, efi_memory_desc_t *md);

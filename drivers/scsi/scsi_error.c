@@ -133,23 +133,6 @@ static bool scsi_eh_should_retry_cmd(struct scsi_cmnd *cmd)
 	return true;
 }
 
-static void scsi_eh_complete_abort(struct scsi_cmnd *scmd, struct Scsi_Host *shost)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(shost->host_lock, flags);
-	list_del_init(&scmd->eh_entry);
-	/*
-	 * If the abort succeeds, and there is no further
-	 * EH action, clear the ->last_reset time.
-	 */
-	if (list_empty(&shost->eh_abort_list) &&
-	    list_empty(&shost->eh_cmd_q))
-		if (shost->eh_deadline != -1)
-			shost->last_reset = 0;
-	spin_unlock_irqrestore(shost->host_lock, flags);
-}
-
 /**
  * scmd_eh_abort_handler - Handle command aborts
  * @work:	command to be aborted.
@@ -180,40 +163,6 @@ scmd_eh_abort_handler(struct work_struct *work)
 	SCSI_LOG_ERROR_RECOVERY(3,
 			scmd_printk(KERN_INFO, scmd,
 				    "aborting command\n"));
-<<<<<<< HEAD
-		rtn = scsi_try_to_abort_cmd(sdev->host->hostt, scmd);
-		if (rtn == SUCCESS) {
-			set_host_byte(scmd, DID_TIME_OUT);
-			if (scsi_host_eh_past_deadline(sdev->host)) {
-				SCSI_LOG_ERROR_RECOVERY(3,
-					scmd_printk(KERN_INFO, scmd,
-						    "eh timeout, not retrying "
-						    "aborted command\n"));
-			} else if (!scsi_noretry_cmd(scmd) &&
-				   scsi_cmd_retry_allowed(scmd) &&
-				scsi_eh_should_retry_cmd(scmd)) {
-				SCSI_LOG_ERROR_RECOVERY(3,
-					scmd_printk(KERN_WARNING, scmd,
-						    "retry aborted command\n"));
-				scsi_eh_complete_abort(scmd, sdev->host);
-				scsi_queue_insert(scmd, SCSI_MLQUEUE_EH_RETRY);
-				return;
-			} else {
-				SCSI_LOG_ERROR_RECOVERY(3,
-					scmd_printk(KERN_WARNING, scmd,
-						    "finish aborted command\n"));
-				scsi_eh_complete_abort(scmd, sdev->host);
-				scsi_finish_command(scmd);
-				return;
-			}
-		} else {
-			SCSI_LOG_ERROR_RECOVERY(3,
-				scmd_printk(KERN_INFO, scmd,
-					    "cmd abort %s\n",
-					    (rtn == FAST_IO_FAIL) ?
-					    "not send" : "failed"));
-		}
-=======
 	rtn = scsi_try_to_abort_cmd(shost->hostt, scmd);
 	if (rtn != SUCCESS) {
 		SCSI_LOG_ERROR_RECOVERY(3,
@@ -258,7 +207,6 @@ scmd_eh_abort_handler(struct work_struct *work)
 			scmd_printk(KERN_WARNING, scmd,
 				    "finish aborted command\n"));
 		scsi_finish_command(scmd);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return;
 
@@ -267,9 +215,6 @@ out:
 	list_del_init(&scmd->eh_entry);
 	spin_unlock_irqrestore(shost->host_lock, flags);
 
-	spin_lock_irqsave(sdev->host->host_lock, flags);
-	list_del_init(&scmd->eh_entry);
-	spin_unlock_irqrestore(sdev->host->host_lock, flags);
 	scsi_eh_scmd_add(scmd);
 }
 

@@ -403,8 +403,6 @@ Supported chips:
 
 	       https://www.ti.com/lit/gpn/tmp461
 
-<<<<<<< HEAD
-=======
   * Philips NE1617, NE1617A
 
     Prefix: 'max1617' (probably detected as a max1617)
@@ -445,7 +443,6 @@ Supported chips:
 
     Datasheet: Publicly available at the Onsemi website
 
->>>>>>> origin/linux_6.1.15_upstream
 Author: Jean Delvare <jdelvare@suse.de>
 
 

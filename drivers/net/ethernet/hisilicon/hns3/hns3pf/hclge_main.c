@@ -592,63 +592,6 @@ static int hclge_mac_query_reg_num(struct hclge_dev *hdev, u32 *reg_num)
 			"failed to query mac statistic reg number, ret = %d\n",
 			ret);
 		return ret;
-<<<<<<< HEAD
-
-	desc_data = (__le32 *)(&desc.data[0]);
-	reg_num = le32_to_cpu(*desc_data);
-
-	*desc_num = 1 + ((reg_num - 3) >> 2) +
-		    (u32)(((reg_num - 3) & 0x3) ? 1 : 0);
-
-	return 0;
-}
-
-int hclge_mac_update_stats(struct hclge_dev *hdev)
-{
-	u32 desc_num;
-	int ret;
-
-	ret = hclge_mac_query_reg_num(hdev, &desc_num);
-	/* The firmware supports the new statistics acquisition method */
-	if (!ret)
-		ret = hclge_mac_update_stats_complete(hdev, desc_num);
-	else if (ret == -EOPNOTSUPP)
-		ret = hclge_mac_update_stats_defective(hdev);
-	else
-		dev_err(&hdev->pdev->dev, "query mac reg num fail!\n");
-
-	return ret;
-}
-
-static int hclge_tqps_update_stats(struct hnae3_handle *handle)
-{
-	struct hnae3_knic_private_info *kinfo = &handle->kinfo;
-	struct hclge_vport *vport = hclge_get_vport(handle);
-	struct hclge_dev *hdev = vport->back;
-	struct hnae3_queue *queue;
-	struct hclge_desc desc[1];
-	struct hclge_tqp *tqp;
-	int ret, i;
-
-	for (i = 0; i < kinfo->num_tqps; i++) {
-		queue = handle->kinfo.tqp[i];
-		tqp = container_of(queue, struct hclge_tqp, q);
-		/* command : HCLGE_OPC_QUERY_IGU_STAT */
-		hclge_cmd_setup_basic_desc(&desc[0], HCLGE_OPC_QUERY_RX_STATS,
-					   true);
-
-		desc[0].data[0] = cpu_to_le32(tqp->index);
-		ret = hclge_cmd_send(&hdev->hw, desc, 1);
-		if (ret) {
-			dev_err(&hdev->pdev->dev,
-				"Query tqp stat fail, status = %d,queue = %d\n",
-				ret, i);
-			return ret;
-		}
-		tqp->tqp_stats.rcb_rx_ring_pktnum_rcd +=
-			le32_to_cpu(desc[0].data[1]);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	*reg_num = le32_to_cpu(desc.data[0]);
@@ -9284,12 +9227,8 @@ static int hclge_set_vf_mac(struct hnae3_handle *handle, int vf,
 		return 0;
 	}
 
-<<<<<<< HEAD
-	dev_info(&hdev->pdev->dev, "MAC of VF %d has been set to %s\n",
-=======
 	dev_info(&hdev->pdev->dev,
 		 "MAC of VF %d has been set to %s, will be active after VF reset\n",
->>>>>>> origin/linux_6.1.15_upstream
 		 vf, format_mac_addr);
 	return 0;
 }
@@ -10546,14 +10485,6 @@ static int hclge_set_vf_vlan_filter(struct hnae3_handle *handle, int vfid,
 	 * for DEVICE_VERSION_V3, vf doesn't need to know about the port based
 	 * VLAN state.
 	 */
-<<<<<<< HEAD
-	if (ae_dev->dev_version < HNAE3_DEVICE_VERSION_V3 &&
-	    test_bit(HCLGE_VPORT_STATE_ALIVE, &vport->state))
-		(void)hclge_push_vf_port_base_vlan_info(&hdev->vport[0],
-							vport->vport_id,
-							state, &vlan_info);
-
-=======
 	if (ae_dev->dev_version < HNAE3_DEVICE_VERSION_V3) {
 		if (test_bit(HCLGE_VPORT_STATE_ALIVE, &vport->state))
 			(void)hclge_push_vf_port_base_vlan_info(&hdev->vport[0],
@@ -10564,7 +10495,6 @@ static int hclge_set_vf_vlan_filter(struct hnae3_handle *handle, int vfid,
 			set_bit(HCLGE_VPORT_NEED_NOTIFY_VF_VLAN,
 				&vport->need_notify);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -13049,14 +12979,11 @@ static void hclge_clear_vport_vf_info(struct hclge_vport *vport, int vfid)
 	struct hclge_vlan_info vlan_info;
 	int ret;
 
-<<<<<<< HEAD
-=======
 	clear_bit(HCLGE_VPORT_STATE_INITED, &vport->state);
 	clear_bit(HCLGE_VPORT_STATE_ALIVE, &vport->state);
 	vport->need_notify = 0;
 	vport->mps = 0;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* after disable sriov, clean VF rate configured by PF */
 	ret = hclge_tm_qs_shaper_cfg(vport, 0);
 	if (ret)
@@ -13097,8 +13024,6 @@ static void hclge_clean_vport_config(struct hnae3_ae_dev *ae_dev, int num_vfs)
 	}
 }
 
-<<<<<<< HEAD
-=======
 static int hclge_get_dscp_prio(struct hnae3_handle *h, u8 dscp, u8 *tc_mode,
 			       u8 *priority)
 {
@@ -13116,7 +13041,6 @@ static int hclge_get_dscp_prio(struct hnae3_handle *h, u8 dscp, u8 *tc_mode,
 	return 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct hnae3_ae_ops hclge_ops = {
 	.init_ae_dev = hclge_init_ae_dev,
 	.uninit_ae_dev = hclge_uninit_ae_dev,
@@ -13220,10 +13144,7 @@ static const struct hnae3_ae_ops hclge_ops = {
 	.get_ts_info = hclge_ptp_get_ts_info,
 	.get_link_diagnosis_info = hclge_get_link_diagnosis_info,
 	.clean_vf_config = hclge_clean_vport_config,
-<<<<<<< HEAD
-=======
 	.get_dscp_prio = hclge_get_dscp_prio,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static struct hnae3_ae_algo ae_algo = {

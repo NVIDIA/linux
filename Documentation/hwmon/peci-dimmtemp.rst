@@ -3,11 +3,6 @@
 Kernel driver peci-dimmtemp
 ===========================
 
-<<<<<<< HEAD
-:Copyright: |copy| 2018-2019 Intel Corporation
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 Supported chips:
 	One of Intel server CPUs listed below which is connected to a PECI bus.
 		* Intel Xeon E5/E7 v3 server processors
@@ -31,41 +26,22 @@ Supported chips:
 			Intel Xeon Gold family
 			Intel Xeon Platinum family
 
-<<<<<<< HEAD
-	Addresses scanned: PECI client address 0x30 - 0x37
-	Datasheet: Available from http://www.intel.com/design/literature.htm
-
-Author:
-	Jae Hyun Yoo <jae.hyun.yoo@linux.intel.com>
-=======
 	Datasheet: Available from http://www.intel.com/design/literature.htm
 
 Author: Jae Hyun Yoo <jae.hyun.yoo@linux.intel.com>
->>>>>>> origin/linux_6.1.15_upstream
 
 Description
 -----------
 
-<<<<<<< HEAD
-This driver implements a generic PECI hwmon feature which provides Digital
-Thermal Sensor (DTS) thermal readings of DIMM components that are accessible
-using the PECI Client Command Suite via the processor PECI client.
-=======
 This driver implements a generic PECI hwmon feature which provides
 Temperature sensor on DIMM readings that are accessible via the processor PECI interface.
->>>>>>> origin/linux_6.1.15_upstream
 
 All temperature values are given in millidegree Celsius and will be measurable
 only when the target CPU is powered on.
 
-<<<<<<< HEAD
-``sysfs`` interface
--------------------
-=======
 Sysfs interface
 -------------------
 
->>>>>>> origin/linux_6.1.15_upstream
 ======================= =======================================================
 
 temp[N]_label		Provides string "DIMM CI", where C is DIMM channel and
@@ -73,10 +49,6 @@ temp[N]_label		Provides string "DIMM CI", where C is DIMM channel and
 temp[N]_input		Provides current temperature of the populated DIMM.
 temp[N]_max		Provides thermal control temperature of the DIMM.
 temp[N]_crit		Provides shutdown temperature of the DIMM.
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/linux_6.1.15_upstream
 ======================= =======================================================
 
 Note:

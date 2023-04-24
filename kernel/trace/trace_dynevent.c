@@ -263,17 +263,8 @@ static __init int init_dynamic_event(void)
 	if (ret)
 		return 0;
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("dynamic_events", TRACE_MODE_WRITE, NULL,
-				    NULL, &dynamic_events_ops);
-
-	/* Event list interface */
-	if (!entry)
-		pr_warn("Could not create tracefs 'dynamic_events' entry\n");
-=======
 	trace_create_file("dynamic_events", TRACE_MODE_WRITE, NULL,
 			  NULL, &dynamic_events_ops);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

@@ -1481,13 +1481,7 @@ continue_unlock:
 				if (IS_NOQUOTA(cc->inode))
 					return 0;
 				ret = 0;
-<<<<<<< HEAD
-				cond_resched();
-				congestion_wait(BLK_RW_ASYNC,
-						DEFAULT_IO_TIMEOUT);
-=======
 				f2fs_io_schedule_timeout(DEFAULT_IO_TIMEOUT);
->>>>>>> origin/linux_6.1.15_upstream
 				goto retry_write;
 			}
 			return ret;

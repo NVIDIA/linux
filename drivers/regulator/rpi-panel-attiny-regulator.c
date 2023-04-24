@@ -92,27 +92,6 @@ static u8 attiny_get_port_state(struct attiny_lcd *state, int reg)
 
 static int attiny_lcd_power_enable(struct regulator_dev *rdev)
 {
-<<<<<<< HEAD
-	unsigned int data;
-	int ret, i;
-
-	regmap_write(rdev->regmap, REG_POWERON, 1);
-	msleep(80);
-
-	/* Wait for nPWRDWN to go low to indicate poweron is done. */
-	for (i = 0; i < 20; i++) {
-		ret = regmap_read(rdev->regmap, REG_PORTB, &data);
-		if (!ret) {
-			if (data & BIT(0))
-				break;
-		}
-		usleep_range(10000, 12000);
-	}
-	usleep_range(10000, 12000);
-
-	if (ret)
-		pr_err("%s: regmap_read_poll_timeout failed %d\n", __func__, ret);
-=======
 	struct attiny_lcd *state = rdev_get_drvdata(rdev);
 
 	mutex_lock(&state->lock);
@@ -120,7 +99,6 @@ static int attiny_lcd_power_enable(struct regulator_dev *rdev)
 	/* Ensure bridge, and tp stay in reset */
 	attiny_set_port_state(state, REG_PORTC, 0);
 	usleep_range(5000, 10000);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Default to the same orientation as the closed source
 	 * firmware used for the panel.  Runtime rotation
@@ -149,10 +127,6 @@ static int attiny_lcd_power_disable(struct regulator_dev *rdev)
 	mutex_lock(&state->lock);
 
 	regmap_write(rdev->regmap, REG_PWM, 0);
-<<<<<<< HEAD
-	regmap_write(rdev->regmap, REG_POWERON, 0);
-	msleep(30);
-=======
 	usleep_range(5000, 10000);
 
 	attiny_set_port_state(state, REG_PORTA, 0);
@@ -164,7 +138,6 @@ static int attiny_lcd_power_disable(struct regulator_dev *rdev)
 
 	mutex_unlock(&state->lock);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -174,18 +147,7 @@ static int attiny_lcd_power_is_enabled(struct regulator_dev *rdev)
 	unsigned int data;
 	int ret, i;
 
-<<<<<<< HEAD
-	for (i = 0; i < 10; i++) {
-		ret = regmap_read(rdev->regmap, REG_POWERON, &data);
-		if (!ret)
-			break;
-		usleep_range(10000, 12000);
-	}
-	if (ret < 0)
-		return ret;
-=======
 	mutex_lock(&state->lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < 10; i++) {
 		ret = regmap_read(rdev->regmap, REG_PORTC, &data);
@@ -196,16 +158,6 @@ static int attiny_lcd_power_is_enabled(struct regulator_dev *rdev)
 
 	mutex_unlock(&state->lock);
 
-<<<<<<< HEAD
-	for (i = 0; i < 10; i++) {
-		ret = regmap_read(rdev->regmap, REG_PORTB, &data);
-		if (!ret)
-			break;
-		usleep_range(10000, 12000);
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret < 0)
 		return ret;
 
@@ -233,14 +185,9 @@ static const struct regulator_desc attiny_regulator = {
 
 static int attiny_update_status(struct backlight_device *bl)
 {
-<<<<<<< HEAD
-	struct regmap *regmap = bl_get_data(bl);
-	int brightness = bl->props.brightness;
-=======
 	struct attiny_lcd *state = bl_get_data(bl);
 	struct regmap *regmap = state->regmap;
 	int brightness = backlight_get_brightness(bl);
->>>>>>> origin/linux_6.1.15_upstream
 	int ret, i;
 
 	mutex_lock(&state->lock);
@@ -250,32 +197,10 @@ static int attiny_update_status(struct backlight_device *bl)
 		if (!ret)
 			break;
 	}
-<<<<<<< HEAD
-
-	return ret;
-}
-
-static int attiny_get_brightness(struct backlight_device *bl)
-{
-	struct regmap *regmap = bl_get_data(bl);
-	int ret, brightness, i;
-
-	for (i = 0; i < 10; i++) {
-		ret = regmap_read(regmap, REG_PWM, &brightness);
-		if (!ret)
-			break;
-	}
-
-	if (ret)
-		return ret;
-
-	return brightness;
-=======
 
 	mutex_unlock(&state->lock);
 
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct backlight_ops attiny_bl = {
@@ -402,10 +327,7 @@ static int attiny_i2c_probe(struct i2c_client *i2c,
 
 	regmap_write(regmap, REG_POWERON, 0);
 	msleep(30);
-<<<<<<< HEAD
-=======
 	regmap_write(regmap, REG_PWM, 0);
->>>>>>> origin/linux_6.1.15_upstream
 
 	config.dev = &i2c->dev;
 	config.regmap = regmap;

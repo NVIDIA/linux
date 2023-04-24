@@ -700,13 +700,10 @@ again:
 	return rc;
 }
 
-<<<<<<< HEAD
-=======
 /* Wakeup sndbuf consumers from process context
  * since there is more data to transmit. The caller
  * must hold sock lock.
  */
->>>>>>> origin/linux_6.1.15_upstream
 void smc_tx_pending(struct smc_connection *conn)
 {
 	struct smc_sock *smc = container_of(conn, struct smc_sock, conn);
@@ -720,19 +717,6 @@ void smc_tx_pending(struct smc_connection *conn)
 	    !atomic_read(&conn->bytes_to_rcv))
 		conn->local_rx_ctrl.prod_flags.write_blocked = 0;
 }
-<<<<<<< HEAD
-
-/* Wakeup sndbuf consumers from process context
- * since there is more data to transmit
- */
-void smc_tx_work(struct work_struct *work)
-{
-	struct smc_connection *conn = container_of(to_delayed_work(work),
-						   struct smc_connection,
-						   tx_work);
-	struct smc_sock *smc = container_of(conn, struct smc_sock, conn);
-
-=======
 
 /* Wakeup sndbuf consumers from process context
  * since there is more data to transmit in locked
@@ -745,7 +729,6 @@ void smc_tx_work(struct work_struct *work)
 						   tx_work);
 	struct smc_sock *smc = container_of(conn, struct smc_sock, conn);
 
->>>>>>> origin/linux_6.1.15_upstream
 	lock_sock(&smc->sk);
 	smc_tx_pending(conn);
 	release_sock(&smc->sk);

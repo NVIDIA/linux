@@ -666,11 +666,7 @@ re_read:
 	 */
 	if (sb->version == cpu_to_le32(BITMAP_MAJOR_CLUSTERED)) {
 		nodes = le32_to_cpu(sb->nodes);
-<<<<<<< HEAD
-		strlcpy(bitmap->mddev->bitmap_info.cluster_name,
-=======
 		strscpy(bitmap->mddev->bitmap_info.cluster_name,
->>>>>>> origin/linux_6.1.15_upstream
 				sb->cluster_name, 64);
 	}
 

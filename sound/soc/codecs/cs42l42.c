@@ -2284,19 +2284,6 @@ int cs42l42_common_probe(struct cs42l42_private *cs42l42,
 	}
 	usleep_range(CS42L42_BOOT_TIME_US, CS42L42_BOOT_TIME_US * 2);
 
-<<<<<<< HEAD
-	/* Request IRQ */
-	ret = devm_request_threaded_irq(&i2c_client->dev,
-			i2c_client->irq,
-			NULL, cs42l42_irq_thread,
-			IRQF_ONESHOT | IRQF_TRIGGER_LOW,
-			"cs42l42", cs42l42);
-	if (ret == -EPROBE_DEFER)
-		goto err_disable;
-	else if (ret != 0)
-		dev_err(&i2c_client->dev,
-			"Failed to request IRQ: %d\n", ret);
-=======
 	/* Request IRQ if one was specified */
 	if (cs42l42->irq) {
 		ret = request_threaded_irq(cs42l42->irq,
@@ -2334,7 +2321,6 @@ int cs42l42_init(struct cs42l42_private *cs42l42)
 {
 	unsigned int reg;
 	int devid, ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* initialize codec */
 	devid = cirrus_read_device_id(cs42l42->regmap, CS42L42_DEVID_AB);

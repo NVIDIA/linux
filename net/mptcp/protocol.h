@@ -470,10 +470,7 @@ struct mptcp_subflow_context {
 		can_ack : 1,        /* only after processing the remote a key */
 		disposable : 1,	    /* ctx can be free at ulp release time */
 		stale : 1,	    /* unable to snd/rcv data, do not use for xmit */
-<<<<<<< HEAD
-=======
 		local_id_valid : 1, /* local_id is correctly initialized */
->>>>>>> origin/linux_6.1.15_upstream
 		valid_csum_seen : 1;        /* at least one csum validated */
 	enum mptcp_data_avail data_avail;
 	u32	remote_nonce;

@@ -79,11 +79,8 @@ int amdgpu_dpm_set_powergating_by_smu(struct amdgpu_device *adev, uint32_t block
 				block_type, gate ? "gate" : "ungate");
 		return 0;
 	}
-<<<<<<< HEAD
-=======
 
 	mutex_lock(&adev->pm.mutex);
->>>>>>> origin/linux_6.1.15_upstream
 
 	switch (block_type) {
 	case AMD_IP_BLOCK_TYPE_UVD:
@@ -105,8 +102,6 @@ int amdgpu_dpm_set_powergating_by_smu(struct amdgpu_device *adev, uint32_t block
 	if (!ret)
 		atomic_set(&adev->pm.pwr_state[block_type], pwr_state);
 
-<<<<<<< HEAD
-=======
 	mutex_unlock(&adev->pm.mutex);
 
 	return ret;
@@ -123,7 +118,6 @@ int amdgpu_dpm_set_gfx_power_up_by_imu(struct amdgpu_device *adev)
 
 	msleep(10);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -203,12 +197,6 @@ bool amdgpu_dpm_is_baco_supported(struct amdgpu_device *adev)
 	 * devices.  Needs more investigation.
 	 */
 	if (adev->in_s3)
-<<<<<<< HEAD
-		return false;
-
-	if (pp_funcs->get_asic_baco_capability(pp_handle, &baco_cap))
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		return false;
 
 	mutex_lock(&adev->pm.mutex);

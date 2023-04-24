@@ -2079,36 +2079,12 @@ int sev_vm_copy_enc_context_from(struct kvm *kvm, unsigned int source_fd)
 	 */
 	source_sev = &to_kvm_svm(source_kvm)->sev_info;
 	kvm_get_kvm(source_kvm);
-<<<<<<< HEAD
-
-	fput(source_kvm_file);
-	mutex_unlock(&source_kvm->lock);
-	mutex_lock(&kvm->lock);
-
-	/*
-	 * Disallow out-of-band SEV/SEV-ES init if the target is already an
-	 * SEV guest, or if vCPUs have been created.  KVM relies on vCPUs being
-	 * created after SEV/SEV-ES initialization, e.g. to init intercepts.
-	 */
-	if (sev_guest(kvm) || kvm->created_vcpus) {
-		ret = -EINVAL;
-		goto e_mirror_unlock;
-	}
-=======
 	mirror_sev = &to_kvm_svm(kvm)->sev_info;
 	list_add_tail(&mirror_sev->mirror_entry, &source_sev->mirror_vms);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Set enc_context_owner and copy its encryption context over */
 	mirror_sev->enc_context_owner = source_kvm;
 	mirror_sev->active = true;
-<<<<<<< HEAD
-	mirror_sev->asid = source_sev.asid;
-	mirror_sev->fd = source_sev.fd;
-	mirror_sev->es_active = source_sev.es_active;
-	mirror_sev->handle = source_sev.handle;
-	INIT_LIST_HEAD(&mirror_sev->regions_list);
-=======
 	mirror_sev->asid = source_sev->asid;
 	mirror_sev->fd = source_sev->fd;
 	mirror_sev->es_active = source_sev->es_active;
@@ -2117,7 +2093,6 @@ int sev_vm_copy_enc_context_from(struct kvm *kvm, unsigned int source_fd)
 	INIT_LIST_HEAD(&mirror_sev->mirror_vms);
 	ret = 0;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Do not copy ap_jump_table. Since the mirror does not share the same
 	 * KVM contexts as the original, and they may have different
@@ -2313,23 +2288,12 @@ static void sev_flush_encrypted_page(struct kvm_vcpu *vcpu, void *va)
 	int asid = to_kvm_svm(vcpu->kvm)->sev_info.asid;
 
 	/*
-<<<<<<< HEAD
-	 * If CPU enforced cache coherency for encrypted mappings of the
-	 * same physical page is supported, use CLFLUSHOPT instead. NOTE: cache
-	 * flush is still needed in order to work properly with DMA devices.
-	 */
-	if (boot_cpu_has(X86_FEATURE_SME_COHERENT)) {
-		clflush_cache_range(va, PAGE_SIZE);
-		return;
-	}
-=======
 	 * Note!  The address must be a kernel address, as regular page walk
 	 * checks are performed by VM_PAGE_FLUSH, i.e. operating on a user
 	 * address is non-deterministic and unsafe.  This function deliberately
 	 * takes a pointer to deter passing in a user address.
 	 */
 	unsigned long addr = (unsigned long)va;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * If CPU enforced cache coherency for encrypted mappings of the
@@ -2669,22 +2633,14 @@ static int setup_vmgexit_scratch(struct vcpu_svm *svm, bool sync, u64 len)
 	scratch_gpa_beg = ghcb_get_sw_scratch(ghcb);
 	if (!scratch_gpa_beg) {
 		pr_err("vmgexit: scratch gpa not provided\n");
-<<<<<<< HEAD
-		return -EINVAL;
-=======
 		goto e_scratch;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	scratch_gpa_end = scratch_gpa_beg + len;
 	if (scratch_gpa_end < scratch_gpa_beg) {
 		pr_err("vmgexit: scratch length (%#llx) not valid for scratch address (%#llx)\n",
 		       len, scratch_gpa_beg);
-<<<<<<< HEAD
-		return -EINVAL;
-=======
 		goto e_scratch;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if ((scratch_gpa_beg & PAGE_MASK) == control->ghcb_gpa) {
@@ -2702,11 +2658,7 @@ static int setup_vmgexit_scratch(struct vcpu_svm *svm, bool sync, u64 len)
 		    scratch_gpa_end > ghcb_scratch_end) {
 			pr_err("vmgexit: scratch area is outside of GHCB shared buffer area (%#llx - %#llx)\n",
 			       scratch_gpa_beg, scratch_gpa_end);
-<<<<<<< HEAD
-			return -EINVAL;
-=======
 			goto e_scratch;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		scratch_va = (void *)svm->sev_es.ghcb;
@@ -2719,11 +2671,7 @@ static int setup_vmgexit_scratch(struct vcpu_svm *svm, bool sync, u64 len)
 		if (len > GHCB_SCRATCH_AREA_LIMIT) {
 			pr_err("vmgexit: scratch area exceeds KVM limits (%#llx requested, %#llx limit)\n",
 			       len, GHCB_SCRATCH_AREA_LIMIT);
-<<<<<<< HEAD
-			return -EINVAL;
-=======
 			goto e_scratch;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		scratch_va = kvzalloc(len, GFP_KERNEL_ACCOUNT);
 		if (!scratch_va)
@@ -2733,11 +2681,7 @@ static int setup_vmgexit_scratch(struct vcpu_svm *svm, bool sync, u64 len)
 			/* Unable to copy scratch area from guest */
 			pr_err("vmgexit: kvm_read_guest for scratch area failed\n");
 
-<<<<<<< HEAD
-			kfree(scratch_va);
-=======
 			kvfree(scratch_va);
->>>>>>> origin/linux_6.1.15_upstream
 			return -EFAULT;
 		}
 
@@ -2755,15 +2699,12 @@ static int setup_vmgexit_scratch(struct vcpu_svm *svm, bool sync, u64 len)
 	svm->sev_es.ghcb_sa_len = len;
 
 	return 0;
-<<<<<<< HEAD
-=======
 
 e_scratch:
 	ghcb_set_sw_exit_info_1(ghcb, 2);
 	ghcb_set_sw_exit_info_2(ghcb, GHCB_ERR_INVALID_SCRATCH_AREA);
 
 	return 1;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void set_ghcb_msr_bits(struct vcpu_svm *svm, u64 value, u64 mask,

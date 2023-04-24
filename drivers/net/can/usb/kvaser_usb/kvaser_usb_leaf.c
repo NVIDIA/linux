@@ -90,11 +90,8 @@
 #define KVASER_USB_LEAF_SWOPTION_FREQ_32_MHZ_CLK BIT(5)
 #define KVASER_USB_LEAF_SWOPTION_FREQ_24_MHZ_CLK BIT(6)
 
-<<<<<<< HEAD
-=======
 #define KVASER_USB_LEAF_SWOPTION_EXT_CAP BIT(12)
 
->>>>>>> origin/linux_6.1.15_upstream
 /* error factors */
 #define M16C_EF_ACKE			BIT(0)
 #define M16C_EF_CRCE			BIT(1)
@@ -425,52 +422,6 @@ struct kvaser_usb_err_summary {
 	};
 };
 
-<<<<<<< HEAD
-static const struct can_bittiming_const kvaser_usb_leaf_bittiming_const = {
-	.name = "kvaser_usb",
-	.tseg1_min = KVASER_USB_TSEG1_MIN,
-	.tseg1_max = KVASER_USB_TSEG1_MAX,
-	.tseg2_min = KVASER_USB_TSEG2_MIN,
-	.tseg2_max = KVASER_USB_TSEG2_MAX,
-	.sjw_max = KVASER_USB_SJW_MAX,
-	.brp_min = KVASER_USB_BRP_MIN,
-	.brp_max = KVASER_USB_BRP_MAX,
-	.brp_inc = KVASER_USB_BRP_INC,
-};
-
-static const struct kvaser_usb_dev_cfg kvaser_usb_leaf_dev_cfg_8mhz = {
-	.clock = {
-		.freq = 8000000,
-	},
-	.timestamp_freq = 1,
-	.bittiming_const = &kvaser_usb_leaf_bittiming_const,
-};
-
-static const struct kvaser_usb_dev_cfg kvaser_usb_leaf_dev_cfg_16mhz = {
-	.clock = {
-		.freq = 16000000,
-	},
-	.timestamp_freq = 1,
-	.bittiming_const = &kvaser_usb_leaf_bittiming_const,
-};
-
-static const struct kvaser_usb_dev_cfg kvaser_usb_leaf_dev_cfg_24mhz = {
-	.clock = {
-		.freq = 24000000,
-	},
-	.timestamp_freq = 1,
-	.bittiming_const = &kvaser_usb_leaf_bittiming_const,
-};
-
-static const struct kvaser_usb_dev_cfg kvaser_usb_leaf_dev_cfg_32mhz = {
-	.clock = {
-		.freq = 32000000,
-	},
-	.timestamp_freq = 1,
-	.bittiming_const = &kvaser_usb_leaf_bittiming_const,
-};
-
-=======
 struct kvaser_usb_net_leaf_priv {
 	struct kvaser_usb_net_priv *net;
 
@@ -578,7 +529,6 @@ static int kvaser_usb_leaf_verify_size(const struct kvaser_usb *dev,
 	return -EINVAL;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void *
 kvaser_usb_leaf_frame_to_cmd(const struct kvaser_usb_net_priv *priv,
 			     const struct sk_buff *skb, int *cmd_len,
@@ -719,18 +669,6 @@ static void kvaser_usb_leaf_get_software_info_leaf(struct kvaser_usb *dev,
 	dev->fw_version = le32_to_cpu(softinfo->fw_version);
 	dev->max_tx_urbs = le16_to_cpu(softinfo->max_outstanding_tx);
 
-<<<<<<< HEAD
-	switch (sw_options & KVASER_USB_LEAF_SWOPTION_FREQ_MASK) {
-	case KVASER_USB_LEAF_SWOPTION_FREQ_16_MHZ_CLK:
-		dev->cfg = &kvaser_usb_leaf_dev_cfg_16mhz;
-		break;
-	case KVASER_USB_LEAF_SWOPTION_FREQ_24_MHZ_CLK:
-		dev->cfg = &kvaser_usb_leaf_dev_cfg_24mhz;
-		break;
-	case KVASER_USB_LEAF_SWOPTION_FREQ_32_MHZ_CLK:
-		dev->cfg = &kvaser_usb_leaf_dev_cfg_32mhz;
-		break;
-=======
 	if (sw_options & KVASER_USB_LEAF_SWOPTION_EXT_CAP)
 		dev->card_data.capabilities |= KVASER_USB_CAP_EXT_CAP;
 
@@ -751,7 +689,6 @@ static void kvaser_usb_leaf_get_software_info_leaf(struct kvaser_usb *dev,
 			dev->cfg = &kvaser_usb_leaf_imx_dev_cfg_32mhz;
 			break;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -776,11 +713,7 @@ static int kvaser_usb_leaf_get_software_info_inner(struct kvaser_usb *dev)
 		dev->fw_version = le32_to_cpu(cmd.u.usbcan.softinfo.fw_version);
 		dev->max_tx_urbs =
 			le16_to_cpu(cmd.u.usbcan.softinfo.max_outstanding_tx);
-<<<<<<< HEAD
-		dev->cfg = &kvaser_usb_leaf_dev_cfg_8mhz;
-=======
 		dev->cfg = &kvaser_usb_leaf_usbcan_dev_cfg;
->>>>>>> origin/linux_6.1.15_upstream
 		break;
 	}
 
@@ -1747,9 +1680,6 @@ static int kvaser_usb_leaf_init_card(struct kvaser_usb *dev)
 	return 0;
 }
 
-<<<<<<< HEAD
-static int kvaser_usb_leaf_set_bittiming(struct net_device *netdev)
-=======
 static int kvaser_usb_leaf_init_channel(struct kvaser_usb_net_priv *priv)
 {
 	struct kvaser_usb_net_leaf_priv *leaf;
@@ -1777,7 +1707,6 @@ static void kvaser_usb_leaf_remove_channel(struct kvaser_usb_net_priv *priv)
 
 static int kvaser_usb_leaf_set_bittiming(const struct net_device *netdev,
 					 const struct kvaser_usb_busparams *busparams)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct kvaser_usb_net_priv *priv = netdev_priv(netdev);
 	struct kvaser_usb *dev = priv->dev;

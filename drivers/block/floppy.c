@@ -4726,15 +4726,10 @@ static int __init do_floppy_init(void)
 
 		registered[drive] = true;
 
-<<<<<<< HEAD
-		device_add_disk(&floppy_device[drive].dev, disks[drive][0],
-				NULL);
-=======
 		err = device_add_disk(&floppy_device[drive].dev,
 				      disks[drive][0], NULL);
 		if (err)
 			goto out_remove_drives;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;

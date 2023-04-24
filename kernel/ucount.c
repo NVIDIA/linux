@@ -266,20 +266,12 @@ long inc_rlimit_ucounts(struct ucounts *ucounts, enum rlimit_type type, long v)
 	long ret = 0;
 
 	for (iter = ucounts; iter; iter = iter->ns->ucounts) {
-<<<<<<< HEAD
-		long new = atomic_long_add_return(v, &iter->ucount[type]);
-=======
 		long new = atomic_long_add_return(v, &iter->rlimit[type]);
->>>>>>> origin/linux_6.1.15_upstream
 		if (new < 0 || new > max)
 			ret = LONG_MAX;
 		else if (iter == ucounts)
 			ret = new;
-<<<<<<< HEAD
-		max = READ_ONCE(iter->ns->ucount_max[type]);
-=======
 		max = get_userns_rlimit_max(iter->ns, type);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return ret;
 }
@@ -323,20 +315,12 @@ long inc_rlimit_get_ucounts(struct ucounts *ucounts, enum rlimit_type type)
 	long dec, ret = 0;
 
 	for (iter = ucounts; iter; iter = iter->ns->ucounts) {
-<<<<<<< HEAD
-		long new = atomic_long_add_return(1, &iter->ucount[type]);
-=======
 		long new = atomic_long_add_return(1, &iter->rlimit[type]);
->>>>>>> origin/linux_6.1.15_upstream
 		if (new < 0 || new > max)
 			goto unwind;
 		if (iter == ucounts)
 			ret = new;
-<<<<<<< HEAD
-		max = READ_ONCE(iter->ns->ucount_max[type]);
-=======
 		max = get_userns_rlimit_max(iter->ns, type);
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * Grab an extra ucount reference for the caller when
 		 * the rlimit count was previously 0.
@@ -355,28 +339,17 @@ unwind:
 	return 0;
 }
 
-<<<<<<< HEAD
-bool is_ucounts_overlimit(struct ucounts *ucounts, enum ucount_type type, unsigned long rlimit)
-=======
 bool is_rlimit_overlimit(struct ucounts *ucounts, enum rlimit_type type, unsigned long rlimit)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ucounts *iter;
 	long max = rlimit;
 	if (rlimit > LONG_MAX)
 		max = LONG_MAX;
 	for (iter = ucounts; iter; iter = iter->ns->ucounts) {
-<<<<<<< HEAD
-		long val = get_ucounts_value(iter, type);
-		if (val < 0 || val > max)
-			return true;
-		max = READ_ONCE(iter->ns->ucount_max[type]);
-=======
 		long val = get_rlimit_value(iter, type);
 		if (val < 0 || val > max)
 			return true;
 		max = get_userns_rlimit_max(iter->ns, type);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return false;
 }

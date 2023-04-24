@@ -41,8 +41,6 @@ static bool disable_idle_d3;
 static DEFINE_MUTEX(vfio_pci_sriov_pfs_mutex);
 static LIST_HEAD(vfio_pci_sriov_pfs);
 
-<<<<<<< HEAD
-=======
 struct vfio_pci_dummy_resource {
 	struct resource		resource;
 	int			index;
@@ -60,7 +58,6 @@ struct vfio_pci_mmap_vma {
 	struct list_head	vma_next;
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static inline bool vfio_vga_disabled(void)
 {
 #ifdef CONFIG_VFIO_PCI_VGA
@@ -564,8 +561,6 @@ void vfio_pci_core_disable(struct vfio_pci_core_device *vdev)
 
 	/*
 	 * This function can be invoked while the power state is non-D0.
-<<<<<<< HEAD
-=======
 	 * This non-D0 power state can be with or without runtime PM.
 	 * vfio_pci_runtime_pm_exit() will internally increment the usage
 	 * count corresponding to pm_runtime_put() called during low power
@@ -578,7 +573,6 @@ void vfio_pci_core_disable(struct vfio_pci_core_device *vdev)
 	pm_runtime_resume(&pdev->dev);
 
 	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * This function calls __pci_reset_function_locked() which internally
 	 * can use pci_pm_reset() for the function reset. pci_pm_reset() will
 	 * fail if the power state is non-D0. Also, for the devices which
@@ -675,15 +669,12 @@ out:
 
 	vfio_pci_dev_set_try_reset(vdev->vdev.dev_set);
 
-<<<<<<< HEAD
-=======
 	/* Put the pm-runtime usage counter acquired during enable */
 	if (!disable_idle_d3)
 		pm_runtime_put(&pdev->dev);
 }
 EXPORT_SYMBOL_GPL(vfio_pci_core_disable);
 
->>>>>>> origin/linux_6.1.15_upstream
 void vfio_pci_core_close_device(struct vfio_device *core_vdev)
 {
 	struct vfio_pci_core_device *vdev =
@@ -1137,38 +1128,11 @@ static int vfio_pci_ioctl_set_irqs(struct vfio_pci_core_device *vdev,
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	} else if (cmd == VFIO_DEVICE_RESET) {
-		int ret;
-
-		if (!vdev->reset_works)
-			return -EINVAL;
-
-		vfio_pci_zap_and_down_write_memory_lock(vdev);
-
-		/*
-		 * This function can be invoked while the power state is non-D0.
-		 * If pci_try_reset_function() has been called while the power
-		 * state is non-D0, then pci_try_reset_function() will
-		 * internally set the power state to D0 without vfio driver
-		 * involvement. For the devices which have NoSoftRst-, the
-		 * reset function can cause the PCI config space reset without
-		 * restoring the original state (saved locally in
-		 * 'vdev->pm_save').
-		 */
-		vfio_pci_set_power_state(vdev, PCI_D0);
-
-		ret = pci_try_reset_function(vdev->pdev);
-		up_write(&vdev->memory_lock);
-
-		return ret;
-=======
 	if (data_size) {
 		data = memdup_user(&arg->data, data_size);
 		if (IS_ERR(data))
 			return PTR_ERR(data);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_lock(&vdev->igate);
 
@@ -2244,13 +2208,7 @@ EXPORT_SYMBOL_GPL(vfio_pci_core_register_device);
 
 void vfio_pci_core_unregister_device(struct vfio_pci_core_device *vdev)
 {
-<<<<<<< HEAD
-	struct pci_dev *pdev = vdev->pdev;
-
-	vfio_pci_core_sriov_configure(pdev, 0);
-=======
 	vfio_pci_core_sriov_configure(vdev, 0);
->>>>>>> origin/linux_6.1.15_upstream
 
 	vfio_unregister_group_dev(&vdev->vdev);
 
@@ -2283,26 +2241,11 @@ EXPORT_SYMBOL_GPL(vfio_pci_core_aer_err_detected);
 int vfio_pci_core_sriov_configure(struct vfio_pci_core_device *vdev,
 				  int nr_virtfn)
 {
-<<<<<<< HEAD
-	struct vfio_pci_core_device *vdev;
-	struct vfio_device *device;
-	int ret = 0;
-
-	device_lock_assert(&pdev->dev);
-
-	device = vfio_device_get_from_dev(&pdev->dev);
-	if (!device)
-		return -ENODEV;
-
-	vdev = container_of(device, struct vfio_pci_core_device, vdev);
-
-=======
 	struct pci_dev *pdev = vdev->pdev;
 	int ret = 0;
 
 	device_lock_assert(&pdev->dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (nr_virtfn) {
 		mutex_lock(&vfio_pci_sriov_pfs_mutex);
 		/*
@@ -2317,16 +2260,6 @@ int vfio_pci_core_sriov_configure(struct vfio_pci_core_device *vdev,
 		}
 		list_add_tail(&vdev->sriov_pfs_item, &vfio_pci_sriov_pfs);
 		mutex_unlock(&vfio_pci_sriov_pfs_mutex);
-<<<<<<< HEAD
-		ret = pci_enable_sriov(pdev, nr_virtfn);
-		if (ret)
-			goto out_del;
-		ret = nr_virtfn;
-		goto out_put;
-	}
-
-	pci_disable_sriov(pdev);
-=======
 
 		/*
 		 * The PF power state should always be higher than the VF power
@@ -2357,18 +2290,12 @@ int vfio_pci_core_sriov_configure(struct vfio_pci_core_device *vdev,
 		pci_disable_sriov(pdev);
 		pm_runtime_put(&pdev->dev);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 out_del:
 	mutex_lock(&vfio_pci_sriov_pfs_mutex);
 	list_del_init(&vdev->sriov_pfs_item);
 out_unlock:
 	mutex_unlock(&vfio_pci_sriov_pfs_mutex);
-<<<<<<< HEAD
-out_put:
-	vfio_device_put(device);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 EXPORT_SYMBOL_GPL(vfio_pci_core_sriov_configure);
@@ -2591,22 +2518,6 @@ static void vfio_pci_dev_set_try_reset(struct vfio_device_set *dev_set)
 		return;
 
 	/*
-<<<<<<< HEAD
-	 * The pci_reset_bus() will reset all the devices in the bus.
-	 * The power state can be non-D0 for some of the devices in the bus.
-	 * For these devices, the pci_reset_bus() will internally set
-	 * the power state to D0 without vfio driver involvement.
-	 * For the devices which have NoSoftRst-, the reset function can
-	 * cause the PCI config space reset without restoring the original
-	 * state (saved locally in 'vdev->pm_save').
-	 */
-	list_for_each_entry(cur, &dev_set->device_list, vdev.dev_set_list)
-		vfio_pci_set_power_state(cur, PCI_D0);
-
-	ret = pci_reset_bus(pdev);
-	if (ret)
-		return false;
-=======
 	 * Some of the devices in the bus can be in the runtime suspended
 	 * state. Increment the usage count for all the devices in the dev_set
 	 * before reset and decrement the same after reset.
@@ -2616,7 +2527,6 @@ static void vfio_pci_dev_set_try_reset(struct vfio_device_set *dev_set)
 
 	if (!pci_reset_bus(pdev))
 		reset_done = true;
->>>>>>> origin/linux_6.1.15_upstream
 
 	list_for_each_entry(cur, &dev_set->device_list, vdev.dev_set_list) {
 		if (reset_done)

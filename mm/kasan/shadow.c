@@ -545,11 +545,7 @@ void __kasan_poison_vmalloc(const void *start, unsigned long size)
 
 #else /* CONFIG_KASAN_VMALLOC */
 
-<<<<<<< HEAD
-int kasan_module_alloc(void *addr, size_t size, gfp_t gfp_mask)
-=======
 int kasan_alloc_module_shadow(void *addr, size_t size, gfp_t gfp_mask)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	void *ret;
 	size_t scaled_size;

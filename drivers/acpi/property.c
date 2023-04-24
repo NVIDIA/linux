@@ -590,10 +590,6 @@ static void acpi_free_device_properties(struct list_head *list)
 	struct acpi_device_properties *props, *tmp;
 
 	list_for_each_entry_safe(props, tmp, list, list) {
-<<<<<<< HEAD
-		list_del(&props->list);
-		kfree(props);
-=======
 		u32 i;
 
 		list_del(&props->list);
@@ -602,7 +598,6 @@ static void acpi_free_device_properties(struct list_head *list)
 			for (i = 0; i < props->properties->package.count; i++)
 				ACPI_FREE(props->bufs[i]);
 		kvfree(props);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -625,10 +620,7 @@ static void acpi_destroy_nondev_subnodes(struct list_head *list)
 
 void acpi_free_properties(struct acpi_device *adev)
 {
-<<<<<<< HEAD
-=======
 	acpi_untie_nondev_subnodes(&adev->data);
->>>>>>> origin/linux_6.1.15_upstream
 	acpi_destroy_nondev_subnodes(&adev->data.subnodes);
 	ACPI_FREE((void *)adev->data.pointer);
 	adev->data.of_compatible = NULL;
@@ -1275,13 +1267,6 @@ acpi_node_get_parent(const struct fwnode_handle *fwnode)
 	if (is_acpi_data_node(fwnode)) {
 		/* All data nodes have parent pointer so just return that */
 		return to_acpi_data_node(fwnode)->parent;
-<<<<<<< HEAD
-	} else if (is_acpi_device_node(fwnode)) {
-		struct device *dev = to_acpi_device_node(fwnode)->dev.parent;
-
-		if (dev)
-			return acpi_fwnode_handle(to_acpi_device(dev));
-=======
 	}
 	if (is_acpi_device_node(fwnode)) {
 		struct acpi_device *parent;
@@ -1289,7 +1274,6 @@ acpi_node_get_parent(const struct fwnode_handle *fwnode)
 		parent = acpi_dev_parent(to_acpi_device_node(fwnode));
 		if (parent)
 			return acpi_fwnode_handle(parent);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return NULL;

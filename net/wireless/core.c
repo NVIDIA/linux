@@ -342,11 +342,7 @@ void cfg80211_destroy_ifaces(struct cfg80211_registered_device *rdev)
 
 			wiphy_lock(&rdev->wiphy);
 			cfg80211_leave(rdev, wdev);
-<<<<<<< HEAD
-			rdev_del_virtual_intf(rdev, wdev);
-=======
 			cfg80211_remove_virtual_intf(rdev, wdev);
->>>>>>> origin/linux_6.1.15_upstream
 			wiphy_unlock(&rdev->wiphy);
 		}
 	}

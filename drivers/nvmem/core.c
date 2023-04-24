@@ -770,11 +770,6 @@ struct nvmem_device *nvmem_register(const struct nvmem_config *config)
 		return ERR_PTR(rval);
 	}
 
-<<<<<<< HEAD
-	if (config->wp_gpio)
-		nvmem->wp_gpio = config->wp_gpio;
-	else if (!config->ignore_wp)
-=======
 	nvmem->id = rval;
 
 	nvmem->dev.type = &nvmem_provider_type;
@@ -784,7 +779,6 @@ struct nvmem_device *nvmem_register(const struct nvmem_config *config)
 	device_initialize(&nvmem->dev);
 
 	if (!config->ignore_wp)
->>>>>>> origin/linux_6.1.15_upstream
 		nvmem->wp_gpio = gpiod_get_optional(config->dev, "wp",
 						    GPIOD_OUT_HIGH);
 	if (IS_ERR(nvmem->wp_gpio)) {

@@ -37,13 +37,9 @@
 /* Quirks */
 #define CQSPI_NEEDS_WR_DELAY		BIT(0)
 #define CQSPI_DISABLE_DAC_MODE		BIT(1)
-<<<<<<< HEAD
-#define CQSPI_NO_SUPPORT_WR_COMPLETION	BIT(3)
-=======
 #define CQSPI_SUPPORT_EXTERNAL_DMA	BIT(2)
 #define CQSPI_NO_SUPPORT_WR_COMPLETION	BIT(3)
 #define CQSPI_SLOW_SRAM		BIT(4)
->>>>>>> origin/linux_6.1.15_upstream
 
 /* Capabilities */
 #define CQSPI_SUPPORTS_OCTAL		BIT(0)
@@ -89,14 +85,10 @@ struct cqspi_st {
 	u32			wr_delay;
 	bool			use_direct_mode;
 	struct cqspi_flash_pdata f_pdata[CQSPI_MAX_CHIPSELECT];
-<<<<<<< HEAD
-	bool			wr_completion;
-=======
 	bool			use_dma_read;
 	u32			pd_dev_id;
 	bool			wr_completion;
 	bool			slow_sram;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct cqspi_driver_platdata {
@@ -379,63 +371,6 @@ static unsigned int cqspi_calc_dummy(const struct spi_mem_op *op)
 	return dummy_clk;
 }
 
-<<<<<<< HEAD
-static int cqspi_set_protocol(struct cqspi_flash_pdata *f_pdata,
-			      const struct spi_mem_op *op)
-{
-	/*
-	 * For an op to be DTR, cmd phase along with every other non-empty
-	 * phase should have dtr field set to 1. If an op phase has zero
-	 * nbytes, ignore its dtr field; otherwise, check its dtr field.
-	 */
-	f_pdata->dtr = op->cmd.dtr &&
-		       (!op->addr.nbytes || op->addr.dtr) &&
-		       (!op->data.nbytes || op->data.dtr);
-
-	f_pdata->inst_width = 0;
-	if (op->cmd.buswidth)
-		f_pdata->inst_width = ilog2(op->cmd.buswidth);
-
-	f_pdata->addr_width = 0;
-	if (op->addr.buswidth)
-		f_pdata->addr_width = ilog2(op->addr.buswidth);
-
-	f_pdata->data_width = 0;
-	if (op->data.buswidth)
-		f_pdata->data_width = ilog2(op->data.buswidth);
-
-	/* Right now we only support 8-8-8 DTR mode. */
-	if (f_pdata->dtr) {
-		switch (op->cmd.buswidth) {
-		case 0:
-		case 8:
-			break;
-		default:
-			return -EINVAL;
-		}
-
-		switch (op->addr.buswidth) {
-		case 0:
-		case 8:
-			break;
-		default:
-			return -EINVAL;
-		}
-
-		switch (op->data.buswidth) {
-		case 0:
-		case 8:
-			break;
-		default:
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int cqspi_wait_idle(struct cqspi_st *cqspi)
 {
 	const unsigned int poll_idle_retry = 3;
@@ -1438,17 +1373,7 @@ static bool cqspi_supports_mem_op(struct spi_mem *mem,
 			return false;
 		if (op->data.nbytes && op->data.buswidth != 8)
 			return false;
-<<<<<<< HEAD
-	} else if (all_false) {
-		/* Only 1-1-X ops are supported without DTR */
-		if (op->cmd.nbytes && op->cmd.buswidth > 1)
-			return false;
-		if (op->addr.nbytes && op->addr.buswidth > 1)
-			return false;
-	} else {
-=======
 	} else if (!all_false) {
->>>>>>> origin/linux_6.1.15_upstream
 		/* Mixed DTR modes are not supported. */
 		return false;
 	}
@@ -1764,10 +1689,6 @@ static int cqspi_probe(struct platform_device *pdev)
 			master->mode_bits |= SPI_RX_OCTAL | SPI_TX_OCTAL;
 		if (!(ddata->quirks & CQSPI_DISABLE_DAC_MODE))
 			cqspi->use_direct_mode = true;
-<<<<<<< HEAD
-		if (ddata->quirks & CQSPI_NO_SUPPORT_WR_COMPLETION)
-			cqspi->wr_completion = false;
-=======
 		if (ddata->quirks & CQSPI_SUPPORT_EXTERNAL_DMA)
 			cqspi->use_dma_read = true;
 		if (ddata->quirks & CQSPI_NO_SUPPORT_WR_COMPLETION)
@@ -1778,7 +1699,6 @@ static int cqspi_probe(struct platform_device *pdev)
 		if (of_device_is_compatible(pdev->dev.of_node,
 					    "xlnx,versal-ospi-1.0"))
 			dma_set_mask(&pdev->dev, DMA_BIT_MASK(64));
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	ret = devm_request_irq(dev, irq, cqspi_irq_handler, 0,
@@ -1888,9 +1808,6 @@ static const struct cqspi_driver_platdata intel_lgm_qspi = {
 };
 
 static const struct cqspi_driver_platdata socfpga_qspi = {
-<<<<<<< HEAD
-	.quirks = CQSPI_DISABLE_DAC_MODE | CQSPI_NO_SUPPORT_WR_COMPLETION,
-=======
 	.quirks = CQSPI_DISABLE_DAC_MODE
 			| CQSPI_NO_SUPPORT_WR_COMPLETION
 			| CQSPI_SLOW_SRAM,
@@ -1901,7 +1818,6 @@ static const struct cqspi_driver_platdata versal_ospi = {
 	.quirks = CQSPI_DISABLE_DAC_MODE | CQSPI_SUPPORT_EXTERNAL_DMA,
 	.indirect_read_dma = cqspi_versal_indirect_read_dma,
 	.get_dma_status = cqspi_get_versal_dma_status,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct of_device_id cqspi_dt_ids[] = {
@@ -1922,17 +1838,12 @@ static const struct of_device_id cqspi_dt_ids[] = {
 		.data = &intel_lgm_qspi,
 	},
 	{
-<<<<<<< HEAD
-		.compatible = "intel,socfpga-qspi",
-		.data = (void *)&socfpga_qspi,
-=======
 		.compatible = "xlnx,versal-ospi-1.0",
 		.data = &versal_ospi,
 	},
 	{
 		.compatible = "intel,socfpga-qspi",
 		.data = &socfpga_qspi,
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	{ /* end of table */ }
 };

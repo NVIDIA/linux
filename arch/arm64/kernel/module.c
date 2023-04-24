@@ -58,11 +58,7 @@ void *module_alloc(unsigned long size)
 				PAGE_KERNEL, 0, NUMA_NO_NODE,
 				__builtin_return_address(0));
 
-<<<<<<< HEAD
-	if (p && (kasan_module_alloc(p, size, gfp_mask) < 0)) {
-=======
 	if (p && (kasan_alloc_module_shadow(p, size, gfp_mask) < 0)) {
->>>>>>> origin/linux_6.1.15_upstream
 		vfree(p);
 		return NULL;
 	}

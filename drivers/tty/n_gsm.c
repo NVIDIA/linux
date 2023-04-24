@@ -519,8 +519,6 @@ static void gsm_hex_dump_bytes(const char *fname, const u8 *data,
 	kfree(prefix);
 }
 
-<<<<<<< HEAD
-=======
 /**
  *	gsm_register_devices	-	register all tty devices for a given mux index
  *
@@ -583,7 +581,6 @@ static void gsm_unregister_devices(struct tty_driver *driver,
 	}
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /**
  *	gsm_print_packet	-	display a frame for debug
  *	@hdr: header to print before decode
@@ -911,11 +908,6 @@ static int gsm_data_kick(struct gsm_mux *gsm)
 
 	clear_bit(TTY_DO_WRITE_WAKEUP, &gsm->tty->flags);
 
-<<<<<<< HEAD
-		if (debug & 4)
-			gsm_hex_dump_bytes(__func__, gsm->txframe, len);
-		if (gsmld_output(gsm, gsm->txframe, len) <= 0)
-=======
 	/* Serialize control messages and control channel messages first */
 	list_for_each_entry_safe(msg, nmsg, &gsm->tx_ctrl_list, list) {
 		if (gsm->constipated && !gsm_is_flow_ctrl_msg(msg))
@@ -935,7 +927,6 @@ static int gsm_data_kick(struct gsm_mux *gsm)
 				list_del(&msg->list);
 				kfree(msg);
 			}
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		}
 	}
@@ -1077,37 +1068,6 @@ static int gsm_dlci_data_output(struct gsm_mux *gsm, struct gsm_dlci *dlci)
 	u8 *dp;
 	int h, len, size;
 
-<<<<<<< HEAD
-	total_size = 0;
-	while (1) {
-		len = kfifo_len(&dlci->fifo);
-		if (len == 0)
-			return total_size;
-
-		/* MTU/MRU count only the data bits */
-		if (len > gsm->mtu)
-			len = gsm->mtu;
-
-		size = len + h;
-
-		msg = gsm_data_alloc(gsm, dlci->addr, size, gsm->ftype);
-		/* FIXME: need a timer or something to kick this so it can't
-		   get stuck with no work outstanding and no buffer free */
-		if (msg == NULL)
-			return -ENOMEM;
-		dp = msg->data;
-		switch (dlci->adaption) {
-		case 1:	/* Unstructured */
-			break;
-		case 2:	/* Unstructed with modem bits.
-		Always one byte as we never send inline break data */
-			*dp++ = (gsm_encode_modem(dlci) << 1) | EA;
-			break;
-		}
-		WARN_ON(kfifo_out_locked(&dlci->fifo, dp , len, &dlci->lock) != len);
-		__gsm_data_queue(dlci, msg);
-		total_size += size;
-=======
 	/* for modem bits without break data */
 	h = ((dlci->adaption == 1) ? 0 : 1);
 
@@ -1137,7 +1097,6 @@ static int gsm_dlci_data_output(struct gsm_mux *gsm, struct gsm_dlci *dlci)
 		pr_err("%s: unsupported adaption %d\n", __func__,
 		       dlci->adaption);
 		break;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	WARN_ON(len != kfifo_out_locked(&dlci->fifo, dp, len,
@@ -1496,11 +1455,7 @@ static void gsm_control_modem(struct gsm_mux *gsm, const u8 *data, int clen)
 	unsigned int modem = 0;
 	struct gsm_dlci *dlci;
 	int len = clen;
-<<<<<<< HEAD
-	int slen;
-=======
 	int cl = clen;
->>>>>>> origin/linux_6.1.15_upstream
 	const u8 *dp = data;
 	struct tty_struct *tty;
 
@@ -1514,17 +1469,6 @@ static void gsm_control_modem(struct gsm_mux *gsm, const u8 *data, int clen)
 		return;
 	dlci = gsm->dlci[addr];
 
-<<<<<<< HEAD
-	slen = len;
-	while (gsm_read_ea(&modem, *dp++) == 0) {
-		len--;
-		if (len == 0)
-			return;
-	}
-	len--;
-	tty = tty_port_tty_get(&dlci->port);
-	gsm_process_modem(tty, dlci, modem, slen - len);
-=======
 	/* Must be at least one byte following the EA */
 	if ((cl - len) < 1)
 		return;
@@ -1539,7 +1483,6 @@ static void gsm_control_modem(struct gsm_mux *gsm, const u8 *data, int clen)
 
 	tty = tty_port_tty_get(&dlci->port);
 	gsm_process_modem(tty, dlci, modem, cl);
->>>>>>> origin/linux_6.1.15_upstream
 	if (tty) {
 		tty_wakeup(tty);
 		tty_kref_put(tty);
@@ -1715,17 +1658,7 @@ static void gsm_control_response(struct gsm_mux *gsm, unsigned int command,
 
 static void gsm_control_transmit(struct gsm_mux *gsm, struct gsm_control *ctrl)
 {
-<<<<<<< HEAD
-	struct gsm_msg *msg = gsm_data_alloc(gsm, 0, ctrl->len + 2, gsm->ftype);
-	if (msg == NULL)
-		return;
-	msg->data[0] = (ctrl->cmd << 1) | CR | EA;	/* command */
-	msg->data[1] = (ctrl->len << 1) | EA;
-	memcpy(msg->data + 2, ctrl->data, ctrl->len);
-	gsm_data_queue(gsm->dlci[0], msg);
-=======
 	gsm_control_command(gsm, ctrl->cmd, ctrl->data, ctrl->len);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -1747,11 +1680,7 @@ static void gsm_control_retransmit(struct timer_list *t)
 	spin_lock_irqsave(&gsm->control_lock, flags);
 	ctrl = gsm->pending_cmd;
 	if (ctrl) {
-<<<<<<< HEAD
-		if (gsm->cretries == 0) {
-=======
 		if (gsm->cretries == 0 || !gsm->dlci[0] || gsm->dlci[0]->dead) {
->>>>>>> origin/linux_6.1.15_upstream
 			gsm->pending_cmd = NULL;
 			ctrl->error = -ETIMEDOUT;
 			ctrl->done = 1;
@@ -1858,13 +1787,7 @@ static void gsm_dlci_close(struct gsm_dlci *dlci)
 	dlci->constipated = true;
 	if (dlci->addr != 0) {
 		tty_port_tty_hangup(&dlci->port, false);
-<<<<<<< HEAD
-		spin_lock_irqsave(&dlci->lock, flags);
-		kfifo_reset(&dlci->fifo);
-		spin_unlock_irqrestore(&dlci->lock, flags);
-=======
 		gsm_dlci_clear_queues(dlci->gsm, dlci);
->>>>>>> origin/linux_6.1.15_upstream
 		/* Ensure that gsmtty_open() can return. */
 		tty_port_set_initialized(&dlci->port, 0);
 		wake_up_interruptible(&dlci->port.open_wait);
@@ -2030,12 +1953,7 @@ static void gsm_dlci_data(struct gsm_dlci *dlci, const u8 *data, int clen)
 	struct tty_port *port = &dlci->port;
 	struct tty_struct *tty;
 	unsigned int modem = 0;
-<<<<<<< HEAD
-	int len = clen;
-	int slen = 0;
-=======
 	int len;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (debug & DBG_TTY)
 		pr_debug("%d bytes for tty\n", clen);
@@ -2046,26 +1964,12 @@ static void gsm_dlci_data(struct gsm_dlci *dlci, const u8 *data, int clen)
 	case 3:		/* Packetised uininterruptible voice/data */
 		break;
 	case 2:		/* Asynchronous serial with line state in each frame */
-<<<<<<< HEAD
-		while (gsm_read_ea(&modem, *data++) == 0) {
-			len--;
-			slen++;
-			if (len == 0)
-				return;
-		}
-		len--;
-		slen++;
-		tty = tty_port_tty_get(port);
-		if (tty) {
-			gsm_process_modem(tty, dlci, modem, slen);
-=======
 		len = gsm_read_ea_val(&modem, data, clen);
 		if (len < 1)
 			return;
 		tty = tty_port_tty_get(port);
 		if (tty) {
 			gsm_process_modem(tty, dlci, modem, len);
->>>>>>> origin/linux_6.1.15_upstream
 			tty_wakeup(tty);
 			tty_kref_put(tty);
 		}
@@ -2466,11 +2370,7 @@ static void gsm1_receive(struct gsm_mux *gsm, unsigned char c)
 	} else if ((c & ISO_IEC_646_MASK) == XOFF) {
 		gsm->constipated = false;
 		/* Kick the link in case it is idling */
-<<<<<<< HEAD
-		gsm_data_kick(gsm, NULL);
-=======
 		gsmld_write_trigger(gsm);
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 	if (c == GSM1_SOF) {
@@ -2598,11 +2498,6 @@ static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 	}
 
 	/* Finish outstanding timers, making sure they are done */
-<<<<<<< HEAD
-	del_timer_sync(&gsm->t2_timer);
-
-	/* Free up any link layer users and finally the control channel */
-=======
 	del_timer_sync(&gsm->kick_timer);
 	del_timer_sync(&gsm->t2_timer);
 
@@ -2614,21 +2509,16 @@ static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 		gsm_unregister_devices(gsm_tty_driver, gsm->num);
 		gsm->has_devices = false;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	for (i = NUM_DLCI - 1; i >= 0; i--)
 		if (gsm->dlci[i])
 			gsm_dlci_release(gsm->dlci[i]);
 	mutex_unlock(&gsm->mutex);
 	/* Now wipe the queues */
 	tty_ldisc_flush(gsm->tty);
-<<<<<<< HEAD
-	list_for_each_entry_safe(txq, ntxq, &gsm->tx_list, list)
-=======
 	list_for_each_entry_safe(txq, ntxq, &gsm->tx_ctrl_list, list)
 		kfree(txq);
 	INIT_LIST_HEAD(&gsm->tx_ctrl_list);
 	list_for_each_entry_safe(txq, ntxq, &gsm->tx_data_list, list)
->>>>>>> origin/linux_6.1.15_upstream
 		kfree(txq);
 	INIT_LIST_HEAD(&gsm->tx_data_list);
 }
@@ -2645,10 +2535,7 @@ static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 static int gsm_activate_mux(struct gsm_mux *gsm)
 {
 	struct gsm_dlci *dlci;
-<<<<<<< HEAD
-=======
 	int ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	dlci = gsm_dlci_alloc(gsm, 0);
 	if (dlci == NULL)
@@ -2659,17 +2546,11 @@ static int gsm_activate_mux(struct gsm_mux *gsm)
 	else
 		gsm->receive = gsm1_receive;
 
-<<<<<<< HEAD
-	dlci = gsm_dlci_alloc(gsm, 0);
-	if (dlci == NULL)
-		return -ENOMEM;
-=======
 	ret = gsm_register_devices(gsm_tty_driver, gsm->num);
 	if (ret)
 		return ret;
 
 	gsm->has_devices = true;
->>>>>>> origin/linux_6.1.15_upstream
 	gsm->dead = false;		/* Tty opens are now permissible */
 	return 0;
 }
@@ -2921,11 +2802,6 @@ static int gsmld_output(struct gsm_mux *gsm, u8 *data, int len)
 		set_bit(TTY_DO_WRITE_WAKEUP, &gsm->tty->flags);
 		return -ENOSPC;
 	}
-<<<<<<< HEAD
-	if (debug & 4)
-		gsm_hex_dump_bytes(__func__, data, len);
-	return gsm->tty->ops->write(gsm->tty, data, len);
-=======
 	if (debug & DBG_DATA)
 		gsm_hex_dump_bytes(__func__, data, len);
 	return gsm->tty->ops->write(gsm->tty, data, len);
@@ -2970,7 +2846,6 @@ static void gsmld_write_task(struct work_struct *work)
 		for (i = 0; i < NUM_DLCI; i++)
 			if (gsm->dlci[i])
 				tty_port_tty_wakeup(&gsm->dlci[i]->port);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -2989,30 +2864,6 @@ static void gsmld_attach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 	/* Turn off tty XON/XOFF handling to handle it explicitly. */
 	gsm->old_c_iflag = tty->termios.c_iflag;
 	tty->termios.c_iflag &= (IXON | IXOFF);
-<<<<<<< HEAD
-	ret =  gsm_activate_mux(gsm);
-	if (ret != 0)
-		tty_kref_put(gsm->tty);
-	else {
-		/* Don't register device 0 - this is the control channel and not
-		   a usable tty interface */
-		base = mux_num_to_base(gsm); /* Base for this MUX */
-		for (i = 1; i < NUM_DLCI; i++) {
-			struct device *dev;
-
-			dev = tty_register_device(gsm_tty_driver,
-							base + i, NULL);
-			if (IS_ERR(dev)) {
-				for (i--; i >= 1; i--)
-					tty_unregister_device(gsm_tty_driver,
-								base + i);
-				return PTR_ERR(dev);
-			}
-		}
-	}
-	return ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -3026,11 +2877,6 @@ static void gsmld_attach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 static void gsmld_detach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 {
 	WARN_ON(tty != gsm->tty);
-<<<<<<< HEAD
-	for (i = 1; i < NUM_DLCI; i++)
-		tty_unregister_device(gsm_tty_driver, base + i);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/* Restore tty XON/XOFF handling. */
 	gsm->tty->termios.c_iflag = gsm->old_c_iflag;
 	tty_kref_put(gsm->tty);
@@ -3043,11 +2889,7 @@ static void gsmld_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 	struct gsm_mux *gsm = tty->disc_data;
 	char flags = TTY_NORMAL;
 
-<<<<<<< HEAD
-	if (debug & 4)
-=======
 	if (debug & DBG_DATA)
->>>>>>> origin/linux_6.1.15_upstream
 		gsm_hex_dump_bytes(__func__, cp, count);
 
 	for (; count; count--, cp++) {
@@ -3143,16 +2985,7 @@ static int gsmld_open(struct tty_struct *tty)
 	gsm->encoding = GSM_ADV_OPT;
 	gsmld_attach_gsm(tty, gsm);
 
-<<<<<<< HEAD
-	ret = gsmld_attach_gsm(tty, gsm);
-	if (ret != 0) {
-		gsm_cleanup_mux(gsm, false);
-		mux_put(gsm);
-	}
-	return ret;
-=======
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -3547,12 +3380,9 @@ static int gsm_modem_upd_via_msc(struct gsm_dlci *dlci, u8 brk)
 	struct gsm_control *ctrl;
 	int len = 2;
 
-<<<<<<< HEAD
-=======
 	if (dlci->gsm->encoding != GSM_BASIC_OPT)
 		return 0;
 
->>>>>>> origin/linux_6.1.15_upstream
 	modembits[0] = (dlci->addr << 2) | 2 | EA;  /* DLCI, Valid, EA */
 	if (!brk) {
 		modembits[1] = (gsm_encode_modem(dlci) << 1) | EA;
@@ -3875,11 +3705,7 @@ static void gsmtty_throttle(struct tty_struct *tty)
 		dlci->modem_tx &= ~TIOCM_RTS;
 	dlci->throttled = true;
 	/* Send an MSC with RTS cleared */
-<<<<<<< HEAD
-	gsmtty_modem_update(dlci, 0);
-=======
 	gsm_modem_update(dlci, 0);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void gsmtty_unthrottle(struct tty_struct *tty)
@@ -3891,11 +3717,7 @@ static void gsmtty_unthrottle(struct tty_struct *tty)
 		dlci->modem_tx |= TIOCM_RTS;
 	dlci->throttled = false;
 	/* Send an MSC with RTS set */
-<<<<<<< HEAD
-	gsmtty_modem_update(dlci, 0);
-=======
 	gsm_modem_update(dlci, 0);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int gsmtty_break_ctl(struct tty_struct *tty, int state)

@@ -498,28 +498,6 @@ void nf_nat_helper_unregister(struct nf_conntrack_nat_helper *nat)
 }
 EXPORT_SYMBOL_GPL(nf_nat_helper_unregister);
 
-<<<<<<< HEAD
-static const struct nf_ct_ext_type helper_extend = {
-	.len	= sizeof(struct nf_conn_help),
-	.align	= __alignof__(struct nf_conn_help),
-	.id	= NF_CT_EXT_HELPER,
-};
-
-void nf_ct_set_auto_assign_helper_warned(struct net *net)
-{
-	nf_ct_pernet(net)->auto_assign_helper_warned = true;
-}
-EXPORT_SYMBOL_GPL(nf_ct_set_auto_assign_helper_warned);
-
-void nf_conntrack_helper_pernet_init(struct net *net)
-{
-	struct nf_conntrack_net *cnet = nf_ct_pernet(net);
-
-	cnet->sysctl_auto_assign_helper = nf_ct_auto_assign_helper;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 int nf_conntrack_helper_init(void)
 {
 	nf_ct_helper_hsize = 1; /* gets rounded up to use one page */

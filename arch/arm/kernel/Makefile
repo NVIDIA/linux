@@ -108,8 +108,4 @@ obj-$(CONFIG_HAVE_ARM_SMCCC)	+= smccc-call.o
 
 obj-$(CONFIG_GENERIC_CPU_VULNERABILITIES) += spectre.o
 
-<<<<<<< HEAD
-extra-y := $(head-y) vmlinux.lds
-=======
 extra-y := vmlinux.lds
->>>>>>> origin/linux_6.1.15_upstream

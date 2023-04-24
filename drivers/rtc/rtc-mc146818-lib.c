@@ -9,33 +9,6 @@
 #endif
 
 /*
-<<<<<<< HEAD
- * If the UIP (Update-in-progress) bit of the RTC is set for more then
- * 10ms, the RTC is apparently broken or not present.
- */
-bool mc146818_does_rtc_work(void)
-{
-	int i;
-	unsigned char val;
-	unsigned long flags;
-
-	for (i = 0; i < 10; i++) {
-		spin_lock_irqsave(&rtc_lock, flags);
-		val = CMOS_READ(RTC_FREQ_SELECT);
-		spin_unlock_irqrestore(&rtc_lock, flags);
-
-		if ((val & RTC_UIP) == 0)
-			return true;
-
-		mdelay(1);
-	}
-
-	return false;
-}
-EXPORT_SYMBOL_GPL(mc146818_does_rtc_work);
-
-int mc146818_get_time(struct rtc_time *time)
-=======
  * Execute a function while the UIP (Update-in-progress) bit of the RTC is
  * unset.
  *
@@ -43,31 +16,14 @@ int mc146818_get_time(struct rtc_time *time)
  */
 bool mc146818_avoid_UIP(void (*callback)(unsigned char seconds, void *param),
 			void *param)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int i;
 	unsigned long flags;
-<<<<<<< HEAD
-	unsigned int iter_count = 0;
-	unsigned char century = 0;
-	bool retry;
-=======
 	unsigned char seconds;
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < 100; i++) {
 		spin_lock_irqsave(&rtc_lock, flags);
 
-<<<<<<< HEAD
-again:
-	if (iter_count > 10) {
-		memset(time, 0, sizeof(*time));
-		return -EIO;
-	}
-	iter_count++;
-
-	spin_lock_irqsave(&rtc_lock, flags);
-=======
 		/*
 		 * Check whether there is an update in progress during which the
 		 * readout is unspecified. The maximum update time is ~2ms. Poll
@@ -78,7 +34,6 @@ again:
 		 * an update cycle invisible.
 		 */
 		seconds = CMOS_READ(RTC_SECONDS);
->>>>>>> origin/linux_6.1.15_upstream
 
 		if (CMOS_READ(RTC_FREQ_SELECT) & RTC_UIP) {
 			spin_unlock_irqrestore(&rtc_lock, flags);
@@ -203,15 +158,10 @@ int mc146818_get_time(struct rtc_time *time)
 	time->tm_year += p.real_year - 72;
 #endif
 
-<<<<<<< HEAD
-	if (century > 19)
-		time->tm_year += (century - 19) * 100;
-=======
 #ifdef CONFIG_ACPI
 	if (p.century > 19)
 		time->tm_year += (p.century - 19) * 100;
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Account for differences between how the RTC uses the values

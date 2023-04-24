@@ -96,11 +96,7 @@ static int sun50i_cpufreq_nvmem_probe(struct platform_device *pdev)
 
 	ret = sun50i_cpufreq_get_efuse(&speed);
 	if (ret) {
-<<<<<<< HEAD
-		kfree(opp_tables);
-=======
 		kfree(opp_tokens);
->>>>>>> origin/linux_6.1.15_upstream
 		return ret;
 	}
 

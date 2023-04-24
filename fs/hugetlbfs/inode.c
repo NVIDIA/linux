@@ -193,11 +193,7 @@ hugetlb_get_unmapped_area_bottomup(struct file *file, unsigned long addr,
 	info.flags = 0;
 	info.length = len;
 	info.low_limit = current->mm->mmap_base;
-<<<<<<< HEAD
-	info.high_limit = arch_get_mmap_end(addr);
-=======
 	info.high_limit = arch_get_mmap_end(addr, len, flags);
->>>>>>> origin/linux_6.1.15_upstream
 	info.align_mask = PAGE_MASK & ~huge_page_mask(h);
 	info.align_offset = 0;
 	return vm_unmapped_area(&info);
@@ -228,11 +224,7 @@ hugetlb_get_unmapped_area_topdown(struct file *file, unsigned long addr,
 		VM_BUG_ON(addr != -ENOMEM);
 		info.flags = 0;
 		info.low_limit = current->mm->mmap_base;
-<<<<<<< HEAD
-		info.high_limit = arch_get_mmap_end(addr);
-=======
 		info.high_limit = arch_get_mmap_end(addr, len, flags);
->>>>>>> origin/linux_6.1.15_upstream
 		addr = vm_unmapped_area(&info);
 	}
 
@@ -247,11 +239,7 @@ generic_hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma;
 	struct hstate *h = hstate_file(file);
-<<<<<<< HEAD
-	const unsigned long mmap_end = arch_get_mmap_end(addr);
-=======
 	const unsigned long mmap_end = arch_get_mmap_end(addr, len, flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (len & ~huge_page_mask(h))
 		return -EINVAL;
@@ -543,11 +531,7 @@ hugetlb_vmdelete_list(struct rb_root_cached *root, pgoff_t start, pgoff_t end,
 	 * an inclusive "last".
 	 */
 	vma_interval_tree_foreach(vma, root, start, end ? end - 1 : ULONG_MAX) {
-<<<<<<< HEAD
-		unsigned long v_offset;
-=======
 		unsigned long v_start;
->>>>>>> origin/linux_6.1.15_upstream
 		unsigned long v_end;
 
 		if (!hugetlb_vma_trylock_write(vma))

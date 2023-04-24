@@ -1396,8 +1396,6 @@ void dev_qdisc_change_real_num_tx(struct net_device *dev,
 		qdisc->ops->change_real_num_tx(qdisc, new_real_tx);
 }
 
-<<<<<<< HEAD
-=======
 void mq_change_real_num_tx(struct Qdisc *sch, unsigned int new_real_tx)
 {
 #ifdef CONFIG_NET_SCHED
@@ -1422,7 +1420,6 @@ void mq_change_real_num_tx(struct Qdisc *sch, unsigned int new_real_tx)
 }
 EXPORT_SYMBOL(mq_change_real_num_tx);
 
->>>>>>> origin/linux_6.1.15_upstream
 int dev_qdisc_change_tx_queue_len(struct net_device *dev)
 {
 	bool up = dev->flags & IFF_UP;

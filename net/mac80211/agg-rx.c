@@ -9,11 +9,7 @@
  * Copyright 2007, Michael Wu <flamingice@sourmilk.net>
  * Copyright 2007-2010, Intel Corporation
  * Copyright(c) 2015-2017 Intel Deutschland GmbH
-<<<<<<< HEAD
- * Copyright (C) 2018-2021 Intel Corporation
-=======
  * Copyright (C) 2018-2022 Intel Corporation
->>>>>>> origin/linux_6.1.15_upstream
  */
 
 /**

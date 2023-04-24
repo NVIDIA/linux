@@ -727,16 +727,11 @@ static int mt8183_da7219_max98357_dev_probe(struct platform_device *pdev)
 	}
 
 	card = (struct snd_soc_card *)of_device_get_match_data(&pdev->dev);
-<<<<<<< HEAD
-	if (!card)
-		return -EINVAL;
-=======
 	if (!card) {
 		ret = -EINVAL;
 		goto put_platform_node;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	card->dev = &pdev->dev;
 
 	hdmi_codec = of_parse_phandle(pdev->dev.of_node,
@@ -823,16 +818,11 @@ static int mt8183_da7219_max98357_dev_probe(struct platform_device *pdev)
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 
-<<<<<<< HEAD
-	of_node_put(platform_node);
-	of_node_put(hdmi_codec);
-=======
 
 put_hdmi_codec:
 	of_node_put(hdmi_codec);
 put_platform_node:
 	of_node_put(platform_node);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 

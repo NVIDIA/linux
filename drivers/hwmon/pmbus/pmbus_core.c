@@ -501,11 +501,7 @@ static int pmbus_get_fan_rate(struct i2c_client *client, int page, int id,
 	}
 
 	config = _pmbus_read_byte_data(client, page,
-<<<<<<< HEAD
-				       pmbus_fan_config_registers[id]);
-=======
 				      pmbus_fan_config_registers[id]);
->>>>>>> origin/linux_6.1.15_upstream
 	if (config < 0)
 		return config;
 
@@ -1107,11 +1103,7 @@ static int pmbus_get_boolean(struct i2c_client *client, struct pmbus_boolean *b,
 
 	regval = status & mask;
 	if (regval) {
-<<<<<<< HEAD
-		ret = pmbus_write_byte_data(client, page, reg, regval);
-=======
 		ret = _pmbus_write_byte_data(client, page, reg, regval);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret)
 			goto unlock;
 	}
@@ -2720,11 +2712,7 @@ static int pmbus_regulator_is_enabled(struct regulator_dev *rdev)
 	int ret;
 
 	mutex_lock(&data->update_lock);
-<<<<<<< HEAD
-	ret = pmbus_read_byte_data(client, page, PMBUS_OPERATION);
-=======
 	ret = _pmbus_read_byte_data(client, page, PMBUS_OPERATION);
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&data->update_lock);
 
 	if (ret < 0)

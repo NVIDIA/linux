@@ -630,12 +630,7 @@ static int host1x_remove(struct platform_device *pdev)
 
 	host1x_intr_deinit(host);
 	host1x_syncpt_deinit(host);
-<<<<<<< HEAD
-	reset_control_assert(host->rst);
-	clk_disable_unprepare(host->clk);
-=======
 	host1x_memory_context_list_free(&host->context_list);
->>>>>>> origin/linux_6.1.15_upstream
 	host1x_channel_list_free(&host->channel_list);
 	host1x_iommu_exit(host);
 	host1x_bo_cache_destroy(&host->cache);

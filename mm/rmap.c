@@ -1667,11 +1667,7 @@ static bool try_to_unmap_one(struct folio *folio, struct vm_area_struct *vma,
 			}
 
 			/* MADV_FREE page check */
-<<<<<<< HEAD
-			if (!PageSwapBacked(page)) {
-=======
 			if (!folio_test_swapbacked(folio)) {
->>>>>>> origin/linux_6.1.15_upstream
 				int ref_count, map_count;
 
 				/*
@@ -1681,13 +1677,8 @@ static bool try_to_unmap_one(struct folio *folio, struct vm_area_struct *vma,
 				 */
 				smp_mb();
 
-<<<<<<< HEAD
-				ref_count = page_ref_count(page);
-				map_count = page_mapcount(page);
-=======
 				ref_count = folio_ref_count(folio);
 				map_count = folio_mapcount(folio);
->>>>>>> origin/linux_6.1.15_upstream
 
 				/*
 				 * Order reads for page refcount and dirty flag
@@ -1700,11 +1691,7 @@ static bool try_to_unmap_one(struct folio *folio, struct vm_area_struct *vma,
 				 * plus the rmap(s) (dropped by discard:).
 				 */
 				if (ref_count == 1 + map_count &&
-<<<<<<< HEAD
-				    !PageDirty(page)) {
-=======
 				    !folio_test_dirty(folio)) {
->>>>>>> origin/linux_6.1.15_upstream
 					/* Invalidate as we cleared the pte */
 					mmu_notifier_invalidate_range(mm,
 						address, address + PAGE_SIZE);

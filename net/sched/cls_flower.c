@@ -1030,22 +1030,15 @@ static void fl_set_key_vlan(struct nlattr **tb,
 			VLAN_PRIORITY_MASK;
 		key_mask->vlan_priority = VLAN_PRIORITY_MASK;
 	}
-<<<<<<< HEAD
-	key_val->vlan_tpid = ethertype;
-	key_mask->vlan_tpid = cpu_to_be16(~0);
-=======
 	if (ethertype) {
 		key_val->vlan_tpid = ethertype;
 		key_mask->vlan_tpid = cpu_to_be16(~0);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (tb[vlan_next_eth_type_key]) {
 		key_val->vlan_eth_type =
 			nla_get_be16(tb[vlan_next_eth_type_key]);
 		key_mask->vlan_eth_type = cpu_to_be16(~0);
 	}
-<<<<<<< HEAD
-=======
 }
 
 static void fl_set_key_pppoe(struct nlattr **tb,
@@ -1090,7 +1083,6 @@ static void fl_set_key_pppoe(struct nlattr **tb,
 		key->basic.n_proto = 0;
 		mask->basic.n_proto = cpu_to_be16(0);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void fl_set_key_flag(u32 flower_key, u32 flower_mask,
@@ -1676,39 +1668,6 @@ static int fl_set_key(struct net *net, struct nlattr **tb,
 	fl_set_key_val(tb, key->eth.src, TCA_FLOWER_KEY_ETH_SRC,
 		       mask->eth.src, TCA_FLOWER_KEY_ETH_SRC_MASK,
 		       sizeof(key->eth.src));
-<<<<<<< HEAD
-
-	if (tb[TCA_FLOWER_KEY_ETH_TYPE]) {
-		ethertype = nla_get_be16(tb[TCA_FLOWER_KEY_ETH_TYPE]);
-
-		if (eth_type_vlan(ethertype)) {
-			fl_set_key_vlan(tb, ethertype, TCA_FLOWER_KEY_VLAN_ID,
-					TCA_FLOWER_KEY_VLAN_PRIO,
-					TCA_FLOWER_KEY_VLAN_ETH_TYPE,
-					&key->vlan, &mask->vlan);
-
-			if (tb[TCA_FLOWER_KEY_VLAN_ETH_TYPE]) {
-				ethertype = nla_get_be16(tb[TCA_FLOWER_KEY_VLAN_ETH_TYPE]);
-				if (eth_type_vlan(ethertype)) {
-					fl_set_key_vlan(tb, ethertype,
-							TCA_FLOWER_KEY_CVLAN_ID,
-							TCA_FLOWER_KEY_CVLAN_PRIO,
-							TCA_FLOWER_KEY_CVLAN_ETH_TYPE,
-							&key->cvlan, &mask->cvlan);
-					fl_set_key_val(tb, &key->basic.n_proto,
-						       TCA_FLOWER_KEY_CVLAN_ETH_TYPE,
-						       &mask->basic.n_proto,
-						       TCA_FLOWER_UNSPEC,
-						       sizeof(key->basic.n_proto));
-				} else {
-					key->basic.n_proto = ethertype;
-					mask->basic.n_proto = cpu_to_be16(~0);
-				}
-			}
-		} else {
-			key->basic.n_proto = ethertype;
-			mask->basic.n_proto = cpu_to_be16(~0);
-=======
 	fl_set_key_val(tb, &key->num_of_vlans,
 		       TCA_FLOWER_KEY_NUM_OF_VLANS,
 		       &mask->num_of_vlans,
@@ -1733,7 +1692,6 @@ static int fl_set_key(struct net *net, struct nlattr **tb,
 				       &mask->basic.n_proto,
 				       TCA_FLOWER_UNSPEC,
 				       sizeof(key->basic.n_proto));
->>>>>>> origin/linux_6.1.15_upstream
 		}
 	}
 

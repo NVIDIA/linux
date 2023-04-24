@@ -91,10 +91,7 @@ void tcp_rate_skb_delivered(struct sock *sk, struct sk_buff *skb,
 	if (!rs->prior_delivered ||
 	    tcp_skb_sent_after(tx_tstamp, tp->first_tx_mstamp,
 			       scb->end_seq, rs->last_end_seq)) {
-<<<<<<< HEAD
-=======
 		rs->prior_delivered_ce  = scb->tx.delivered_ce;
->>>>>>> origin/linux_6.1.15_upstream
 		rs->prior_delivered  = scb->tx.delivered;
 		rs->prior_mstamp     = scb->tx.delivered_mstamp;
 		rs->is_app_limited   = scb->tx.is_app_limited;

@@ -603,13 +603,7 @@
 
 	codec: sgtl5000@a {
 		compatible = "fsl,sgtl5000";
-<<<<<<< HEAD
-		reg = <0x0a>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_sgtl5000>;
-=======
 		#sound-dai-cells = <0>;
->>>>>>> origin/linux_6.1.15_upstream
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_sgtl5000>;

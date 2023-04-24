@@ -3821,14 +3821,9 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_P2P_GO:
-<<<<<<< HEAD
-		if (wdev->ssid_len &&
-		    nla_put(msg, NL80211_ATTR_SSID, wdev->ssid_len, wdev->ssid))
-=======
 		if (wdev->u.ap.ssid_len &&
 		    nla_put(msg, NL80211_ATTR_SSID, wdev->u.ap.ssid_len,
 			    wdev->u.ap.ssid))
->>>>>>> origin/linux_6.1.15_upstream
 			goto nla_put_failure_locked;
 		break;
 	case NL80211_IFTYPE_STATION:
@@ -12228,11 +12223,7 @@ static int nl80211_set_tx_bitrate_mask(struct sk_buff *skb,
 	if (err)
 		goto out;
 
-<<<<<<< HEAD
-	err = rdev_set_bitrate_mask(rdev, dev, NULL, &mask);
-=======
 	err = rdev_set_bitrate_mask(rdev, dev, link_id, NULL, &mask);
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	wdev_unlock(wdev);
 	return err;
@@ -17191,9 +17182,6 @@ static const struct genl_small_ops nl80211_small_ops[] = {
 		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
 		.doit = nl80211_color_change,
 		.flags = GENL_UNS_ADMIN_PERM,
-<<<<<<< HEAD
-		.internal_flags = NL80211_FLAG_NEED_NETDEV_UP,
-=======
 		.internal_flags = IFLAGS(NL80211_FLAG_NEED_NETDEV_UP),
 	},
 	{
@@ -17236,7 +17224,6 @@ static const struct genl_small_ops nl80211_small_ops[] = {
 		.flags = GENL_UNS_ADMIN_PERM,
 		.internal_flags = IFLAGS(NL80211_FLAG_NEED_NETDEV_UP |
 					 NL80211_FLAG_MLO_VALID_LINK_ID),
->>>>>>> origin/linux_6.1.15_upstream
 	},
 };
 
@@ -19011,15 +18998,6 @@ void cfg80211_ch_switch_notify(struct net_device *dev,
 
 	trace_cfg80211_ch_switch_notify(dev, chandef, link_id);
 
-<<<<<<< HEAD
-	wdev->chandef = *chandef;
-	wdev->preset_chandef = *chandef;
-
-	if ((wdev->iftype == NL80211_IFTYPE_STATION ||
-	     wdev->iftype == NL80211_IFTYPE_P2P_CLIENT) &&
-	    !WARN_ON(!wdev->current_bss))
-		cfg80211_update_assoc_bss_entry(wdev, chandef->chan);
-=======
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
 	case NL80211_IFTYPE_P2P_CLIENT:
@@ -19042,7 +19020,6 @@ void cfg80211_ch_switch_notify(struct net_device *dev,
 		WARN_ON(1);
 		break;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	cfg80211_sched_dfs_chan_update(rdev);
 

@@ -52,10 +52,7 @@ static u32 pdc_reg_read(int reg, u32 i)
 static void pdc_enable_intr(struct irq_data *d, bool on)
 {
 	int pin_out = d->hwirq;
-<<<<<<< HEAD
-=======
 	unsigned long enable;
->>>>>>> origin/linux_6.1.15_upstream
 	unsigned long flags;
 	u32 index, mask;
 

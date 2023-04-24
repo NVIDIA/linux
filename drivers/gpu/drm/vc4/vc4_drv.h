@@ -943,15 +943,9 @@ void vc4_irq_reset(struct drm_device *dev);
 
 /* vc4_hvs.c */
 extern struct platform_driver vc4_hvs_driver;
-<<<<<<< HEAD
-void vc4_hvs_stop_channel(struct drm_device *dev, unsigned int output);
-int vc4_hvs_get_fifo_from_output(struct drm_device *dev, unsigned int output);
-u8 vc4_hvs_get_fifo_frame_count(struct drm_device *dev, unsigned int fifo);
-=======
 void vc4_hvs_stop_channel(struct vc4_hvs *hvs, unsigned int output);
 int vc4_hvs_get_fifo_from_output(struct vc4_hvs *hvs, unsigned int output);
 u8 vc4_hvs_get_fifo_frame_count(struct vc4_hvs *hvs, unsigned int fifo);
->>>>>>> origin/linux_6.1.15_upstream
 int vc4_hvs_atomic_check(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void vc4_hvs_atomic_begin(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void vc4_hvs_atomic_enable(struct drm_crtc *crtc, struct drm_atomic_state *state);

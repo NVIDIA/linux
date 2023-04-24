@@ -19,22 +19,14 @@
 #define __ALIGN_STR	__stringify(__ALIGN)
 #endif
 
-<<<<<<< HEAD
-=======
 #if defined(CONFIG_RETHUNK) && !defined(__DISABLE_EXPORTS) && !defined(BUILD_VDSO)
 #define RET	jmp __x86_return_thunk
 #else /* CONFIG_RETPOLINE */
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_SLS
 #define RET	ret; int3
 #else
 #define RET	ret
 #endif
-<<<<<<< HEAD
-
-#else /* __ASSEMBLY__ */
-
-=======
 #endif /* CONFIG_RETPOLINE */
 
 #else /* __ASSEMBLY__ */
@@ -42,16 +34,12 @@
 #if defined(CONFIG_RETHUNK) && !defined(__DISABLE_EXPORTS) && !defined(BUILD_VDSO)
 #define ASM_RET	"jmp __x86_return_thunk\n\t"
 #else /* CONFIG_RETPOLINE */
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_SLS
 #define ASM_RET	"ret; int3\n\t"
 #else
 #define ASM_RET	"ret\n\t"
 #endif
-<<<<<<< HEAD
-=======
 #endif /* CONFIG_RETPOLINE */
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* __ASSEMBLY__ */
 

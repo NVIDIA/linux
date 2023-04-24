@@ -346,11 +346,7 @@ static void put_probe_ref(void)
 	mutex_unlock(&blk_probe_mutex);
 }
 
-<<<<<<< HEAD
-static void blk_trace_cleanup(struct request_queue *q, struct blk_trace *bt)
-=======
 static int blk_trace_start(struct blk_trace *bt)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (bt->trace_state != Blktrace_setup &&
 	    bt->trace_state != Blktrace_stopped)
@@ -398,12 +394,7 @@ static int __blk_trace_remove(struct request_queue *q)
 	if (!bt)
 		return -EINVAL;
 
-<<<<<<< HEAD
-	if (bt->trace_state != Blktrace_running)
-		blk_trace_cleanup(q, bt);
-=======
 	blk_trace_cleanup(q, bt);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

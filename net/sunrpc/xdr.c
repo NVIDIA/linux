@@ -1034,17 +1034,10 @@ static noinline __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
 	p = page_address(*xdr->page_ptr);
 	xdr->p = p + frag2bytes;
 	space_left = xdr->buf->buflen - xdr->buf->len;
-<<<<<<< HEAD
-	if (space_left - nbytes >= PAGE_SIZE)
-		xdr->end = (void *)p + PAGE_SIZE;
-	else
-		xdr->end = (void *)p + space_left - frag1bytes;
-=======
 	if (space_left - frag1bytes >= PAGE_SIZE)
 		xdr->end = p + PAGE_SIZE;
 	else
 		xdr->end = p + space_left - frag1bytes;
->>>>>>> origin/linux_6.1.15_upstream
 
 	xdr->buf->page_len += frag2bytes;
 	xdr->buf->len += nbytes;

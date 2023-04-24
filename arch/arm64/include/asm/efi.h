@@ -14,11 +14,8 @@
 
 #ifdef CONFIG_EFI
 extern void efi_init(void);
-<<<<<<< HEAD
-=======
 
 bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg);
->>>>>>> origin/linux_6.1.15_upstream
 #else
 #define efi_init()
 

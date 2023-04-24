@@ -28,10 +28,7 @@ CONFIG_EMBEDDED=y
 CONFIG_SLOB=y
 # CONFIG_MMU is not set
 CONFIG_SOC_CANAAN=y
-<<<<<<< HEAD
-=======
 CONFIG_NONPORTABLE=y
->>>>>>> origin/linux_6.1.15_upstream
 CONFIG_SMP=y
 CONFIG_NR_CPUS=2
 CONFIG_CMDLINE="earlycon console=ttySIF0"

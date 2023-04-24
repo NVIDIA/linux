@@ -618,9 +618,6 @@ int wm8731_init(struct device *dev, struct wm8731_priv *wm8731)
 
 	regcache_mark_dirty(wm8731->regmap);
 
-<<<<<<< HEAD
-err:
-=======
 	ret = devm_snd_soc_register_component(dev,
 			&soc_component_dev_wm8731, &wm8731_dai, 1);
 	if (ret != 0) {
@@ -634,7 +631,6 @@ err_regulator_enable:
 	/* Regulators will be enabled by bias management */
 	regulator_bulk_disable(ARRAY_SIZE(wm8731->supplies), wm8731->supplies);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 EXPORT_SYMBOL_GPL(wm8731_init);
@@ -650,193 +646,7 @@ const struct regmap_config wm8731_regmap = {
 	.reg_defaults = wm8731_reg_defaults,
 	.num_reg_defaults = ARRAY_SIZE(wm8731_reg_defaults),
 };
-<<<<<<< HEAD
-
-#if defined(CONFIG_SPI_MASTER)
-static int wm8731_spi_probe(struct spi_device *spi)
-{
-	struct wm8731_priv *wm8731;
-	int ret;
-
-	wm8731 = devm_kzalloc(&spi->dev, sizeof(*wm8731), GFP_KERNEL);
-	if (wm8731 == NULL)
-		return -ENOMEM;
-
-	wm8731->mclk = devm_clk_get(&spi->dev, "mclk");
-	if (IS_ERR(wm8731->mclk)) {
-		ret = PTR_ERR(wm8731->mclk);
-		if (ret == -ENOENT) {
-			wm8731->mclk = NULL;
-			dev_warn(&spi->dev, "Assuming static MCLK\n");
-		} else {
-			dev_err(&spi->dev, "Failed to get MCLK: %d\n",
-				ret);
-			return ret;
-		}
-	}
-
-	mutex_init(&wm8731->lock);
-
-	spi_set_drvdata(spi, wm8731);
-
-	ret = wm8731_request_supplies(&spi->dev, wm8731);
-	if (ret != 0)
-		return ret;
-
-	wm8731->regmap = devm_regmap_init_spi(spi, &wm8731_regmap);
-	if (IS_ERR(wm8731->regmap)) {
-		ret = PTR_ERR(wm8731->regmap);
-		dev_err(&spi->dev, "Failed to allocate register map: %d\n",
-			ret);
-		return ret;
-	}
-
-	ret = wm8731_hw_init(&spi->dev, wm8731);
-	if (ret != 0)
-		return ret;
-
-	ret = devm_snd_soc_register_component(&spi->dev,
-			&soc_component_dev_wm8731, &wm8731_dai, 1);
-	if (ret != 0) {
-		dev_err(&spi->dev, "Failed to register CODEC: %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int wm8731_spi_remove(struct spi_device *spi)
-{
-	return 0;
-}
-
-static struct spi_driver wm8731_spi_driver = {
-	.driver = {
-		.name	= "wm8731",
-		.of_match_table = wm8731_of_match,
-	},
-	.probe		= wm8731_spi_probe,
-	.remove		= wm8731_spi_remove,
-};
-#endif /* CONFIG_SPI_MASTER */
-
-#if IS_ENABLED(CONFIG_I2C)
-static int wm8731_i2c_probe(struct i2c_client *i2c,
-			    const struct i2c_device_id *id)
-{
-	struct wm8731_priv *wm8731;
-	int ret;
-
-	wm8731 = devm_kzalloc(&i2c->dev, sizeof(struct wm8731_priv),
-			      GFP_KERNEL);
-	if (wm8731 == NULL)
-		return -ENOMEM;
-
-	wm8731->mclk = devm_clk_get(&i2c->dev, "mclk");
-	if (IS_ERR(wm8731->mclk)) {
-		ret = PTR_ERR(wm8731->mclk);
-		if (ret == -ENOENT) {
-			wm8731->mclk = NULL;
-			dev_warn(&i2c->dev, "Assuming static MCLK\n");
-		} else {
-			dev_err(&i2c->dev, "Failed to get MCLK: %d\n",
-				ret);
-			return ret;
-		}
-	}
-
-	mutex_init(&wm8731->lock);
-
-	i2c_set_clientdata(i2c, wm8731);
-
-	ret = wm8731_request_supplies(&i2c->dev, wm8731);
-	if (ret != 0)
-		return ret;
-
-	wm8731->regmap = devm_regmap_init_i2c(i2c, &wm8731_regmap);
-	if (IS_ERR(wm8731->regmap)) {
-		ret = PTR_ERR(wm8731->regmap);
-		dev_err(&i2c->dev, "Failed to allocate register map: %d\n",
-			ret);
-		goto err_regulator_enable;
-	}
-
-	ret = wm8731_hw_init(&i2c->dev, wm8731);
-	if (ret != 0)
-		goto err_regulator_enable;
-
-	ret = devm_snd_soc_register_component(&i2c->dev,
-			&soc_component_dev_wm8731, &wm8731_dai, 1);
-	if (ret != 0) {
-		dev_err(&i2c->dev, "Failed to register CODEC: %d\n", ret);
-		goto err_regulator_enable;
-	}
-
-	return 0;
-
-err_regulator_enable:
-	/* Regulators will be enabled by bias management */
-	regulator_bulk_disable(ARRAY_SIZE(wm8731->supplies), wm8731->supplies);
-
-	return ret;
-}
-
-static int wm8731_i2c_remove(struct i2c_client *client)
-{
-	return 0;
-}
-
-static const struct i2c_device_id wm8731_i2c_id[] = {
-	{ "wm8731", 0 },
-	{ }
-};
-MODULE_DEVICE_TABLE(i2c, wm8731_i2c_id);
-
-static struct i2c_driver wm8731_i2c_driver = {
-	.driver = {
-		.name = "wm8731",
-		.of_match_table = wm8731_of_match,
-	},
-	.probe =    wm8731_i2c_probe,
-	.remove =   wm8731_i2c_remove,
-	.id_table = wm8731_i2c_id,
-};
-#endif
-
-static int __init wm8731_modinit(void)
-{
-	int ret = 0;
-#if IS_ENABLED(CONFIG_I2C)
-	ret = i2c_add_driver(&wm8731_i2c_driver);
-	if (ret != 0) {
-		printk(KERN_ERR "Failed to register WM8731 I2C driver: %d\n",
-		       ret);
-	}
-#endif
-#if defined(CONFIG_SPI_MASTER)
-	ret = spi_register_driver(&wm8731_spi_driver);
-	if (ret != 0) {
-		printk(KERN_ERR "Failed to register WM8731 SPI driver: %d\n",
-		       ret);
-	}
-#endif
-	return ret;
-}
-module_init(wm8731_modinit);
-
-static void __exit wm8731_exit(void)
-{
-#if IS_ENABLED(CONFIG_I2C)
-	i2c_del_driver(&wm8731_i2c_driver);
-#endif
-#if defined(CONFIG_SPI_MASTER)
-	spi_unregister_driver(&wm8731_spi_driver);
-#endif
-}
-module_exit(wm8731_exit);
-=======
 EXPORT_SYMBOL_GPL(wm8731_regmap);
->>>>>>> origin/linux_6.1.15_upstream
 
 MODULE_DESCRIPTION("ASoC WM8731 driver");
 MODULE_AUTHOR("Richard Purdie");

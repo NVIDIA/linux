@@ -1205,12 +1205,9 @@ static void ext4_put_super(struct super_block *sb)
 	 */
 	ext4_unregister_sysfs(sb);
 
-<<<<<<< HEAD
-=======
 	if (___ratelimit(&ext4_mount_msg_ratelimit, "EXT4-fs unmount"))
 		ext4_msg(sb, KERN_INFO, "unmounting filesystem.");
 
->>>>>>> origin/linux_6.1.15_upstream
 	ext4_unregister_li_request(sb);
 	ext4_quota_off_umount(sb);
 
@@ -2004,29 +2001,10 @@ static int ext4_parse_test_dummy_encryption(const struct fs_parameter *param,
 {
 	int err;
 
-<<<<<<< HEAD
-	if (!ext4_has_feature_encrypt(sb)) {
-		ext4_msg(sb, KERN_WARNING,
-			 "test_dummy_encryption requires encrypt feature");
-		return -1;
-	}
-
-	/*
-	 * This mount option is just for testing, and it's not worthwhile to
-	 * implement the extra complexity (e.g. RCU protection) that would be
-	 * needed to allow it to be set or changed during remount.  We do allow
-	 * it to be specified during remount, but only if there is no change.
-	 */
-	if (is_remount && !sbi->s_dummy_enc_policy.policy) {
-		ext4_msg(sb, KERN_WARNING,
-			 "Can't set test_dummy_encryption on remount");
-		return -1;
-=======
 	if (!IS_ENABLED(CONFIG_FS_ENCRYPTION)) {
 		ext4_msg(NULL, KERN_WARNING,
 			 "test_dummy_encryption option not supported");
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	err = fscrypt_parse_test_dummy_encryption(param,
 						  &ctx->dummy_enc_policy);
@@ -2038,18 +2016,7 @@ static int ext4_parse_test_dummy_encryption(const struct fs_parameter *param,
 			 "Conflicting test_dummy_encryption options");
 		return -EINVAL;
 	}
-<<<<<<< HEAD
-	ext4_msg(sb, KERN_WARNING, "Test dummy encryption mode enabled");
-	return 1;
-#else
-	ext4_msg(sb, KERN_WARNING,
-		 "test_dummy_encryption option not supported");
-	return -1;
-
-#endif
-=======
 	return err;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #define EXT4_SET_CTX(name)						\
@@ -5210,12 +5177,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
 	}
 	sbi->s_itb_per_group = sbi->s_inodes_per_group /
 					sbi->s_inodes_per_block;
-<<<<<<< HEAD
-	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
-	sbi->s_sbh = bh;
-=======
 	sbi->s_desc_per_block = sb->s_blocksize / EXT4_DESC_SIZE(sb);
->>>>>>> origin/linux_6.1.15_upstream
 	sbi->s_mount_state = le16_to_cpu(es->s_state) & ~EXT4_FC_REPLAY;
 	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
 	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
@@ -5299,28 +5261,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
 	mutex_init(&sbi->s_orphan_lock);
 
-<<<<<<< HEAD
-	/* Initialize fast commit stuff */
-	atomic_set(&sbi->s_fc_subtid, 0);
-	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_MAIN]);
-	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_STAGING]);
-	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_MAIN]);
-	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_STAGING]);
-	sbi->s_fc_bytes = 0;
-	ext4_clear_mount_flag(sb, EXT4_MF_FC_INELIGIBLE);
-	sbi->s_fc_ineligible_tid = 0;
-	spin_lock_init(&sbi->s_fc_lock);
-	memset(&sbi->s_fc_stats, 0, sizeof(sbi->s_fc_stats));
-	sbi->s_fc_replay_state.fc_regions = NULL;
-	sbi->s_fc_replay_state.fc_regions_size = 0;
-	sbi->s_fc_replay_state.fc_regions_used = 0;
-	sbi->s_fc_replay_state.fc_regions_valid = 0;
-	sbi->s_fc_replay_state.fc_modified_inodes = NULL;
-	sbi->s_fc_replay_state.fc_modified_inodes_size = 0;
-	sbi->s_fc_replay_state.fc_modified_inodes_used = 0;
-=======
 	ext4_fast_commit_init(sb);
->>>>>>> origin/linux_6.1.15_upstream
 
 	sb->s_root = NULL;
 
@@ -7025,14 +6966,9 @@ int ext4_enable_quotas(struct super_block *sb)
 			if (err) {
 				ext4_warning(sb,
 					"Failed to enable quota tracking "
-<<<<<<< HEAD
-					"(type=%d, err=%d). Please run "
-					"e2fsck to fix.", type, err);
-=======
 					"(type=%d, err=%d, ino=%lu). "
 					"Please run e2fsck to fix.", type,
 					err, qf_inums[type]);
->>>>>>> origin/linux_6.1.15_upstream
 				for (type--; type >= 0; type--) {
 					struct inode *inode;
 

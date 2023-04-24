@@ -4,12 +4,3 @@ obj-$(CONFIG_ASPEED_LPC_SNOOP)		+= aspeed-lpc-snoop.o
 obj-$(CONFIG_ASPEED_UART_ROUTING)	+= aspeed-uart-routing.o
 obj-$(CONFIG_ASPEED_P2A_CTRL)		+= aspeed-p2a-ctrl.o
 obj-$(CONFIG_ASPEED_SOCINFO)		+= aspeed-socinfo.o
-<<<<<<< HEAD
-obj-$(CONFIG_ASPEED_SBC)		+= aspeed-sbc.o
-obj-$(CONFIG_ASPEED_XDMA)	+= aspeed-xdma.o
-obj-$(CONFIG_ASPEED_MCTP)	+= aspeed-mctp.o
-obj-$(CONFIG_ASPEED_LPC_PCC)	+= aspeed-lpc-pcc.o
-obj-$(CONFIG_ASPEED_OTP)        += aspeed-otp.o
-obj-y        += aspeed-2600-ara.o
-=======
->>>>>>> origin/linux_6.1.15_upstream

@@ -424,31 +424,6 @@ static void hns_roce_dealloc_ucontext(struct ib_ucontext *ibcontext)
 
 static int hns_roce_mmap(struct ib_ucontext *uctx, struct vm_area_struct *vma)
 {
-<<<<<<< HEAD
-	struct hns_roce_dev *hr_dev = to_hr_dev(context->device);
-
-	switch (vma->vm_pgoff) {
-	case 0:
-		return rdma_user_mmap_io(context, vma,
-					 to_hr_ucontext(context)->uar.pfn,
-					 PAGE_SIZE,
-					 pgprot_device(vma->vm_page_prot),
-					 NULL);
-
-	/* vm_pgoff: 1 -- TPTR */
-	case 1:
-		if (!hr_dev->tptr_dma_addr || !hr_dev->tptr_size)
-			return -EINVAL;
-		/*
-		 * FIXME: using io_remap_pfn_range on the dma address returned
-		 * by dma_alloc_coherent is totally wrong.
-		 */
-		return rdma_user_mmap_io(context, vma,
-					 hr_dev->tptr_dma_addr >> PAGE_SHIFT,
-					 hr_dev->tptr_size,
-					 vma->vm_page_prot,
-					 NULL);
-=======
 	struct rdma_user_mmap_entry *rdma_entry;
 	struct hns_user_mmap_entry *entry;
 	phys_addr_t pfn;
@@ -458,7 +433,6 @@ static int hns_roce_mmap(struct ib_ucontext *uctx, struct vm_area_struct *vma)
 	rdma_entry = rdma_user_mmap_entry_get_pgoff(uctx, vma->vm_pgoff);
 	if (!rdma_entry)
 		return -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 
 	entry = to_hns_mmap(rdma_entry);
 	pfn = entry->address >> PAGE_SHIFT;
@@ -786,11 +760,7 @@ static int hns_roce_init_hem(struct hns_roce_dev *hr_dev)
 		ret = hns_roce_init_hem_table(hr_dev, &hr_dev->cqc_timer_table,
 					      HEM_TYPE_CQC_TIMER,
 					      hr_dev->caps.cqc_timer_entry_sz,
-<<<<<<< HEAD
-					      hr_dev->caps.cqc_timer_bt_num, 1);
-=======
 					      hr_dev->caps.cqc_timer_bt_num);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ret) {
 			dev_err(dev,
 				"failed to init CQC timer memory, aborting.\n");

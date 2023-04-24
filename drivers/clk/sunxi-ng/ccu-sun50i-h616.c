@@ -1147,11 +1147,7 @@ static int sun50i_h616_ccu_probe(struct platform_device *pdev)
 	val |= BIT(24);
 	writel(val, reg + SUN50I_H616_HDMI_CEC_CLK_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, &sun50i_h616_ccu_desc);
-=======
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, &sun50i_h616_ccu_desc);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id sun50i_h616_ccu_ids[] = {

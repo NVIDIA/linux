@@ -138,26 +138,6 @@ static int mtk_pinconf_get(struct pinctrl_dev *pctldev,
 	case PIN_CONFIG_BIAS_DISABLE:
 	case PIN_CONFIG_BIAS_PULL_UP:
 	case PIN_CONFIG_BIAS_PULL_DOWN:
-<<<<<<< HEAD
-		if (hw->soc->bias_get_combo) {
-			err = hw->soc->bias_get_combo(hw, desc, &pullup, &ret);
-			if (err)
-				goto out;
-			if (ret == MTK_PUPD_SET_R1R0_00)
-				ret = MTK_DISABLE;
-			if (param == PIN_CONFIG_BIAS_DISABLE) {
-				if (ret != MTK_DISABLE)
-					err = -EINVAL;
-			} else if (param == PIN_CONFIG_BIAS_PULL_UP) {
-				if (!pullup || ret == MTK_DISABLE)
-					err = -EINVAL;
-			} else if (param == PIN_CONFIG_BIAS_PULL_DOWN) {
-				if (pullup || ret == MTK_DISABLE)
-					err = -EINVAL;
-			}
-		} else {
-			err = -ENOTSUPP;
-=======
 		if (!hw->soc->bias_get_combo)
 			break;
 		err = hw->soc->bias_get_combo(hw, desc, &pullup, &ret);
@@ -174,7 +154,6 @@ static int mtk_pinconf_get(struct pinctrl_dev *pctldev,
 		} else if (param == PIN_CONFIG_BIAS_PULL_DOWN) {
 			if (pullup || ret == MTK_DISABLE)
 				err = -EINVAL;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	case PIN_CONFIG_SLEW_RATE:
@@ -834,14 +813,11 @@ static int mtk_pconf_group_set(struct pinctrl_dev *pctldev, unsigned group,
 				      pinconf_to_config_argument(configs[i]));
 		if (ret < 0)
 			return ret;
-<<<<<<< HEAD
-=======
 
 		if (pinconf_to_config_param(configs[i]) == PIN_CONFIG_DRIVE_STRENGTH_UA)
 			drive_strength_uA_found = true;
 		if (pinconf_to_config_param(configs[i]) == MTK_PIN_CONFIG_DRV_ADV)
 			adv_drve_strength_found = true;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/*

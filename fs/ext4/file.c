@@ -91,11 +91,7 @@ static ssize_t ext4_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		return generic_file_read_iter(iocb, to);
 	}
 
-<<<<<<< HEAD
-	ret = iomap_dio_rw(iocb, to, &ext4_iomap_ops, NULL, 0, 0);
-=======
 	ret = iomap_dio_rw(iocb, to, &ext4_iomap_ops, NULL, 0, NULL, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	inode_unlock_shared(inode);
 
 	file_accessed(iocb->ki_filp);
@@ -590,11 +586,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
 		iomap_ops = &ext4_iomap_overwrite_ops;
 	ret = iomap_dio_rw(iocb, from, iomap_ops, &ext4_dio_write_ops,
 			   (unaligned_io || extend) ? IOMAP_DIO_FORCE_WAIT : 0,
-<<<<<<< HEAD
-			   0);
-=======
 			   NULL, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret == -ENOTBLK)
 		ret = 0;
 

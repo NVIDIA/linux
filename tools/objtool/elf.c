@@ -374,10 +374,7 @@ static void elf_add_symbol(struct elf *elf, struct symbol *sym)
 	struct list_head *entry;
 	struct rb_node *pnode;
 
-<<<<<<< HEAD
-=======
 	INIT_LIST_HEAD(&sym->pv_target);
->>>>>>> origin/linux_6.1.15_upstream
 	sym->alias = sym;
 
 	sym->type = GELF_ST_TYPE(sym->sym.st_info);
@@ -622,14 +619,11 @@ static int elf_update_symbol(struct elf *elf, struct section *symtab,
 	Elf64_Xword entsize = symtab->sh.sh_entsize;
 	int max_idx, idx = sym->idx;
 	Elf_Scn *s, *t = NULL;
-<<<<<<< HEAD
-=======
 	bool is_special_shndx = sym->sym.st_shndx >= SHN_LORESERVE &&
 				sym->sym.st_shndx != SHN_XINDEX;
 
 	if (is_special_shndx)
 		shndx = sym->sym.st_shndx;
->>>>>>> origin/linux_6.1.15_upstream
 
 	s = elf_getscn(elf->elf, symtab->idx);
 	if (!s) {
@@ -715,11 +709,7 @@ static int elf_update_symbol(struct elf *elf, struct section *symtab,
 	}
 
 	/* setup extended section index magic and write the symbol */
-<<<<<<< HEAD
-	if (shndx >= SHN_UNDEF && shndx < SHN_LORESERVE) {
-=======
 	if ((shndx >= SHN_UNDEF && shndx < SHN_LORESERVE) || is_special_shndx) {
->>>>>>> origin/linux_6.1.15_upstream
 		sym->sym.st_shndx = shndx;
 		if (!shndx_data)
 			shndx = 0;

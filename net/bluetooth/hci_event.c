@@ -6404,19 +6404,6 @@ static void hci_le_adv_report_evt(struct hci_dev *hdev, void *data,
 		struct hci_ev_le_advertising_info *info;
 		s8 rssi;
 
-<<<<<<< HEAD
-		if (ptr > (void *)skb_tail_pointer(skb) - sizeof(*ev)) {
-			bt_dev_err(hdev, "Malicious advertising data.");
-			break;
-		}
-
-		if (ev->length <= HCI_MAX_AD_LENGTH &&
-		    ev->data + ev->length <= skb_tail_pointer(skb)) {
-			rssi = ev->data[ev->length];
-			process_adv_report(hdev, ev->evt_type, &ev->bdaddr,
-					   ev->bdaddr_type, NULL, 0, rssi,
-					   ev->data, ev->length, false);
-=======
 		info = hci_le_ev_skb_pull(hdev, skb,
 					  HCI_EV_LE_ADVERTISING_REPORT,
 					  sizeof(*info));
@@ -6433,7 +6420,6 @@ static void hci_le_adv_report_evt(struct hci_dev *hdev, void *data,
 					   info->bdaddr_type, NULL, 0, rssi,
 					   info->data, info->length, false,
 					   false, instant);
->>>>>>> origin/linux_6.1.15_upstream
 		} else {
 			bt_dev_err(hdev, "Dropping invalid advertising data");
 		}

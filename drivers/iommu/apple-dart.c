@@ -778,8 +778,6 @@ static const struct iommu_ops apple_dart_iommu_ops = {
 	.get_resv_regions = apple_dart_get_resv_regions,
 	.pgsize_bitmap = -1UL, /* Restricted during dart probe */
 	.owner = THIS_MODULE,
-<<<<<<< HEAD
-=======
 	.default_domain_ops = &(const struct iommu_domain_ops) {
 		.attach_dev	= apple_dart_attach_dev,
 		.detach_dev	= apple_dart_detach_dev,
@@ -791,7 +789,6 @@ static const struct iommu_ops apple_dart_iommu_ops = {
 		.iova_to_phys	= apple_dart_iova_to_phys,
 		.free		= apple_dart_domain_free,
 	}
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static irqreturn_t apple_dart_irq(int irq, void *dev)

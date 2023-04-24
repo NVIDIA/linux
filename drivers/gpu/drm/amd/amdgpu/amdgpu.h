@@ -1404,13 +1404,6 @@ static inline bool amdgpu_acpi_is_s0ix_active(struct amdgpu_device *adev) { retu
 static inline bool amdgpu_acpi_should_gpu_reset(struct amdgpu_device *adev) { return false; }
 static inline bool amdgpu_acpi_is_s3_active(struct amdgpu_device *adev) { return false; }
 #endif
-<<<<<<< HEAD
-
-int amdgpu_cs_find_mapping(struct amdgpu_cs_parser *parser,
-			   uint64_t addr, struct amdgpu_bo **bo,
-			   struct amdgpu_bo_va_mapping **mapping);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 #if defined(CONFIG_DRM_AMD_DC)
 int amdgpu_dm_display_resume(struct amdgpu_device *adev );

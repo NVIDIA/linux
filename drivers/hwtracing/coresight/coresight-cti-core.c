@@ -171,10 +171,6 @@ static int cti_disable_hw(struct cti_drvdata *drvdata)
 	coresight_disclaim_device_unlocked(csdev);
 	CS_LOCK(drvdata->base);
 	spin_unlock(&drvdata->spinlock);
-<<<<<<< HEAD
-	pm_runtime_put(dev->parent);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 
 	/* not disabled this call */

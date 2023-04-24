@@ -814,16 +814,6 @@ static void bcm_sf2_sw_mac_link_down(struct dsa_switch *ds, int port,
 
 	if (priv->wol_ports_mask & BIT(port))
 		return;
-<<<<<<< HEAD
-
-	if (port != core_readl(priv, CORE_IMP0_PRT_ID)) {
-		if (priv->type == BCM4908_DEVICE_ID ||
-		    priv->type == BCM7445_DEVICE_ID)
-			offset = CORE_STS_OVERRIDE_GMIIP_PORT(port);
-		else
-			offset = CORE_STS_OVERRIDE_GMIIP2_PORT(port);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	offset = bcm_sf2_port_override_offset(priv, port);
 	reg = core_readl(priv, offset);

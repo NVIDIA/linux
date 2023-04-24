@@ -991,23 +991,11 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
 		 * free_pages_prepare so don't reset it here for keeping
 		 * the type to work PageAnon, for example.
 		 */
-<<<<<<< HEAD
-		if (!PageMappingFlags(page))
-			page->mapping = NULL;
-
-		if (likely(!is_zone_device_page(newpage))) {
-			int i, nr = compound_nr(newpage);
-
-			for (i = 0; i < nr; i++)
-				flush_dcache_page(newpage + i);
-		}
-=======
 		if (!folio_mapping_flags(src))
 			src->mapping = NULL;
 
 		if (likely(!folio_is_zone_device(dst)))
 			flush_dcache_folio(dst);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 out:
 	return rc;

@@ -117,31 +117,13 @@ void ax25_dev_device_down(struct net_device *dev)
 
 	if ((s = ax25_dev_list) == ax25_dev) {
 		ax25_dev_list = s->next;
-<<<<<<< HEAD
-		spin_unlock_bh(&ax25_dev_lock);
-		ax25_dev_put(ax25_dev);
-		dev->ax25_ptr = NULL;
-		dev_put(dev);
-		ax25_dev_put(ax25_dev);
-		return;
-=======
 		goto unlock_put;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	while (s != NULL && s->next != NULL) {
 		if (s->next == ax25_dev) {
 			s->next = ax25_dev->next;
-<<<<<<< HEAD
-			spin_unlock_bh(&ax25_dev_lock);
-			ax25_dev_put(ax25_dev);
-			dev->ax25_ptr = NULL;
-			dev_put(dev);
-			ax25_dev_put(ax25_dev);
-			return;
-=======
 			goto unlock_put;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		s = s->next;
@@ -149,8 +131,6 @@ void ax25_dev_device_down(struct net_device *dev)
 	spin_unlock_bh(&ax25_dev_lock);
 	dev->ax25_ptr = NULL;
 	ax25_dev_put(ax25_dev);
-<<<<<<< HEAD
-=======
 	return;
 
 unlock_put:
@@ -159,7 +139,6 @@ unlock_put:
 	dev->ax25_ptr = NULL;
 	netdev_put(dev, &ax25_dev->dev_tracker);
 	ax25_dev_put(ax25_dev);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int ax25_fwd_ioctl(unsigned int cmd, struct ax25_fwd_struct *fwd)

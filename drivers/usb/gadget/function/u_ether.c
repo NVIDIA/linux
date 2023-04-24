@@ -775,21 +775,14 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 	dev->qmult = qmult;
 	snprintf(net->name, sizeof(net->name), "%s%%d", netname);
 
-<<<<<<< HEAD
-	if (get_ether_addr(dev_addr, net->dev_addr)) {
-=======
 	if (get_ether_addr(dev_addr, addr)) {
->>>>>>> origin/linux_6.1.15_upstream
 		net->addr_assign_type = NET_ADDR_RANDOM;
 		dev_warn(&g->dev,
 			"using random %s ethernet address\n", "self");
 	} else {
 		net->addr_assign_type = NET_ADDR_SET;
 	}
-<<<<<<< HEAD
-=======
 	eth_hw_addr_set(net, addr);
->>>>>>> origin/linux_6.1.15_upstream
 	if (get_ether_addr(host_addr, dev->host_mac))
 		dev_warn(&g->dev,
 			"using random %s ethernet address\n", "host");

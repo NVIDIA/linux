@@ -229,19 +229,6 @@ HWCAP2_MTE
     by Documentation/arm64/memory-tagging-extension.rst.
 
 HWCAP2_ECV
-<<<<<<< HEAD
-
-    Functionality implied by ID_AA64MMFR0_EL1.ECV == 0b0001.
-
-HWCAP2_AFP
-
-    Functionality implied by ID_AA64MFR1_EL1.AFP == 0b0001.
-
-HWCAP2_RPRES
-
-    Functionality implied by ID_AA64ISAR2_EL1.RPRES == 0b0001.
-
-=======
     Functionality implied by ID_AA64MMFR0_EL1.ECV == 0b0001.
 
 HWCAP2_AFP
@@ -288,7 +275,6 @@ HWCAP2_EBF16
 HWCAP2_SVE_EBF16
     Functionality implied by ID_AA64ZFR0_EL1.BF16 == 0b0010.
 
->>>>>>> origin/linux_6.1.15_upstream
 4. Unused AT_HWCAP bits
 -----------------------
 

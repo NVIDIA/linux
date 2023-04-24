@@ -832,12 +832,6 @@ static int uclogic_params_huion_init(struct uclogic_params *params,
 	iface = to_usb_interface(hdev->dev.parent);
 	bInterfaceNumber = iface->cur_altsetting->desc.bInterfaceNumber;
 
-<<<<<<< HEAD
-	/* If it's not a pen interface */
-	if (bInterfaceNumber != 0) {
-		/* TODO: Consider marking the interface invalid */
-		uclogic_params_init_with_pen_unused(&p);
-=======
 	/* If it's a custom keyboard interface */
 	if (bInterfaceNumber == 1) {
 		/* Keep everything intact, but mark pen usage invalid */
@@ -846,7 +840,6 @@ static int uclogic_params_huion_init(struct uclogic_params *params,
 	/* Else, if it's not a pen interface */
 	} else if (bInterfaceNumber != 0) {
 		uclogic_params_init_invalid(&p);
->>>>>>> origin/linux_6.1.15_upstream
 		goto output;
 	}
 

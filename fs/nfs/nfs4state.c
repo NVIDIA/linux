@@ -2137,11 +2137,7 @@ static int nfs4_try_migration(struct nfs_server *server, const struct cred *cred
 	if (!locations->nlocations)
 		goto out;
 
-<<<<<<< HEAD
-	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
-=======
 	if (!(locations->fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
->>>>>>> origin/linux_6.1.15_upstream
 		dprintk("<-- %s: No fs_locations data, migration skipped\n",
 			__func__);
 		goto out;
@@ -2712,17 +2708,8 @@ static void nfs4_state_manager(struct nfs_client *clp)
 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
 		}
 
-<<<<<<< HEAD
-		/* Did we race with an attempt to give us more work? */
-		if (!test_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state))
-			return;
-		if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
-			return;
-		memflags = memalloc_nofs_save();
-=======
 		return;
 
->>>>>>> origin/linux_6.1.15_upstream
 	} while (refcount_read(&clp->cl_count) > 1 && !signalled());
 	goto out_drain;
 

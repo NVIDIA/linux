@@ -259,8 +259,6 @@ struct dc_caps {
 	bool vbios_lttpr_aware;
 	bool vbios_lttpr_enable;
 	uint32_t max_otg_num;
-<<<<<<< HEAD
-=======
 	uint32_t max_cab_allocation_bytes;
 	uint32_t cache_line_size;
 	uint32_t cache_num_ways;
@@ -270,7 +268,6 @@ struct dc_caps {
 	uint16_t subvp_pstate_allow_width_us;
 	uint16_t subvp_vertical_int_margin_us;
 	bool seamless_odm;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct dc_bug_wa {

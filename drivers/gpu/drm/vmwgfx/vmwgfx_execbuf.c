@@ -3903,12 +3903,7 @@ vmw_execbuf_copy_fence_user(struct vmw_private *dev_priv,
 	 * handle.
 	 */
 	if (unlikely(ret != 0) && (fence_rep.error == 0)) {
-<<<<<<< HEAD
-		ttm_ref_object_base_unref(vmw_fp->tfile, fence_handle,
-					  TTM_REF_USAGE);
-=======
 		ttm_ref_object_base_unref(vmw_fp->tfile, fence_handle);
->>>>>>> origin/linux_6.1.15_upstream
 		VMW_DEBUG_USER("Fence copy error. Syncing.\n");
 		(void) vmw_fence_obj_wait(fence, false, false,
 					  VMW_FENCE_WAIT_TIMEOUT);

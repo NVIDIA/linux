@@ -984,17 +984,9 @@ static __init void ftrace_profile_tracefs(struct dentry *d_tracer)
 		}
 	}
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("function_profile_enabled",
-				    TRACE_MODE_WRITE, d_tracer, NULL,
-				    &ftrace_profile_fops);
-	if (!entry)
-		pr_warn("Could not create tracefs 'function_profile_enabled' entry\n");
-=======
 	trace_create_file("function_profile_enabled",
 			  TRACE_MODE_WRITE, d_tracer, NULL,
 			  &ftrace_profile_fops);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 #else /* CONFIG_FUNCTION_PROFILER */

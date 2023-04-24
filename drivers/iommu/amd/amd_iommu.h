@@ -13,14 +13,8 @@
 
 extern irqreturn_t amd_iommu_int_thread(int irq, void *data);
 extern irqreturn_t amd_iommu_int_handler(int irq, void *data);
-<<<<<<< HEAD
-extern void amd_iommu_apply_erratum_63(u16 devid);
-extern void amd_iommu_restart_event_logging(struct amd_iommu *iommu);
-extern void amd_iommu_reset_cmd_buffer(struct amd_iommu *iommu);
-=======
 extern void amd_iommu_apply_erratum_63(struct amd_iommu *iommu, u16 devid);
 extern void amd_iommu_restart_event_logging(struct amd_iommu *iommu);
->>>>>>> origin/linux_6.1.15_upstream
 extern int amd_iommu_init_devices(void);
 extern void amd_iommu_uninit_devices(void);
 extern void amd_iommu_init_notifier(void);

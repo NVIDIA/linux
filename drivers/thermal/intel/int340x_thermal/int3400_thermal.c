@@ -315,44 +315,6 @@ end:
 	return result;
 }
 
-<<<<<<< HEAD
-static int int3400_thermal_run_osc(acpi_handle handle,
-				enum int3400_thermal_uuid uuid, bool enable)
-{
-	u32 ret, buf[2];
-	acpi_status status;
-	int result = 0;
-	struct acpi_osc_context context = {
-		.uuid_str = NULL,
-		.rev = 1,
-		.cap.length = 8,
-	};
-
-	if (uuid < 0 || uuid >= INT3400_THERMAL_MAXIMUM_UUID)
-		return -EINVAL;
-
-	context.uuid_str = int3400_thermal_uuids[uuid];
-
-	buf[OSC_QUERY_DWORD] = 0;
-	buf[OSC_SUPPORT_DWORD] = enable;
-
-	context.cap.pointer = buf;
-
-	status = acpi_run_osc(handle, &context);
-	if (ACPI_SUCCESS(status)) {
-		ret = *((u32 *)(context.ret.pointer + 4));
-		if (ret != enable)
-			result = -EPERM;
-	} else
-		result = -EPERM;
-
-	kfree(context.ret.pointer);
-
-	return result;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static ssize_t odvp_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
@@ -565,15 +527,8 @@ static void int3400_setup_gddv(struct int3400_thermal_priv *priv)
 	priv->data_vault = kmemdup(obj->package.elements[0].buffer.pointer,
 				   obj->package.elements[0].buffer.length,
 				   GFP_KERNEL);
-<<<<<<< HEAD
-	if (!priv->data_vault) {
-		kfree(buffer.pointer);
-		return;
-	}
-=======
 	if (ZERO_OR_NULL_PTR(priv->data_vault))
 		goto out_free;
->>>>>>> origin/linux_6.1.15_upstream
 
 	bin_attr_data_vault.private = priv->data_vault;
 	bin_attr_data_vault.size = obj->package.elements[0].buffer.length;

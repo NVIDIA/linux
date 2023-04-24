@@ -2280,16 +2280,6 @@ retry:
 	 * manually, or in the worst case we must wait at most 5 seconds
 	 * to wait the journal logs to be flushed by the MDSes periodically.
 	 */
-<<<<<<< HEAD
-	if ((req1 || req2) && likely(max_sessions)) {
-		struct ceph_mds_session **sessions = NULL;
-		struct ceph_mds_session *s;
-		struct ceph_mds_request *req;
-		int i;
-
-		sessions = kzalloc(max_sessions * sizeof(s), GFP_KERNEL);
-		if (!sessions) {
-=======
 	if (req1 || req2) {
 		struct ceph_mds_request *req;
 		struct ceph_mds_session **sessions;
@@ -2303,7 +2293,6 @@ retry:
 		sessions = kcalloc(max_sessions, sizeof(s), GFP_KERNEL);
 		if (!sessions) {
 			mutex_unlock(&mdsc->mutex);
->>>>>>> origin/linux_6.1.15_upstream
 			err = -ENOMEM;
 			goto out;
 		}
@@ -2315,19 +2304,6 @@ retry:
 				s = req->r_session;
 				if (!s)
 					continue;
-<<<<<<< HEAD
-				if (unlikely(s->s_mds >= max_sessions)) {
-					spin_unlock(&ci->i_unsafe_lock);
-					for (i = 0; i < max_sessions; i++) {
-						s = sessions[i];
-						if (s)
-							ceph_put_mds_session(s);
-					}
-					kfree(sessions);
-					goto retry;
-				}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 				if (!sessions[s->s_mds]) {
 					s = ceph_get_mds_session(s);
 					sessions[s->s_mds] = s;
@@ -2340,19 +2316,6 @@ retry:
 				s = req->r_session;
 				if (!s)
 					continue;
-<<<<<<< HEAD
-				if (unlikely(s->s_mds >= max_sessions)) {
-					spin_unlock(&ci->i_unsafe_lock);
-					for (i = 0; i < max_sessions; i++) {
-						s = sessions[i];
-						if (s)
-							ceph_put_mds_session(s);
-					}
-					kfree(sessions);
-					goto retry;
-				}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 				if (!sessions[s->s_mds]) {
 					s = ceph_get_mds_session(s);
 					sessions[s->s_mds] = s;

@@ -1515,92 +1515,6 @@ static int pci_default_setup(struct serial_private *priv,
 
 	return setup_port(priv, port, bar, offset, board->reg_shift);
 }
-<<<<<<< HEAD
-static void
-pericom_do_set_divisor(struct uart_port *port, unsigned int baud,
-			       unsigned int quot, unsigned int quot_frac)
-{
-	int scr;
-	int lcr;
-
-	for (scr = 16; scr > 4; scr--) {
-		unsigned int maxrate = port->uartclk / scr;
-		unsigned int divisor = max(maxrate / baud, 1U);
-		int delta = maxrate / divisor - baud;
-
-		if (baud > maxrate + baud / 50)
-			continue;
-
-		if (delta > baud / 50)
-			divisor++;
-
-		if (divisor > 0xffff)
-			continue;
-
-		/* Update delta due to possible divisor change */
-		delta = maxrate / divisor - baud;
-		if (abs(delta) < baud / 50) {
-			lcr = serial_port_in(port, UART_LCR);
-			serial_port_out(port, UART_LCR, lcr | 0x80);
-			serial_port_out(port, UART_DLL, divisor & 0xff);
-			serial_port_out(port, UART_DLM, divisor >> 8 & 0xff);
-			serial_port_out(port, 2, 16 - scr);
-			serial_port_out(port, UART_LCR, lcr);
-			return;
-		}
-	}
-}
-static int pci_pericom_setup(struct serial_private *priv,
-		  const struct pciserial_board *board,
-		  struct uart_8250_port *port, int idx)
-{
-	unsigned int bar, offset = board->first_offset, maxnr;
-
-	bar = FL_GET_BASE(board->flags);
-	if (board->flags & FL_BASE_BARS)
-		bar += idx;
-	else
-		offset += idx * board->uart_offset;
-
-
-	maxnr = (pci_resource_len(priv->dev, bar) - board->first_offset) >>
-		(board->reg_shift + 3);
-
-	if (board->flags & FL_REGION_SZ_CAP && idx >= maxnr)
-		return 1;
-
-	port->port.set_divisor = pericom_do_set_divisor;
-
-	return setup_port(priv, port, bar, offset, board->reg_shift);
-}
-
-static int pci_pericom_setup_four_at_eight(struct serial_private *priv,
-		  const struct pciserial_board *board,
-		  struct uart_8250_port *port, int idx)
-{
-	unsigned int bar, offset = board->first_offset, maxnr;
-
-	bar = FL_GET_BASE(board->flags);
-	if (board->flags & FL_BASE_BARS)
-		bar += idx;
-	else
-		offset += idx * board->uart_offset;
-
-	if (idx==3)
-		offset = 0x38;
-
-	maxnr = (pci_resource_len(priv->dev, bar) - board->first_offset) >>
-		(board->reg_shift + 3);
-
-	if (board->flags & FL_REGION_SZ_CAP && idx >= maxnr)
-		return 1;
-
-	port->port.set_divisor = pericom_do_set_divisor;
-
-	return setup_port(priv, port, bar, offset, board->reg_shift);
-}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 static int
 ce4100_serial_setup(struct serial_private *priv,
@@ -2375,129 +2289,7 @@ static struct pci_serial_quirk pci_serial_quirks[] = {
 		.setup		= pci_default_setup,
 		.exit		= pci_plx9050_exit,
 	},
-<<<<<<< HEAD
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM_4SDB,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_COM_4S,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM232_4DB,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_COM232_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM_4SMDB,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_COM_4SM,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_ICM422_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_ICM485_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_ICM232_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_ICM_4S,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_MPCIE_ICM232_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM422_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM485_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM232_4,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_COM_4SM,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_DEVICE_ID_ACCESIO_PCIE_ICM_4SM,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup_four_at_eight,
-	},
-	{
-		.vendor     = PCI_VENDOR_ID_ACCESIO,
-		.device     = PCI_ANY_ID,
-		.subvendor  = PCI_ANY_ID,
-		.subdevice  = PCI_ANY_ID,
-		.setup      = pci_pericom_setup,
-	},	/*
-=======
 	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * SBS Technologies, Inc., PMC-OCTALPRO 232
 	 */
 	{
@@ -3055,10 +2847,6 @@ enum pci_board_num_t {
 	pbn_panacom2,
 	pbn_panacom4,
 	pbn_plx_romulus,
-<<<<<<< HEAD
-	pbn_endrun_2_3906250,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	pbn_oxsemi,
 	pbn_oxsemi_1_15625000,
 	pbn_oxsemi_2_15625000,
@@ -3581,23 +3369,6 @@ static struct pciserial_board pci_boards[] = {
 	},
 
 	/*
-<<<<<<< HEAD
-	 * EndRun Technologies
-	* Uses the size of PCI Base region 0 to
-	* signal now many ports are available
-	* 2 port 952 Uart support
-	*/
-	[pbn_endrun_2_3906250] = {
-		.flags		= FL_BASE0,
-		.num_ports	= 2,
-		.base_baud	= 3906250,
-		.uart_offset	= 0x200,
-		.first_offset	= 0x1000,
-	},
-
-	/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	 * This board uses the size of PCI Base region 0 to
 	 * signal now many ports are available
 	 */
@@ -4517,16 +4288,6 @@ static const struct pci_device_id serial_pci_tbl[] = {
 		0x10b5, 0x106a, 0, 0,
 		pbn_plx_romulus },
 	/*
-<<<<<<< HEAD
-	* EndRun Technologies. PCI express device range.
-	*    EndRun PTP/1588 has 2 Native UARTs.
-	*/
-	{	PCI_VENDOR_ID_ENDRUN, PCI_DEVICE_ID_ENDRUN_1588,
-		PCI_ANY_ID, PCI_ANY_ID, 0, 0,
-		pbn_endrun_2_3906250 },
-	/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	 * Quatech cards. These actually have configurable clocks but for
 	 * now we just use the default.
 	 *
@@ -5197,7 +4958,6 @@ static const struct pci_device_id serial_pci_tbl[] = {
 		PCI_ANY_ID, PCI_ANY_ID, 0, 0,    /* 135a.0dc0 */
 		pbn_b2_4_115200 },
 	/* Brainboxes Devices */
-<<<<<<< HEAD
 	/*
 	* Brainboxes UC-101
 	*/
@@ -5206,16 +4966,6 @@ static const struct pci_device_id serial_pci_tbl[] = {
 		0, 0,
 		pbn_b2_2_115200 },
 	/*
-=======
-	/*
-	* Brainboxes UC-101
-	*/
-	{       PCI_VENDOR_ID_INTASHIELD, 0x0BA1,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	/*
->>>>>>> origin/linux_6.1.15_upstream
 	 * Brainboxes UC-235/246
 	 */
 	{	PCI_VENDOR_ID_INTASHIELD, 0x0AA1,
@@ -5239,83 +4989,6 @@ static const struct pci_device_id serial_pci_tbl[] = {
 	{	PCI_VENDOR_ID_INTASHIELD, 0x0E34,
 		PCI_ANY_ID, PCI_ANY_ID,
 		PCI_CLASS_COMMUNICATION_MULTISERIAL << 8, 0xffff00,
-<<<<<<< HEAD
-		pbn_b2_4_115200 },
-	/*
-	 * Brainboxes UC-268
-	 */
-	{       PCI_VENDOR_ID_INTASHIELD, 0x0841,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_4_115200 },
-	/*
-	 * Brainboxes UC-275/279
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0881,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_8_115200 },
-	/*
-	 * Brainboxes UC-302
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x08E1,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	/*
-	 * Brainboxes UC-310
-	 */
-	{       PCI_VENDOR_ID_INTASHIELD, 0x08C1,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	/*
-	 * Brainboxes UC-313
-	 */
-	{       PCI_VENDOR_ID_INTASHIELD, 0x08A3,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	/*
-	 * Brainboxes UC-320/324
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0A61,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_1_115200 },
-	/*
-	 * Brainboxes UC-346
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0B02,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_4_115200 },
-	/*
-	 * Brainboxes UC-357
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0A81,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0A83,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_2_115200 },
-	/*
-	 * Brainboxes UC-368
-	 */
-	{	PCI_VENDOR_ID_INTASHIELD, 0x0C41,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-		pbn_b2_4_115200 },
-	/*
-	 * Brainboxes UC-420/431
-	 */
-	{       PCI_VENDOR_ID_INTASHIELD, 0x0921,
-		PCI_ANY_ID, PCI_ANY_ID,
-		0, 0,
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		pbn_b2_4_115200 },
 	/*
 	 * Brainboxes UC-268

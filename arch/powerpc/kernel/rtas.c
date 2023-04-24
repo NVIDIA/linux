@@ -59,13 +59,10 @@ static inline void do_enter_rtas(unsigned long args)
 	msr = mfmsr();
 	BUG_ON(!(msr & MSR_RI));
 
-<<<<<<< HEAD
-=======
 	BUG_ON(!irqs_disabled());
 
 	hard_irq_disable(); /* Ensure MSR[EE] is disabled on PPC64 */
 
->>>>>>> origin/linux_6.1.15_upstream
 	enter_rtas(args);
 
 	srr_regs_clobbered(); /* rtas uses SRRs, invalidate */

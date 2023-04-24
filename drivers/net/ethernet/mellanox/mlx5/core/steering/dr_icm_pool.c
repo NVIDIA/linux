@@ -188,14 +188,6 @@ static void dr_icm_chunk_ste_init(struct mlx5dr_icm_chunk *chunk, int offset)
 
 static void dr_icm_chunk_ste_cleanup(struct mlx5dr_icm_chunk *chunk)
 {
-<<<<<<< HEAD
-	struct mlx5dr_icm_buddy_mem *buddy = chunk->buddy_mem;
-
-	memset(chunk->hw_ste_arr, 0,
-	       chunk->num_of_entries * dr_icm_buddy_get_ste_size(buddy));
-	memset(chunk->ste_arr, 0,
-	       chunk->num_of_entries * sizeof(chunk->ste_arr[0]));
-=======
 	int num_of_entries = mlx5dr_icm_pool_get_chunk_num_of_entries(chunk);
 	struct mlx5dr_icm_buddy_mem *buddy = chunk->buddy_mem;
 
@@ -203,7 +195,6 @@ static void dr_icm_chunk_ste_cleanup(struct mlx5dr_icm_chunk *chunk)
 	       num_of_entries * dr_icm_buddy_get_ste_size(buddy));
 	memset(chunk->ste_arr, 0,
 	       num_of_entries * sizeof(chunk->ste_arr[0]));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static enum mlx5dr_icm_type
@@ -339,20 +330,13 @@ dr_icm_chunk_create(struct mlx5dr_icm_pool *pool,
 	offset = mlx5dr_icm_pool_dm_type_to_entry_size(pool->icm_type) * seg;
 
 	chunk->seg = seg;
-<<<<<<< HEAD
-=======
 	chunk->size = chunk_size;
->>>>>>> origin/linux_6.1.15_upstream
 	chunk->buddy_mem = buddy_mem_pool;
 
 	if (pool->icm_type == DR_ICM_TYPE_STE)
 		dr_icm_chunk_ste_init(chunk, offset);
 
-<<<<<<< HEAD
-	buddy_mem_pool->used_memory += chunk->byte_size;
-=======
 	buddy_mem_pool->used_memory += mlx5dr_icm_pool_get_chunk_byte_size(chunk);
->>>>>>> origin/linux_6.1.15_upstream
 	INIT_LIST_HEAD(&chunk->chunk_list);
 
 	/* chunk now is part of the used_list */

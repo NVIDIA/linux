@@ -211,23 +211,6 @@ static void dma_buf_poll_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
 	dcb->active = 0;
 	spin_unlock_irqrestore(&dcb->poll->lock, flags);
 	dma_fence_put(fence);
-<<<<<<< HEAD
-}
-
-static bool dma_buf_poll_shared(struct dma_resv *resv,
-				struct dma_buf_poll_cb_t *dcb)
-{
-	struct dma_resv_list *fobj = dma_resv_shared_list(resv);
-	struct dma_fence *fence;
-	int i, r;
-
-	if (!fobj)
-		return false;
-
-	for (i = 0; i < fobj->shared_count; ++i) {
-		fence = rcu_dereference_protected(fobj->shared[i],
-						  dma_resv_held(resv));
-=======
 	/* Paired with get_file in dma_buf_poll */
 	fput(dmabuf->file);
 }
@@ -241,7 +224,6 @@ static bool dma_buf_poll_add_cb(struct dma_resv *resv, bool write,
 
 	dma_resv_for_each_fence(&cursor, resv, dma_resv_usage_rw(write),
 				fence) {
->>>>>>> origin/linux_6.1.15_upstream
 		dma_fence_get(fence);
 		r = dma_fence_add_callback(fence, &dcb->cb, dma_buf_poll_cb);
 		if (!r)
@@ -250,27 +232,6 @@ static bool dma_buf_poll_add_cb(struct dma_resv *resv, bool write,
 	}
 
 	return false;
-<<<<<<< HEAD
-}
-
-static bool dma_buf_poll_excl(struct dma_resv *resv,
-			      struct dma_buf_poll_cb_t *dcb)
-{
-	struct dma_fence *fence = dma_resv_excl_fence(resv);
-	int r;
-
-	if (!fence)
-		return false;
-
-	dma_fence_get(fence);
-	r = dma_fence_add_callback(fence, &dcb->cb, dma_buf_poll_cb);
-	if (!r)
-		return true;
-	dma_fence_put(fence);
-
-	return false;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static __poll_t dma_buf_poll(struct file *file, poll_table *poll)
@@ -305,15 +266,10 @@ static __poll_t dma_buf_poll(struct file *file, poll_table *poll)
 		spin_unlock_irq(&dmabuf->poll.lock);
 
 		if (events & EPOLLOUT) {
-<<<<<<< HEAD
-			if (!dma_buf_poll_shared(resv, dcb) &&
-			    !dma_buf_poll_excl(resv, dcb))
-=======
 			/* Paired with fput in dma_buf_poll_cb */
 			get_file(dmabuf->file);
 
 			if (!dma_buf_poll_add_cb(resv, true, dcb))
->>>>>>> origin/linux_6.1.15_upstream
 				/* No callback queued, wake up any other waiters */
 				dma_buf_poll_cb(NULL, &dcb->cb);
 			else
@@ -333,14 +289,10 @@ static __poll_t dma_buf_poll(struct file *file, poll_table *poll)
 		spin_unlock_irq(&dmabuf->poll.lock);
 
 		if (events & EPOLLIN) {
-<<<<<<< HEAD
-			if (!dma_buf_poll_excl(resv, dcb))
-=======
 			/* Paired with fput in dma_buf_poll_cb */
 			get_file(dmabuf->file);
 
 			if (!dma_buf_poll_add_cb(resv, false, dcb))
->>>>>>> origin/linux_6.1.15_upstream
 				/* No callback queued, wake up any other waiters */
 				dma_buf_poll_cb(NULL, &dcb->cb);
 			else
@@ -575,10 +527,6 @@ static inline int is_dma_buf_file(struct file *file)
 static struct file *dma_buf_getfile(size_t size, int flags)
 {
 	static atomic64_t dmabuf_inode = ATOMIC64_INIT(0);
-<<<<<<< HEAD
-	struct file *file;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	struct inode *inode = alloc_anon_inode(dma_buf_mnt->mnt_sb);
 	struct file *file;
 
@@ -595,10 +543,7 @@ static struct file *dma_buf_getfile(size_t size, int flags)
 	 * value.
 	 */
 	inode->i_ino = atomic64_add_return(1, &dmabuf_inode);
-<<<<<<< HEAD
-=======
 	flags &= O_ACCMODE | O_NONBLOCK;
->>>>>>> origin/linux_6.1.15_upstream
 	file = alloc_file_pseudo(inode, dma_buf_mnt, "dmabuf",
 				 flags, &dma_buf_fops);
 	if (IS_ERR(file))
@@ -710,11 +655,8 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 	init_waitqueue_head(&dmabuf->poll);
 	dmabuf->cb_in.poll = dmabuf->cb_out.poll = &dmabuf->poll;
 	dmabuf->cb_in.active = dmabuf->cb_out.active = 0;
-<<<<<<< HEAD
-=======
 	mutex_init(&dmabuf->lock);
 	INIT_LIST_HEAD(&dmabuf->attachments);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!resv) {
 		dmabuf->resv = (struct dma_resv *)&dmabuf[1];
@@ -731,19 +673,9 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 	file->f_path.dentry->d_fsdata = dmabuf;
 	dmabuf->file = file;
 
-<<<<<<< HEAD
-	mutex_init(&dmabuf->lock);
-	INIT_LIST_HEAD(&dmabuf->attachments);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_lock(&db_list.lock);
 	list_add(&dmabuf->list_node, &db_list.head);
 	mutex_unlock(&db_list.lock);
-
-	ret = dma_buf_stats_setup(dmabuf);
-	if (ret)
-		goto err_sysfs;
 
 	return dmabuf;
 

@@ -582,8 +582,6 @@ static u64 flush_next_time;
 
 #define FLUSH_TIME (2UL*HZ)
 
-<<<<<<< HEAD
-=======
 /*
  * Accessors to ensure that preemption is disabled on PREEMPT_RT because it can
  * not rely on this as part of an acquired spinlock_t lock. These functions are
@@ -606,7 +604,6 @@ static void memcg_stats_unlock(void)
 	preempt_enable_nested();
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static inline void memcg_rstat_updated(struct mem_cgroup *memcg, int val)
 {
 	unsigned int x;
@@ -615,9 +612,6 @@ static inline void memcg_rstat_updated(struct mem_cgroup *memcg, int val)
 
 	x = __this_cpu_add_return(stats_updates, abs(val));
 	if (x > MEMCG_CHARGE_BATCH) {
-<<<<<<< HEAD
-		atomic_add(x / MEMCG_CHARGE_BATCH, &stats_flush_threshold);
-=======
 		/*
 		 * If stats_flush_threshold exceeds the threshold
 		 * (>num_online_cpus()), cgroup stats update will be triggered
@@ -626,7 +620,6 @@ static inline void memcg_rstat_updated(struct mem_cgroup *memcg, int val)
 		 */
 		if (atomic_read(&stats_flush_threshold) <= num_online_cpus())
 			atomic_add(x / MEMCG_CHARGE_BATCH, &stats_flush_threshold);
->>>>>>> origin/linux_6.1.15_upstream
 		__this_cpu_write(stats_updates, 0);
 	}
 }
@@ -662,8 +655,6 @@ static void flush_memcg_stats_dwork(struct work_struct *w)
 	queue_delayed_work(system_unbound_wq, &stats_flush_dwork, FLUSH_TIME);
 }
 
-<<<<<<< HEAD
-=======
 /* Subset of vm_event_item to report for memcg event stats */
 static const unsigned int memcg_vm_event_stat[] = {
 	PGPGIN,
@@ -739,7 +730,6 @@ unsigned long memcg_page_state(struct mem_cgroup *memcg, int idx)
 	return x;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /**
  * __mod_memcg_state - update cgroup memory statistics
  * @memcg: the memory cgroup
@@ -807,10 +797,7 @@ void __mod_memcg_lruvec_state(struct lruvec *lruvec, enum node_stat_item idx,
 	__this_cpu_add(pn->lruvec_stats_percpu->state[idx], val);
 
 	memcg_rstat_updated(memcg, val);
-<<<<<<< HEAD
-=======
 	memcg_stats_unlock();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -895,15 +882,10 @@ void __count_memcg_events(struct mem_cgroup *memcg, enum vm_event_item idx,
 	if (mem_cgroup_disabled() || index < 0)
 		return;
 
-<<<<<<< HEAD
-	__this_cpu_add(memcg->vmstats_percpu->events[idx], count);
-	memcg_rstat_updated(memcg, count);
-=======
 	memcg_stats_lock();
 	__this_cpu_add(memcg->vmstats_percpu->events[index], count);
 	memcg_rstat_updated(memcg, count);
 	memcg_stats_unlock();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static unsigned long memcg_events(struct mem_cgroup *memcg, int event)
@@ -2651,11 +2633,7 @@ static int try_charge_memcg(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	struct page_counter *counter;
 	unsigned long nr_reclaimed;
 	bool passed_oom = false;
-<<<<<<< HEAD
-	bool may_swap = true;
-=======
 	unsigned int reclaim_options = MEMCG_RECLAIM_MAY_SWAP;
->>>>>>> origin/linux_6.1.15_upstream
 	bool drained = false;
 	bool raised_max_event = false;
 	unsigned long pflags;
@@ -2682,18 +2660,6 @@ retry:
 	}
 
 	/*
-<<<<<<< HEAD
-	 * Memcg doesn't have a dedicated reserve for atomic
-	 * allocations. But like the global atomic pool, we need to
-	 * put the burden of reclaim on regular allocation requests
-	 * and let these go through as privileged allocations.
-	 */
-	if (gfp_mask & __GFP_ATOMIC)
-		goto force;
-
-	/*
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	 * Prevent unbounded recursion when reclaim operations need to
 	 * allocate memory. This might exceed the limits temporarily,
 	 * but we prefer facilitating memory reclaim and getting back
@@ -2760,14 +2726,8 @@ retry:
 	 * a forward progress or bypass the charge if the oom killer
 	 * couldn't make any progress.
 	 */
-<<<<<<< HEAD
-	oom_status = mem_cgroup_oom(mem_over_limit, gfp_mask,
-		       get_order(nr_pages * PAGE_SIZE));
-	if (oom_status == OOM_SUCCESS) {
-=======
 	if (mem_cgroup_oom(mem_over_limit, gfp_mask,
 			   get_order(nr_pages * PAGE_SIZE))) {
->>>>>>> origin/linux_6.1.15_upstream
 		passed_oom = true;
 		nr_retries = MAX_RECLAIM_RETRIES;
 		goto retry;

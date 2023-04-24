@@ -109,15 +109,8 @@ torture_param(int, read_exit_burst, 16, "# of read-then-exit bursts per episode,
 torture_param(int, shuffle_interval, 3, "Number of seconds between shuffles");
 torture_param(int, shutdown_secs, 0, "Shutdown time (s), <= zero to disable.");
 torture_param(int, stall_cpu, 0, "Stall duration (s), zero to disable.");
-<<<<<<< HEAD
-torture_param(int, stall_cpu_holdoff, 10,
-	     "Time to wait before starting stall (s).");
-torture_param(bool, stall_no_softlockup, false,
-	     "Avoid softlockup warning during cpu stall.");
-=======
 torture_param(int, stall_cpu_holdoff, 10, "Time to wait before starting stall (s).");
 torture_param(bool, stall_no_softlockup, false, "Avoid softlockup warning during cpu stall.");
->>>>>>> origin/linux_6.1.15_upstream
 torture_param(int, stall_cpu_irqsoff, 0, "Disable interrupts while stalling.");
 torture_param(int, stall_cpu_block, 0, "Sleep while stalling.");
 torture_param(int, stall_gp_kthread, 0, "Grace-period kthread stall duration (s).");
@@ -1784,10 +1777,6 @@ static void rcutorture_one_extend(int *readstate, int newstate,
 		local_bh_enable();
 	if (statesold & RCUTORTURE_RDR_RBH)
 		rcu_read_unlock_bh();
-<<<<<<< HEAD
-	if (statesold & RCUTORTURE_RDR_RCU) {
-		bool lockit = !statesnew && !(torture_random(trsp) & 0xffff);
-=======
 	if (statesold & RCUTORTURE_RDR_RCU_2) {
 		cur_ops->readunlock((idxold2 >> RCUTORTURE_RDR_SHIFT_2) & 0x1);
 		WARN_ON_ONCE(idxnew2 != -1);
@@ -1795,7 +1784,6 @@ static void rcutorture_one_extend(int *readstate, int newstate,
 	}
 	if (statesold & RCUTORTURE_RDR_RCU_1) {
 		bool lockit;
->>>>>>> origin/linux_6.1.15_upstream
 
 		lockit = !cur_ops->no_pi_lock && !statesnew && !(torture_random(trsp) & 0xffff);
 		if (lockit)
@@ -1856,8 +1844,6 @@ rcutorture_extend_mask(int oldmask, struct torture_random_state *trsp)
 	else
 		mask = mask & (1 << (randmask2 % RCUTORTURE_RDR_NBITS));
 
-<<<<<<< HEAD
-=======
 	// Can't have nested RCU reader without outer RCU reader.
 	if (!(mask & RCUTORTURE_RDR_RCU_1) && (mask & RCUTORTURE_RDR_RCU_2)) {
 		if (oldmask & RCUTORTURE_RDR_RCU_1)
@@ -1866,7 +1852,6 @@ rcutorture_extend_mask(int oldmask, struct torture_random_state *trsp)
 			mask |= RCUTORTURE_RDR_RCU_1;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Can't enable bh w/irq disabled.
 	 */
@@ -1886,11 +1871,7 @@ rcutorture_extend_mask(int oldmask, struct torture_random_state *trsp)
 			mask |= oldmask & bhs;
 	}
 
-<<<<<<< HEAD
-	return mask ?: RCUTORTURE_RDR_RCU;
-=======
 	return mask ?: RCUTORTURE_RDR_RCU_1;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*

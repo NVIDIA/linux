@@ -352,11 +352,7 @@ static void mctp_test_route_input_sk(struct kunit *test)
 	if (params->deliver) {
 		KUNIT_EXPECT_EQ(test, rc, 0);
 
-<<<<<<< HEAD
-		skb2 = skb_recv_datagram(sock->sk, 0, 1, &rc);
-=======
 		skb2 = skb_recv_datagram(sock->sk, MSG_DONTWAIT, &rc);
->>>>>>> origin/linux_6.1.15_upstream
 		KUNIT_EXPECT_NOT_ERR_OR_NULL(test, skb2);
 		KUNIT_EXPECT_EQ(test, skb->len, 1);
 
@@ -364,13 +360,8 @@ static void mctp_test_route_input_sk(struct kunit *test)
 
 	} else {
 		KUNIT_EXPECT_NE(test, rc, 0);
-<<<<<<< HEAD
-		skb2 = skb_recv_datagram(sock->sk, 0, 1, &rc);
-		KUNIT_EXPECT_PTR_EQ(test, skb2, NULL);
-=======
 		skb2 = skb_recv_datagram(sock->sk, MSG_DONTWAIT, &rc);
 		KUNIT_EXPECT_NULL(test, skb2);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	__mctp_route_test_fini(test, dev, rt, sock);
@@ -432,11 +423,7 @@ static void mctp_test_route_input_sk_reasm(struct kunit *test)
 		rc = mctp_route_input(&rt->rt, skb);
 	}
 
-<<<<<<< HEAD
-	skb2 = skb_recv_datagram(sock->sk, 0, 1, &rc);
-=======
 	skb2 = skb_recv_datagram(sock->sk, MSG_DONTWAIT, &rc);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (params->rx_len) {
 		KUNIT_EXPECT_NOT_ERR_OR_NULL(test, skb2);
@@ -444,11 +431,7 @@ static void mctp_test_route_input_sk_reasm(struct kunit *test)
 		skb_free_datagram(sock->sk, skb2);
 
 	} else {
-<<<<<<< HEAD
-		KUNIT_EXPECT_PTR_EQ(test, skb2, NULL);
-=======
 		KUNIT_EXPECT_NULL(test, skb2);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	__mctp_route_test_fini(test, dev, rt, sock);
@@ -599,11 +582,7 @@ static void mctp_test_route_input_sk_keys(struct kunit *test)
 	rc = mctp_route_input(&rt->rt, skb);
 
 	/* (potentially) receive message */
-<<<<<<< HEAD
-	skb2 = skb_recv_datagram(sock->sk, 0, 1, &rc);
-=======
 	skb2 = skb_recv_datagram(sock->sk, MSG_DONTWAIT, &rc);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (params->deliver)
 		KUNIT_EXPECT_NOT_ERR_OR_NULL(test, skb2);

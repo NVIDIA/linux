@@ -91,10 +91,7 @@
 #include "intel_dmc.h"
 #include "intel_dp_link_training.h"
 #include "intel_dpt.h"
-<<<<<<< HEAD
-=======
 #include "intel_dsb.h"
->>>>>>> origin/linux_6.1.15_upstream
 #include "intel_fbc.h"
 #include "intel_fbdev.h"
 #include "intel_fdi.h"
@@ -132,10 +129,6 @@ static void intel_set_pipe_src_size(const struct intel_crtc_state *crtc_state);
 static void hsw_set_transconf(const struct intel_crtc_state *crtc_state);
 static void bdw_set_pipemisc(const struct intel_crtc_state *crtc_state);
 static void ilk_pfit_enable(const struct intel_crtc_state *crtc_state);
-<<<<<<< HEAD
-static void intel_modeset_setup_hw_state(struct drm_device *dev,
-					 struct drm_modeset_acquire_ctx *ctx);
-=======
 
 /**
  * intel_update_watermarks - update FIFO watermark values based on current modes
@@ -231,7 +224,6 @@ static int intel_compute_global_watermarks(struct intel_atomic_state *state)
 		return dev_priv->display.funcs.wm->compute_global_watermarks(state);
 	return 0;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 /* returns HPLL frequency in kHz */
 int vlv_get_hpll_vco(struct drm_i915_private *dev_priv)
@@ -775,161 +767,6 @@ void intel_plane_fixup_bitmasks(struct intel_crtc_state *crtc_state)
 	}
 }
 
-<<<<<<< HEAD
-static struct i915_vma *
-initial_plane_vma(struct drm_i915_private *i915,
-		  struct intel_initial_plane_config *plane_config)
-{
-	struct drm_i915_gem_object *obj;
-	struct i915_vma *vma;
-	u32 base, size;
-
-	if (plane_config->size == 0)
-		return NULL;
-
-	base = round_down(plane_config->base,
-			  I915_GTT_MIN_ALIGNMENT);
-	size = round_up(plane_config->base + plane_config->size,
-			I915_GTT_MIN_ALIGNMENT);
-	size -= base;
-
-	/*
-	 * If the FB is too big, just don't use it since fbdev is not very
-	 * important and we should probably use that space with FBC or other
-	 * features.
-	 */
-	if (IS_ENABLED(CONFIG_FRAMEBUFFER_CONSOLE) &&
-	    size * 2 > i915->stolen_usable_size)
-		return NULL;
-
-	obj = i915_gem_object_create_stolen_for_preallocated(i915, base, size);
-	if (IS_ERR(obj))
-		return NULL;
-
-	/*
-	 * Mark it WT ahead of time to avoid changing the
-	 * cache_level during fbdev initialization. The
-	 * unbind there would get stuck waiting for rcu.
-	 */
-	i915_gem_object_set_cache_coherency(obj, HAS_WT(i915) ?
-					    I915_CACHE_WT : I915_CACHE_NONE);
-
-	switch (plane_config->tiling) {
-	case I915_TILING_NONE:
-		break;
-	case I915_TILING_X:
-	case I915_TILING_Y:
-		obj->tiling_and_stride =
-			plane_config->fb->base.pitches[0] |
-			plane_config->tiling;
-		break;
-	default:
-		MISSING_CASE(plane_config->tiling);
-		goto err_obj;
-	}
-
-	vma = i915_vma_instance(obj, &i915->ggtt.vm, NULL);
-	if (IS_ERR(vma))
-		goto err_obj;
-
-	if (i915_ggtt_pin(vma, NULL, 0, PIN_MAPPABLE | PIN_OFFSET_FIXED | base))
-		goto err_obj;
-
-	if (i915_gem_object_is_tiled(obj) &&
-	    !i915_vma_is_map_and_fenceable(vma))
-		goto err_obj;
-
-	return vma;
-
-err_obj:
-	i915_gem_object_put(obj);
-	return NULL;
-}
-
-static bool
-intel_alloc_initial_plane_obj(struct intel_crtc *crtc,
-			      struct intel_initial_plane_config *plane_config)
-{
-	struct drm_device *dev = crtc->base.dev;
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct drm_mode_fb_cmd2 mode_cmd = { 0 };
-	struct drm_framebuffer *fb = &plane_config->fb->base;
-	struct i915_vma *vma;
-
-	switch (fb->modifier) {
-	case DRM_FORMAT_MOD_LINEAR:
-	case I915_FORMAT_MOD_X_TILED:
-	case I915_FORMAT_MOD_Y_TILED:
-		break;
-	default:
-		drm_dbg(&dev_priv->drm,
-			"Unsupported modifier for initial FB: 0x%llx\n",
-			fb->modifier);
-		return false;
-	}
-
-	vma = initial_plane_vma(dev_priv, plane_config);
-	if (!vma)
-		return false;
-
-	mode_cmd.pixel_format = fb->format->format;
-	mode_cmd.width = fb->width;
-	mode_cmd.height = fb->height;
-	mode_cmd.pitches[0] = fb->pitches[0];
-	mode_cmd.modifier[0] = fb->modifier;
-	mode_cmd.flags = DRM_MODE_FB_MODIFIERS;
-
-	if (intel_framebuffer_init(to_intel_framebuffer(fb),
-				   vma->obj, &mode_cmd)) {
-		drm_dbg_kms(&dev_priv->drm, "intel fb init failed\n");
-		goto err_vma;
-	}
-
-	plane_config->vma = vma;
-	return true;
-
-err_vma:
-	i915_vma_put(vma);
-	return false;
-}
-
-static void
-intel_set_plane_visible(struct intel_crtc_state *crtc_state,
-			struct intel_plane_state *plane_state,
-			bool visible)
-{
-	struct intel_plane *plane = to_intel_plane(plane_state->uapi.plane);
-
-	plane_state->uapi.visible = visible;
-
-	if (visible)
-		crtc_state->uapi.plane_mask |= drm_plane_mask(&plane->base);
-	else
-		crtc_state->uapi.plane_mask &= ~drm_plane_mask(&plane->base);
-}
-
-static void fixup_plane_bitmasks(struct intel_crtc_state *crtc_state)
-{
-	struct drm_i915_private *dev_priv = to_i915(crtc_state->uapi.crtc->dev);
-	struct drm_plane *plane;
-
-	/*
-	 * Active_planes aliases if multiple "primary" or cursor planes
-	 * have been used on the same (or wrong) pipe. plane_mask uses
-	 * unique ids, hence we can use that to reconstruct active_planes.
-	 */
-	crtc_state->enabled_planes = 0;
-	crtc_state->active_planes = 0;
-
-	drm_for_each_plane_mask(plane, &dev_priv->drm,
-				crtc_state->uapi.plane_mask) {
-		crtc_state->enabled_planes |= BIT(to_intel_plane(plane)->id);
-		crtc_state->active_planes |= BIT(to_intel_plane(plane)->id);
-	}
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 void intel_plane_disable_noatomic(struct intel_crtc *crtc,
 				  struct intel_plane *plane)
 {
@@ -978,132 +815,8 @@ void intel_plane_disable_noatomic(struct intel_crtc *crtc,
 	if (DISPLAY_VER(dev_priv) == 2 && !crtc_state->active_planes)
 		intel_set_cpu_fifo_underrun_reporting(dev_priv, crtc->pipe, false);
 
-<<<<<<< HEAD
-	intel_disable_plane(plane, crtc_state);
-	intel_wait_for_vblank(dev_priv, crtc->pipe);
-}
-
-static bool
-intel_reuse_initial_plane_obj(struct drm_i915_private *i915,
-			      const struct intel_initial_plane_config *plane_config,
-			      struct drm_framebuffer **fb,
-			      struct i915_vma **vma)
-{
-	struct intel_crtc *crtc;
-
-	for_each_intel_crtc(&i915->drm, crtc) {
-		struct intel_crtc_state *crtc_state =
-			to_intel_crtc_state(crtc->base.state);
-		struct intel_plane *plane =
-			to_intel_plane(crtc->base.primary);
-		struct intel_plane_state *plane_state =
-			to_intel_plane_state(plane->base.state);
-
-		if (!crtc_state->uapi.active)
-			continue;
-
-		if (!plane_state->ggtt_vma)
-			continue;
-
-		if (intel_plane_ggtt_offset(plane_state) == plane_config->base) {
-			*fb = plane_state->hw.fb;
-			*vma = plane_state->ggtt_vma;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-static void
-intel_find_initial_plane_obj(struct intel_crtc *crtc,
-			     struct intel_initial_plane_config *plane_config)
-{
-	struct drm_device *dev = crtc->base.dev;
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_crtc_state *crtc_state =
-		to_intel_crtc_state(crtc->base.state);
-	struct intel_plane *plane =
-		to_intel_plane(crtc->base.primary);
-	struct intel_plane_state *plane_state =
-		to_intel_plane_state(plane->base.state);
-	struct drm_framebuffer *fb;
-	struct i915_vma *vma;
-
-	/*
-	 * TODO:
-	 *   Disable planes if get_initial_plane_config() failed.
-	 *   Make sure things work if the surface base is not page aligned.
-	 */
-	if (!plane_config->fb)
-		return;
-
-	if (intel_alloc_initial_plane_obj(crtc, plane_config)) {
-		fb = &plane_config->fb->base;
-		vma = plane_config->vma;
-		goto valid_fb;
-	}
-
-	/*
-	 * Failed to alloc the obj, check to see if we should share
-	 * an fb with another CRTC instead
-	 */
-	if (intel_reuse_initial_plane_obj(dev_priv, plane_config, &fb, &vma))
-		goto valid_fb;
-
-	/*
-	 * We've failed to reconstruct the BIOS FB.  Current display state
-	 * indicates that the primary plane is visible, but has a NULL FB,
-	 * which will lead to problems later if we don't fix it up.  The
-	 * simplest solution is to just disable the primary plane now and
-	 * pretend the BIOS never had it enabled.
-	 */
-	intel_plane_disable_noatomic(crtc, plane);
-	if (crtc_state->bigjoiner) {
-		struct intel_crtc *slave =
-			crtc_state->bigjoiner_linked_crtc;
-		intel_plane_disable_noatomic(slave, to_intel_plane(slave->base.primary));
-	}
-
-	return;
-
-valid_fb:
-	plane_state->uapi.rotation = plane_config->rotation;
-	intel_fb_fill_view(to_intel_framebuffer(fb),
-			   plane_state->uapi.rotation, &plane_state->view);
-
-	__i915_vma_pin(vma);
-	plane_state->ggtt_vma = i915_vma_get(vma);
-	if (intel_plane_uses_fence(plane_state) &&
-	    i915_vma_pin_fence(vma) == 0 && vma->fence)
-		plane_state->flags |= PLANE_HAS_FENCE;
-
-	plane_state->uapi.src_x = 0;
-	plane_state->uapi.src_y = 0;
-	plane_state->uapi.src_w = fb->width << 16;
-	plane_state->uapi.src_h = fb->height << 16;
-
-	plane_state->uapi.crtc_x = 0;
-	plane_state->uapi.crtc_y = 0;
-	plane_state->uapi.crtc_w = fb->width;
-	plane_state->uapi.crtc_h = fb->height;
-
-	if (plane_config->tiling)
-		dev_priv->preserve_bios_swizzle = true;
-
-	plane_state->uapi.fb = fb;
-	drm_framebuffer_get(fb);
-
-	plane_state->uapi.crtc = &crtc->base;
-	intel_plane_copy_uapi_to_hw_state(plane_state, plane_state, crtc);
-
-	intel_frontbuffer_flush(to_intel_frontbuffer(fb), ORIGIN_DIRTYFB);
-
-	atomic_or(plane->frontbuffer_bit, &to_intel_frontbuffer(fb)->bits);
-=======
 	intel_plane_disable_arm(plane, crtc_state);
 	intel_crtc_wait_for_next_vblank(crtc);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 unsigned int
@@ -9182,20 +8895,6 @@ void i830_disable_pipe(struct drm_i915_private *dev_priv, enum pipe pipe)
 	drm_dbg_kms(&dev_priv->drm, "disabling pipe %c due to force quirk\n",
 		    pipe_name(pipe));
 
-<<<<<<< HEAD
-	if (IS_G4X(dev_priv)) {
-		g4x_wm_get_hw_state(dev_priv);
-		g4x_wm_sanitize(dev_priv);
-	} else if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv)) {
-		vlv_wm_get_hw_state(dev_priv);
-		vlv_wm_sanitize(dev_priv);
-	} else if (DISPLAY_VER(dev_priv) >= 9) {
-		skl_wm_get_hw_state(dev_priv);
-		skl_wm_sanitize(dev_priv);
-	} else if (HAS_PCH_SPLIT(dev_priv)) {
-		ilk_wm_get_hw_state(dev_priv);
-	}
-=======
 	drm_WARN_ON(&dev_priv->drm,
 		    intel_de_read(dev_priv, DSPCNTR(PLANE_A)) & DISP_ENABLE);
 	drm_WARN_ON(&dev_priv->drm,
@@ -9206,7 +8905,6 @@ void i830_disable_pipe(struct drm_i915_private *dev_priv, enum pipe pipe)
 		    intel_de_read(dev_priv, CURCNTR(PIPE_A)) & MCURSOR_MODE_MASK);
 	drm_WARN_ON(&dev_priv->drm,
 		    intel_de_read(dev_priv, CURCNTR(PIPE_B)) & MCURSOR_MODE_MASK);
->>>>>>> origin/linux_6.1.15_upstream
 
 	intel_de_write(dev_priv, PIPECONF(pipe), 0);
 	intel_de_posting_read(dev_priv, PIPECONF(pipe));

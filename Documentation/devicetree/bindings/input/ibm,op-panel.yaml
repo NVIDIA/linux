@@ -9,12 +9,9 @@ title: IBM Operation Panel
 maintainers:
   - Eddie James <eajames@linux.ibm.com>
 
-<<<<<<< HEAD
-=======
 allOf:
   - $ref: input.yaml#
 
->>>>>>> origin/linux_6.1.15_upstream
 description: |
   The IBM Operation Panel provides a simple interface to control the connected
   server. It has a display and three buttons: two directional arrows and one
@@ -27,13 +24,10 @@ properties:
   reg:
     maxItems: 1
 
-<<<<<<< HEAD
-=======
   linux,keycodes:
     minItems: 1
     maxItems: 3
 
->>>>>>> origin/linux_6.1.15_upstream
 required:
   - compatible
   - reg
@@ -43,10 +37,7 @@ additionalProperties: false
 examples:
   - |
     #include <dt-bindings/i2c/i2c.h>
-<<<<<<< HEAD
-=======
     #include <dt-bindings/input/input.h>
->>>>>>> origin/linux_6.1.15_upstream
     i2c {
         #address-cells = <1>;
         #size-cells = <0>;
@@ -54,9 +45,6 @@ examples:
         ibm-op-panel@62 {
             compatible = "ibm,op-panel";
             reg = <(0x62 | I2C_OWN_SLAVE_ADDRESS)>;
-<<<<<<< HEAD
-=======
             linux,keycodes = <KEY_UP>, <KEY_DOWN>, <KEY_ENTER>;
->>>>>>> origin/linux_6.1.15_upstream
         };
     };

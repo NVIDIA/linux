@@ -482,14 +482,9 @@ int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 
 				sock_prot_inuse_add(net, sk->sk_prot, -1);
 				sock_prot_inuse_add(net, &tcp_prot, 1);
-<<<<<<< HEAD
-				local_bh_enable();
-				sk->sk_prot = &tcp_prot;
-=======
 
 				/* Paired with READ_ONCE(sk->sk_prot) in inet6_stream_ops */
 				WRITE_ONCE(sk->sk_prot, &tcp_prot);
->>>>>>> origin/linux_6.1.15_upstream
 				/* Paired with READ_ONCE() in tcp_(get|set)sockopt() */
 				WRITE_ONCE(icsk->icsk_af_ops, &ipv4_specific);
 				sk->sk_socket->ops = &inet_stream_ops;
@@ -1007,15 +1002,9 @@ done:
 		retv = 0;
 		break;
 	}
-<<<<<<< HEAD
-	
-unlock:
-	release_sock(sk);
-=======
 
 unlock:
 	sockopt_release_sock(sk);
->>>>>>> origin/linux_6.1.15_upstream
 	if (needs_rtnl)
 		rtnl_unlock();
 

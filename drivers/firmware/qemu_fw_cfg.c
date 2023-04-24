@@ -389,10 +389,7 @@ static void fw_cfg_sysfs_cache_cleanup(void)
 
 	list_for_each_entry_safe(entry, next, &fw_cfg_entry_cache, list) {
 		fw_cfg_sysfs_cache_delist(entry);
-<<<<<<< HEAD
-=======
 		kobject_del(&entry->kobj);
->>>>>>> origin/linux_6.1.15_upstream
 		kobject_put(&entry->kobj);
 	}
 }

@@ -462,10 +462,7 @@ static int wdat_wdt_probe(struct platform_device *pdev)
 
 	watchdog_set_nowayout(&wdat->wdd, nowayout);
 	watchdog_stop_on_reboot(&wdat->wdd);
-<<<<<<< HEAD
-=======
 	watchdog_stop_on_unregister(&wdat->wdd);
->>>>>>> origin/linux_6.1.15_upstream
 	return devm_watchdog_register_device(dev, &wdat->wdd);
 }
 

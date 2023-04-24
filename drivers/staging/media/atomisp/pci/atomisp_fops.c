@@ -749,19 +749,6 @@ done:
 	/* Ensure that a mode is set */
 	v4l2_ctrl_s_ctrl(asd->run_mode, pipe->default_run_mode);
 
-<<<<<<< HEAD
-	if (acc_node)
-		acc_pipe->users++;
-	else
-		pipe->users++;
-	rt_mutex_unlock(&isp->mutex);
-
-	/* Ensure that a mode is set */
-	if (asd)
-		v4l2_ctrl_s_ctrl(asd->run_mode, pipe->default_run_mode);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 
 css_error:

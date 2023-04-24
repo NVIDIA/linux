@@ -991,10 +991,6 @@ static int sifive_serial_probe(struct platform_device *pdev)
 	/* Set up clock divider */
 	ssp->port.uartclk = clk_get_rate(ssp->clk);
 	ssp->baud_rate = SIFIVE_DEFAULT_BAUD_RATE;
-<<<<<<< HEAD
-	ssp->port.uartclk = ssp->clkin_rate;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	__ssp_update_div(ssp);
 
 	platform_set_drvdata(pdev, ssp);

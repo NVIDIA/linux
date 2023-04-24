@@ -2059,12 +2059,6 @@ int pm_genpd_init(struct generic_pm_domain *genpd,
 	atomic_set(&genpd->sd_count, 0);
 	genpd->status = is_off ? GENPD_STATE_OFF : GENPD_STATE_ON;
 	genpd->device_count = 0;
-<<<<<<< HEAD
-	genpd->max_off_time_ns = -1;
-	genpd->max_off_time_changed = true;
-	genpd->next_wakeup = KTIME_MAX;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	genpd->provider = NULL;
 	genpd->has_provider = false;
 	genpd->accounting_time = ktime_get_mono_fast_ns();

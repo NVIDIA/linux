@@ -333,10 +333,7 @@ extern int qla24xx_configure_prot_mode(srb_t *, uint16_t *);
 extern int qla24xx_issue_sa_replace_iocb(scsi_qla_host_t *vha,
 	struct qla_work_evt *e);
 void qla2x00_sp_release(struct kref *kref);
-<<<<<<< HEAD
-=======
 void qla2x00_els_dcmd2_iocb_timeout(void *data);
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * Global Function Prototypes in qla_mbx.c source file.

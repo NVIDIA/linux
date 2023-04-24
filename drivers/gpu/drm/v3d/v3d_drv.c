@@ -213,10 +213,6 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 	u32 mmu_debug;
 	u32 ident1;
 	u64 mask;
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	v3d = devm_drm_dev_alloc(dev, &v3d_drm_driver, struct v3d_dev, drm);
 	if (IS_ERR(v3d))

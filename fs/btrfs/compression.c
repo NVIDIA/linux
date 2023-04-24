@@ -625,20 +625,10 @@ static noinline int add_ra_bio_pages(struct inode *inode,
 			}
 		}
 
-<<<<<<< HEAD
-		ret = bio_add_page(cb->orig_bio, page,
-				   PAGE_SIZE, 0);
-
-		if (ret == PAGE_SIZE) {
-			put_page(page);
-		} else {
-			unlock_extent(tree, last_offset, end);
-=======
 		add_size = min(em->start + em->len, page_end + 1) - cur;
 		ret = bio_add_page(cb->orig_bio, page, add_size, offset_in_page(cur));
 		if (ret != add_size) {
 			unlock_extent(tree, cur, page_end, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 			unlock_page(page);
 			put_page(page);
 			break;

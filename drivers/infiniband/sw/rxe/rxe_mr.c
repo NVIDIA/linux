@@ -528,15 +528,9 @@ int rxe_invalidate_mr(struct rxe_qp *qp, u32 key)
 		goto err;
 	}
 
-<<<<<<< HEAD
-	if (rkey != mr->rkey) {
-		pr_err("%s: rkey (%#x) doesn't match mr->rkey (%#x)\n",
-			__func__, rkey, mr->rkey);
-=======
 	if (mr->rkey ? (key != mr->rkey) : (key != mr->lkey)) {
 		pr_err("%s: wr key (%#x) doesn't match mr key (%#x)\n",
 			__func__, key, (mr->rkey ? mr->rkey : mr->lkey));
->>>>>>> origin/linux_6.1.15_upstream
 		ret = -EINVAL;
 		goto err_drop_ref;
 	}
@@ -571,45 +565,6 @@ err:
  * the ib mr keys in sync with rxe mr keys.
  */
 int rxe_reg_fast_mr(struct rxe_qp *qp, struct rxe_send_wqe *wqe)
-<<<<<<< HEAD
-{
-	struct rxe_mr *mr = to_rmr(wqe->wr.wr.reg.mr);
-	u32 key = wqe->wr.wr.reg.key;
-	u32 access = wqe->wr.wr.reg.access;
-
-	/* user can only register MR in free state */
-	if (unlikely(mr->state != RXE_MR_STATE_FREE)) {
-		pr_warn("%s: mr->lkey = 0x%x not free\n",
-			__func__, mr->lkey);
-		return -EINVAL;
-	}
-
-	/* user can only register mr with qp in same protection domain */
-	if (unlikely(qp->ibqp.pd != mr->ibmr.pd)) {
-		pr_warn("%s: qp->pd and mr->pd don't match\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	/* user is only allowed to change key portion of l/rkey */
-	if (unlikely((mr->lkey & ~0xff) != (key & ~0xff))) {
-		pr_warn("%s: key = 0x%x has wrong index mr->lkey = 0x%x\n",
-			__func__, key, mr->lkey);
-		return -EINVAL;
-	}
-
-	mr->access = access;
-	mr->lkey = key;
-	mr->rkey = (access & IB_ACCESS_REMOTE) ? key : 0;
-	mr->iova = wqe->wr.wr.reg.mr->iova;
-	mr->state = RXE_MR_STATE_VALID;
-
-	return 0;
-}
-
-int rxe_dereg_mr(struct ib_mr *ibmr, struct ib_udata *udata)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct rxe_mr *mr = to_rmr(wqe->wr.wr.reg.mr);
 	u32 key = wqe->wr.wr.reg.key;

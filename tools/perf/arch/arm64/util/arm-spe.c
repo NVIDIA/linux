@@ -247,8 +247,6 @@ static int arm_spe_recording_options(struct auxtrace_record *itr,
 	 */
 	evsel__set_sample_bit(arm_spe_evsel, DATA_SRC);
 
-<<<<<<< HEAD
-=======
 	/*
 	 * The PHYS_ADDR flag does not affect the driver behaviour, it is used to
 	 * inform that the resulting output's SPE samples contain physical addresses
@@ -258,7 +256,6 @@ static int arm_spe_recording_options(struct auxtrace_record *itr,
 	if (arm_spe_evsel->core.attr.config & bit)
 		evsel__set_sample_bit(arm_spe_evsel, PHYS_ADDR);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Add dummy event to keep tracking */
 	err = parse_event(evlist, "dummy:u");
 	if (err)

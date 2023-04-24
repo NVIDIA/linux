@@ -20,10 +20,7 @@
 
 #define IDEAL_RATIO_DECIMAL_DEPTH 26
 #define DIVIDER_NUM  64
-<<<<<<< HEAD
-=======
 #define INIT_RETRY_NUM 50
->>>>>>> origin/linux_6.1.15_upstream
 
 #define pair_err(fmt, ...) \
 	dev_err(&asrc->pdev->dev, "Pair %c: " fmt, 'A' + index, ##__VA_ARGS__)

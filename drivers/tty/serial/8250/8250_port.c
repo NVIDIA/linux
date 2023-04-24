@@ -1508,11 +1508,6 @@ static inline void __stop_tx(struct uart_8250_port *p)
 	struct uart_8250_em485 *em485 = p->em485;
 
 	if (em485) {
-<<<<<<< HEAD
-		unsigned char lsr = serial_in(p, UART_LSR);
-		p->lsr_saved_flags |= lsr & LSR_SAVE_FLAGS;
-
-=======
 		u16 lsr = serial_lsr_in(p);
 		u64 stop_delay = 0;
 
@@ -1520,7 +1515,6 @@ static inline void __stop_tx(struct uart_8250_port *p)
 
 		if (!(lsr & UART_LSR_THRE))
 			return;
->>>>>>> origin/linux_6.1.15_upstream
 		/*
 		 * To provide required timing and allow FIFO transfer,
 		 * __stop_tx_rs485() must be called only when both FIFO and
@@ -2729,11 +2723,7 @@ void serial8250_update_uartclk(struct uart_port *port, unsigned int uartclk)
 	port->uartclk = uartclk;
 
 	if (!tty_port_initialized(tport))
-<<<<<<< HEAD
-		goto out_lock;
-=======
 		goto out_unlock;
->>>>>>> origin/linux_6.1.15_upstream
 
 	termios = &tty->termios;
 
@@ -2751,11 +2741,7 @@ void serial8250_update_uartclk(struct uart_port *port, unsigned int uartclk)
 	spin_unlock_irqrestore(&port->lock, flags);
 	serial8250_rpm_put(up);
 
-<<<<<<< HEAD
-out_lock:
-=======
 out_unlock:
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&tport->mutex);
 	up_write(&tty->termios_rwsem);
 	tty_kref_put(tty);
@@ -3352,8 +3338,6 @@ static void serial8250_console_restore(struct uart_8250_port *up)
 	serial8250_set_divisor(port, baud, quot, frac);
 	serial_port_out(port, UART_LCR, up->lcr);
 	serial8250_out_MCR(up, up->mcr | UART_MCR_DTR | UART_MCR_RTS);
-<<<<<<< HEAD
-=======
 }
 
 /*
@@ -3383,7 +3367,6 @@ static void serial8250_console_fifo_write(struct uart_8250_port *up,
 			}
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*

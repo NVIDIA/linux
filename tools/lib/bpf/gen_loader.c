@@ -1016,11 +1016,7 @@ void bpf_gen__prog_load(struct bpf_gen *gen,
 	emit_sys_bpf(gen, BPF_PROG_LOAD, prog_load_attr, attr_size);
 	debug_ret(gen, "prog_load %s insn_cnt %d", attr.prog_name, attr.insn_cnt);
 	/* successful or not, close btf module FDs used in extern ksyms and attach_btf_obj_fd */
-<<<<<<< HEAD
-	cleanup_relos(gen, insns);
-=======
 	cleanup_relos(gen, insns_off);
->>>>>>> origin/linux_6.1.15_upstream
 	if (gen->attach_kind) {
 		emit_sys_close_blob(gen,
 				    attr_field(prog_load_attr, attach_btf_obj_fd));

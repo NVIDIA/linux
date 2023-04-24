@@ -41,13 +41,6 @@ static int get_boot_hartid_from_fdt(void)
 		return -EINVAL;
 
 	prop = fdt_getprop((void *)fdt, chosen_node, "boot-hartid", &len);
-<<<<<<< HEAD
-	if (!prop || len != sizeof(u32))
-		return -EINVAL;
-
-	hartid = fdt32_to_cpu(*prop);
-	return 0;
-=======
 	if (!prop)
 		return -EINVAL;
 
@@ -72,19 +65,10 @@ static efi_status_t get_boot_hartid_from_efi(void)
 	if (status != EFI_SUCCESS)
 		return status;
 	return efi_call_proto(boot_protocol, get_boot_hartid, &hartid);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 efi_status_t check_platform_features(void)
 {
-<<<<<<< HEAD
-	int ret;
-
-	ret = get_boot_hartid_from_fdt();
-	if (ret) {
-		efi_err("/chosen/boot-hartid missing or invalid!\n");
-		return EFI_UNSUPPORTED;
-=======
 	efi_status_t status;
 	int ret;
 
@@ -95,7 +79,6 @@ efi_status_t check_platform_features(void)
 			efi_err("Failed to get boot hartid!\n");
 			return EFI_UNSUPPORTED;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return EFI_SUCCESS;
 }

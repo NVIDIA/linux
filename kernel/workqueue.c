@@ -877,11 +877,7 @@ void wq_worker_running(struct task_struct *task)
 	 */
 	preempt_disable();
 	if (!(worker->flags & WORKER_NOT_RUNNING))
-<<<<<<< HEAD
-		atomic_inc(&worker->pool->nr_running);
-=======
 		worker->pool->nr_running++;
->>>>>>> origin/linux_6.1.15_upstream
 	preempt_enable();
 	worker->sleeping = 0;
 }

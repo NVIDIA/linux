@@ -3999,12 +3999,8 @@ static int validate_message(struct dlm_lkb *lkb, struct dlm_message *ms)
 	int error = 0;
 
 	/* currently mixing of user/kernel locks are not supported */
-<<<<<<< HEAD
-	if (ms->m_flags & DLM_IFL_USER && ~lkb->lkb_flags & DLM_IFL_USER) {
-=======
 	if (ms->m_flags & cpu_to_le32(DLM_IFL_USER) &&
 	    ~lkb->lkb_flags & DLM_IFL_USER) {
->>>>>>> origin/linux_6.1.15_upstream
 		log_error(lkb->lkb_resource->res_ls,
 			  "got user dlm message for a kernel lock");
 		error = -EINVAL;

@@ -68,12 +68,8 @@ union group_cap_reg {
 		u64 total_rdbufs:8;	/* formerly total_tokens */
 		u64 rdbuf_ctrl:1;	/* formerly token_en */
 		u64 rdbuf_limit:1;	/* formerly token_limit */
-<<<<<<< HEAD
-		u64 rsvd:46;
-=======
 		u64 progress_limit:1;	/* descriptor and batch descriptor */
 		u64 rsvd:45;
->>>>>>> origin/linux_6.1.15_upstream
 	};
 	u64 bits;
 } __packed;
@@ -166,10 +162,7 @@ enum idxd_device_reset_type {
 #define IDXD_INTC_OCCUPY			0x04
 #define IDXD_INTC_PERFMON_OVFL		0x08
 #define IDXD_INTC_HALT_STATE		0x10
-<<<<<<< HEAD
-=======
 #define IDXD_INTC_INT_HANDLE_REVOKED	0x80000000
->>>>>>> origin/linux_6.1.15_upstream
 
 #define IDXD_CMD_OFFSET			0xa0
 union idxd_command_reg {
@@ -296,16 +289,6 @@ union msix_perm {
 
 union group_flags {
 	struct {
-<<<<<<< HEAD
-		u32 tc_a:3;
-		u32 tc_b:3;
-		u32 rsvd:1;
-		u32 use_rdbuf_limit:1;
-		u32 rdbufs_reserved:8;
-		u32 rsvd2:4;
-		u32 rdbufs_allowed:8;
-		u32 rsvd3:4;
-=======
 		u64 tc_a:3;
 		u64 tc_b:3;
 		u64 rsvd:1;
@@ -318,7 +301,6 @@ union group_flags {
 		u64 rsvd4:2;
 		u64 batch_progress_limit:2;
 		u64 rsvd5:26;
->>>>>>> origin/linux_6.1.15_upstream
 	};
 	u64 bits;
 } __packed;

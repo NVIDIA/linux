@@ -219,14 +219,10 @@ static inline void arch_set_max_freq_ratio(bool turbo_disabled) { }
 static inline void freq_invariance_set_perf_ratio(u64 ratio, bool turbo_disabled) { }
 #endif
 
-<<<<<<< HEAD
-#if defined(CONFIG_ACPI_CPPC_LIB) && defined(CONFIG_SMP)
-=======
 extern void arch_scale_freq_tick(void);
 #define arch_scale_freq_tick arch_scale_freq_tick
 
 #ifdef CONFIG_ACPI_CPPC_LIB
->>>>>>> origin/linux_6.1.15_upstream
 void init_freq_invariance_cppc(void);
 #define arch_init_invariance_cppc init_freq_invariance_cppc
 #endif

@@ -386,10 +386,6 @@ struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev)
 	if (ret) {
 		dev_err(adev->dev, "XGMI: failed initializing kobject for xgmi hive\n");
 		kobject_put(&hive->kobj);
-<<<<<<< HEAD
-		kfree(hive);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		hive = NULL;
 		goto pro_end;
 	}

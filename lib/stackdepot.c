@@ -508,9 +508,6 @@ exit:
 	if (found)
 		retval.handle = found->handle.handle;
 fast_exit:
-<<<<<<< HEAD
-	return retval;
-=======
 	retval.extra = extra_bits;
 
 	return retval.handle;
@@ -534,6 +531,5 @@ depot_stack_handle_t stack_depot_save(unsigned long *entries,
 				      gfp_t alloc_flags)
 {
 	return __stack_depot_save(entries, nr_entries, 0, alloc_flags, true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(stack_depot_save);

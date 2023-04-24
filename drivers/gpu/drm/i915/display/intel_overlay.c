@@ -962,17 +962,6 @@ static int check_overlay_dst(struct intel_overlay *overlay,
 		overlay->crtc->config;
 	struct drm_rect req, clipped;
 
-<<<<<<< HEAD
-	if (rec->dst_height == 0 || rec->dst_width == 0)
-		return -EINVAL;
-
-	if (rec->dst_x < pipe_config->pipe_src_w &&
-	    rec->dst_x + rec->dst_width <= pipe_config->pipe_src_w &&
-	    rec->dst_y < pipe_config->pipe_src_h &&
-	    rec->dst_y + rec->dst_height <= pipe_config->pipe_src_h)
-		return 0;
-	else
-=======
 	drm_rect_init(&req, rec->dst_x, rec->dst_y,
 		      rec->dst_width, rec->dst_height);
 
@@ -981,7 +970,6 @@ static int check_overlay_dst(struct intel_overlay *overlay,
 
 	if (!drm_rect_visible(&clipped) ||
 	    !drm_rect_equals(&clipped, &req))
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 
 	return 0;

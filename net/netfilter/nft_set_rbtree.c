@@ -300,21 +300,6 @@ static int __nft_rbtree_insert(const struct net *net, const struct nft_set *set,
 		}
 	}
 
-<<<<<<< HEAD
-				if (nft_set_elem_active(&rbe->ext, genmask) &&
-				    !nft_set_elem_expired(&rbe->ext))
-					overlap = false;
-			} else if (nft_set_elem_active(&rbe->ext, genmask) &&
-				   !nft_set_elem_expired(&rbe->ext)) {
-				*ext = &rbe->ext;
-				return -EEXIST;
-			} else {
-				overlap = false;
-				if (nft_rbtree_interval_end(rbe))
-					p = &parent->rb_left;
-				else
-					p = &parent->rb_right;
-=======
 	if (!first)
 		first = rb_first(&priv->root);
 
@@ -369,7 +354,6 @@ static int __nft_rbtree_insert(const struct net *net, const struct nft_set *set,
 			     nft_rbtree_interval_end(rbe_ge))) {
 				rbe_ge = rbe;
 				continue;
->>>>>>> origin/linux_6.1.15_upstream
 			}
 		} else if (d > 0) {
 			/* annotate element greater than the new element. */

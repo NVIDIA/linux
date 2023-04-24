@@ -84,10 +84,7 @@ source "drivers/net/ethernet/huawei/Kconfig"
 source "drivers/net/ethernet/i825xx/Kconfig"
 source "drivers/net/ethernet/ibm/Kconfig"
 source "drivers/net/ethernet/intel/Kconfig"
-<<<<<<< HEAD
-=======
 source "drivers/net/ethernet/wangxun/Kconfig"
->>>>>>> origin/linux_6.1.15_upstream
 source "drivers/net/ethernet/xscale/Kconfig"
 
 config JME

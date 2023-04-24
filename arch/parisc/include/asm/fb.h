@@ -12,11 +12,7 @@ static inline void fb_pgprotect(struct file *file, struct vm_area_struct *vma,
 	pgprot_val(vma->vm_page_prot) |= _PAGE_NO_CACHE;
 }
 
-<<<<<<< HEAD
-#if defined(CONFIG_STI_CONSOLE) || defined(CONFIG_FB_STI)
-=======
 #if defined(CONFIG_FB_STI)
->>>>>>> origin/linux_6.1.15_upstream
 int fb_is_primary_device(struct fb_info *info);
 #else
 static inline int fb_is_primary_device(struct fb_info *info)

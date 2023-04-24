@@ -6575,12 +6575,8 @@ static void bfq_finish_requeue_request(struct request *rq)
 
 		bfq_completed_request(bfqq, bfqd);
 	}
-<<<<<<< HEAD
-	bfq_finish_requeue_request_body(bfqq);
-=======
 	bfqq_request_freed(bfqq);
 	bfq_put_queue(bfqq);
->>>>>>> origin/linux_6.1.15_upstream
 	RQ_BIC(rq)->requests--;
 	spin_unlock_irqrestore(&bfqd->lock, flags);
 
@@ -7060,10 +7056,7 @@ static void bfq_exit_queue(struct elevator_queue *e)
 	spin_unlock_irq(&bfqd->lock);
 #endif
 
-<<<<<<< HEAD
-=======
 	blk_stat_disable_accounting(bfqd->queue);
->>>>>>> origin/linux_6.1.15_upstream
 	wbt_enable_default(bfqd->queue);
 
 	kfree(bfqd);

@@ -863,8 +863,6 @@ static int at803x_probe(struct phy_device *phydev)
 			return ret;
 	}
 
-<<<<<<< HEAD
-=======
 	if (phydev->drv->phy_id == ATH8031_PHY_ID) {
 		int ccr = phy_read(phydev, AT803X_REG_CHIP_CONFIG);
 		int mode_cfg;
@@ -897,7 +895,6 @@ static int at803x_probe(struct phy_device *phydev)
 		}
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -1027,13 +1024,6 @@ static int at803x_config_init(struct phy_device *phydev)
 
 	if (phydev->drv->phy_id == ATH8031_PHY_ID) {
 		/* Some bootloaders leave the fiber page selected.
-<<<<<<< HEAD
-		 * Switch to the copper page, as otherwise we read
-		 * the PHY capabilities from the fiber side.
-		 */
-		phy_lock_mdio_bus(phydev);
-		ret = at803x_write_page(phydev, AT803X_PAGE_COPPER);
-=======
 		 * Switch to the appropriate page (fiber or copper), as otherwise we
 		 * read the PHY capabilities from the wrong page.
 		 */
@@ -1041,7 +1031,6 @@ static int at803x_config_init(struct phy_device *phydev)
 		ret = at803x_write_page(phydev,
 					priv->is_fiber ? AT803X_PAGE_FIBER :
 							 AT803X_PAGE_COPPER);
->>>>>>> origin/linux_6.1.15_upstream
 		phy_unlock_mdio_bus(phydev);
 		if (ret)
 			return ret;
@@ -1080,13 +1069,10 @@ static int at803x_config_init(struct phy_device *phydev)
 	if (ret < 0)
 		return ret;
 
-<<<<<<< HEAD
-=======
 	ret = at803x_hibernation_mode_config(phydev);
 	if (ret < 0)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* Ar803x extended next page bit is enabled by default. Cisco
 	 * multigig switches read this bit and attempt to negotiate 10Gbps
 	 * rates even if the next page bit is disabled. This is incorrect

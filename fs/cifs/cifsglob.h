@@ -1063,11 +1063,7 @@ struct cifs_ses {
 	 */
 	spinlock_t iface_lock;
 	/* ========= begin: protected by iface_lock ======== */
-<<<<<<< HEAD
-	struct cifs_server_iface *iface_list;
-=======
 	struct list_head iface_list;
->>>>>>> origin/linux_6.1.15_upstream
 	size_t iface_count;
 	unsigned long iface_last_update; /* jiffies */
 	/* ========= end: protected by iface_lock ======== */
@@ -1092,11 +1088,6 @@ struct cifs_ses {
 	size_t chan_count;
 	size_t chan_max;
 	atomic_t chan_seq; /* round robin state */
-<<<<<<< HEAD
-	/* ========= end: protected by chan_lock ======== */
-};
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * chans_need_reconnect is a bitmap indicating which of the channels

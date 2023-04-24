@@ -615,31 +615,16 @@ static int ebu_nand_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err_of_node_put;
 	}
-<<<<<<< HEAD
-	if (cs >= MAX_CS) {
-		dev_err(dev, "got invalid chip select: %d\n", cs);
-		return -EINVAL;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	ebu_host->cs_num = cs;
 
 	resname = devm_kasprintf(dev, GFP_KERNEL, "nand_cs%d", cs);
-<<<<<<< HEAD
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, resname);
-	ebu_host->cs[cs].chipaddr = devm_ioremap_resource(dev, res);
-	if (IS_ERR(ebu_host->cs[cs].chipaddr))
-		return PTR_ERR(ebu_host->cs[cs].chipaddr);
-	ebu_host->cs[cs].nand_pa = res->start;
-=======
 	ebu_host->cs[cs].chipaddr = devm_platform_ioremap_resource_byname(pdev,
 									  resname);
 	if (IS_ERR(ebu_host->cs[cs].chipaddr)) {
 		ret = PTR_ERR(ebu_host->cs[cs].chipaddr);
 		goto err_of_node_put;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	ebu_host->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(ebu_host->clk)) {

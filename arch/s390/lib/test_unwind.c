@@ -325,44 +325,12 @@ static noinline int unwindme_func4(struct unwindme *u)
 		wait_event(u->task_wq, kthread_should_park());
 		kthread_parkme();
 		return 0;
-<<<<<<< HEAD
-#ifdef CONFIG_KPROBES
-	} else if (u->flags & UWM_PGM) {
-		struct kprobe kp;
-		int ret;
-
-		unwindme = u;
-		memset(&kp, 0, sizeof(kp));
-		kp.symbol_name = "do_report_trap";
-		kp.pre_handler = pgm_pre_handler;
-		ret = register_kprobe(&kp);
-		if (ret < 0) {
-			pr_err("register_kprobe failed %d\n", ret);
-			return -EINVAL;
-		}
-
-		/*
-		 * Trigger operation exception; use insn notation to bypass
-		 * llvm's integrated assembler sanity checks.
-		 */
-		asm volatile(
-			"	.insn	e,0x0000\n"	/* illegal opcode */
-			"0:	nopr	%%r7\n"
-			EX_TABLE(0b, 0b)
-			:);
-
-		unregister_kprobe(&kp);
-		unwindme = NULL;
-		return u->ret;
-#endif
-=======
 	} else if (u->flags & (UWM_PGM | UWM_KPROBE_ON_FTRACE)) {
 		return test_unwind_kprobe(u);
 	} else if (u->flags & (UWM_KRETPROBE | UWM_KRETPROBE_HANDLER)) {
 		return test_unwind_kretprobe(u);
 	} else if (u->flags & UWM_FTRACE) {
 		return test_unwind_ftrace(u);
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		struct pt_regs regs = fake_pt_regs();
 

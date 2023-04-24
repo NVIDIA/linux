@@ -286,8 +286,6 @@ $(foreach file, $(libfdt_files), \
 lib-$(CONFIG_LIBFDT) += $(libfdt_files)
 
 obj-$(CONFIG_BOOT_CONFIG) += bootconfig.o
-<<<<<<< HEAD
-=======
 obj-$(CONFIG_BOOT_CONFIG_EMBED) += bootconfig-data.o
 
 $(obj)/bootconfig-data.o: $(obj)/default.bconf
@@ -296,7 +294,6 @@ targets += default.bconf
 filechk_defbconf = cat $(or $(real-prereqs), /dev/null)
 $(obj)/default.bconf: $(CONFIG_BOOT_CONFIG_EMBED_FILE) FORCE
 	$(call filechk,defbconf)
->>>>>>> origin/linux_6.1.15_upstream
 
 obj-$(CONFIG_RBTREE_TEST) += rbtree_test.o
 obj-$(CONFIG_INTERVAL_TREE_TEST) += interval_tree_test.o

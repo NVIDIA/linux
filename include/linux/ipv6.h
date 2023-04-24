@@ -145,10 +145,7 @@ struct inet6_skb_parm {
 #define IP6SKB_L3SLAVE         64
 #define IP6SKB_JUMBOGRAM      128
 #define IP6SKB_SEG6	      256
-<<<<<<< HEAD
-=======
 #define IP6SKB_FAKEJUMBO      512
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #if defined(CONFIG_NET_L3_MASTER_DEV)

@@ -237,7 +237,6 @@ static int btf_parse_hdr(struct btf *btf)
 		btf_bswap_hdr(hdr);
 	} else if (hdr->magic != BTF_MAGIC) {
 		pr_debug("Invalid BTF magic: %x\n", hdr->magic);
-<<<<<<< HEAD
 		return -EINVAL;
 	}
 
@@ -253,23 +252,6 @@ static int btf_parse_hdr(struct btf *btf)
 		return -EINVAL;
 	}
 
-=======
-		return -EINVAL;
-	}
-
-	if (btf->raw_size < hdr->hdr_len) {
-		pr_debug("BTF header len %u larger than data size %u\n",
-			 hdr->hdr_len, btf->raw_size);
-		return -EINVAL;
-	}
-
-	meta_left = btf->raw_size - hdr->hdr_len;
-	if (meta_left < (long long)hdr->str_off + hdr->str_len) {
-		pr_debug("Invalid BTF total size: %u\n", btf->raw_size);
-		return -EINVAL;
-	}
-
->>>>>>> origin/linux_6.1.15_upstream
 	if ((long long)hdr->type_off + hdr->type_len > hdr->str_off) {
 		pr_debug("Invalid BTF data sections layout: type data at %u + %u, strings data at %u + %u\n",
 			 hdr->type_off, hdr->type_len, hdr->str_off, hdr->str_len);
@@ -3936,13 +3918,9 @@ static bool btf_dedup_identical_structs(struct btf_dedup *d, __u32 id1, __u32 id
 	m1 = btf_members(t1);
 	m2 = btf_members(t2);
 	for (i = 0, n = btf_vlen(t1); i < n; i++, m1++, m2++) {
-<<<<<<< HEAD
-		if (m1->type != m2->type)
-=======
 		if (m1->type != m2->type &&
 		    !btf_dedup_identical_arrays(d, m1->type, m2->type) &&
 		    !btf_dedup_identical_structs(d, m1->type, m2->type))
->>>>>>> origin/linux_6.1.15_upstream
 			return false;
 	}
 	return true;

@@ -19,15 +19,8 @@ struct user_struct;
 struct mmu_gather;
 struct node;
 
-<<<<<<< HEAD
-#ifndef is_hugepd
-typedef struct {
-	unsigned long pd;
-} hugepd_t;
-=======
 #ifndef CONFIG_ARCH_HAS_HUGEPD
 typedef struct { unsigned long pd; } hugepd_t;
->>>>>>> origin/linux_6.1.15_upstream
 #define is_hugepd(hugepd) (0)
 #define __hugepd(x) ((hugepd_t){ (x) })
 #endif
@@ -151,32 +144,16 @@ int hugetlb_treat_movable_handler(struct ctl_table *, int, void *, size_t *,
 int hugetlb_mempolicy_sysctl_handler(struct ctl_table *, int, void *, size_t *,
 				     loff_t *);
 
-<<<<<<< HEAD
-int copy_hugetlb_page_range(struct mm_struct *, struct mm_struct *,
-			    struct vm_area_struct *);
-=======
 int move_hugetlb_page_tables(struct vm_area_struct *vma,
 			     struct vm_area_struct *new_vma,
 			     unsigned long old_addr, unsigned long new_addr,
 			     unsigned long len);
 int copy_hugetlb_page_range(struct mm_struct *, struct mm_struct *,
 			    struct vm_area_struct *, struct vm_area_struct *);
->>>>>>> origin/linux_6.1.15_upstream
 long follow_hugetlb_page(struct mm_struct *, struct vm_area_struct *,
 			 struct page **, struct vm_area_struct **,
 			 unsigned long *, unsigned long *, long, unsigned int,
 			 int *);
-<<<<<<< HEAD
-void unmap_hugepage_range(struct vm_area_struct *, unsigned long, unsigned long,
-			  struct page *);
-void __unmap_hugepage_range_final(struct mmu_gather *tlb,
-				  struct vm_area_struct *vma,
-				  unsigned long start, unsigned long end,
-				  struct page *ref_page);
-void __unmap_hugepage_range(struct mmu_gather *tlb, struct vm_area_struct *vma,
-			    unsigned long start, unsigned long end,
-			    struct page *ref_page);
-=======
 void unmap_hugepage_range(struct vm_area_struct *,
 			  unsigned long, unsigned long, struct page *,
 			  zap_flags_t);
@@ -184,7 +161,6 @@ void __unmap_hugepage_range_final(struct mmu_gather *tlb,
 			  struct vm_area_struct *vma,
 			  unsigned long start, unsigned long end,
 			  struct page *ref_page, zap_flags_t zap_flags);
->>>>>>> origin/linux_6.1.15_upstream
 void hugetlb_report_meminfo(struct seq_file *);
 int hugetlb_report_node_meminfo(char *buf, int len, int nid);
 void hugetlb_show_meminfo_node(int nid);
@@ -193,29 +169,18 @@ vm_fault_t hugetlb_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			 unsigned long address, unsigned int flags);
 #ifdef CONFIG_USERFAULTFD
 int hugetlb_mcopy_atomic_pte(struct mm_struct *dst_mm, pte_t *dst_pte,
-<<<<<<< HEAD
-			     struct vm_area_struct *dst_vma,
-			     unsigned long dst_addr, unsigned long src_addr,
-			     enum mcopy_atomic_mode mode, struct page **pagep);
-=======
 				struct vm_area_struct *dst_vma,
 				unsigned long dst_addr,
 				unsigned long src_addr,
 				enum mcopy_atomic_mode mode,
 				struct page **pagep,
 				bool wp_copy);
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* CONFIG_USERFAULTFD */
 bool hugetlb_reserve_pages(struct inode *inode, long from, long to,
 			   struct vm_area_struct *vma, vm_flags_t vm_flags);
 long hugetlb_unreserve_pages(struct inode *inode, long start, long end,
-<<<<<<< HEAD
-			     long freed);
-bool isolate_huge_page(struct page *page, struct list_head *list);
-=======
 						long freed);
 int isolate_hugetlb(struct page *page, struct list_head *list);
->>>>>>> origin/linux_6.1.15_upstream
 int get_hwpoison_huge_page(struct page *page, bool *hugetlb);
 int get_huge_page_for_hwpoison(unsigned long pfn, int flags);
 void putback_active_hugepage(struct page *page);
@@ -236,37 +201,22 @@ extern struct list_head huge_boot_pages;
 /* arch callbacks */
 
 pte_t *huge_pte_alloc(struct mm_struct *mm, struct vm_area_struct *vma,
-<<<<<<< HEAD
-		      unsigned long addr, unsigned long sz);
-pte_t *huge_pte_offset(struct mm_struct *mm, unsigned long addr,
-		       unsigned long sz);
-int huge_pmd_unshare(struct mm_struct *mm, struct vm_area_struct *vma,
-		     unsigned long *addr, pte_t *ptep);
-=======
 			unsigned long addr, unsigned long sz);
 pte_t *huge_pte_offset(struct mm_struct *mm,
 		       unsigned long addr, unsigned long sz);
 unsigned long hugetlb_mask_last_page(struct hstate *h);
 int huge_pmd_unshare(struct mm_struct *mm, struct vm_area_struct *vma,
 				unsigned long addr, pte_t *ptep);
->>>>>>> origin/linux_6.1.15_upstream
 void adjust_range_if_pmd_sharing_possible(struct vm_area_struct *vma,
 					  unsigned long *start,
 					  unsigned long *end);
 struct page *follow_huge_addr(struct mm_struct *mm, unsigned long address,
 			      int write);
-<<<<<<< HEAD
-struct page *follow_huge_pd(struct vm_area_struct *vma, unsigned long address,
-			    hugepd_t hpd, int flags, int pdshift);
-struct page *follow_huge_pmd_pte(struct vm_area_struct *vma,
-				 unsigned long address, int flags);
-=======
 struct page *follow_huge_pd(struct vm_area_struct *vma,
 			    unsigned long address, hugepd_t hpd,
 			    int flags, int pdshift);
 struct page *follow_huge_pmd_pte(struct vm_area_struct *vma, unsigned long address,
 				 int flags);
->>>>>>> origin/linux_6.1.15_upstream
 struct page *follow_huge_pud(struct mm_struct *mm, unsigned long address,
 			     pud_t *pud, int flags);
 struct page *follow_huge_pgd(struct mm_struct *mm, unsigned long address,
@@ -283,13 +233,8 @@ void hugetlb_vma_lock_release(struct kref *kref);
 int pmd_huge(pmd_t pmd);
 int pud_huge(pud_t pud);
 unsigned long hugetlb_change_protection(struct vm_area_struct *vma,
-<<<<<<< HEAD
-					unsigned long address,
-					unsigned long end, pgprot_t newprot);
-=======
 		unsigned long address, unsigned long end, pgprot_t newprot,
 		unsigned long cp_flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 bool is_hugetlb_entry_migration(pte_t pte);
 void hugetlb_unshare_all_pmds(struct vm_area_struct *vma);
@@ -316,13 +261,8 @@ hugetlb_page_mapping_lock_write(struct page *hpage)
 }
 
 static inline int huge_pmd_unshare(struct mm_struct *mm,
-<<<<<<< HEAD
-				   struct vm_area_struct *vma,
-				   unsigned long *addr, pte_t *ptep)
-=======
 					struct vm_area_struct *vma,
 					unsigned long addr, pte_t *ptep)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return 0;
 }
@@ -351,9 +291,6 @@ static inline struct page *follow_huge_addr(struct mm_struct *mm,
 
 static inline int copy_hugetlb_page_range(struct mm_struct *dst,
 					  struct mm_struct *src,
-<<<<<<< HEAD
-					  struct vm_area_struct *vma)
-=======
 					  struct vm_area_struct *dst_vma,
 					  struct vm_area_struct *src_vma)
 {
@@ -366,7 +303,6 @@ static inline int move_hugetlb_page_tables(struct vm_area_struct *vma,
 					   unsigned long old_addr,
 					   unsigned long new_addr,
 					   unsigned long len)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	BUG();
 	return 0;
@@ -393,11 +329,7 @@ static inline struct page *follow_huge_pd(struct vm_area_struct *vma,
 }
 
 static inline struct page *follow_huge_pmd_pte(struct vm_area_struct *vma,
-<<<<<<< HEAD
-					       unsigned long address, int flags)
-=======
 				unsigned long address, int flags)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return NULL;
 }
@@ -472,13 +404,6 @@ static inline void hugetlb_free_pgd_range(struct mmu_gather *tlb,
 }
 
 #ifdef CONFIG_USERFAULTFD
-<<<<<<< HEAD
-static inline int
-hugetlb_mcopy_atomic_pte(struct mm_struct *dst_mm, pte_t *dst_pte,
-			 struct vm_area_struct *dst_vma, unsigned long dst_addr,
-			 unsigned long src_addr, enum mcopy_atomic_mode mode,
-			 struct page **pagep)
-=======
 static inline int hugetlb_mcopy_atomic_pte(struct mm_struct *dst_mm,
 						pte_t *dst_pte,
 						struct vm_area_struct *dst_vma,
@@ -487,7 +412,6 @@ static inline int hugetlb_mcopy_atomic_pte(struct mm_struct *dst_mm,
 						enum mcopy_atomic_mode mode,
 						struct page **pagep,
 						bool wp_copy)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	BUG();
 	return 0;
@@ -524,40 +448,18 @@ static inline void move_hugetlb_state(struct page *oldpage,
 {
 }
 
-<<<<<<< HEAD
-static inline unsigned long
-hugetlb_change_protection(struct vm_area_struct *vma, unsigned long address,
-			  unsigned long end, pgprot_t newprot)
-=======
 static inline unsigned long hugetlb_change_protection(
 			struct vm_area_struct *vma, unsigned long address,
 			unsigned long end, pgprot_t newprot,
 			unsigned long cp_flags)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return 0;
 }
 
 static inline void __unmap_hugepage_range_final(struct mmu_gather *tlb,
-<<<<<<< HEAD
-						struct vm_area_struct *vma,
-						unsigned long start,
-						unsigned long end,
-						struct page *ref_page)
-{
-	BUG();
-}
-
-static inline void __unmap_hugepage_range(struct mmu_gather *tlb,
-					  struct vm_area_struct *vma,
-					  unsigned long start,
-					  unsigned long end,
-					  struct page *ref_page)
-=======
 			struct vm_area_struct *vma, unsigned long start,
 			unsigned long end, struct page *ref_page,
 			zap_flags_t zap_flags)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	BUG();
 }
@@ -660,11 +562,7 @@ static inline struct hstate *hstate_inode(struct inode *i)
 #define is_file_hugepages(file) false
 static inline struct file *
 hugetlb_file_setup(const char *name, size_t size, vm_flags_t acctflag,
-<<<<<<< HEAD
-		   struct ucounts **ucounts, int creat_flags, int page_size_log)
-=======
 		int creat_flags, int page_size_log)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return ERR_PTR(-ENOSYS);
 }
@@ -823,15 +721,9 @@ struct page *alloc_huge_page(struct vm_area_struct *vma, unsigned long addr,
 struct page *alloc_huge_page_nodemask(struct hstate *h, int preferred_nid,
 				      nodemask_t *nmask, gfp_t gfp_mask);
 struct page *alloc_huge_page_vma(struct hstate *h, struct vm_area_struct *vma,
-<<<<<<< HEAD
-				 unsigned long address);
-int huge_add_to_page_cache(struct page *page, struct address_space *mapping,
-			   pgoff_t idx);
-=======
 				unsigned long address);
 int hugetlb_add_to_page_cache(struct page *page, struct address_space *mapping,
 			pgoff_t idx);
->>>>>>> origin/linux_6.1.15_upstream
 void restore_reserve_on_error(struct hstate *h, struct vm_area_struct *vma,
 			      unsigned long address, struct page *page);
 
@@ -1086,18 +978,6 @@ static inline void hugetlb_count_sub(long l, struct mm_struct *mm)
 	atomic_long_sub(l, &mm->hugetlb_usage);
 }
 
-<<<<<<< HEAD
-#ifndef set_huge_swap_pte_at
-static inline void set_huge_swap_pte_at(struct mm_struct *mm,
-					unsigned long addr, pte_t *ptep,
-					pte_t pte, unsigned long sz)
-{
-	set_huge_pte_at(mm, addr, ptep, pte);
-}
-#endif
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #ifndef huge_ptep_modify_prot_start
 #define huge_ptep_modify_prot_start huge_ptep_modify_prot_start
 static inline pte_t huge_ptep_modify_prot_start(struct vm_area_struct *vma,
@@ -1117,16 +997,12 @@ static inline void huge_ptep_modify_prot_commit(struct vm_area_struct *vma,
 }
 #endif
 
-<<<<<<< HEAD
-#else /* CONFIG_HUGETLB_PAGE */
-=======
 #ifdef CONFIG_NUMA
 void hugetlb_register_node(struct node *node);
 void hugetlb_unregister_node(struct node *node);
 #endif
 
 #else	/* CONFIG_HUGETLB_PAGE */
->>>>>>> origin/linux_6.1.15_upstream
 struct hstate {};
 
 static inline struct hugepage_subpool *hugetlb_page_subpool(struct page *hpage)
@@ -1291,26 +1167,11 @@ static inline void hugetlb_count_sub(long l, struct mm_struct *mm)
 {
 }
 
-<<<<<<< HEAD
-static inline void set_huge_swap_pte_at(struct mm_struct *mm,
-					unsigned long addr, pte_t *ptep,
-					pte_t pte, unsigned long sz)
-=======
 static inline pte_t huge_ptep_clear_flush(struct vm_area_struct *vma,
 					  unsigned long addr, pte_t *ptep)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	return *ptep;
 }
-<<<<<<< HEAD
-#endif /* CONFIG_HUGETLB_PAGE */
-
-#ifdef CONFIG_HUGETLB_PAGE_FREE_VMEMMAP
-extern bool hugetlb_free_vmemmap_enabled;
-#else
-#define hugetlb_free_vmemmap_enabled false
-#endif
-=======
 
 static inline void set_huge_pte_at(struct mm_struct *mm, unsigned long addr,
 				   pte_t *ptep, pte_t pte)
@@ -1325,7 +1186,6 @@ static inline void hugetlb_unregister_node(struct node *node)
 {
 }
 #endif	/* CONFIG_HUGETLB_PAGE */
->>>>>>> origin/linux_6.1.15_upstream
 
 static inline spinlock_t *huge_pte_lock(struct hstate *h, struct mm_struct *mm,
 					pte_t *pte)

@@ -1220,15 +1220,12 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 			3 + sizeof(struct ieee80211_he_cap_elem) +
 			sizeof(struct ieee80211_he_mcs_nss_supp) +
 			IEEE80211_HE_PPE_THRES_MAX_LEN;
-<<<<<<< HEAD
-=======
 
 		if (supp_eht)
 			local->scan_ies_len +=
 				3 + sizeof(struct ieee80211_eht_cap_elem) +
 				sizeof(struct ieee80211_eht_mcs_nss_supp) +
 				IEEE80211_EHT_PPE_THRES_MAX_LEN;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (!local->ops->hw_scan) {

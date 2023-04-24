@@ -782,11 +782,8 @@ bool acpi_s2idle_wake(void)
 			return true;
 		}
 
-<<<<<<< HEAD
-=======
 		pm_pr_dbg("Rearming ACPI SCI for wakeup\n");
 
->>>>>>> origin/linux_6.1.15_upstream
 		pm_wakeup_clear(acpi_sci_irq);
 		rearm_wake_irq(acpi_sci_irq);
 	}

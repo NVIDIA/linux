@@ -528,13 +528,6 @@
 				};
 			};
 
-<<<<<<< HEAD
-			peci: bus@1e78b000 {
-				compatible = "simple-bus";
-				#address-cells = <1>;
-				#size-cells = <1>;
-				ranges = <0x0 0x1e78b000 0x60>;
-=======
 			peci0: peci-controller@1e78b000 {
 				compatible = "aspeed,ast2500-peci";
 				reg = <0x1e78b000 0x60>;
@@ -544,7 +537,6 @@
 				cmd-timeout-ms = <1000>;
 				clock-frequency = <1000000>;
 				status = "disabled";
->>>>>>> origin/linux_6.1.15_upstream
 			};
 
 			uart2: serial@1e78d000 {

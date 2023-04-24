@@ -1087,11 +1087,7 @@
 		};
 	};
 
-<<<<<<< HEAD
-	vdd_mux: regulator@0 {
-=======
 	vdd_mux: regulator-mux {
->>>>>>> origin/linux_6.1.15_upstream
 		compatible = "regulator-fixed";
 		regulator-name = "+VDD_MUX";
 		regulator-min-microvolt = <12000000>;

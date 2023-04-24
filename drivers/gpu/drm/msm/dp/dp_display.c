@@ -298,7 +298,6 @@ static int dp_display_bind(struct device *dev, struct device *master,
 		DRM_ERROR("Audio registration Dp failed\n");
 		goto end;
 	}
-<<<<<<< HEAD
 
 	rc = dp_hpd_event_thread_start(dp);
 	if (rc) {
@@ -306,15 +305,6 @@ static int dp_display_bind(struct device *dev, struct device *master,
 		goto end;
 	}
 
-=======
-
-	rc = dp_hpd_event_thread_start(dp);
-	if (rc) {
-		DRM_ERROR("Event thread create failed\n");
-		goto end;
-	}
-
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 end:
 	return rc;
@@ -1196,19 +1186,11 @@ static int dp_hpd_event_thread_start(struct dp_display_private *dp_priv)
 	/* set event q to empty */
 	dp_priv->event_gndx = 0;
 	dp_priv->event_pndx = 0;
-<<<<<<< HEAD
 
 	dp_priv->ev_tsk = kthread_run(hpd_event_thread, dp_priv, "dp_hpd_handler");
 	if (IS_ERR(dp_priv->ev_tsk))
 		return PTR_ERR(dp_priv->ev_tsk);
 
-=======
-
-	dp_priv->ev_tsk = kthread_run(hpd_event_thread, dp_priv, "dp_hpd_handler");
-	if (IS_ERR(dp_priv->ev_tsk))
-		return PTR_ERR(dp_priv->ev_tsk);
-
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 
@@ -1341,10 +1323,6 @@ static int dp_display_probe(struct platform_device *pdev)
 
 	/* setup event q */
 	mutex_init(&dp->event_mutex);
-<<<<<<< HEAD
-	g_dp_display = &dp->dp_display;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	init_waitqueue_head(&dp->event_q);
 	spin_lock_init(&dp->event_lock);
 
@@ -1523,9 +1501,6 @@ void msm_dp_irq_postinstall(struct msm_dp *dp_display)
 
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 
-<<<<<<< HEAD
-	dp_add_event(dp, EV_HPD_INIT_SETUP, 0, 100);
-=======
 	if (!dp_display->is_edp)
 		dp_add_event(dp, EV_HPD_INIT_SETUP, 0, 100);
 }
@@ -1537,7 +1512,6 @@ bool msm_dp_wide_bus_available(const struct msm_dp *dp_display)
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 
 	return dp->wide_bus_en;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void msm_dp_debugfs_init(struct msm_dp *dp_display, struct drm_minor *minor)
@@ -1681,10 +1655,6 @@ int msm_dp_modeset_init(struct msm_dp *dp_display, struct drm_device *dev,
 
 	dp_priv->panel->connector = dp_display->connector;
 
-<<<<<<< HEAD
-	priv->connectors[priv->num_connectors++] = dp_display->connector;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

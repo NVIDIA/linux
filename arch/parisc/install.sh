@@ -15,35 +15,6 @@
 #   $2 - kernel image file
 #   $3 - kernel map file
 #   $4 - default install path (blank if root directory)
-<<<<<<< HEAD
-#
-
-verify () {
-	if [ ! -f "$1" ]; then
-		echo ""                                                   1>&2
-		echo " *** Missing file: $1"                              1>&2
-		echo ' *** You need to run "make" before "make install".' 1>&2
-		echo ""                                                   1>&2
-		exit 1
-	fi
-}
-
-# Make sure the files actually exist
-
-verify "$2"
-verify "$3"
-
-# User may have a custom install script
-
-if [ -n "${INSTALLKERNEL}" ]; then
-  if [ -x ~/bin/${INSTALLKERNEL} ]; then exec ~/bin/${INSTALLKERNEL} "$@"; fi
-  if [ -x /sbin/${INSTALLKERNEL} ]; then exec /sbin/${INSTALLKERNEL} "$@"; fi
-  if [ -x /usr/sbin/${INSTALLKERNEL} ]; then exec /usr/sbin/${INSTALLKERNEL} "$@"; fi
-fi
-
-# Default install
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 if [ "$(basename $2)" = "vmlinuz" ]; then
 # Compressed install

@@ -61,10 +61,7 @@ die() {
 READELF="${CROSS_COMPILE:-}readelf"
 ADDR2LINE="${CROSS_COMPILE:-}addr2line"
 AWK="awk"
-<<<<<<< HEAD
-=======
 GREP="grep"
->>>>>>> origin/linux_6.1.15_upstream
 
 command -v ${AWK} >/dev/null 2>&1 || die "${AWK} isn't installed"
 command -v ${READELF} >/dev/null 2>&1 || die "${READELF} isn't installed"
@@ -77,12 +74,8 @@ command -v ${ADDR2LINE} >/dev/null 2>&1 || die "${ADDR2LINE} isn't installed"
 find_dir_prefix() {
 	local objfile=$1
 
-<<<<<<< HEAD
-	local start_kernel_addr=$(${READELF} --symbols --wide $objfile | ${AWK} '$8 == "start_kernel" {printf "0x%s", $2}')
-=======
 	local start_kernel_addr=$(${READELF} --symbols --wide $objfile | sed 's/\[.*\]//' |
 		${AWK} '$8 == "start_kernel" {printf "0x%s", $2}')
->>>>>>> origin/linux_6.1.15_upstream
 	[[ -z $start_kernel_addr ]] && return
 
 	local file_line=$(${ADDR2LINE} -e $objfile $start_kernel_addr)
@@ -121,13 +114,9 @@ __faddr2line() {
 	# section offsets.
 	local file_type=$(${READELF} --file-header $objfile |
 		${AWK} '$1 == "Type:" { print $2; exit }')
-<<<<<<< HEAD
-	[[ $file_type = "EXEC" ]] && is_vmlinux=1
-=======
 	if [[ $file_type = "EXEC" ]] || [[ $file_type == "DYN" ]]; then
 		is_vmlinux=1
 	fi
->>>>>>> origin/linux_6.1.15_upstream
 
 	# Go through each of the object's symbols which match the func name.
 	# In rare cases there might be duplicates, in which case we print all
@@ -190,11 +179,7 @@ __faddr2line() {
 				found=2
 				break
 			fi
-<<<<<<< HEAD
-		done < <(${READELF} --symbols --wide $objfile | ${AWK} -v sec=$sym_sec '$7 == sec' | sort --key=2)
-=======
 		done < <(${READELF} --symbols --wide $objfile | sed 's/\[.*\]//' | ${AWK} -v sec=$sym_sec '$7 == sec' | sort --key=2)
->>>>>>> origin/linux_6.1.15_upstream
 
 		if [[ $found = 0 ]]; then
 			warn "can't find symbol: sym_name: $sym_name sym_sec: $sym_sec sym_addr: $sym_addr sym_elf_size: $sym_elf_size"
@@ -275,11 +260,7 @@ __faddr2line() {
 
 		DONE=1
 
-<<<<<<< HEAD
-	done < <(${READELF} --symbols --wide $objfile | ${AWK} -v fn=$sym_name '$4 == "FUNC" && $8 == fn')
-=======
 	done < <(${READELF} --symbols --wide $objfile | sed 's/\[.*\]//' | ${AWK} -v fn=$sym_name '$4 == "FUNC" && $8 == fn')
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 [[ $# -lt 2 ]] && usage

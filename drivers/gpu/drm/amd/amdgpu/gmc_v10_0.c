@@ -1057,18 +1057,7 @@ static int gmc_v10_0_gart_enable(struct amdgpu_device *adev)
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	if (amdgpu_sriov_vf(adev) && amdgpu_in_reset(adev))
-		goto skip_pin_bo;
-
-	r = amdgpu_gart_table_vram_pin(adev);
-	if (r)
-		return r;
-
-skip_pin_bo:
-=======
 	amdgpu_gtt_mgr_recover(&adev->mman.gtt_mgr);
->>>>>>> origin/linux_6.1.15_upstream
 	r = adev->gfxhub.funcs->gart_enable(adev);
 	if (r)
 		return r;

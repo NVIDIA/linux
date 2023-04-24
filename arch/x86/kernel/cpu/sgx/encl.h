@@ -106,12 +106,7 @@ int sgx_encl_may_map(struct sgx_encl *encl, unsigned long start,
 bool current_is_ksgxd(void);
 void sgx_encl_release(struct kref *ref);
 int sgx_encl_mm_add(struct sgx_encl *encl, struct mm_struct *mm);
-<<<<<<< HEAD
-int sgx_encl_lookup_backing(struct sgx_encl *encl, unsigned long page_index,
-			    struct sgx_backing *backing);
-=======
 const cpumask_t *sgx_encl_cpumask(struct sgx_encl *encl);
->>>>>>> origin/linux_6.1.15_upstream
 int sgx_encl_alloc_backing(struct sgx_encl *encl, unsigned long page_index,
 			   struct sgx_backing *backing);
 void sgx_encl_put_backing(struct sgx_backing *backing);

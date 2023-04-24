@@ -660,18 +660,9 @@ static int __hwrm_send(struct bnxt *bp, struct bnxt_hwrm_ctx *ctx)
 		}
 
 		if (j >= HWRM_VALID_BIT_DELAY_USEC) {
-<<<<<<< HEAD
-			if (!(ctx->flags & BNXT_HWRM_CTX_SILENT))
-				netdev_err(bp->dev, "Error (timeout: %u) msg {0x%x 0x%x} len:%d v:%d\n",
-					   hwrm_total_timeout(i) + j,
-					   le16_to_cpu(ctx->req->req_type),
-					   le16_to_cpu(ctx->req->seq_id), len,
-					   *valid);
-=======
 			hwrm_err(bp, ctx, "Error (timeout: %u) msg {0x%x 0x%x} len:%d v:%d\n",
 				 hwrm_total_timeout(i) + j, req_type,
 				 le16_to_cpu(ctx->req->seq_id), len, *valid);
->>>>>>> origin/linux_6.1.15_upstream
 			goto exit;
 		}
 	}

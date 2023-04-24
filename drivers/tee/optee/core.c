@@ -170,20 +170,9 @@ void optee_remove_common(struct optee *optee)
 	/* Unregister OP-TEE specific client devices on TEE bus */
 	optee_unregister_devices();
 
-<<<<<<< HEAD
-	teedev_close_context(optee->ctx);
-	/*
-	 * Ask OP-TEE to free all cached shared memory objects to decrease
-	 * reference counters and also avoid wild pointers in secure world
-	 * into the old shared memory range.
-	 */
-	optee_disable_shm_cache(optee);
-
-=======
 	optee_notif_uninit(optee);
 	optee_shm_arg_cache_uninit(optee);
 	teedev_close_context(optee->ctx);
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * The two devices have to be unregistered before we can free the
 	 * other resources.
@@ -201,18 +190,6 @@ static int ffa_abi_rc;
 
 static int optee_core_init(void)
 {
-<<<<<<< HEAD
-	optee_invoke_fn *invoke_fn;
-	struct tee_shm_pool *pool = ERR_PTR(-EINVAL);
-	struct optee *optee = NULL;
-	void *memremaped_shm = NULL;
-	struct tee_device *teedev;
-	struct tee_context *ctx;
-	u32 sec_caps;
-	int rc;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * The kernel may have crashed at the same time that all available
 	 * secure world threads were suspended and we cannot reschedule the
@@ -223,101 +200,8 @@ static int optee_core_init(void)
 	if (is_kdump_kernel())
 		return -ENODEV;
 
-<<<<<<< HEAD
-	invoke_fn = get_invoke_func(&pdev->dev);
-	if (IS_ERR(invoke_fn))
-		return PTR_ERR(invoke_fn);
-
-	if (!optee_msg_api_uid_is_optee_api(invoke_fn)) {
-		pr_warn("api uid mismatch\n");
-		return -EINVAL;
-	}
-
-	optee_msg_get_os_revision(invoke_fn);
-
-	if (!optee_msg_api_revision_is_compatible(invoke_fn)) {
-		pr_warn("api revision mismatch\n");
-		return -EINVAL;
-	}
-
-	if (!optee_msg_exchange_capabilities(invoke_fn, &sec_caps)) {
-		pr_warn("capabilities mismatch\n");
-		return -EINVAL;
-	}
-
-	/*
-	 * Try to use dynamic shared memory if possible
-	 */
-	if (sec_caps & OPTEE_SMC_SEC_CAP_DYNAMIC_SHM)
-		pool = optee_config_dyn_shm();
-
-	/*
-	 * If dynamic shared memory is not available or failed - try static one
-	 */
-	if (IS_ERR(pool) && (sec_caps & OPTEE_SMC_SEC_CAP_HAVE_RESERVED_SHM))
-		pool = optee_config_shm_memremap(invoke_fn, &memremaped_shm);
-
-	if (IS_ERR(pool))
-		return PTR_ERR(pool);
-
-	optee = kzalloc(sizeof(*optee), GFP_KERNEL);
-	if (!optee) {
-		rc = -ENOMEM;
-		goto err;
-	}
-
-	optee->invoke_fn = invoke_fn;
-	optee->sec_caps = sec_caps;
-
-	teedev = tee_device_alloc(&optee_desc, NULL, pool, optee);
-	if (IS_ERR(teedev)) {
-		rc = PTR_ERR(teedev);
-		goto err;
-	}
-	optee->teedev = teedev;
-
-	teedev = tee_device_alloc(&optee_supp_desc, NULL, pool, optee);
-	if (IS_ERR(teedev)) {
-		rc = PTR_ERR(teedev);
-		goto err;
-	}
-	optee->supp_teedev = teedev;
-
-	rc = tee_device_register(optee->teedev);
-	if (rc)
-		goto err;
-
-	rc = tee_device_register(optee->supp_teedev);
-	if (rc)
-		goto err;
-
-	mutex_init(&optee->call_queue.mutex);
-	INIT_LIST_HEAD(&optee->call_queue.waiters);
-	optee_wait_queue_init(&optee->wait_queue);
-	optee_supp_init(&optee->supp);
-	optee->memremaped_shm = memremaped_shm;
-	optee->pool = pool;
-	ctx = teedev_open(optee->teedev);
-	if (IS_ERR(ctx)) {
-		rc = PTR_ERR(ctx);
-		goto err;
-	}
-	optee->ctx = ctx;
-
-	/*
-	 * Ensure that there are no pre-existing shm objects before enabling
-	 * the shm cache so that there's no chance of receiving an invalid
-	 * address during shutdown. This could occur, for example, if we're
-	 * kexec booting from an older kernel that did not properly cleanup the
-	 * shm cache.
-	 */
-	optee_disable_unmapped_shm_cache(optee);
-
-	optee_enable_shm_cache(optee);
-=======
 	smc_abi_rc = optee_smc_abi_register();
 	ffa_abi_rc = optee_ffa_abi_register();
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* If both failed there's no point with this module */
 	if (smc_abi_rc && ffa_abi_rc)

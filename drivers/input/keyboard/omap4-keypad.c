@@ -389,16 +389,9 @@ static int omap4_keypad_probe(struct platform_device *pdev)
 	 * Enable clocks for the keypad module so that we can read
 	 * revision register.
 	 */
-<<<<<<< HEAD
-	error = pm_runtime_get_sync(dev);
-	if (error < 0) {
-		dev_err(dev, "pm_runtime_get_sync() failed\n");
-		pm_runtime_put_noidle(dev);
-=======
 	error = pm_runtime_resume_and_get(dev);
 	if (error) {
 		dev_err(dev, "pm_runtime_resume_and_get() failed\n");
->>>>>>> origin/linux_6.1.15_upstream
 		return error;
 	}
 

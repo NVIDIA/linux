@@ -51,11 +51,6 @@ static DEFINE_PER_CPU(bool, in_kernel_fpu);
  */
 DEFINE_PER_CPU(struct fpu *, fpu_fpregs_owner_ctx);
 
-<<<<<<< HEAD
-/*
- * Can we use the FPU in kernel mode with the
- * whole "kernel_fpu_begin/end()" sequence?
-=======
 /*
  * Can we use the FPU in kernel mode with the
  * whole "kernel_fpu_begin/end()" sequence?
@@ -93,43 +88,14 @@ EXPORT_SYMBOL(irq_fpu_usable);
 /*
  * Track AVX512 state use because it is known to slow the max clock
  * speed of the core.
->>>>>>> origin/linux_6.1.15_upstream
  */
 static void update_avx_timestamp(struct fpu *fpu)
 {
-<<<<<<< HEAD
-	if (WARN_ON_ONCE(in_nmi()))
-		return false;
-
-	/* In kernel FPU usage already active? */
-	if (this_cpu_read(in_kernel_fpu))
-		return false;
-
-	/*
-	 * When not in NMI or hard interrupt context, FPU can be used in:
-	 *
-	 * - Task context except from within fpregs_lock()'ed critical
-	 *   regions.
-	 *
-	 * - Soft interrupt processing context which cannot happen
-	 *   while in a fpregs_lock()'ed critical region.
-	 */
-	if (!in_hardirq())
-		return true;
-
-	/*
-	 * In hard interrupt context it's safe when soft interrupts
-	 * are enabled, which means the interrupt did not hit in
-	 * a fpregs_lock()'ed critical region.
-	 */
-	return !softirq_count();
-=======
 
 #define AVX512_TRACKING_MASK	(XFEATURE_MASK_ZMM_Hi256 | XFEATURE_MASK_Hi16_ZMM)
 
 	if (fpu->fpstate->regs.xsave.header.xfeatures & AVX512_TRACKING_MASK)
 		fpu->avx512_timestamp = jiffies;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*

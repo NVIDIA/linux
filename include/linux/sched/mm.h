@@ -137,11 +137,7 @@ static inline void mm_update_next_owner(struct mm_struct *mm)
 
 #ifdef CONFIG_MMU
 #ifndef arch_get_mmap_end
-<<<<<<< HEAD
-#define arch_get_mmap_end(addr)	(TASK_SIZE)
-=======
 #define arch_get_mmap_end(addr, len, flags)	(TASK_SIZE)
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 
 #ifndef arch_get_mmap_base

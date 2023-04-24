@@ -215,27 +215,15 @@ static int fintek_wdt_set_timeout(struct watchdog_device *wdd, unsigned int time
 	struct fintek_wdt *wd = watchdog_get_drvdata(wdd);
 
 	if (timeout > 0xff) {
-<<<<<<< HEAD
-		watchdog.timer_val = DIV_ROUND_UP(timeout, 60);
-		watchdog.minutes_mode = true;
-		timeout = watchdog.timer_val * 60;
-=======
 		wd->timer_val = DIV_ROUND_UP(timeout, 60);
 		wd->minutes_mode = true;
 		timeout = wd->timer_val * 60;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		wd->timer_val = timeout;
 		wd->minutes_mode = false;
 	}
 
-<<<<<<< HEAD
-	watchdog.timeout = timeout;
-
-	mutex_unlock(&watchdog.lock);
-=======
 	wdd->timeout = timeout;
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

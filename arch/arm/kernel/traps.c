@@ -825,11 +825,7 @@ int spectre_bhb_update_vectors(unsigned int method)
 	extern char __vectors_bhb_loop8_start[], __vectors_bhb_loop8_end[];
 	void *vec_start, *vec_end;
 
-<<<<<<< HEAD
-	if (system_state > SYSTEM_SCHEDULING) {
-=======
 	if (system_state >= SYSTEM_FREEING_INITMEM) {
->>>>>>> origin/linux_6.1.15_upstream
 		pr_err("CPU%u: Spectre BHB workaround too late - system vulnerable\n",
 		       smp_processor_id());
 		return SPECTRE_VULNERABLE;
@@ -896,9 +892,6 @@ void __init early_trap_init(void *vectors_base)
 	 * memory area. The address is configurable and so a table in the kernel
 	 * image can be used.
 	 */
-<<<<<<< HEAD
-}
-=======
 }
 #endif
 
@@ -967,5 +960,4 @@ void arch_sync_kernel_mappings(unsigned long start, unsigned long end)
 		atomic_inc_return_release(&init_mm.context.vmalloc_seq);
 }
 #endif
->>>>>>> origin/linux_6.1.15_upstream
 #endif

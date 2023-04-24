@@ -644,8 +644,6 @@ static const struct usb_device_id	products [] = {
 				      USB_CLASS_COMM, 2 /* ACM */, 0x0ff),
 	.driver_info = (unsigned long)&rndis_info,
 }, {
-<<<<<<< HEAD
-=======
 	/* ZTE WWAN modules */
 	USB_VENDOR_AND_INTERFACE_INFO(0x19d2,
 				      USB_CLASS_WIRELESS_CONTROLLER, 1, 3),
@@ -656,7 +654,6 @@ static const struct usb_device_id	products [] = {
 				      USB_CLASS_COMM, 2 /* ACM */, 0x0ff),
 	.driver_info = (unsigned long)&zte_rndis_info,
 }, {
->>>>>>> origin/linux_6.1.15_upstream
 	/* RNDIS is MSFT's un-official variant of CDC ACM */
 	USB_INTERFACE_INFO(USB_CLASS_COMM, 2 /* ACM */, 0x0ff),
 	.driver_info = (unsigned long) &rndis_info,

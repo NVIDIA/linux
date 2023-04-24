@@ -2069,27 +2069,6 @@ static const unsigned int vin0_clk_mux[] = {
 	VI0_CLK_MARK,
 };
 /* - VIN1 ------------------------------------------------------------------- */
-<<<<<<< HEAD
-static const union vin_data12 vin1_data_pins = {
-	.data12 = {
-		RCAR_GP_PIN(3,  1), RCAR_GP_PIN(3, 2),
-		RCAR_GP_PIN(3,  3), RCAR_GP_PIN(3, 4),
-		RCAR_GP_PIN(3,  5), RCAR_GP_PIN(3, 6),
-		RCAR_GP_PIN(3,  7), RCAR_GP_PIN(3, 8),
-		RCAR_GP_PIN(3, 13), RCAR_GP_PIN(3, 14),
-		RCAR_GP_PIN(3, 15), RCAR_GP_PIN(3, 16),
-	},
-};
-static const union vin_data12 vin1_data_mux = {
-	.data12 = {
-		VI1_DATA0_MARK, VI1_DATA1_MARK,
-		VI1_DATA2_MARK, VI1_DATA3_MARK,
-		VI1_DATA4_MARK, VI1_DATA5_MARK,
-		VI1_DATA6_MARK, VI1_DATA7_MARK,
-		VI1_DATA8_MARK, VI1_DATA9_MARK,
-		VI1_DATA10_MARK, VI1_DATA11_MARK,
-	},
-=======
 static const unsigned int vin1_data_pins[] = {
 	RCAR_GP_PIN(3,  1), RCAR_GP_PIN(3, 2),
 	RCAR_GP_PIN(3,  3), RCAR_GP_PIN(3, 4),
@@ -2105,7 +2084,6 @@ static const unsigned int vin1_data_mux[] = {
 	VI1_DATA6_MARK, VI1_DATA7_MARK,
 	VI1_DATA8_MARK, VI1_DATA9_MARK,
 	VI1_DATA10_MARK, VI1_DATA11_MARK,
->>>>>>> origin/linux_6.1.15_upstream
 };
 static const unsigned int vin1_sync_pins[] = {
 	RCAR_GP_PIN(3, 11), /* HSYNC */

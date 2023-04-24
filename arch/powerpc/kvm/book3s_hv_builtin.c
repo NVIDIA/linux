@@ -607,32 +607,7 @@ static void flush_guest_tlb(struct kvm *kvm)
 		asm volatile(PPC_TLBIEL(%0, %4, %3, %2, %1)
 			     : : "r" (rb), "i" (0), "i" (0), "i" (0),
 			       "r" (0) : "memory");
-<<<<<<< HEAD
-		for (set = 1; set < kvm->arch.tlb_sets; ++set) {
-			rb += PPC_BIT(51);	/* increment set number */
-			/* R=1 PRS=1 RIC=0 */
-			asm volatile(PPC_TLBIEL(%0, %4, %3, %2, %1)
-				     : : "r" (rb), "i" (1), "i" (1), "i" (0),
-				       "r" (0) : "memory");
-		}
-		asm volatile("ptesync": : :"memory");
-		// POWER9 congruence-class TLBIEL leaves ERAT. Flush it now.
-		asm volatile(PPC_RADIX_INVALIDATE_ERAT_GUEST : : :"memory");
-	} else {
-		for (set = 0; set < kvm->arch.tlb_sets; ++set) {
-			/* R=0 PRS=0 RIC=0 */
-			asm volatile(PPC_TLBIEL(%0, %4, %3, %2, %1)
-				     : : "r" (rb), "i" (0), "i" (0), "i" (0),
-				       "r" (0) : "memory");
-			rb += PPC_BIT(51);	/* increment set number */
-		}
-		asm volatile("ptesync": : :"memory");
-		// POWER9 congruence-class TLBIEL leaves ERAT. Flush it now.
-		if (cpu_has_feature(CPU_FTR_ARCH_300))
-			asm volatile(PPC_ISA_3_0_INVALIDATE_ERAT : : :"memory");
-=======
 		rb += PPC_BIT(51);	/* increment set number */
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	asm volatile("ptesync": : :"memory");
 }

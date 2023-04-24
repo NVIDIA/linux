@@ -320,11 +320,7 @@ static int phram_setup(const char *val)
 		goto error;
 	}
 
-<<<<<<< HEAD
-	ret = register_device(name, start, len, (uint32_t)erasesize);
-=======
 	ret = register_device(NULL, name, start, len, (uint32_t)erasesize);
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		goto error;
 

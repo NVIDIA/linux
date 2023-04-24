@@ -2886,18 +2886,6 @@ static int __iwl_mvm_resume(struct iwl_mvm *mvm, bool test)
 		iwl_fw_dbg_collect_desc(&mvm->fwrt, &iwl_dump_desc_assert,
 					false, 0);
 		ret = 1;
-<<<<<<< HEAD
-		goto err;
-	}
-
-	ret = iwl_trans_d3_resume(mvm->trans, &d3_status, test, !unified_image);
-	if (ret)
-		goto err;
-
-	if (d3_status != IWL_D3_STATUS_ALIVE) {
-		IWL_INFO(mvm, "Device was reset during suspend\n");
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		goto err;
 	}
 

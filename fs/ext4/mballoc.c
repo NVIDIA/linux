@@ -3884,8 +3884,6 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
 		thisgrp_len = min_t(unsigned int, (unsigned int)len,
 			EXT4_BLOCKS_PER_GROUP(sb) - EXT4_C2B(sbi, blkoff));
 		clen = EXT4_NUM_B2C(sbi, thisgrp_len);
-<<<<<<< HEAD
-=======
 
 		if (!ext4_sb_block_valid(sb, NULL, block, thisgrp_len)) {
 			ext4_error(sb, "Marking blocks in system zone - "
@@ -3894,7 +3892,6 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
 			bitmap_bh = NULL;
 			break;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		bitmap_bh = ext4_read_block_bitmap(sb, group);
 		if (IS_ERR(bitmap_bh)) {
@@ -3917,15 +3914,9 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
 
 		clen_changed = clen - already;
 		if (state)
-<<<<<<< HEAD
-			ext4_set_bits(bitmap_bh->b_data, blkoff, clen);
-		else
-			mb_test_and_clear_bits(bitmap_bh->b_data, blkoff, clen);
-=======
 			mb_set_bits(bitmap_bh->b_data, blkoff, clen);
 		else
 			mb_clear_bits(bitmap_bh->b_data, blkoff, clen);
->>>>>>> origin/linux_6.1.15_upstream
 		if (ext4_has_group_desc_csum(sb) &&
 		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
@@ -6480,11 +6471,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
  */
 int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
 {
-<<<<<<< HEAD
-	struct request_queue *q = bdev_get_queue(sb->s_bdev);
-=======
 	unsigned int discard_granularity = bdev_discard_granularity(sb->s_bdev);
->>>>>>> origin/linux_6.1.15_upstream
 	struct ext4_group_info *grp;
 	ext4_group_t group, first_group, last_group;
 	ext4_grpblk_t cnt = 0, first_cluster, last_cluster;
@@ -6505,15 +6492,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
 	    range->len < sb->s_blocksize)
 		return -EINVAL;
 	/* No point to try to trim less than discard granularity */
-<<<<<<< HEAD
-	if (range->minlen < q->limits.discard_granularity) {
-		minlen = EXT4_NUM_B2C(EXT4_SB(sb),
-			q->limits.discard_granularity >> sb->s_blocksize_bits);
-=======
 	if (range->minlen < discard_granularity) {
 		minlen = EXT4_NUM_B2C(EXT4_SB(sb),
 				discard_granularity >> sb->s_blocksize_bits);
->>>>>>> origin/linux_6.1.15_upstream
 		if (minlen > EXT4_CLUSTERS_PER_GROUP(sb))
 			goto out;
 	}

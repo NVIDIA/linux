@@ -29,10 +29,7 @@
 #include "nau8824.h"
 
 #define NAU8824_JD_ACTIVE_HIGH			BIT(0)
-<<<<<<< HEAD
-=======
 #define NAU8824_MONO_SPEAKER			BIT(1)
->>>>>>> origin/linux_6.1.15_upstream
 
 static int nau8824_quirk;
 static int quirk_override = -1;
@@ -1886,9 +1883,6 @@ static const struct dmi_system_id nau8824_quirk_table[] = {
 			DMI_EXACT_MATCH(DMI_BOARD_NAME, "Cherry Trail CR"),
 			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "20170531"),
 		},
-<<<<<<< HEAD
-		.driver_data = (void *)(NAU8824_JD_ACTIVE_HIGH),
-=======
 		.driver_data = (void *)(NAU8824_JD_ACTIVE_HIGH |
 					NAU8824_MONO_SPEAKER),
 	},
@@ -1908,7 +1902,6 @@ static const struct dmi_system_id nau8824_quirk_table[] = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "W2S"),
 		},
 		.driver_data = (void *)(NAU8824_MONO_SPEAKER),
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	{}
 };
@@ -1927,10 +1920,6 @@ static void nau8824_check_quirks(void)
 		nau8824_quirk = (unsigned long)dmi_id->driver_data;
 }
 
-<<<<<<< HEAD
-static int nau8824_i2c_probe(struct i2c_client *i2c,
-	const struct i2c_device_id *id)
-=======
 const char *nau8824_components(void)
 {
 	nau8824_check_quirks();
@@ -1943,7 +1932,6 @@ const char *nau8824_components(void)
 EXPORT_SYMBOL_GPL(nau8824_components);
 
 static int nau8824_i2c_probe(struct i2c_client *i2c)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct device *dev = &i2c->dev;
 	struct nau8824 *nau8824 = dev_get_platdata(dev);

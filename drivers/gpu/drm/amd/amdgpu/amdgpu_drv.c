@@ -36,13 +36,9 @@
 #include <drm/drm_probe_helper.h>
 #include <linux/mmu_notifier.h>
 #include <linux/suspend.h>
-<<<<<<< HEAD
-#include <linux/fb.h>
-=======
 #include <linux/cc_platform.h>
 #include <linux/fb.h>
 #include <linux/dynamic_debug.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include "amdgpu.h"
 #include "amdgpu_irq.h"
@@ -2021,26 +2017,6 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 
 static const struct drm_driver amdgpu_kms_driver;
 
-<<<<<<< HEAD
-static bool amdgpu_is_fw_framebuffer(resource_size_t base,
-				     resource_size_t size)
-{
-	bool found = false;
-#if IS_REACHABLE(CONFIG_FB)
-	struct apertures_struct *a;
-
-	a = alloc_apertures(1);
-	if (!a)
-		return false;
-
-	a->ranges[0].base = base;
-	a->ranges[0].size = size;
-
-	found = is_firmware_framebuffer(a);
-	kfree(a);
-#endif
-	return found;
-=======
 static void amdgpu_get_secondary_funcs(struct amdgpu_device *adev)
 {
 	struct pci_dev *p = NULL;
@@ -2061,7 +2037,6 @@ static void amdgpu_get_secondary_funcs(struct amdgpu_device *adev)
 			pci_dev_put(p);
 		}
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int amdgpu_pci_probe(struct pci_dev *pdev,
@@ -2158,18 +2133,6 @@ static int amdgpu_pci_probe(struct pci_dev *pdev,
 	}
 #endif
 
-<<<<<<< HEAD
-	base = pci_resource_start(pdev, 0);
-	size = pci_resource_len(pdev, 0);
-	is_fw_fb = amdgpu_is_fw_framebuffer(base, size);
-
-	/* Get rid of things like offb */
-	ret = drm_aperture_remove_conflicting_pci_framebuffers(pdev, &amdgpu_kms_driver);
-	if (ret)
-		return ret;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	adev = devm_drm_dev_alloc(&pdev->dev, &amdgpu_kms_driver, typeof(*adev), ddev);
 	if (IS_ERR(adev))
 		return PTR_ERR(adev);

@@ -9,10 +9,7 @@
 #include <linux/of_gpio.h>
 
 #include <drm/drm_bridge_connector.h>
-<<<<<<< HEAD
-=======
 #include <drm/drm_of.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <sound/hdmi-codec.h>
 #include "hdmi.h"
@@ -321,8 +318,6 @@ int msm_hdmi_modeset_init(struct hdmi *hdmi,
 		goto fail;
 	}
 
-<<<<<<< HEAD
-=======
 	if (hdmi->next_bridge) {
 		ret = drm_bridge_attach(hdmi->encoder, hdmi->next_bridge, hdmi->bridge,
 					DRM_BRIDGE_ATTACH_NO_CONNECTOR);
@@ -332,7 +327,6 @@ int msm_hdmi_modeset_init(struct hdmi *hdmi,
 		}
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	hdmi->connector = drm_bridge_connector_init(hdmi->dev, encoder);
 	if (IS_ERR(hdmi->connector)) {
 		ret = PTR_ERR(hdmi->connector);

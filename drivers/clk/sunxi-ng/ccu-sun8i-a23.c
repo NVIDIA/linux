@@ -744,11 +744,7 @@ static int sun8i_a23_ccu_probe(struct platform_device *pdev)
 	val &= ~BIT(16);
 	writel(val, reg + SUN8I_A23_PLL_MIPI_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, &sun8i_a23_ccu_desc);
-=======
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, &sun8i_a23_ccu_desc);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id sun8i_a23_ccu_ids[] = {

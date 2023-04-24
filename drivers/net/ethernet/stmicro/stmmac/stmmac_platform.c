@@ -816,9 +816,6 @@ static int __maybe_unused stmmac_pltfr_noirq_resume(struct device *dev)
 		if (ret)
 			return ret;
 
-<<<<<<< HEAD
-		stmmac_init_tstamp_counter(priv, priv->systime_flags);
-=======
 		ret = clk_prepare_enable(priv->plat->clk_ptp_ref);
 		if (ret < 0) {
 			netdev_warn(priv->dev,
@@ -826,7 +823,6 @@ static int __maybe_unused stmmac_pltfr_noirq_resume(struct device *dev)
 				    ERR_PTR(ret));
 			return ret;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;

@@ -1202,13 +1202,8 @@ static mlx5e_stats_grp_t mlx5e_ul_rep_stats_grps[] = {
 	&MLX5E_STATS_GRP(per_port_buff_congest),
 #ifdef CONFIG_MLX5_EN_IPSEC
 	&MLX5E_STATS_GRP(ipsec_sw),
-<<<<<<< HEAD
-	&MLX5E_STATS_GRP(ipsec_hw),
-#endif
-=======
 #endif
 	&MLX5E_STATS_GRP(ptp),
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static unsigned int mlx5e_ul_rep_stats_grps_num(struct mlx5e_priv *priv)

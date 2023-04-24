@@ -2218,13 +2218,10 @@ static bool target_handle_task_attr(struct se_cmd *cmd)
 		 */
 		atomic_dec_mb(&dev->non_ordered);
 	}
-<<<<<<< HEAD
-=======
 
 	spin_lock_irq(&cmd->t_state_lock);
 	cmd->transport_state &= ~CMD_T_SENT;
 	spin_unlock_irq(&cmd->t_state_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_lock(&dev->delayed_cmd_lock);
 	list_add_tail(&cmd->se_delayed_node, &dev->delayed_cmd_list);

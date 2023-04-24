@@ -439,8 +439,6 @@ void __idxd_wq_quiesce(struct idxd_wq *wq)
 	percpu_ref_kill(&wq->wq_active);
 	complete_all(&wq->wq_resurrect);
 	wait_for_completion(&wq->wq_dead);
-<<<<<<< HEAD
-=======
 }
 
 void idxd_wq_quiesce(struct idxd_wq *wq)
@@ -448,7 +446,6 @@ void idxd_wq_quiesce(struct idxd_wq *wq)
 	mutex_lock(&wq->wq_lock);
 	__idxd_wq_quiesce(wq);
 	mutex_unlock(&wq->wq_lock);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* Device control bits */
@@ -600,14 +597,8 @@ void idxd_device_reset(struct idxd_device *idxd)
 {
 	idxd_cmd_exec(idxd, IDXD_CMD_RESET_DEVICE, 0, NULL);
 	idxd_device_clear_state(idxd);
-<<<<<<< HEAD
-	idxd->state = IDXD_DEV_DISABLED;
-	idxd_unmask_error_interrupts(idxd);
-	idxd_msix_perm_setup(idxd);
-=======
 	spin_lock(&idxd->dev_lock);
 	idxd_unmask_error_interrupts(idxd);
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock(&idxd->dev_lock);
 }
 
@@ -726,11 +717,8 @@ static void idxd_groups_clear_state(struct idxd_device *idxd)
 			group->tc_a = -1;
 			group->tc_b = -1;
 		}
-<<<<<<< HEAD
-=======
 		group->desc_progress_limit = 0;
 		group->batch_progress_limit = 0;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -741,53 +729,15 @@ static void idxd_device_wqs_clear_state(struct idxd_device *idxd)
 	for (i = 0; i < idxd->max_wqs; i++) {
 		struct idxd_wq *wq = idxd->wqs[i];
 
-<<<<<<< HEAD
-		if (wq->state == IDXD_WQ_ENABLED) {
-			idxd_wq_disable_cleanup(wq);
-			wq->state = IDXD_WQ_DISABLED;
-		}
-		idxd_wq_device_reset_cleanup(wq);
-=======
 		mutex_lock(&wq->wq_lock);
 		idxd_wq_disable_cleanup(wq);
 		idxd_wq_device_reset_cleanup(wq);
 		mutex_unlock(&wq->wq_lock);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
 void idxd_device_clear_state(struct idxd_device *idxd)
 {
-<<<<<<< HEAD
-	if (!test_bit(IDXD_FLAG_CONFIGURABLE, &idxd->flags))
-		return;
-
-	idxd_groups_clear_state(idxd);
-	idxd_engines_clear_state(idxd);
-	idxd_device_wqs_clear_state(idxd);
-}
-
-void idxd_msix_perm_setup(struct idxd_device *idxd)
-{
-	union msix_perm mperm;
-	int i, msixcnt;
-
-	msixcnt = pci_msix_vec_count(idxd->pdev);
-	if (msixcnt < 0)
-		return;
-
-	mperm.bits = 0;
-	mperm.pasid = idxd->pasid;
-	mperm.pasid_en = device_pasid_enabled(idxd);
-	for (i = 1; i < msixcnt; i++)
-		iowrite32(mperm.bits, idxd->reg_base + idxd->msix_perm_offset + i * 8);
-}
-
-void idxd_msix_perm_clear(struct idxd_device *idxd)
-{
-	union msix_perm mperm;
-	int i, msixcnt;
-=======
 	/* IDXD is always disabled. Other states are cleared only when IDXD is configurable. */
 	if (test_bit(IDXD_FLAG_CONFIGURABLE, &idxd->flags)) {
 		/*
@@ -795,7 +745,6 @@ void idxd_msix_perm_clear(struct idxd_device *idxd)
 		 * So no need to be protected by device lock.
 		 */
 		idxd_device_wqs_clear_state(idxd);
->>>>>>> origin/linux_6.1.15_upstream
 
 		spin_lock(&idxd->dev_lock);
 		idxd_groups_clear_state(idxd);
@@ -998,12 +947,9 @@ static void idxd_group_flags_setup(struct idxd_device *idxd)
 			group->grpcfg.flags.rdbufs_allowed = group->rdbufs_allowed;
 		else
 			group->grpcfg.flags.rdbufs_allowed = idxd->max_rdbufs;
-<<<<<<< HEAD
-=======
 
 		group->grpcfg.flags.desc_progress_limit = group->desc_progress_limit;
 		group->grpcfg.flags.batch_progress_limit = group->batch_progress_limit;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

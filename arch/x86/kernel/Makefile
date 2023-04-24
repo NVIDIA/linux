@@ -40,12 +40,6 @@ KMSAN_SANITIZE_nmi.o					:= n
 # non-deterministic coverage.
 KCOV_INSTRUMENT		:= n
 
-<<<<<<< HEAD
-CFLAGS_head$(BITS).o	+= -fno-stack-protector
-CFLAGS_cc_platform.o	+= -fno-stack-protector
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 CFLAGS_irq.o := -I $(srctree)/$(src)/../include/asm/trace
 
 obj-y			+= head_$(BITS).o
@@ -149,11 +143,7 @@ obj-$(CONFIG_UNWINDER_GUESS)		+= unwind_guess.o
 
 obj-$(CONFIG_AMD_MEM_ENCRYPT)		+= sev.o
 
-<<<<<<< HEAD
-obj-$(CONFIG_ARCH_HAS_CC_PLATFORM)	+= cc_platform.o
-=======
 obj-$(CONFIG_CFI_CLANG)			+= cfi.o
->>>>>>> origin/linux_6.1.15_upstream
 
 ###
 # 64 bit specific files

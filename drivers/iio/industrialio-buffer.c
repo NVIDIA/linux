@@ -1753,18 +1753,10 @@ int iio_buffers_alloc_sysfs_and_mask(struct iio_dev *indio_dev)
 	if (!iio_dev_opaque->attached_buffers_cnt)
 		return 0;
 
-<<<<<<< HEAD
-	for (i = 0; i < iio_dev_opaque->attached_buffers_cnt; i++) {
-		buffer = iio_dev_opaque->attached_buffers[i];
-		ret = __iio_buffer_alloc_sysfs_and_mask(buffer, indio_dev, i);
-		if (ret) {
-			unwind_idx = i - 1;
-=======
 	for (idx = 0; idx < iio_dev_opaque->attached_buffers_cnt; idx++) {
 		buffer = iio_dev_opaque->attached_buffers[idx];
 		ret = __iio_buffer_alloc_sysfs_and_mask(buffer, indio_dev, idx);
 		if (ret)
->>>>>>> origin/linux_6.1.15_upstream
 			goto error_unwind_sysfs_and_mask;
 	}
 
@@ -1782,15 +1774,9 @@ int iio_buffers_alloc_sysfs_and_mask(struct iio_dev *indio_dev)
 	return 0;
 
 error_unwind_sysfs_and_mask:
-<<<<<<< HEAD
-	for (; unwind_idx >= 0; unwind_idx--) {
-		buffer = iio_dev_opaque->attached_buffers[unwind_idx];
-		__iio_buffer_free_sysfs_and_mask(buffer, indio_dev, unwind_idx);
-=======
 	while (idx--) {
 		buffer = iio_dev_opaque->attached_buffers[idx];
 		__iio_buffer_free_sysfs_and_mask(buffer, indio_dev, idx);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return ret;
 }

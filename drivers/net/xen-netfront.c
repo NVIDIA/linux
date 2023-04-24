@@ -431,11 +431,7 @@ static bool xennet_tx_buf_gc(struct netfront_queue *queue)
 			skb = queue->tx_skbs[id];
 			queue->tx_skbs[id] = NULL;
 			if (unlikely(!gnttab_end_foreign_access_ref(
-<<<<<<< HEAD
-				queue->grant_tx_ref[id], GNTMAP_readonly))) {
-=======
 				queue->grant_tx_ref[id]))) {
->>>>>>> origin/linux_6.1.15_upstream
 				dev_alert(dev,
 					  "Grant still in use by backend domain\n");
 				goto err;
@@ -909,11 +905,7 @@ static void xennet_set_rx_rsp_cons(struct netfront_queue *queue, RING_IDX val)
 
 	spin_lock_irqsave(&queue->rx_cons_lock, flags);
 	queue->rx.rsp_cons = val;
-<<<<<<< HEAD
-	queue->rx_rsp_unconsumed = RING_HAS_UNCONSUMED_RESPONSES(&queue->rx);
-=======
 	queue->rx_rsp_unconsumed = XEN_RING_NR_UNCONSUMED_RESPONSES(&queue->rx);
->>>>>>> origin/linux_6.1.15_upstream
 	spin_unlock_irqrestore(&queue->rx_cons_lock, flags);
 }
 
@@ -1064,9 +1056,6 @@ static int xennet_get_responses(struct netfront_queue *queue,
 			goto next;
 		}
 
-<<<<<<< HEAD
-		if (!gnttab_end_foreign_access_ref(ref, 0)) {
-=======
 		if (unlikely(rx->status < 0 ||
 			     rx->offset + rx->status > XEN_PAGE_SIZE)) {
 			if (net_ratelimit())
@@ -1078,7 +1067,6 @@ static int xennet_get_responses(struct netfront_queue *queue,
 		}
 
 		if (!gnttab_end_foreign_access_ref(ref)) {
->>>>>>> origin/linux_6.1.15_upstream
 			dev_alert(dev,
 				  "Grant still in use by backend domain\n");
 			queue->info->broken = true;
@@ -1550,11 +1538,7 @@ static bool xennet_handle_rx(struct netfront_queue *queue, unsigned int *eoi)
 		return false;
 
 	spin_lock_irqsave(&queue->rx_cons_lock, flags);
-<<<<<<< HEAD
-	work_queued = RING_HAS_UNCONSUMED_RESPONSES(&queue->rx);
-=======
 	work_queued = XEN_RING_NR_UNCONSUMED_RESPONSES(&queue->rx);
->>>>>>> origin/linux_6.1.15_upstream
 	if (work_queued > queue->rx_rsp_unconsumed) {
 		queue->rx_rsp_unconsumed = work_queued;
 		*eoi = 0;
@@ -1983,12 +1967,7 @@ static int setup_netfront(struct xenbus_device *dev,
 			struct netfront_queue *queue, unsigned int feature_split_evtchn)
 {
 	struct xen_netif_tx_sring *txs;
-<<<<<<< HEAD
-	struct xen_netif_rx_sring *rxs = NULL;
-	grant_ref_t gref;
-=======
 	struct xen_netif_rx_sring *rxs;
->>>>>>> origin/linux_6.1.15_upstream
 	int err;
 
 	queue->tx_ring_ref = INVALID_GRANT_REF;
@@ -2001,26 +1980,6 @@ static int setup_netfront(struct xenbus_device *dev,
 	if (err)
 		goto fail;
 
-<<<<<<< HEAD
-	err = xenbus_grant_ring(dev, txs, 1, &gref);
-	if (err < 0)
-		goto fail;
-	queue->tx_ring_ref = gref;
-
-	rxs = (struct xen_netif_rx_sring *)get_zeroed_page(GFP_NOIO | __GFP_HIGH);
-	if (!rxs) {
-		err = -ENOMEM;
-		xenbus_dev_fatal(dev, err, "allocating rx ring page");
-		goto fail;
-	}
-	SHARED_RING_INIT(rxs);
-	FRONT_RING_INIT(&queue->rx, rxs, XEN_PAGE_SIZE);
-
-	err = xenbus_grant_ring(dev, rxs, 1, &gref);
-	if (err < 0)
-		goto fail;
-	queue->rx_ring_ref = gref;
-=======
 	XEN_FRONT_RING_INIT(&queue->tx, txs, XEN_PAGE_SIZE);
 
 	err = xenbus_setup_ring(dev, GFP_NOIO | __GFP_HIGH, (void **)&rxs,
@@ -2029,7 +1988,6 @@ static int setup_netfront(struct xenbus_device *dev,
 		goto fail;
 
 	XEN_FRONT_RING_INIT(&queue->rx, rxs, XEN_PAGE_SIZE);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (feature_split_evtchn)
 		err = setup_netfront_split(queue);
@@ -2045,31 +2003,10 @@ static int setup_netfront(struct xenbus_device *dev,
 
 	return 0;
 
-<<<<<<< HEAD
-	/* If we fail to setup netfront, it is safe to just revoke access to
-	 * granted pages because backend is not accessing it at this point.
-	 */
- fail:
-	if (queue->rx_ring_ref != GRANT_INVALID_REF) {
-		gnttab_end_foreign_access(queue->rx_ring_ref, 0,
-					  (unsigned long)rxs);
-		queue->rx_ring_ref = GRANT_INVALID_REF;
-	} else {
-		free_page((unsigned long)rxs);
-	}
-	if (queue->tx_ring_ref != GRANT_INVALID_REF) {
-		gnttab_end_foreign_access(queue->tx_ring_ref, 0,
-					  (unsigned long)txs);
-		queue->tx_ring_ref = GRANT_INVALID_REF;
-	} else {
-		free_page((unsigned long)txs);
-	}
-=======
  fail:
 	xenbus_teardown_ring((void **)&queue->rx.sring, 1, &queue->rx_ring_ref);
 	xenbus_teardown_ring((void **)&queue->tx.sring, 1, &queue->tx_ring_ref);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return err;
 }
 

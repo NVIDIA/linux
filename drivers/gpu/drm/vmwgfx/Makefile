@@ -9,12 +9,8 @@ vmwgfx-y := vmwgfx_execbuf.o vmwgfx_gmr.o vmwgfx_kms.o vmwgfx_drv.o \
 	    vmwgfx_cotable.o vmwgfx_so.o vmwgfx_binding.o vmwgfx_msg.o \
 	    vmwgfx_simple_resource.o vmwgfx_va.o vmwgfx_blit.o \
 	    vmwgfx_validation.o vmwgfx_page_dirty.o vmwgfx_streamoutput.o \
-<<<<<<< HEAD
-	    vmwgfx_devcaps.o ttm_object.o ttm_memory.o vmwgfx_system_manager.o
-=======
 	    vmwgfx_devcaps.o ttm_object.o vmwgfx_system_manager.o \
 	    vmwgfx_gem.o
->>>>>>> origin/linux_6.1.15_upstream
 
 vmwgfx-$(CONFIG_DRM_FBDEV_EMULATION) += vmwgfx_fb.o
 

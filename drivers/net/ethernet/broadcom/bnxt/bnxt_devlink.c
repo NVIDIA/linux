@@ -262,14 +262,9 @@ void bnxt_dl_fw_reporters_create(struct bnxt *bp)
 {
 	struct bnxt_fw_health *fw_health = bp->fw_health;
 
-<<<<<<< HEAD
-	if (!health)
-		return;
-=======
 	if (fw_health && !fw_health->fw_reporter)
 		fw_health->fw_reporter = __bnxt_dl_reporter_create(bp, &bnxt_dl_fw_reporter_ops);
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 void bnxt_dl_fw_reporters_destroy(struct bnxt *bp)
 {
@@ -396,15 +391,10 @@ bnxt_dl_livepatch_activate(struct bnxt *bp, struct netlink_ext_ack *extack)
 	u8 target;
 	int rc;
 
-<<<<<<< HEAD
-	if (!health)
-		return;
-=======
 	if (~bp->fw_cap & BNXT_FW_CAP_LIVEPATCH) {
 		NL_SET_ERR_MSG_MOD(extack, "Device does not support live patch");
 		return -EOPNOTSUPP;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	rc = hwrm_req_init(bp, query_req, HWRM_FW_LIVEPATCH_QUERY);
 	if (rc)
@@ -1292,10 +1282,7 @@ int bnxt_dl_register(struct bnxt *bp)
 	bp->dl = dl;
 	bp_dl = devlink_priv(dl);
 	bp_dl->bp = bp;
-<<<<<<< HEAD
-=======
 	bnxt_dl_set_remote_reset(dl, true);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Add switchdev eswitch mode setting, if SRIOV supported */
 	if (pci_find_ext_capability(bp->pdev, PCI_EXT_CAP_ID_SRIOV) &&
@@ -1336,10 +1323,7 @@ void bnxt_dl_unregister(struct bnxt *bp)
 {
 	struct devlink *dl = bp->dl;
 
-<<<<<<< HEAD
-=======
 	devlink_unregister(dl);
->>>>>>> origin/linux_6.1.15_upstream
 	if (BNXT_PF(bp)) {
 		bnxt_dl_params_unregister(bp);
 		devlink_port_unregister(&bp->dl_port);

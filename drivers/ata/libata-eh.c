@@ -93,15 +93,6 @@ static const unsigned int ata_eh_identify_timeouts[] = {
 	UINT_MAX,
 };
 
-<<<<<<< HEAD
-static const unsigned long ata_eh_revalidate_timeouts[] = {
-	15000,	/* Some drives are slow to read log pages when waking-up */
-	15000,  /* combined time till here is enough even for media access */
-	ULONG_MAX,
-};
-
-static const unsigned long ata_eh_flush_timeouts[] = {
-=======
 static const unsigned int ata_eh_revalidate_timeouts[] = {
 	15000,	/* Some drives are slow to read log pages when waking-up */
 	15000,  /* combined time till here is enough even for media access */
@@ -109,7 +100,6 @@ static const unsigned int ata_eh_revalidate_timeouts[] = {
 };
 
 static const unsigned int ata_eh_flush_timeouts[] = {
->>>>>>> origin/linux_6.1.15_upstream
 	15000,	/* be generous with flush */
 	15000,  /* ditto */
 	30000,	/* and even more generous */

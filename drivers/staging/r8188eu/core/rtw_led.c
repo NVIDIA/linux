@@ -35,21 +35,8 @@ static void SwLedOn(struct adapter *padapter, struct led_priv *pLed)
 	if (padapter->bDriverStopped)
 		return;
 
-<<<<<<< HEAD
-/*  */
-/*	Description: */
-/*		DeInitialize an LED_871x object. */
-/*  */
-void DeInitLed871x(struct LED_871x *pLed)
-{
-	_cancel_workitem_sync(&pLed->BlinkWorkItem);
-	_cancel_timer_ex(&pLed->BlinkTimer);
-	ResetLedStatus(pLed);
-	SwLedOff(pLed->padapter, pLed);
-=======
 	rtw_write8(padapter, REG_LEDCFG2, BIT(5)); /*  SW control led0 on. */
 	pLed->bLedOn = true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void SwLedOff(struct adapter *padapter, struct led_priv *pLed)

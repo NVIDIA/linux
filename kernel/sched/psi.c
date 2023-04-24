@@ -1201,15 +1201,11 @@ int psi_show(struct seq_file *m, struct psi_group *group, enum psi_res res)
 		group->avg_next_update = update_averages(group, now);
 	mutex_unlock(&group->avgs_lock);
 
-<<<<<<< HEAD
-	for (full = 0; full < 2; full++) {
-=======
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 	only_full = res == PSI_IRQ;
 #endif
 
 	for (full = 0; full < 2 - only_full; full++) {
->>>>>>> origin/linux_6.1.15_upstream
 		unsigned long avg[3] = { 0, };
 		u64 total = 0;
 		int w;
@@ -1281,10 +1277,7 @@ struct psi_trigger *psi_trigger_create(struct psi_group *group,
 	t->event = 0;
 	t->last_event_time = 0;
 	init_waitqueue_head(&t->event_wait);
-<<<<<<< HEAD
-=======
 	t->pending_event = false;
->>>>>>> origin/linux_6.1.15_upstream
 
 	mutex_lock(&group->trigger_lock);
 
@@ -1473,11 +1466,7 @@ static ssize_t psi_write(struct file *file, const char __user *user_buf,
 		return -EBUSY;
 	}
 
-<<<<<<< HEAD
-	new = psi_trigger_create(&psi_system, buf, nbytes, res);
-=======
 	new = psi_trigger_create(&psi_system, buf, res);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(new)) {
 		mutex_unlock(&seq->lock);
 		return PTR_ERR(new);

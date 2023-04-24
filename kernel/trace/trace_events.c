@@ -2803,12 +2803,8 @@ trace_create_new_event(struct trace_event_call *call,
 	no_pid_list = rcu_dereference_protected(tr->filtered_no_pids,
 					     lockdep_is_held(&event_mutex));
 
-<<<<<<< HEAD
-	if (pid_list || no_pid_list)
-=======
 	if (!trace_pid_list_first(pid_list, &first) ||
 	    !trace_pid_list_first(no_pid_list, &first))
->>>>>>> origin/linux_6.1.15_upstream
 		file->flags |= EVENT_FILE_FL_PID_FILTER;
 
 	file->event_call = call;
@@ -3581,16 +3577,9 @@ create_event_toplevel_files(struct dentry *parent, struct trace_array *tr)
 	struct dentry *d_events;
 	struct dentry *entry;
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("set_event", TRACE_MODE_WRITE, parent,
-				    tr, &ftrace_set_event_fops);
-	if (!entry) {
-		pr_warn("Could not create tracefs 'set_event' entry\n");
-=======
 	entry = trace_create_file("set_event", TRACE_MODE_WRITE, parent,
 				  tr, &ftrace_set_event_fops);
 	if (!entry)
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENOMEM;
 
 	d_events = tracefs_create_dir("events", parent);
@@ -3606,21 +3595,6 @@ create_event_toplevel_files(struct dentry *parent, struct trace_array *tr)
 
 	/* There are not as crucial, just warn if they are not created */
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("set_event_pid", TRACE_MODE_WRITE, parent,
-				    tr, &ftrace_set_event_pid_fops);
-	if (!entry)
-		pr_warn("Could not create tracefs 'set_event_pid' entry\n");
-
-	entry = tracefs_create_file("set_event_notrace_pid",
-				    TRACE_MODE_WRITE, parent, tr,
-				    &ftrace_set_event_notrace_pid_fops);
-	if (!entry)
-		pr_warn("Could not create tracefs 'set_event_notrace_pid' entry\n");
-
-	/* ring buffer internal formats */
-	entry = trace_create_file("header_page", TRACE_MODE_READ, d_events,
-=======
 	trace_create_file("set_event_pid", TRACE_MODE_WRITE, parent,
 			  tr, &ftrace_set_event_pid_fops);
 
@@ -3630,15 +3604,10 @@ create_event_toplevel_files(struct dentry *parent, struct trace_array *tr)
 
 	/* ring buffer internal formats */
 	trace_create_file("header_page", TRACE_MODE_READ, d_events,
->>>>>>> origin/linux_6.1.15_upstream
 				  ring_buffer_print_page_header,
 				  &ftrace_show_header_fops);
 
-<<<<<<< HEAD
-	entry = trace_create_file("header_event", TRACE_MODE_READ, d_events,
-=======
 	trace_create_file("header_event", TRACE_MODE_READ, d_events,
->>>>>>> origin/linux_6.1.15_upstream
 				  ring_buffer_print_entry_header,
 				  &ftrace_show_header_fops);
 
@@ -3852,15 +3821,8 @@ __init int event_trace_init(void)
 	if (!tr)
 		return -ENODEV;
 
-<<<<<<< HEAD
-	entry = tracefs_create_file("available_events", TRACE_MODE_READ,
-				    NULL, tr, &ftrace_avail_fops);
-	if (!entry)
-		pr_warn("Could not create tracefs 'available_events' entry\n");
-=======
 	trace_create_file("available_events", TRACE_MODE_READ,
 			  NULL, tr, &ftrace_avail_fops);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = early_event_add_tracer(NULL, tr);
 	if (ret)

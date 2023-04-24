@@ -757,22 +757,12 @@ int msm_ioctl_gem_submit(struct drm_device *dev, void *data,
 		}
 	}
 
-<<<<<<< HEAD
-	submit = submit_create(dev, gpu, queue, args->nr_bos,
-		args->nr_cmds);
-	if (IS_ERR(submit)) {
-		ret = PTR_ERR(submit);
-		submit = NULL;
-		goto out_unlock;
-	}
-=======
 	submit = submit_create(dev, gpu, queue, args->nr_bos, args->nr_cmds);
 	if (IS_ERR(submit))
 		return PTR_ERR(submit);
 
 	trace_msm_gpu_submit(pid_nr(submit->pid), ring->id, submit->ident,
 		args->nr_bos, args->nr_cmds);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = mutex_lock_interruptible(&queue->lock);
 	if (ret)
@@ -879,10 +869,6 @@ int msm_ioctl_gem_submit(struct drm_device *dev, void *data,
 	 * is serialized on the queue lock, the slot should be still avail
 	 * after the job is armed
 	 */
-<<<<<<< HEAD
-	submit->fence_id = idr_alloc_cyclic(&queue->fence_idr,
-			submit->user_fence, 1, INT_MAX, GFP_KERNEL);
-=======
 	if ((args->flags & MSM_SUBMIT_FENCE_SN_IN) &&
 			idr_find(&queue->fence_idr, args->fence)) {
 		mutex_unlock(&queue->idr_lock);

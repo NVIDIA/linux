@@ -2237,11 +2237,7 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 
 	/* SANITY */
 	if (likely(newsk->sk_net_refcnt)) {
-<<<<<<< HEAD
-		get_net(sock_net(newsk));
-=======
 		get_net_track(sock_net(newsk), &newsk->ns_tracker, priority);
->>>>>>> origin/linux_6.1.15_upstream
 		sock_inuse_add(sock_net(newsk), 1);
 	}
 	sk_node_init(&newsk->sk_node);

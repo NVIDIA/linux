@@ -391,16 +391,8 @@ static ssize_t erofs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		     iov_iter_alignment(to)) & blksize_mask)
 			return -EINVAL;
 
-<<<<<<< HEAD
-		if (!err)
-			return iomap_dio_rw(iocb, to, &erofs_iomap_ops,
-					    NULL, 0, 0);
-		if (err < 0)
-			return err;
-=======
 		return iomap_dio_rw(iocb, to, &erofs_iomap_ops,
 				    NULL, 0, NULL, 0);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	return filemap_read(iocb, to, 0);
 }

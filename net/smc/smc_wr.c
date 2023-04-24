@@ -119,15 +119,12 @@ static inline void smc_wr_tx_process_cqe(struct ib_wc *wc)
 	}
 
 	if (wc->status) {
-<<<<<<< HEAD
-=======
 		if (link->lgr->smc_version == SMC_V2) {
 			memset(link->wr_tx_v2_pend, 0,
 			       sizeof(*link->wr_tx_v2_pend));
 			memset(link->lgr->wr_tx_buf_v2, 0,
 			       sizeof(*link->lgr->wr_tx_buf_v2));
 		}
->>>>>>> origin/linux_6.1.15_upstream
 		/* terminate link */
 		smcr_link_down_cond_sched(link);
 	}

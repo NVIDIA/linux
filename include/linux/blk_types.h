@@ -252,11 +252,7 @@ typedef unsigned int blk_qc_t;
 struct bio {
 	struct bio		*bi_next;	/* request queue link */
 	struct block_device	*bi_bdev;
-<<<<<<< HEAD
-	unsigned int		bi_opf;		/* bottom bits REQ_OP, top bits
-=======
 	blk_opf_t		bi_opf;		/* bottom bits REQ_OP, top bits
->>>>>>> origin/linux_6.1.15_upstream
 						 * req_flags.
 						 */
 	unsigned short		bi_flags;	/* BIO_* below */

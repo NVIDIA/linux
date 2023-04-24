@@ -740,27 +740,6 @@ bad_req:
 		/* Drop Stop Marker message. No need for a response. */
 		if (unlikely(req->lpig && !req->rd_req && !req->wr_req))
 			goto prq_advance;
-<<<<<<< HEAD
-
-		if (!svm || svm->pasid != req->pasid) {
-			/*
-			 * It can't go away, because the driver is not permitted
-			 * to unbind the mm while any page faults are outstanding.
-			 */
-			svm = pasid_private_find(req->pasid);
-			if (IS_ERR_OR_NULL(svm) || (svm->flags & SVM_FLAG_SUPERVISOR_MODE))
-				goto bad_req;
-		}
-
-		if (!sdev || sdev->sid != req->rid) {
-			sdev = svm_lookup_device_by_sid(svm, req->rid);
-			if (!sdev)
-				goto bad_req;
-		}
-
-		sdev->prq_seq_number++;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 		pdev = pci_get_domain_bus_and_slot(iommu->segment,
 						   PCI_BUS_NUM(req->rid),

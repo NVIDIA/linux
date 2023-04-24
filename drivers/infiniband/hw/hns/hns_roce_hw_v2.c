@@ -1273,8 +1273,6 @@ static void update_cmdq_status(struct hns_roce_dev *hr_dev)
 		hr_dev->cmd.state = HNS_ROCE_CMDQ_STATE_FATAL_ERR;
 }
 
-<<<<<<< HEAD
-=======
 static int hns_roce_cmd_err_convert_errno(u16 desc_ret)
 {
 	struct hns_roce_cmd_errcode errcode_table[] = {
@@ -1299,7 +1297,6 @@ static int hns_roce_cmd_err_convert_errno(u16 desc_ret)
 	return -EIO;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static int __hns_roce_cmq_send(struct hns_roce_dev *hr_dev,
 			       struct hns_roce_cmq_desc *desc, int num)
 {
@@ -1997,11 +1994,7 @@ static void set_default_caps(struct hns_roce_dev *hr_dev)
 
 	caps->num_mtpts		= HNS_ROCE_V2_MAX_MTPT_NUM;
 	caps->num_pds		= HNS_ROCE_V2_MAX_PD_NUM;
-<<<<<<< HEAD
-	caps->num_qpc_timer	= HNS_ROCE_V2_MAX_QPC_TIMER_NUM;
-=======
 	caps->qpc_timer_bt_num	= HNS_ROCE_V2_MAX_QPC_TIMER_BT_NUM;
->>>>>>> origin/linux_6.1.15_upstream
 	caps->cqc_timer_bt_num	= HNS_ROCE_V2_MAX_CQC_TIMER_BT_NUM;
 
 	caps->max_qp_init_rdma	= HNS_ROCE_V2_MAX_QP_INIT_RDMA;
@@ -2297,11 +2290,6 @@ static int hns_roce_query_pf_caps(struct hns_roce_dev *hr_dev)
 	caps->max_sq_inline	     = le16_to_cpu(resp_a->max_sq_inline);
 	caps->max_rq_sg		     = le16_to_cpu(resp_a->max_rq_sg);
 	caps->max_rq_sg = roundup_pow_of_two(caps->max_rq_sg);
-<<<<<<< HEAD
-	caps->max_extend_sg	     = le32_to_cpu(resp_a->max_extend_sg);
-	caps->num_qpc_timer	     = le16_to_cpu(resp_a->num_qpc_timer);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	caps->max_srq_sges	     = le16_to_cpu(resp_a->max_srq_sges);
 	caps->max_srq_sges = roundup_pow_of_two(caps->max_srq_sges);
 	caps->num_aeq_vectors	     = resp_a->num_aeq_vectors;
@@ -5154,22 +5142,14 @@ static bool check_qp_timeout_cfg_range(struct hns_roce_dev *hr_dev, u8 *timeout)
 	if (hr_dev->pci_dev->revision == PCI_REVISION_ID_HIP08) {
 		if (*timeout > QP_ACK_TIMEOUT_MAX_HIP08) {
 			ibdev_warn(&hr_dev->ib_dev,
-<<<<<<< HEAD
-				   "Local ACK timeout shall be 0 to 20.\n");
-=======
 				   "local ACK timeout shall be 0 to 20.\n");
->>>>>>> origin/linux_6.1.15_upstream
 			return false;
 		}
 		*timeout += QP_ACK_TIMEOUT_OFFSET;
 	} else if (hr_dev->pci_dev->revision > PCI_REVISION_ID_HIP08) {
 		if (*timeout > QP_ACK_TIMEOUT_MAX) {
 			ibdev_warn(&hr_dev->ib_dev,
-<<<<<<< HEAD
-				   "Local ACK timeout shall be 0 to 31.\n");
-=======
 				   "local ACK timeout shall be 0 to 31.\n");
->>>>>>> origin/linux_6.1.15_upstream
 			return false;
 		}
 	}

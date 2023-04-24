@@ -190,16 +190,9 @@ static void __del_gref(struct gntalloc_gref *gref)
 	gref->notify.flags = 0;
 
 	if (gref->gref_id) {
-<<<<<<< HEAD
-		if (gref->page) {
-			addr = (unsigned long)page_to_virt(gref->page);
-			gnttab_end_foreign_access(gref->gref_id, 0, addr);
-		} else
-=======
 		if (gref->page)
 			gnttab_end_foreign_access(gref->gref_id, gref->page);
 		else
->>>>>>> origin/linux_6.1.15_upstream
 			gnttab_free_grant_reference(gref->gref_id);
 	}
 

@@ -543,8 +543,6 @@ struct amdgpu_display_manager {
 	 * last successfully applied backlight values.
 	 */
 	u32 actual_brightness[AMDGPU_DM_MAX_NUM_EDP];
-<<<<<<< HEAD
-=======
 
 	/**
 	 * @aux_hpd_discon_quirk:
@@ -560,7 +558,6 @@ struct amdgpu_display_manager {
 	 * Guards access to DPIA AUX
 	 */
 	struct mutex dpia_aux_lock;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 enum dsc_clock_force_state {

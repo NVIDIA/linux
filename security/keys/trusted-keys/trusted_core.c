@@ -33,17 +33,10 @@ module_param_named(source, trusted_key_source, charp, 0);
 MODULE_PARM_DESC(source, "Select trusted keys source (tpm, tee or caam)");
 
 static const struct trusted_key_source trusted_key_sources[] = {
-<<<<<<< HEAD
-#if IS_REACHABLE(CONFIG_TCG_TPM)
-	{ "tpm", &trusted_key_tpm_ops },
-#endif
-#if IS_REACHABLE(CONFIG_TEE)
-=======
 #if defined(CONFIG_TRUSTED_KEYS_TPM)
 	{ "tpm", &trusted_key_tpm_ops },
 #endif
 #if defined(CONFIG_TRUSTED_KEYS_TEE)
->>>>>>> origin/linux_6.1.15_upstream
 	{ "tee", &trusted_key_tee_ops },
 #endif
 #if defined(CONFIG_TRUSTED_KEYS_CAAM)

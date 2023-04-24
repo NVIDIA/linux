@@ -346,10 +346,6 @@ static void lcd2s_i2c_remove(struct i2c_client *i2c)
 
 	charlcd_unregister(lcd2s->charlcd);
 	charlcd_free(lcd2s->charlcd);
-<<<<<<< HEAD
-	return 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct i2c_device_id lcd2s_i2c_id[] = {

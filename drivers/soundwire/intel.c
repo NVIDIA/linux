@@ -377,8 +377,6 @@ static void intel_shim_wake(struct sdw_intel *sdw, bool wake_enable)
 		wake_sts = intel_readw(shim, SDW_SHIM_WAKESTS);
 		wake_sts |= (SDW_SHIM_WAKESTS_STATUS << link_id);
 		intel_writew(shim, SDW_SHIM_WAKESTS, wake_sts);
-<<<<<<< HEAD
-=======
 	}
 	mutex_unlock(sdw->link_res->shim_lock);
 }
@@ -451,7 +449,6 @@ static int intel_link_power_up(struct sdw_intel *sdw)
 				"Failed to set SHIM_SYNC: %d\n", ret);
 			goto out;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	*shim_mask |= BIT(link_id);

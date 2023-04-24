@@ -36,11 +36,7 @@ struct scmi_msg_resp_base_attributes {
 
 struct scmi_msg_resp_base_discover_agent {
 	__le32 agent_id;
-<<<<<<< HEAD
-	u8 name[SCMI_MAX_STR_SIZE];
-=======
 	u8 name[SCMI_SHORT_NAME_MAX_SIZE];
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 
@@ -205,12 +201,7 @@ scmi_base_implementation_list_get(const struct scmi_protocol_handle *ph,
 			break;
 
 		loop_num_ret = le32_to_cpu(*num_ret);
-<<<<<<< HEAD
-		if (loop_num_ret > MAX_PROTOCOLS_IMP - tot_num_ret) {
-			dev_err(dev, "No. of Protocol > MAX_PROTOCOLS_IMP");
-=======
 		if (!loop_num_ret)
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 
 		if (loop_num_ret > rev->num_protocols - tot_num_ret) {
@@ -285,11 +276,7 @@ static int scmi_base_discover_agent_get(const struct scmi_protocol_handle *ph,
 	ret = ph->xops->do_xfer(ph, t);
 	if (!ret) {
 		agent_info = t->rx.buf;
-<<<<<<< HEAD
-		strlcpy(name, agent_info->name, SCMI_MAX_STR_SIZE);
-=======
 		strscpy(name, agent_info->name, SCMI_SHORT_NAME_MAX_SIZE);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	ph->xops->xfer_put(ph, t);

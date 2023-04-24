@@ -624,14 +624,11 @@ static size_t ifcvf_vdpa_get_config_size(struct vdpa_device *vdpa_dev)
 	struct ifcvf_hw *vf = vdpa_to_vf(vdpa_dev);
 
 	return  vf->config_size;
-<<<<<<< HEAD
-=======
 }
 
 static u32 ifcvf_vdpa_get_vq_group(struct vdpa_device *vdpa, u16 idx)
 {
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void ifcvf_vdpa_get_config(struct vdpa_device *vdpa_dev,
@@ -764,43 +761,15 @@ static int ifcvf_vdpa_dev_add(struct vdpa_mgmt_dev *mdev, const char *name,
 	if (!ifcvf_mgmt_dev->adapter)
 		return -EOPNOTSUPP;
 
-<<<<<<< HEAD
-	pdev = ifcvf_mgmt_dev->pdev;
-	dev = &pdev->dev;
-	adapter = vdpa_alloc_device(struct ifcvf_adapter, vdpa,
-				    dev, &ifc_vdpa_ops, name, false);
-	if (IS_ERR(adapter)) {
-		IFCVF_ERR(pdev, "Failed to allocate vDPA structure");
-		return PTR_ERR(adapter);
-	}
-
-	ifcvf_mgmt_dev->adapter = adapter;
-
-=======
 	adapter = ifcvf_mgmt_dev->adapter;
->>>>>>> origin/linux_6.1.15_upstream
 	vf = &adapter->vf;
 	pdev = adapter->pdev;
 	vdpa_dev = &adapter->vdpa;
 
-<<<<<<< HEAD
-	ret = ifcvf_init_hw(vf, pdev);
-	if (ret) {
-		IFCVF_ERR(pdev, "Failed to init IFCVF hw\n");
-		goto err;
-	}
-
-	for (i = 0; i < vf->nr_vring; i++)
-		vf->vring[i].irq = -EINVAL;
-
-	vf->hw_features = ifcvf_get_hw_features(vf);
-	vf->config_size = ifcvf_get_config_size(vf);
-=======
 	if (name)
 		ret = dev_set_name(&vdpa_dev->dev, "%s", name);
 	else
 		ret = dev_set_name(&vdpa_dev->dev, "vdpa%u", vdpa_dev->index);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = _vdpa_register_device(&adapter->vdpa, vf->nr_vring);
 	if (ret) {

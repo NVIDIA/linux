@@ -240,19 +240,11 @@ static int vcn_v2_5_sw_fini(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 	volatile struct amdgpu_fw_shared *fw_shared;
 
-<<<<<<< HEAD
-	if (drm_dev_enter(&adev->ddev, &idx)) {
-		for (i = 0; i < adev->vcn.num_vcn_inst; i++) {
-			if (adev->vcn.harvest_config & (1 << i))
-				continue;
-			fw_shared = adev->vcn.inst[i].fw_shared_cpu_addr;
-=======
 	if (drm_dev_enter(adev_to_drm(adev), &idx)) {
 		for (i = 0; i < adev->vcn.num_vcn_inst; i++) {
 			if (adev->vcn.harvest_config & (1 << i))
 				continue;
 			fw_shared = adev->vcn.inst[i].fw_shared.cpu_addr;
->>>>>>> origin/linux_6.1.15_upstream
 			fw_shared->present_flag_0 = 0;
 		}
 		drm_dev_exit(idx);

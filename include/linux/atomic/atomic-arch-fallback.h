@@ -2456,8 +2456,4 @@ arch_atomic64_dec_if_positive(atomic64_t *v)
 #endif
 
 #endif /* _LINUX_ATOMIC_FALLBACK_H */
-<<<<<<< HEAD
-// 8e2cc06bc0d2c0967d2f8424762bd48555ee40ae
-=======
 // b5e87bdd5ede61470c29f7a7e4de781af3770f09
->>>>>>> origin/linux_6.1.15_upstream

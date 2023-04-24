@@ -1301,11 +1301,7 @@ int begin_new_exec(struct linux_binprm * bprm)
 	spin_lock_irq(&me->sighand->siglock);
 	posix_cpu_timers_exit(me);
 	spin_unlock_irq(&me->sighand->siglock);
-<<<<<<< HEAD
-	exit_itimers(me->signal);
-=======
 	exit_itimers(me);
->>>>>>> origin/linux_6.1.15_upstream
 	flush_itimer_signals();
 #endif
 

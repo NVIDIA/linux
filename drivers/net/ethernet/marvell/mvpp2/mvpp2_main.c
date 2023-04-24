@@ -2188,10 +2188,7 @@ static void mvpp22_pcs_reset_deassert(struct mvpp2_port *port,
 	xpcs = priv->iface_base + MVPP22_XPCS_BASE(port->gop_id);
 
 	switch (interface) {
-<<<<<<< HEAD
-=======
 	case PHY_INTERFACE_MODE_5GBASER:
->>>>>>> origin/linux_6.1.15_upstream
 	case PHY_INTERFACE_MODE_10GBASER:
 		val = readl(mpcs + MVPP22_MPCS_CLK_RESET);
 		val |= MAC_CLK_RESET_MAC | MAC_CLK_RESET_SD_RX |

@@ -630,13 +630,8 @@ static int register_node(struct node *node, int num)
  */
 void unregister_node(struct node *node)
 {
-<<<<<<< HEAD
-	compaction_unregister_node(node);
-	hugetlb_unregister_node(node);		/* no-op, if memoryless node */
-=======
 	hugetlb_unregister_node(node);
 	compaction_unregister_node(node);
->>>>>>> origin/linux_6.1.15_upstream
 	node_remove_accesses(node);
 	node_remove_caches(node);
 	device_unregister(&node->dev);

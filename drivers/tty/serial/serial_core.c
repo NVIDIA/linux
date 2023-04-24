@@ -1739,16 +1739,9 @@ static void uart_tty_port_shutdown(struct tty_port *port)
 	buf = state->xmit.buf;
 	state->xmit.buf = NULL;
 	spin_unlock_irq(&uport->lock);
-<<<<<<< HEAD
-
-	if (buf)
-		free_page((unsigned long)buf);
-
-=======
 
 	free_page((unsigned long)buf);
 
->>>>>>> origin/linux_6.1.15_upstream
 	uart_change_pm(state, UART_PM_STATE_OFF);
 }
 
@@ -2574,17 +2567,10 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 		 */
 		spin_lock_irqsave(&port->lock, flags);
 		port->mctrl &= TIOCM_DTR;
-<<<<<<< HEAD
-		if (port->rs485.flags & SER_RS485_ENABLED &&
-		    !(port->rs485.flags & SER_RS485_RTS_AFTER_SEND))
-			port->mctrl |= TIOCM_RTS;
-		port->ops->set_mctrl(port, port->mctrl);
-=======
 		if (!(port->rs485.flags & SER_RS485_ENABLED))
 			port->ops->set_mctrl(port, port->mctrl);
 		else
 			uart_rs485_config(port);
->>>>>>> origin/linux_6.1.15_upstream
 		spin_unlock_irqrestore(&port->lock, flags);
 
 		/*

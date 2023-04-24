@@ -1502,11 +1502,8 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 		goto out_off;
 	}
 
-<<<<<<< HEAD
-=======
 	ctx.fpb_offset = find_fpb_offset(prog);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * 1. Initial fake pass to compute ctx->idx and ctx->offset.
 	 *
@@ -1627,12 +1624,8 @@ u64 bpf_jit_alloc_exec_limit(void)
 
 void *bpf_jit_alloc_exec(unsigned long size)
 {
-<<<<<<< HEAD
-	return vmalloc(size);
-=======
 	/* Memory is intended to be executable, reset the pointer tag. */
 	return kasan_reset_tag(vmalloc(size));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void bpf_jit_free_exec(void *addr)

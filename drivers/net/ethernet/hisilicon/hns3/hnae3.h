@@ -757,11 +757,8 @@ struct hnae3_ae_ops {
 	int (*get_link_diagnosis_info)(struct hnae3_handle *handle,
 				       u32 *status_code);
 	void (*clean_vf_config)(struct hnae3_ae_dev *ae_dev, int num_vfs);
-<<<<<<< HEAD
-=======
 	int (*get_dscp_prio)(struct hnae3_handle *handle, u8 dscp,
 			     u8 *tc_map_mode, u8 *priority);
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct hnae3_dcb_ops {

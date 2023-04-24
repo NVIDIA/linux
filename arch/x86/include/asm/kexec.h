@@ -186,15 +186,12 @@ extern int arch_kexec_post_alloc_pages(void *vaddr, unsigned int pages,
 extern void arch_kexec_pre_free_pages(void *vaddr, unsigned int pages);
 #define arch_kexec_pre_free_pages arch_kexec_pre_free_pages
 
-<<<<<<< HEAD
-=======
 void arch_kexec_protect_crashkres(void);
 #define arch_kexec_protect_crashkres arch_kexec_protect_crashkres
 
 void arch_kexec_unprotect_crashkres(void);
 #define arch_kexec_unprotect_crashkres arch_kexec_unprotect_crashkres
 
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_KEXEC_FILE
 struct purgatory_info;
 int arch_kexec_apply_relocations_add(struct purgatory_info *pi,
@@ -202,15 +199,12 @@ int arch_kexec_apply_relocations_add(struct purgatory_info *pi,
 				     const Elf_Shdr *relsec,
 				     const Elf_Shdr *symtab);
 #define arch_kexec_apply_relocations_add arch_kexec_apply_relocations_add
-<<<<<<< HEAD
-=======
 
 void *arch_kexec_kernel_image_load(struct kimage *image);
 #define arch_kexec_kernel_image_load arch_kexec_kernel_image_load
 
 int arch_kimage_file_post_load_cleanup(struct kimage *image);
 #define arch_kimage_file_post_load_cleanup arch_kimage_file_post_load_cleanup
->>>>>>> origin/linux_6.1.15_upstream
 #endif
 #endif
 

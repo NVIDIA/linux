@@ -258,15 +258,6 @@ static inline void *neighbour_priv(const struct neighbour *n)
 }
 
 /* flags for neigh_update() */
-<<<<<<< HEAD
-#define NEIGH_UPDATE_F_OVERRIDE			0x00000001
-#define NEIGH_UPDATE_F_WEAK_OVERRIDE		0x00000002
-#define NEIGH_UPDATE_F_OVERRIDE_ISROUTER	0x00000004
-#define NEIGH_UPDATE_F_USE			0x10000000
-#define NEIGH_UPDATE_F_EXT_LEARNED		0x20000000
-#define NEIGH_UPDATE_F_ISROUTER			0x40000000
-#define NEIGH_UPDATE_F_ADMIN			0x80000000
-=======
 #define NEIGH_UPDATE_F_OVERRIDE			BIT(0)
 #define NEIGH_UPDATE_F_WEAK_OVERRIDE		BIT(1)
 #define NEIGH_UPDATE_F_OVERRIDE_ISROUTER	BIT(2)
@@ -282,7 +273,6 @@ static inline void *neighbour_priv(const struct neighbour *n)
 #define NTF_EXT_MASK		(NTF_EXT_MANAGED)
 
 #define NTF_MANAGED		(NTF_EXT_MANAGED << NTF_EXT_SHIFT)
->>>>>>> origin/linux_6.1.15_upstream
 
 extern const struct nla_policy nda_policy[];
 

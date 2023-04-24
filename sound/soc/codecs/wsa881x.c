@@ -779,12 +779,9 @@ static int wsa881x_put_pa_gain(struct snd_kcontrol *kc,
 		usleep_range(1000, 1010);
 	}
 
-<<<<<<< HEAD
-=======
 	pm_runtime_mark_last_busy(comp->dev);
 	pm_runtime_put_autosuspend(comp->dev);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 1;
 }
 

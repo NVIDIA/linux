@@ -295,12 +295,7 @@ bool mlx5e_rx_is_linear_skb(struct mlx5_core_dev *mdev,
 	if (xsk && mlx5e_rx_get_linear_sz_xsk(params, xsk) > xsk->chunk_size)
 		return false;
 
-<<<<<<< HEAD
-	return params->packet_merge.type == MLX5E_PACKET_MERGE_NONE &&
-		linear_frag_sz <= PAGE_SIZE;
-=======
 	return true;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool mlx5e_verify_rx_mpwqe_strides(struct mlx5_core_dev *mdev,
@@ -433,10 +428,6 @@ u16 mlx5e_get_rq_headroom(struct mlx5_core_dev *mdev,
 {
 	u16 linear_headroom = mlx5e_get_linear_rq_headroom(params, xsk);
 
-<<<<<<< HEAD
-	return is_linear_skb || params->packet_merge.type == MLX5E_PACKET_MERGE_SHAMPO ?
-		mlx5e_get_linear_rq_headroom(params, xsk) : 0;
-=======
 	if (params->rq_wq_type == MLX5_WQ_TYPE_CYCLIC)
 		return linear_headroom;
 
@@ -447,7 +438,6 @@ u16 mlx5e_get_rq_headroom(struct mlx5_core_dev *mdev,
 		return linear_headroom;
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 u16 mlx5e_calc_sq_stop_room(struct mlx5_core_dev *mdev, struct mlx5e_params *params)

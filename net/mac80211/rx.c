@@ -1950,12 +1950,7 @@ ieee80211_rx_h_decrypt(struct ieee80211_rx_data *rx)
 
 		if (ieee80211_has_protected(fc) &&
 		    !(status->flag & RX_FLAG_IV_STRIPPED)) {
-<<<<<<< HEAD
-			cs = rx->sta->cipher_scheme;
-			keyid = ieee80211_get_keyid(rx->skb, cs);
-=======
 			keyid = ieee80211_get_keyid(rx->skb);
->>>>>>> origin/linux_6.1.15_upstream
 
 			if (unlikely(keyid < 0))
 				return RX_DROP_UNUSABLE;

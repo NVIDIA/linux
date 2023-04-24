@@ -216,19 +216,11 @@ be selected when running trace under perf::
     $ ls /sys/devices/cs_etm
     cpu0  cpu2  events  nr_addr_filters		power  subsystem  uevent
     cpu1  cpu3  format  perf_event_mux_interval_ms	sinks  type
-<<<<<<< HEAD
 
 The key directory here is 'events' - a generic perf directory which allows
 selection on the perf command line. As with the sinks entries, this provides
 a hash of the configuration name.
 
-=======
-
-The key directory here is 'events' - a generic perf directory which allows
-selection on the perf command line. As with the sinks entries, this provides
-a hash of the configuration name.
-
->>>>>>> origin/linux_6.1.15_upstream
 The entry in the 'events' directory uses perfs built in syntax generator
 to substitute the syntax for the name when evaluating the command::
 

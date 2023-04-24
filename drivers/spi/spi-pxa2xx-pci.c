@@ -83,14 +83,6 @@ static bool lpss_dma_filter(struct dma_chan *chan, void *param)
 }
 
 static void lpss_dma_put_device(void *dma_dev)
-<<<<<<< HEAD
-{
-	pci_dev_put(dma_dev);
-}
-
-static int lpss_spi_setup(struct pci_dev *dev, struct pxa_spi_info *c)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 {
 	pci_dev_put(dma_dev);
 }
@@ -145,14 +137,7 @@ static int lpss_spi_setup(struct pci_dev *dev, struct pxa2xx_spi_controller *c)
 		return -ENODEV;
 	}
 
-<<<<<<< HEAD
-	dma_dev = pci_get_slot(dev->bus, PCI_DEVFN(PCI_SLOT(dev->devfn), 0));
-	ret = devm_add_action_or_reset(&dev->dev, lpss_dma_put_device, dma_dev);
-	if (ret)
-		return ret;
-=======
 	c->num_chipselect = 1;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = pxa2xx_spi_pci_clk_register(dev, ssp, 50000000);
 	if (ret)
@@ -185,11 +170,6 @@ static const struct pxa_spi_info lpss_info_config = {
 
 static int ce4100_spi_setup(struct pci_dev *dev, struct pxa2xx_spi_controller *c)
 {
-<<<<<<< HEAD
-	struct dw_dma_slave *tx, *rx;
-	struct pci_dev *dma_dev;
-	int ret;
-=======
 	struct ssp_device *ssp = &c->ssp;
 
 	ssp->type = PXA25x_SSP;
@@ -211,7 +191,6 @@ static int mrfld_spi_setup(struct pci_dev *dev, struct pxa2xx_spi_controller *c)
 	int ret;
 
 	ssp->type = MRFLD_SSP;
->>>>>>> origin/linux_6.1.15_upstream
 
 	switch (PCI_FUNC(dev->devfn)) {
 	case 0:
@@ -236,13 +215,10 @@ static int mrfld_spi_setup(struct pci_dev *dev, struct pxa2xx_spi_controller *c)
 		return -ENODEV;
 	}
 
-<<<<<<< HEAD
-=======
 	ret = pxa2xx_spi_pci_clk_register(dev, ssp, 25000000);
 	if (ret)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	dma_dev = pci_get_slot(dev->bus, PCI_DEVFN(21, 0));
 	ret = devm_add_action_or_reset(&dev->dev, lpss_dma_put_device, dma_dev);
 	if (ret)

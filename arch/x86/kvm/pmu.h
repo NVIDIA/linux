@@ -25,12 +25,7 @@ struct kvm_event_hw_type_mapping {
 };
 
 struct kvm_pmu_ops {
-<<<<<<< HEAD
-	unsigned int (*pmc_perf_hw_id)(struct kvm_pmc *pmc);
-	unsigned (*find_fixed_event)(int idx);
-=======
 	bool (*hw_event_available)(struct kvm_pmc *pmc);
->>>>>>> origin/linux_6.1.15_upstream
 	bool (*pmc_is_enabled)(struct kvm_pmc *pmc);
 	struct kvm_pmc *(*pmc_idx_to_pmc)(struct kvm_pmu *pmu, int pmc_idx);
 	struct kvm_pmc *(*rdpmc_ecx_to_pmc)(struct kvm_vcpu *vcpu,
@@ -152,11 +147,6 @@ static inline void pmc_update_sample_period(struct kvm_pmc *pmc)
 			  get_sample_period(pmc, pmc->counter));
 }
 
-<<<<<<< HEAD
-void reprogram_gp_counter(struct kvm_pmc *pmc, u64 eventsel);
-void reprogram_fixed_counter(struct kvm_pmc *pmc, u8 ctrl, int fixed_idx);
-void reprogram_counter(struct kvm_pmu *pmu, int pmc_idx);
-=======
 static inline bool pmc_speculative_in_use(struct kvm_pmc *pmc)
 {
 	struct kvm_pmu *pmu = pmc_to_pmu(pmc);
@@ -206,7 +196,6 @@ static inline void kvm_init_pmu_capability(void)
 }
 
 void reprogram_counter(struct kvm_pmc *pmc);
->>>>>>> origin/linux_6.1.15_upstream
 
 void kvm_pmu_deliver_pmi(struct kvm_vcpu *vcpu);
 void kvm_pmu_handle_event(struct kvm_vcpu *vcpu);

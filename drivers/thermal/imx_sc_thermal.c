@@ -91,16 +91,8 @@ static int imx_sc_thermal_probe(struct platform_device *pdev)
 	for (i = 0; resource_id[i] > 0; i++) {
 
 		sensor = devm_kzalloc(&pdev->dev, sizeof(*sensor), GFP_KERNEL);
-<<<<<<< HEAD
-		if (!sensor) {
-			of_node_put(child);
-			ret = -ENOMEM;
-			goto put_node;
-		}
-=======
 		if (!sensor)
 			return -ENOMEM;
->>>>>>> origin/linux_6.1.15_upstream
 
 		sensor->resource_id = resource_id[i];
 
@@ -132,15 +124,7 @@ static int imx_sc_thermal_probe(struct platform_device *pdev)
 			dev_warn(&pdev->dev, "failed to add hwmon sysfs attributes\n");
 	}
 
-<<<<<<< HEAD
-put_node:
-	of_node_put(sensor_np);
-	of_node_put(np);
-
-	return ret;
-=======
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int imx_sc_thermal_remove(struct platform_device *pdev)

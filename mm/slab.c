@@ -3552,11 +3552,7 @@ void *__kmem_cache_alloc_node(struct kmem_cache *cachep, gfp_t flags,
 }
 
 #ifdef CONFIG_PRINTK
-<<<<<<< HEAD
-void __kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct page *page)
-=======
 void __kmem_obj_info(struct kmem_obj_info *kpp, void *object, struct slab *slab)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct kmem_cache *cachep;
 	unsigned int objnr;

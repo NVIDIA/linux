@@ -301,12 +301,6 @@ static int tracefs_apply_options(struct super_block *sb, bool remount)
 		inode->i_mode |= opts->mode;
 	}
 
-<<<<<<< HEAD
-	inode->i_uid = opts->uid;
-
-	/* Set all the group ids to the mount option */
-	set_gid(sb->s_root, opts->gid);
-=======
 	if (!remount || opts->opts & BIT(Opt_uid))
 		inode->i_uid = opts->uid;
 
@@ -314,7 +308,6 @@ static int tracefs_apply_options(struct super_block *sb, bool remount)
 		/* Set all the group ids to the mount option */
 		set_gid(sb->s_root, opts->gid);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }

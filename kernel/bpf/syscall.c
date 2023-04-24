@@ -2091,8 +2091,6 @@ struct bpf_prog_kstats {
 	u64 misses;
 };
 
-<<<<<<< HEAD
-=======
 void notrace bpf_prog_inc_misses_counter(struct bpf_prog *prog)
 {
 	struct bpf_prog_stats *stats;
@@ -2104,7 +2102,6 @@ void notrace bpf_prog_inc_misses_counter(struct bpf_prog *prog)
 	u64_stats_update_end_irqrestore(&stats->syncp, flags);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void bpf_prog_get_stats(const struct bpf_prog *prog,
 			       struct bpf_prog_kstats *stats)
 {

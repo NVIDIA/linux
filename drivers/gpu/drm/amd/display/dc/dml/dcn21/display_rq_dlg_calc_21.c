@@ -806,13 +806,8 @@ static void dml_rq_dlg_get_rq_params(
 	}
 
 	// calculate how to split the det buffer space between luma and chroma
-<<<<<<< HEAD
-	handle_det_buf_split(mode_lib, rq_param, pipe_param->src);
-	print__rq_params_st(mode_lib, *rq_param);
-=======
 	handle_det_buf_split(mode_lib, rq_param, &pipe_param->src);
 	print__rq_params_st(mode_lib, rq_param);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void dml21_rq_dlg_get_rq_reg(

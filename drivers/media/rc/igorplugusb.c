@@ -67,11 +67,7 @@ static void igorplugusb_irdata(struct igorplugusb *ir, unsigned len)
 		if (overflow > 0) {
 			dev_warn(ir->dev, "receive overflow, at least %u lost",
 								overflow);
-<<<<<<< HEAD
-			ir_raw_event_reset(ir->rc);
-=======
 			ir_raw_event_overflow(ir->rc);
->>>>>>> origin/linux_6.1.15_upstream
 		}
 
 		do {

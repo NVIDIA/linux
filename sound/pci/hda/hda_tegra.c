@@ -70,11 +70,7 @@
 
 struct hda_tegra_soc {
 	bool has_hda2codec_2x_reset;
-<<<<<<< HEAD
-=======
 	bool has_hda2hdmi;
->>>>>>> origin/linux_6.1.15_upstream
-};
 
 struct hda_tegra {
 	struct azx chip;
@@ -453,32 +449,23 @@ static int hda_tegra_create(struct snd_card *card,
 
 static const struct hda_tegra_soc tegra30_data = {
 	.has_hda2codec_2x_reset = true,
-<<<<<<< HEAD
-=======
 	.has_hda2hdmi = true,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct hda_tegra_soc tegra194_data = {
 	.has_hda2codec_2x_reset = false,
-<<<<<<< HEAD
-=======
 	.has_hda2hdmi = true,
 };
 
 static const struct hda_tegra_soc tegra234_data = {
 	.has_hda2codec_2x_reset = true,
 	.has_hda2hdmi = false,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static const struct of_device_id hda_tegra_match[] = {
 	{ .compatible = "nvidia,tegra30-hda", .data = &tegra30_data },
 	{ .compatible = "nvidia,tegra194-hda", .data = &tegra194_data },
-<<<<<<< HEAD
-=======
 	{ .compatible = "nvidia,tegra234-hda", .data = &tegra234_data },
->>>>>>> origin/linux_6.1.15_upstream
 	{},
 };
 MODULE_DEVICE_TABLE(of, hda_tegra_match);
@@ -509,9 +496,6 @@ static int hda_tegra_probe(struct platform_device *pdev)
 	}
 
 	hda->resets[hda->nresets++].id = "hda";
-<<<<<<< HEAD
-	hda->resets[hda->nresets++].id = "hda2hdmi";
-=======
 
 	/*
 	 * "hda2hdmi" is not applicable for Tegra234. This is because the
@@ -520,7 +504,6 @@ static int hda_tegra_probe(struct platform_device *pdev)
 	if (hda->soc->has_hda2hdmi)
 		hda->resets[hda->nresets++].id = "hda2hdmi";
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * "hda2codec_2x" reset is not present on Tegra194. Though DT would
 	 * be updated to reflect this, but to have backward compatibility

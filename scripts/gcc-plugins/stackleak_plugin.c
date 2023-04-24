@@ -456,14 +456,6 @@ static bool stackleak_gate(void)
 		section = TREE_VALUE(TREE_VALUE(section));
 
 		if (STRING_EQUAL(section, ".init.text"))
-<<<<<<< HEAD
-			return false;
-		if (STRING_EQUAL(section, ".devinit.text"))
-			return false;
-		if (STRING_EQUAL(section, ".cpuinit.text"))
-			return false;
-		if (STRING_EQUAL(section, ".meminit.text"))
-=======
 			return false;
 		if (STRING_EQUAL(section, ".devinit.text"))
 			return false;
@@ -474,7 +466,6 @@ static bool stackleak_gate(void)
 		if (STRING_EQUAL(section, ".noinstr.text"))
 			return false;
 		if (STRING_EQUAL(section, ".entry.text"))
->>>>>>> origin/linux_6.1.15_upstream
 			return false;
 	}
 

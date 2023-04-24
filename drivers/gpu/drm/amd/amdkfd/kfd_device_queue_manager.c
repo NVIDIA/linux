@@ -992,8 +992,6 @@ static int evict_process_queues_cpsch(struct device_queue_manager *dqm,
 
 		q->properties.is_active = false;
 		decrement_queue_count(dqm, qpd, q);
-<<<<<<< HEAD
-=======
 
 		if (dqm->dev->shared_resources.enable_mes) {
 			retval = remove_queue_mes(dqm, q, qpd);
@@ -1003,7 +1001,6 @@ static int evict_process_queues_cpsch(struct device_queue_manager *dqm,
 				goto out;
 			}
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	pdd->last_evict_timestamp = get_jiffies_64();
 	if (!dqm->dev->shared_resources.enable_mes)
@@ -1134,8 +1131,6 @@ static int restore_process_queues_cpsch(struct device_queue_manager *dqm,
 
 		q->properties.is_active = true;
 		increment_queue_count(dqm, &pdd->qpd, q);
-<<<<<<< HEAD
-=======
 
 		if (dqm->dev->shared_resources.enable_mes) {
 			retval = add_queue_mes(dqm, q, qpd);
@@ -1145,7 +1140,6 @@ static int restore_process_queues_cpsch(struct device_queue_manager *dqm,
 				goto out;
 			}
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 	if (!dqm->dev->shared_resources.enable_mes)
 		retval = execute_queues_cpsch(dqm,
@@ -1546,10 +1540,6 @@ static int stop_cpsch(struct device_queue_manager *dqm)
 		return 0;
 	}
 
-<<<<<<< HEAD
-	if (!dqm->is_hws_hang)
-		unmap_queues_cpsch(dqm, KFD_UNMAP_QUEUES_FILTER_ALL_QUEUES, 0);
-=======
 	if (!dqm->is_hws_hang) {
 		if (!dqm->dev->shared_resources.enable_mes)
 			unmap_queues_cpsch(dqm, KFD_UNMAP_QUEUES_FILTER_ALL_QUEUES, 0, false);
@@ -1557,7 +1547,6 @@ static int stop_cpsch(struct device_queue_manager *dqm)
 			remove_all_queues_mes(dqm);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	hanging = dqm->is_hws_hang || dqm->is_resetting;
 	dqm->sched_running = false;
 
@@ -1904,13 +1893,6 @@ static int destroy_queue_cpsch(struct device_queue_manager *dqm,
 	list_del(&q->list);
 	qpd->queue_count--;
 	if (q->properties.is_active) {
-<<<<<<< HEAD
-		decrement_queue_count(dqm, qpd, q);
-		retval = execute_queues_cpsch(dqm,
-				KFD_UNMAP_QUEUES_FILTER_DYNAMIC_QUEUES, 0);
-		if (retval == -ETIME)
-			qpd->reset_wavefronts = true;
-=======
 		if (!dqm->dev->shared_resources.enable_mes) {
 			decrement_queue_count(dqm, qpd, q);
 			retval = execute_queues_cpsch(dqm,
@@ -1920,7 +1902,6 @@ static int destroy_queue_cpsch(struct device_queue_manager *dqm,
 		} else {
 			retval = remove_queue_mes(dqm, q, qpd);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/*
@@ -2174,10 +2155,6 @@ static int process_termination_cpsch(struct device_queue_manager *dqm,
 		else if (q->properties.type == KFD_QUEUE_TYPE_SDMA_XGMI)
 			deallocate_sdma_queue(dqm, q);
 
-<<<<<<< HEAD
-		if (q->properties.is_active)
-			decrement_queue_count(dqm, qpd, q);
-=======
 		if (q->properties.is_active) {
 			decrement_queue_count(dqm, qpd, q);
 
@@ -2188,7 +2165,6 @@ static int process_termination_cpsch(struct device_queue_manager *dqm,
 						q->properties.queue_id);
 			}
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		dqm->total_queue_count--;
 	}

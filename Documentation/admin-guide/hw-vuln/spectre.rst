@@ -613,10 +613,7 @@ kernel command line.
                 eibrs                   enhanced IBRS
                 eibrs,retpoline         enhanced IBRS + Retpolines
                 eibrs,lfence            enhanced IBRS + LFENCE
-<<<<<<< HEAD
-=======
                 ibrs                    use IBRS to protect kernel
->>>>>>> origin/linux_6.1.15_upstream
 
 		Not specifying this option is equivalent to
 		spectre_v2=auto.

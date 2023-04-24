@@ -3741,28 +3741,6 @@ static int set_feature_lro(struct net_device *netdev, bool enable)
 		}
 	}
 
-<<<<<<< HEAD
-	new_params = *cur_params;
-
-	if (enable)
-		new_params.packet_merge.type = MLX5E_PACKET_MERGE_LRO;
-	else if (new_params.packet_merge.type == MLX5E_PACKET_MERGE_LRO)
-		new_params.packet_merge.type = MLX5E_PACKET_MERGE_NONE;
-	else
-		goto out;
-
-	if (!(cur_params->packet_merge.type == MLX5E_PACKET_MERGE_SHAMPO &&
-	      new_params.packet_merge.type == MLX5E_PACKET_MERGE_LRO)) {
-		if (cur_params->rq_wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ) {
-			if (mlx5e_rx_mpwqe_is_linear_skb(mdev, cur_params, NULL) ==
-			    mlx5e_rx_mpwqe_is_linear_skb(mdev, &new_params, NULL))
-				reset = false;
-		}
-	}
-
-	err = mlx5e_safe_switch_params(priv, &new_params,
-				       mlx5e_modify_tirs_packet_merge_ctx, NULL, reset);
-=======
 	err = mlx5e_safe_switch_params(priv, &new_params,
 				       mlx5e_modify_tirs_packet_merge_ctx, NULL, reset);
 out:
@@ -3793,7 +3771,6 @@ static int set_feature_hw_gro(struct net_device *netdev, bool enable)
 	}
 
 	err = mlx5e_safe_switch_params(priv, &new_params, NULL, NULL, reset);
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	mutex_unlock(&priv->state_lock);
 	return err;
@@ -4677,15 +4654,6 @@ static int mlx5e_xdp_allowed(struct mlx5e_priv *priv, struct bpf_prog *prog)
 
 	if (priv->channels.params.packet_merge.type != MLX5E_PACKET_MERGE_NONE) {
 		netdev_warn(netdev, "can't set XDP while HW-GRO/LRO is on, disable them first\n");
-<<<<<<< HEAD
-		return -EINVAL;
-	}
-
-	if (mlx5_fpga_is_ipsec_device(priv->mdev)) {
-		netdev_warn(netdev,
-			    "XDP is not available on Innova cards with IPsec support\n");
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 	}
 
@@ -4936,17 +4904,6 @@ void mlx5e_build_nic_params(struct mlx5e_priv *priv, struct mlx5e_xsk *xsk, u16 
 	/* RQ */
 	mlx5e_build_rq_params(mdev, params);
 
-<<<<<<< HEAD
-	/* HW LRO */
-	if (MLX5_CAP_ETH(mdev, lro_cap) &&
-	    params->rq_wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ) {
-		/* No XSK params: checking the availability of striding RQ in general. */
-		if (!mlx5e_rx_mpwqe_is_linear_skb(mdev, params, NULL))
-			params->packet_merge.type = slow_pci_heuristic(mdev) ?
-				MLX5E_PACKET_MERGE_NONE : MLX5E_PACKET_MERGE_LRO;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	params->packet_merge.timeout = mlx5e_choose_lro_timeout(mdev, MLX5E_DEFAULT_LRO_TIMEOUT);
 
 	/* CQ moderation params */

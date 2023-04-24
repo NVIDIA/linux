@@ -167,13 +167,8 @@
  * memeq and memzero are not used much and any remotely sane implementation
  * is fast enough. memcpy/memmove speed matters in multi-call mode, but
  * the kernel image is decompressed in single-call mode, in which only
-<<<<<<< HEAD
- * memmove speed can matter and only if there is a lot of uncompressible data
- * (LZMA2 stores uncompressible chunks in uncompressed form). Thus, the
-=======
  * memmove speed can matter and only if there is a lot of incompressible data
  * (LZMA2 stores incompressible chunks in uncompressed form). Thus, the
->>>>>>> origin/linux_6.1.15_upstream
  * functions below should just be kept small; it's probably not worth
  * optimizing for speed.
  */

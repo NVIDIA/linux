@@ -40,10 +40,7 @@
 #define HNS_ROCE_V2_MAX_SRQ_WR			0x8000
 #define HNS_ROCE_V2_MAX_SRQ_SGE			64
 #define HNS_ROCE_V2_MAX_CQ_NUM			0x100000
-<<<<<<< HEAD
-=======
 #define HNS_ROCE_V2_MAX_QPC_TIMER_BT_NUM	0x100
->>>>>>> origin/linux_6.1.15_upstream
 #define HNS_ROCE_V2_MAX_CQC_TIMER_BT_NUM	0x100
 #define HNS_ROCE_V2_MAX_SRQ_NUM			0x100000
 #define HNS_ROCE_V2_MAX_CQE_NUM			0x400000
@@ -1354,15 +1351,12 @@ struct hns_roce_dip {
 	struct list_head node; /* all dips are on a list */
 };
 
-<<<<<<< HEAD
-=======
 struct fmea_ram_ecc {
 	u32	is_ecc_err;
 	u32	res_type;
 	u32	index;
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 /* only for RNR timeout issue of HIP08 */
 #define HNS_ROCE_CLOCK_ADJUST 1000
 #define HNS_ROCE_MAX_CQ_PERIOD 65

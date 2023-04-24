@@ -1997,21 +1997,9 @@ static int m88e1510_loopback(struct phy_device *phydev, bool enable)
 	int err;
 
 	if (enable) {
-<<<<<<< HEAD
-		u16 bmcr_ctl = 0, mscr2_ctl = 0;
-
-		if (phydev->speed == SPEED_1000)
-			bmcr_ctl = BMCR_SPEED1000;
-		else if (phydev->speed == SPEED_100)
-			bmcr_ctl = BMCR_SPEED100;
-
-		if (phydev->duplex == DUPLEX_FULL)
-			bmcr_ctl |= BMCR_FULLDPLX;
-=======
 		u16 bmcr_ctl, mscr2_ctl = 0;
 
 		bmcr_ctl = mii_bmcr_encode_fixed(phydev->speed, phydev->duplex);
->>>>>>> origin/linux_6.1.15_upstream
 
 		err = phy_write(phydev, MII_BMCR, bmcr_ctl);
 		if (err < 0)
@@ -2033,16 +2021,6 @@ static int m88e1510_loopback(struct phy_device *phydev, bool enable)
 		if (err < 0)
 			return err;
 
-<<<<<<< HEAD
-		/* FIXME: Based on trial and error test, it seem 1G need to have
-		 * delay between soft reset and loopback enablement.
-		 */
-		if (phydev->speed == SPEED_1000)
-			msleep(1000);
-
-		return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
-				  BMCR_LOOPBACK);
-=======
 		err = phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
 				 BMCR_LOOPBACK);
 
@@ -2053,7 +2031,6 @@ static int m88e1510_loopback(struct phy_device *phydev, bool enable)
 			msleep(1000);
 		}
 		return err;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		err = phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK, 0);
 		if (err < 0)

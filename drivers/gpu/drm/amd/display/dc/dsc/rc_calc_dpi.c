@@ -22,11 +22,7 @@
  * Authors: AMD
  *
  */
-<<<<<<< HEAD
-#include <drm/drm_dsc.h>
-=======
 #include <drm/display/drm_dsc_helper.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include "dscc_types.h"
 #include "rc_calc.h"
 

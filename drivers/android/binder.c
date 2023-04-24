@@ -2898,17 +2898,12 @@ static void binder_transaction(struct binder_proc *proc,
 	int t_debug_id = atomic_inc_return(&binder_last_id);
 	char *secctx = NULL;
 	u32 secctx_sz = 0;
-<<<<<<< HEAD
-	const void __user *user_buffer = (const void __user *)
-				(uintptr_t)tr->data.ptr.buffer;
-=======
 	struct list_head sgc_head;
 	struct list_head pf_head;
 	const void __user *user_buffer = (const void __user *)
 				(uintptr_t)tr->data.ptr.buffer;
 	INIT_LIST_HEAD(&sgc_head);
 	INIT_LIST_HEAD(&pf_head);
->>>>>>> origin/linux_6.1.15_upstream
 
 	e = binder_transaction_log_add(&binder_transaction_log);
 	e->debug_id = t_debug_id;
@@ -3046,11 +3041,8 @@ static void binder_transaction(struct binder_proc *proc,
 		}
 		if (security_binder_transaction(proc->cred,
 						target_proc->cred) < 0) {
-<<<<<<< HEAD
-=======
 			binder_txn_error("%d:%d transaction credentials failed\n",
 				thread->pid, proc->pid);
->>>>>>> origin/linux_6.1.15_upstream
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3444,17 +3436,6 @@ static void binder_transaction(struct binder_proc *proc,
 				return_error_line = __LINE__;
 				goto err_bad_parent;
 			}
-<<<<<<< HEAD
-			ret = binder_translate_fd_array(fda, parent, t, thread,
-							in_reply_to);
-			if (!ret)
-				ret = binder_alloc_copy_to_buffer(&target_proc->alloc,
-								  t->buffer,
-								  object_offset,
-								  fda, sizeof(*fda));
-			if (ret) {
-				return_error = BR_FAILED_REPLY;
-=======
 			/*
 			 * We need to read the user version of the parent
 			 * object to get the original user offset
@@ -3485,7 +3466,6 @@ static void binder_transaction(struct binder_proc *proc,
 				binder_txn_error("%d:%d translate fd array failed\n",
 					thread->pid, proc->pid);
 				return_error = BR_FAILED_REPLY;
->>>>>>> origin/linux_6.1.15_upstream
 				return_error_param = ret > 0 ? -EINVAL : ret;
 				return_error_line = __LINE__;
 				goto err_translate_failed;
@@ -3569,8 +3549,6 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		goto err_copy_data_failed;
 	}
-<<<<<<< HEAD
-=======
 
 	ret = binder_do_deferred_txn_copies(&target_proc->alloc, t->buffer,
 					    &sgc_head, &pf_head);
@@ -3582,7 +3560,6 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		goto err_copy_data_failed;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (t->buffer->oneway_spam_suspect)
 		tcomplete->type = BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT;
 	else

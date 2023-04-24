@@ -234,16 +234,6 @@ static int stm32_gpio_get_noclk(struct gpio_chip *chip, unsigned int offset)
 static int stm32_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
 	struct stm32_gpio_bank *bank = gpiochip_get_data(chip);
-<<<<<<< HEAD
-	int ret;
-
-	clk_enable(bank->clk);
-
-	ret = stm32_gpio_get_noclk(chip, offset);
-
-	clk_disable(bank->clk);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	return !!(readl_relaxed(bank->base + STM32_GPIO_IDR) & BIT(offset));
 }
@@ -1335,11 +1325,7 @@ static int stm32_gpiolib_register_bank(struct stm32_pinctrl *pctl, struct fwnode
 
 		/* get the last defined gpio line (offset + nb of pins) */
 		npins = args.args[0] + args.args[2];
-<<<<<<< HEAD
-		while (!of_parse_phandle_with_fixed_args(np, "gpio-ranges", 3, ++i, &args))
-=======
 		while (!fwnode_property_get_reference_args(fwnode, "gpio-ranges", NULL, 3, ++i, &args))
->>>>>>> origin/linux_6.1.15_upstream
 			npins = max(npins, (int)(args.args[0] + args.args[2]));
 	} else {
 		bank_nr = pctl->nbanks;

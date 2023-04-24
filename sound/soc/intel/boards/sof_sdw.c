@@ -231,12 +231,7 @@ static const struct dmi_system_id sof_sdw_quirk_table[] = {
 			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "0A45")
 		},
 		.driver_data = (void *)(SOF_SDW_TGL_HDMI |
-<<<<<<< HEAD
-					RT711_JD2 |
-					SOF_RT715_DAI_ID_FIX),
-=======
 					RT711_JD2),
->>>>>>> origin/linux_6.1.15_upstream
 	},
 	/* AlderLake devices */
 	{

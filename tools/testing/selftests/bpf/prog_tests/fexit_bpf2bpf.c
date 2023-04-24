@@ -500,24 +500,8 @@ cleanup:
 	bind4_prog__destroy(skel);
 }
 
-<<<<<<< HEAD
-static void test_func_replace_global_func(void)
-{
-	const char *prog_name[] = {
-		"freplace/test_pkt_access",
-	};
-
-	test_fexit_bpf2bpf_common("./freplace_global_func.o",
-				  "./test_pkt_access.o",
-				  ARRAY_SIZE(prog_name),
-				  prog_name, false, NULL);
-}
-
-void test_fexit_bpf2bpf(void)
-=======
 /* NOTE: affect other tests, must run in serial mode */
 void serial_test_fexit_bpf2bpf(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (test__start_subtest("target_no_callees"))
 		test_target_no_callees();
@@ -539,9 +523,6 @@ void serial_test_fexit_bpf2bpf(void)
 		test_fmod_ret_freplace();
 	if (test__start_subtest("func_replace_global_func"))
 		test_func_replace_global_func();
-<<<<<<< HEAD
-=======
 	if (test__start_subtest("fentry_to_cgroup_bpf"))
 		test_fentry_to_cgroup_bpf();
->>>>>>> origin/linux_6.1.15_upstream
 }

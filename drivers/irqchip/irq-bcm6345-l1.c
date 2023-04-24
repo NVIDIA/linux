@@ -137,14 +137,7 @@ static void bcm6345_l1_irq_handle(struct irq_desc *desc)
 		pending &= __raw_readl(cpu->map_base + reg_enable(intc, idx));
 
 		for_each_set_bit(hwirq, &pending, IRQS_PER_WORD) {
-<<<<<<< HEAD
-			irq = irq_linear_revmap(intc->domain, base + hwirq);
-			if (irq)
-				generic_handle_irq(irq);
-			else
-=======
 			if (generic_handle_domain_irq(intc->domain, base + hwirq))
->>>>>>> origin/linux_6.1.15_upstream
 				spurious_interrupt();
 		}
 	}

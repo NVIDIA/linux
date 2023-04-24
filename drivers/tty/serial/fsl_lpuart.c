@@ -275,11 +275,8 @@ struct lpuart_port {
 	int			rx_dma_rng_buf_len;
 	unsigned int		dma_tx_nents;
 	wait_queue_head_t	dma_wait;
-<<<<<<< HEAD
-=======
 	bool			is_cs7; /* Set to true when character size is 7 */
 					/* and the parity is enabled		*/
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct lpuart_soc_data {
@@ -2589,10 +2586,7 @@ OF_EARLYCON_DECLARE(lpuart32, "fsl,ls1021a-lpuart", lpuart32_early_console_setup
 OF_EARLYCON_DECLARE(lpuart32, "fsl,ls1028a-lpuart", ls1028a_early_console_setup);
 OF_EARLYCON_DECLARE(lpuart32, "fsl,imx7ulp-lpuart", lpuart32_imx_early_console_setup);
 OF_EARLYCON_DECLARE(lpuart32, "fsl,imx8qxp-lpuart", lpuart32_imx_early_console_setup);
-<<<<<<< HEAD
-=======
 OF_EARLYCON_DECLARE(lpuart32, "fsl,imxrt1050-lpuart", lpuart32_imx_early_console_setup);
->>>>>>> origin/linux_6.1.15_upstream
 EARLYCON_DECLARE(lpuart, lpuart_early_console_setup);
 EARLYCON_DECLARE(lpuart32, lpuart32_early_console_setup);
 
@@ -2749,12 +2743,6 @@ static int lpuart_probe(struct platform_device *pdev)
 		lpuart_reg.cons = LPUART_CONSOLE;
 		handler = lpuart_int;
 	}
-<<<<<<< HEAD
-	ret = uart_add_one_port(&lpuart_reg, &sport->port);
-	if (ret)
-		goto failed_attach_port;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = lpuart_global_reset(sport);
 	if (ret)
@@ -2781,17 +2769,10 @@ static int lpuart_probe(struct platform_device *pdev)
 	return 0;
 
 failed_irq_request:
-<<<<<<< HEAD
-failed_get_rs485:
-failed_reset:
-	uart_remove_one_port(&lpuart_reg, &sport->port);
-failed_attach_port:
-=======
 	uart_remove_one_port(&lpuart_reg, &sport->port);
 failed_attach_port:
 failed_get_rs485:
 failed_reset:
->>>>>>> origin/linux_6.1.15_upstream
 	lpuart_disable_clks(sport);
 	return ret;
 }

@@ -164,11 +164,7 @@
 
 		ramoops@b3e00000 {
 			compatible = "ramoops";
-<<<<<<< HEAD
-			reg = <0xbc000000 0x200000>; /* 16 * (4 * 0x8000) */
-=======
 			reg = <0xb3e00000 0x200000>; /* 16 * (4 * 0x8000) */
->>>>>>> origin/linux_6.1.15_upstream
 			record-size = <0x8000>;
 			console-size = <0x8000>;
 			ftrace-size = <0x8000>;

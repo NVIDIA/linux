@@ -345,18 +345,10 @@ static int felix_update_trapping_destinations(struct dsa_switch *ds,
 			cpu_copy_ena = true;
 		}
 
-<<<<<<< HEAD
-	if (cpu < 0) {
-		kfree(tagging_rule);
-		kfree(redirect_rule);
-		return -EINVAL;
-	}
-=======
 		if (trap->action.mask_mode == mask_mode &&
 		    trap->action.port_mask == port_mask &&
 		    trap->action.cpu_copy_ena == cpu_copy_ena)
 			continue;
->>>>>>> origin/linux_6.1.15_upstream
 
 		trap->action.mask_mode = mask_mode;
 		trap->action.port_mask = port_mask;

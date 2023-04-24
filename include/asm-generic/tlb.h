@@ -374,14 +374,6 @@ static inline void tlb_flush(struct mmu_gather *tlb)
 
 #else /* CONFIG_MMU_GATHER_NO_RANGE */
 
-<<<<<<< HEAD
-
-#if defined(tlb_start_vma) || defined(tlb_end_vma)
-#error Default tlb_flush() relies on default tlb_start_vma() and tlb_end_vma()
-#endif
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #ifndef tlb_flush
 /*
  * When an architecture does not provide its own tlb_flush() implementation

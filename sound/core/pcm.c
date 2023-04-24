@@ -970,11 +970,7 @@ int snd_pcm_attach_substream(struct snd_pcm *pcm, int stream,
 	init_waitqueue_head(&runtime->sleep);
 	init_waitqueue_head(&runtime->tsleep);
 
-<<<<<<< HEAD
-	runtime->status->state = SNDRV_PCM_STATE_OPEN;
-=======
 	__snd_pcm_set_state(runtime, SNDRV_PCM_STATE_OPEN);
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_init(&runtime->buffer_mutex);
 	atomic_set(&runtime->buffer_accessing, 0);
 
@@ -1011,10 +1007,7 @@ void snd_pcm_detach_substream(struct snd_pcm_substream *substream)
 		substream->runtime = NULL;
 	}
 	mutex_destroy(&runtime->buffer_mutex);
-<<<<<<< HEAD
-=======
 	snd_fasync_free(runtime->fasync);
->>>>>>> origin/linux_6.1.15_upstream
 	kfree(runtime);
 	put_pid(substream->pid);
 	substream->pid = NULL;

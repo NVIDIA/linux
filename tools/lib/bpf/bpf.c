@@ -453,11 +453,7 @@ int bpf_map_lookup_and_delete_elem_flags(int fd, const void *key, void *value, _
 	attr.value = ptr_to_u64(value);
 	attr.flags = flags;
 
-<<<<<<< HEAD
-	ret = sys_bpf(BPF_MAP_LOOKUP_AND_DELETE_ELEM, &attr, sizeof(attr));
-=======
 	ret = sys_bpf(BPF_MAP_LOOKUP_AND_DELETE_ELEM, &attr, attr_sz);
->>>>>>> origin/linux_6.1.15_upstream
 	return libbpf_err_errno(ret);
 }
 

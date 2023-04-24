@@ -787,8 +787,6 @@ static const struct ts_dmi_data predia_basic_data = {
 	.properties	= predia_basic_props,
 };
 
-<<<<<<< HEAD
-=======
 static const struct property_entry rca_cambio_w101_v2_props[] = {
 	PROPERTY_ENTRY_U32("touchscreen-min-x", 4),
 	PROPERTY_ENTRY_U32("touchscreen-min-y", 20),
@@ -805,7 +803,6 @@ static const struct ts_dmi_data rca_cambio_w101_v2_data = {
 	.properties = rca_cambio_w101_v2_props,
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static const struct property_entry rwc_nanote_p8_props[] = {
 	PROPERTY_ENTRY_U32("touchscreen-min-y", 46),
 	PROPERTY_ENTRY_U32("touchscreen-size-x", 1728),
@@ -1463,8 +1460,6 @@ const struct dmi_system_id touchscreen_dmi_table[] = {
 		},
 	},
 	{
-<<<<<<< HEAD
-=======
 		/* RCA Cambio W101 v2 */
 		/* https://github.com/onitake/gsl-firmware/discussions/193 */
 		.driver_data = (void *)&rca_cambio_w101_v2_data,
@@ -1474,7 +1469,6 @@ const struct dmi_system_id touchscreen_dmi_table[] = {
 		},
 	},
 	{
->>>>>>> origin/linux_6.1.15_upstream
 		/* RWC NANOTE P8 */
 		.driver_data = (void *)&rwc_nanote_p8_data,
 		.matches = {

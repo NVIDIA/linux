@@ -769,16 +769,9 @@ config VIDEO_SR030PC30
 	help
 	  This driver supports SR030PC30 VGA camera from Siliconfile
 
-<<<<<<< HEAD
-config VIDEO_THS8200
-	tristate "Texas Instruments THS8200 video encoder"
-	depends on VIDEO_V4L2 && I2C
-	select V4L2_ASYNC
-=======
 config VIDEO_VS6624
 	tristate "ST VS6624 sensor support"
 	depends on VIDEO_DEV && I2C
->>>>>>> origin/linux_6.1.15_upstream
 	help
 	  This is a Video4Linux2 sensor driver for the ST VS6624
 	  camera.

@@ -874,21 +874,9 @@ static int gb_svc_hello(struct gb_operation *op)
 
 	gb_svc_debugfs_init(svc);
 
-<<<<<<< HEAD
-	ret = gb_svc_queue_deferred_request(op);
-	if (ret)
-		goto err_remove_debugfs;
-
-	return 0;
-
-err_remove_debugfs:
-	gb_svc_debugfs_exit(svc);
-err_unregister_device:
-=======
 	return 0;
 
 err_destroy_watchdog:
->>>>>>> origin/linux_6.1.15_upstream
 	gb_svc_watchdog_destroy(svc);
 err_deregister_svc:
 	device_del(&svc->dev);

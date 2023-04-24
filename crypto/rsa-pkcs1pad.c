@@ -498,11 +498,7 @@ static int pkcs1pad_verify_complete(struct akcipher_request *req, int err)
 	sg_pcopy_to_buffer(req->src,
 			   sg_nents_for_len(req->src, sig_size + digest_size),
 			   req_ctx->out_buf + ctx->key_size,
-<<<<<<< HEAD
-			   req->dst_len, req->src_len);
-=======
 			   digest_size, sig_size);
->>>>>>> origin/linux_6.1.15_upstream
 	/* Do the actual verification step. */
 	if (memcmp(req_ctx->out_buf + ctx->key_size, out_buf + pos,
 		   digest_size) != 0)
@@ -545,14 +541,8 @@ static int pkcs1pad_verify(struct akcipher_request *req)
 	const unsigned int digest_size = req->dst_len;
 	int err;
 
-<<<<<<< HEAD
-	if (WARN_ON(req->dst) ||
-	    WARN_ON(!req->dst_len) ||
-	    !ctx->key_size || req->src_len != ctx->key_size)
-=======
 	if (WARN_ON(req->dst) || WARN_ON(!digest_size) ||
 	    !ctx->key_size || sig_size != ctx->key_size)
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 
 	req_ctx->out_buf = kmalloc(ctx->key_size + digest_size, GFP_KERNEL);

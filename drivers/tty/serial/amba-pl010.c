@@ -441,11 +441,7 @@ pl010_set_termios(struct uart_port *port, struct ktermios *termios,
 	if ((termios->c_cflag & CREAD) == 0)
 		port->ignore_status_mask |= UART_DUMMY_RSR_RX;
 
-<<<<<<< HEAD
-	old_cr = readb(uap->port.membase + UART010_CR) & ~UART010_CR_MSIE;
-=======
 	old_cr = readb(port->membase + UART010_CR) & ~UART010_CR_MSIE;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (UART_ENABLE_MS(port, termios->c_cflag))
 		old_cr |= UART010_CR_MSIE;

@@ -97,127 +97,6 @@ int efivars_unregister(struct efivars *efivars)
 		return -EINTR;
 
 	if (!__efivars) {
-<<<<<<< HEAD
-		up(&efivars_lock);
-		return -EINVAL;
-	}
-	ops = __efivars->ops;
-	if (head && efivar_entry_find(name, vendor, head, false)) {
-		up(&efivars_lock);
-		return -EEXIST;
-	}
-
-	status = check_var_size(attributes, size + ucs2_strsize(name, 1024));
-	if (status == EFI_SUCCESS || status == EFI_UNSUPPORTED)
-		status = ops->set_variable(name, &vendor,
-					   attributes, size, data);
-
-	up(&efivars_lock);
-
-	return efi_status_to_err(status);
-
-}
-EXPORT_SYMBOL_GPL(efivar_entry_set);
-
-/*
- * efivar_entry_set_nonblocking - call set_variable_nonblocking()
- *
- * This function is guaranteed to not block and is suitable for calling
- * from crash/panic handlers.
- *
- * Crucially, this function will not block if it cannot acquire
- * efivars_lock. Instead, it returns -EBUSY.
- */
-static int
-efivar_entry_set_nonblocking(efi_char16_t *name, efi_guid_t vendor,
-			     u32 attributes, unsigned long size, void *data)
-{
-	const struct efivar_operations *ops;
-	efi_status_t status;
-
-	if (down_trylock(&efivars_lock))
-		return -EBUSY;
-
-	if (!__efivars) {
-		up(&efivars_lock);
-		return -EINVAL;
-	}
-
-	status = check_var_size_nonblocking(attributes,
-					    size + ucs2_strsize(name, 1024));
-	if (status != EFI_SUCCESS) {
-		up(&efivars_lock);
-		return -ENOSPC;
-	}
-
-	ops = __efivars->ops;
-	status = ops->set_variable_nonblocking(name, &vendor, attributes,
-					       size, data);
-
-	up(&efivars_lock);
-	return efi_status_to_err(status);
-}
-
-/**
- * efivar_entry_set_safe - call set_variable() if enough space in firmware
- * @name: buffer containing the variable name
- * @vendor: variable vendor guid
- * @attributes: variable attributes
- * @block: can we block in this context?
- * @size: size of @data buffer
- * @data: buffer containing variable data
- *
- * Ensures there is enough free storage in the firmware for this variable, and
- * if so, calls set_variable(). If creating a new EFI variable, this function
- * is usually followed by efivar_entry_add().
- *
- * Returns 0 on success, -ENOSPC if the firmware does not have enough
- * space for set_variable() to succeed, or a converted EFI status code
- * if set_variable() fails.
- */
-int efivar_entry_set_safe(efi_char16_t *name, efi_guid_t vendor, u32 attributes,
-			  bool block, unsigned long size, void *data)
-{
-	const struct efivar_operations *ops;
-	efi_status_t status;
-	unsigned long varsize;
-
-	if (!__efivars)
-		return -EINVAL;
-
-	ops = __efivars->ops;
-	if (!ops->query_variable_store)
-		return -ENOSYS;
-
-	/*
-	 * If the EFI variable backend provides a non-blocking
-	 * ->set_variable() operation and we're in a context where we
-	 * cannot block, then we need to use it to avoid live-locks,
-	 * since the implication is that the regular ->set_variable()
-	 * will block.
-	 *
-	 * If no ->set_variable_nonblocking() is provided then
-	 * ->set_variable() is assumed to be non-blocking.
-	 */
-	if (!block && ops->set_variable_nonblocking)
-		return efivar_entry_set_nonblocking(name, vendor, attributes,
-						    size, data);
-
-	varsize = size + ucs2_strsize(name, 1024);
-	if (!block) {
-		if (down_trylock(&efivars_lock))
-			return -EBUSY;
-		status = check_var_size_nonblocking(attributes, varsize);
-	} else {
-		if (down_interruptible(&efivars_lock))
-			return -EINTR;
-		status = check_var_size(attributes, varsize);
-	}
-
-	if (status != EFI_SUCCESS) {
-		up(&efivars_lock);
-		return -ENOSPC;
-=======
 		printk(KERN_ERR "efivars not registered\n");
 		rv = -EINVAL;
 		goto out;
@@ -226,7 +105,6 @@ int efivar_entry_set_safe(efi_char16_t *name, efi_guid_t vendor, u32 attributes,
 	if (__efivars != efivars) {
 		rv = -EINVAL;
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	pr_info("Unregistered efivars operations\n");

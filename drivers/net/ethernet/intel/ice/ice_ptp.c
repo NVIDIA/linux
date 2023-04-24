@@ -491,59 +491,6 @@ ice_ptp_read_src_clk_reg(struct ice_pf *pf, struct ptp_system_timestamp *sts)
 }
 
 /**
-<<<<<<< HEAD
- * ice_ptp_update_cached_phctime - Update the cached PHC time values
- * @pf: Board specific private structure
- *
- * This function updates the system time values which are cached in the PF
- * structure and the Rx rings.
- *
- * This function must be called periodically to ensure that the cached value
- * is never more than 2 seconds old. It must also be called whenever the PHC
- * time has been changed.
- *
- * Return:
- * * 0 - OK, successfully updated
- * * -EAGAIN - PF was busy, need to reschedule the update
- */
-static int ice_ptp_update_cached_phctime(struct ice_pf *pf)
-{
-	u64 systime;
-	int i;
-
-	if (test_and_set_bit(ICE_CFG_BUSY, pf->state))
-		return -EAGAIN;
-
-	/* Read the current PHC time */
-	systime = ice_ptp_read_src_clk_reg(pf, NULL);
-
-	/* Update the cached PHC time stored in the PF structure */
-	WRITE_ONCE(pf->ptp.cached_phc_time, systime);
-
-	ice_for_each_vsi(pf, i) {
-		struct ice_vsi *vsi = pf->vsi[i];
-		int j;
-
-		if (!vsi)
-			continue;
-
-		if (vsi->type != ICE_VSI_PF)
-			continue;
-
-		ice_for_each_rxq(vsi, j) {
-			if (!vsi->rx_rings[j])
-				continue;
-			WRITE_ONCE(vsi->rx_rings[j]->cached_phctime, systime);
-		}
-	}
-	clear_bit(ICE_CFG_BUSY, pf->state);
-
-	return 0;
-}
-
-/**
-=======
->>>>>>> origin/linux_6.1.15_upstream
  * ice_ptp_extend_32b_ts - Convert a 32b nanoseconds timestamp to 64b
  * @cached_phc_time: recently cached copy of PHC time
  * @in_tstamp: Ingress/egress 32b nanoseconds timestamp value
@@ -1513,22 +1460,8 @@ static int ice_ptp_adjfine(struct ptp_clock_info *info, long scaled_ppm)
 		scaled_ppm = -scaled_ppm;
 	}
 
-<<<<<<< HEAD
-	while ((u64)scaled_ppm > div64_u64(U64_MAX, incval)) {
-		/* handle overflow by scaling down the scaled_ppm and
-		 * the divisor, losing some precision
-		 */
-		scaled_ppm >>= 2;
-		divisor >>= 2;
-	}
-
-	freq = (incval * (u64)scaled_ppm) >> 16;
-	diff = div_u64(freq, divisor);
-
-=======
 	diff = mul_u64_u64_div_u64(incval, (u64)scaled_ppm,
 				   1000000ULL << 16);
->>>>>>> origin/linux_6.1.15_upstream
 	if (neg_adj)
 		incval -= diff;
 	else
@@ -2392,99 +2325,6 @@ static long ice_ptp_create_clock(struct ice_pf *pf)
 		return 0;
 
 	ice_ptp_set_caps(pf);
-<<<<<<< HEAD
-
-	info = &pf->ptp.info;
-	dev = ice_pf_to_dev(pf);
-
-	/* Attempt to register the clock before enabling the hardware. */
-	clock = ptp_clock_register(info, dev);
-	if (IS_ERR(clock))
-		return PTR_ERR(clock);
-
-	pf->ptp.clock = clock;
-
-	return 0;
-}
-
-/**
- * ice_ptp_tx_tstamp_work - Process Tx timestamps for a port
- * @work: pointer to the kthread_work struct
- *
- * Process timestamps captured by the PHY associated with this port. To do
- * this, loop over each index with a waiting skb.
- *
- * If a given index has a valid timestamp, perform the following steps:
- *
- * 1) copy the timestamp out of the PHY register
- * 4) clear the timestamp valid bit in the PHY register
- * 5) unlock the index by clearing the associated in_use bit.
- * 2) extend the 40b timestamp value to get a 64bit timestamp
- * 3) send that timestamp to the stack
- *
- * After looping, if we still have waiting SKBs, then re-queue the work. This
- * may cause us effectively poll even when not strictly necessary. We do this
- * because it's possible a new timestamp was requested around the same time as
- * the interrupt. In some cases hardware might not interrupt us again when the
- * timestamp is captured.
- *
- * Note that we only take the tracking lock when clearing the bit and when
- * checking if we need to re-queue this task. The only place where bits can be
- * set is the hard xmit routine where an SKB has a request flag set. The only
- * places where we clear bits are this work function, or the periodic cleanup
- * thread. If the cleanup thread clears a bit we're processing we catch it
- * when we lock to clear the bit and then grab the SKB pointer. If a Tx thread
- * starts a new timestamp, we might not begin processing it right away but we
- * will notice it at the end when we re-queue the work item. If a Tx thread
- * starts a new timestamp just after this function exits without re-queuing,
- * the interrupt when the timestamp finishes should trigger. Avoiding holding
- * the lock for the entire function is important in order to ensure that Tx
- * threads do not get blocked while waiting for the lock.
- */
-static void ice_ptp_tx_tstamp_work(struct kthread_work *work)
-{
-	struct ice_ptp_port *ptp_port;
-	struct ice_ptp_tx *tx;
-	struct ice_pf *pf;
-	struct ice_hw *hw;
-	u8 idx;
-
-	tx = container_of(work, struct ice_ptp_tx, work);
-	if (!tx->init)
-		return;
-
-	ptp_port = container_of(tx, struct ice_ptp_port, tx);
-	pf = ptp_port_to_pf(ptp_port);
-	hw = &pf->hw;
-
-	for_each_set_bit(idx, tx->in_use, tx->len) {
-		struct skb_shared_hwtstamps shhwtstamps = {};
-		u8 phy_idx = idx + tx->quad_offset;
-		u64 raw_tstamp, tstamp;
-		struct sk_buff *skb;
-		int err;
-
-		err = ice_read_phy_tstamp(hw, tx->quad, phy_idx,
-					  &raw_tstamp);
-		if (err)
-			continue;
-
-		/* Check if the timestamp is invalid or stale */
-		if (!(raw_tstamp & ICE_PTP_TS_VALID) ||
-		    raw_tstamp == tx->tstamps[idx].cached_tstamp)
-			continue;
-
-		/* The timestamp is valid, so we'll go ahead and clear this
-		 * index and then send the timestamp up to the stack.
-		 */
-		spin_lock(&tx->lock);
-		tx->tstamps[idx].cached_tstamp = raw_tstamp;
-		clear_bit(idx, tx->in_use);
-		skb = tx->tstamps[idx].skb;
-		tx->tstamps[idx].skb = NULL;
-		spin_unlock(&tx->lock);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	info = &pf->ptp.info;
 	dev = ice_pf_to_dev(pf);
@@ -2658,82 +2498,30 @@ err:
 }
 
 /**
-<<<<<<< HEAD
- * ice_ptp_tx_tstamp_cleanup - Cleanup old timestamp requests that got dropped
- * @hw: pointer to the hw struct
- * @tx: PTP Tx tracker to clean up
- *
- * Loop through the Tx timestamp requests and see if any of them have been
- * waiting for a long time. Discard any SKBs that have been waiting for more
- * than 2 seconds. This is long enough to be reasonably sure that the
- * timestamp will never be captured. This might happen if the packet gets
- * discarded before it reaches the PHY timestamping block.
- */
-static void ice_ptp_tx_tstamp_cleanup(struct ice_hw *hw, struct ice_ptp_tx *tx)
-=======
  * ice_ptp_prepare_for_reset - Prepare PTP for reset
  * @pf: Board private structure
  */
 void ice_ptp_prepare_for_reset(struct ice_pf *pf)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct ice_ptp *ptp = &pf->ptp;
 	u8 src_tmr;
 
-<<<<<<< HEAD
-	if (!tx->init)
-		return;
-
-	for_each_set_bit(idx, tx->in_use, tx->len) {
-		struct sk_buff *skb;
-		u64 raw_tstamp;
-=======
 	clear_bit(ICE_FLAG_PTP, pf->flags);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Disable timestamping for both Tx and Rx */
 	ice_ptp_cfg_timestamp(pf, false);
 
-<<<<<<< HEAD
-		/* Read tstamp to be able to use this register again */
-		ice_read_phy_tstamp(hw, tx->quad, idx + tx->quad_offset,
-				    &raw_tstamp);
-
-		spin_lock(&tx->lock);
-		skb = tx->tstamps[idx].skb;
-		tx->tstamps[idx].skb = NULL;
-		clear_bit(idx, tx->in_use);
-		spin_unlock(&tx->lock);
-=======
 	kthread_cancel_delayed_work_sync(&ptp->work);
 	kthread_cancel_work_sync(&ptp->extts_work);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (test_bit(ICE_PFR_REQ, pf->state))
 		return;
 
-<<<<<<< HEAD
-static void ice_ptp_periodic_work(struct kthread_work *work)
-{
-	struct ice_ptp *ptp = container_of(work, struct ice_ptp, work.work);
-	struct ice_pf *pf = container_of(ptp, struct ice_pf, ptp);
-	int err;
-=======
 	ice_ptp_release_tx_tracker(pf, &pf->ptp.port.tx);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Disable periodic outputs */
 	ice_ptp_disable_all_clkout(pf);
 
-<<<<<<< HEAD
-	err = ice_ptp_update_cached_phctime(pf);
-
-	ice_ptp_tx_tstamp_cleanup(&pf->hw, &pf->ptp.port.tx);
-
-	/* Run twice a second or reschedule if phc update failed */
-	kthread_queue_delayed_work(ptp->kworker, &ptp->work,
-				   msecs_to_jiffies(err ? 10 : 500));
-=======
 	src_tmr = ice_get_ptp_src_clock_index(&pf->hw);
 
 	/* Disable source clock */
@@ -2741,7 +2529,6 @@ static void ice_ptp_periodic_work(struct kthread_work *work)
 
 	/* Acquire PHC and system timer to restore after reset */
 	ptp->reset_time = ktime_get_real_ns();
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**

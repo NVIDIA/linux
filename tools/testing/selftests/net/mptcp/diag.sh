@@ -104,8 +104,6 @@ chk_msk_remote_key_nr()
 		__chk_nr "grep -c remote_key" $*
 }
 
-<<<<<<< HEAD
-=======
 __chk_listen()
 {
 	local filter="$1"
@@ -143,7 +141,6 @@ chk_msk_listen()
 	nr=$(ss -Ml $filter | wc -l)
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 # $1: ns, $2: port
 wait_local_port_listen()
 {
@@ -191,11 +188,7 @@ chk_msk_listen 10000
 echo "b" | \
 	timeout ${timeout_test} \
 		ip netns exec $ns \
-<<<<<<< HEAD
-			./mptcp_connect -p 10000 -r 0 -t ${timeout_poll} \
-=======
 			./mptcp_connect -p 10000 -r 0 -t ${timeout_poll} -w 20 \
->>>>>>> origin/linux_6.1.15_upstream
 				127.0.0.1 >/dev/null &
 wait_connected $ns 10000
 chk_msk_nr 2 "after MPC handshake "
@@ -213,11 +206,7 @@ wait_local_port_listen $ns 10001
 echo "b" | \
 	timeout ${timeout_test} \
 		ip netns exec $ns \
-<<<<<<< HEAD
-			./mptcp_connect -p 10001 -r 0 -t ${timeout_poll} \
-=======
 			./mptcp_connect -p 10001 -r 0 -t ${timeout_poll} -w 20 \
->>>>>>> origin/linux_6.1.15_upstream
 				127.0.0.1 >/dev/null &
 wait_connected $ns 10001
 chk_msk_fallback_nr 1 "check fallback"

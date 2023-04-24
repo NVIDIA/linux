@@ -572,17 +572,6 @@ static void amdgpu_discovery_read_from_harvest_table(struct amdgpu_device *adev,
 	}
 }
 
-<<<<<<< HEAD
-union gc_info {
-	struct gc_info_v1_0 v1;
-	struct gc_info_v2_0 v2;
-};
-
-int amdgpu_discovery_get_gfx_info(struct amdgpu_device *adev)
-{
-	struct binary_header *bhdr;
-	union gc_info *gc_info;
-=======
 /* ================================================== */
 
 struct ip_hw_instance {
@@ -623,7 +612,6 @@ static ssize_t num_instance_show(struct ip_hw_instance *ip_hw_instance, char *bu
 {
 	return sysfs_emit(buf, "%d\n", ip_hw_instance->num_instance);
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 static ssize_t major_show(struct ip_hw_instance *ip_hw_instance, char *buf)
 {
@@ -667,59 +655,6 @@ static ssize_t base_addr_show(struct ip_hw_instance *ip_hw_instance, char *buf)
 		at += res;
 	}
 
-<<<<<<< HEAD
-	bhdr = (struct binary_header *)adev->mman.discovery_bin;
-	gc_info = (union gc_info *)(adev->mman.discovery_bin +
-			le16_to_cpu(bhdr->table_list[GC].offset));
-	switch (gc_info->v1.header.version_major) {
-	case 1:
-		adev->gfx.config.max_shader_engines = le32_to_cpu(gc_info->v1.gc_num_se);
-		adev->gfx.config.max_cu_per_sh = 2 * (le32_to_cpu(gc_info->v1.gc_num_wgp0_per_sa) +
-						      le32_to_cpu(gc_info->v1.gc_num_wgp1_per_sa));
-		adev->gfx.config.max_sh_per_se = le32_to_cpu(gc_info->v1.gc_num_sa_per_se);
-		adev->gfx.config.max_backends_per_se = le32_to_cpu(gc_info->v1.gc_num_rb_per_se);
-		adev->gfx.config.max_texture_channel_caches = le32_to_cpu(gc_info->v1.gc_num_gl2c);
-		adev->gfx.config.max_gprs = le32_to_cpu(gc_info->v1.gc_num_gprs);
-		adev->gfx.config.max_gs_threads = le32_to_cpu(gc_info->v1.gc_num_max_gs_thds);
-		adev->gfx.config.gs_vgt_table_depth = le32_to_cpu(gc_info->v1.gc_gs_table_depth);
-		adev->gfx.config.gs_prim_buffer_depth = le32_to_cpu(gc_info->v1.gc_gsprim_buff_depth);
-		adev->gfx.config.double_offchip_lds_buf = le32_to_cpu(gc_info->v1.gc_double_offchip_lds_buffer);
-		adev->gfx.cu_info.wave_front_size = le32_to_cpu(gc_info->v1.gc_wave_size);
-		adev->gfx.cu_info.max_waves_per_simd = le32_to_cpu(gc_info->v1.gc_max_waves_per_simd);
-		adev->gfx.cu_info.max_scratch_slots_per_cu = le32_to_cpu(gc_info->v1.gc_max_scratch_slots_per_cu);
-		adev->gfx.cu_info.lds_size = le32_to_cpu(gc_info->v1.gc_lds_size);
-		adev->gfx.config.num_sc_per_sh = le32_to_cpu(gc_info->v1.gc_num_sc_per_se) /
-			le32_to_cpu(gc_info->v1.gc_num_sa_per_se);
-		adev->gfx.config.num_packer_per_sc = le32_to_cpu(gc_info->v1.gc_num_packer_per_sc);
-		break;
-	case 2:
-		adev->gfx.config.max_shader_engines = le32_to_cpu(gc_info->v2.gc_num_se);
-		adev->gfx.config.max_cu_per_sh = le32_to_cpu(gc_info->v2.gc_num_cu_per_sh);
-		adev->gfx.config.max_sh_per_se = le32_to_cpu(gc_info->v2.gc_num_sh_per_se);
-		adev->gfx.config.max_backends_per_se = le32_to_cpu(gc_info->v2.gc_num_rb_per_se);
-		adev->gfx.config.max_texture_channel_caches = le32_to_cpu(gc_info->v2.gc_num_tccs);
-		adev->gfx.config.max_gprs = le32_to_cpu(gc_info->v2.gc_num_gprs);
-		adev->gfx.config.max_gs_threads = le32_to_cpu(gc_info->v2.gc_num_max_gs_thds);
-		adev->gfx.config.gs_vgt_table_depth = le32_to_cpu(gc_info->v2.gc_gs_table_depth);
-		adev->gfx.config.gs_prim_buffer_depth = le32_to_cpu(gc_info->v2.gc_gsprim_buff_depth);
-		adev->gfx.config.double_offchip_lds_buf = le32_to_cpu(gc_info->v2.gc_double_offchip_lds_buffer);
-		adev->gfx.cu_info.wave_front_size = le32_to_cpu(gc_info->v2.gc_wave_size);
-		adev->gfx.cu_info.max_waves_per_simd = le32_to_cpu(gc_info->v2.gc_max_waves_per_simd);
-		adev->gfx.cu_info.max_scratch_slots_per_cu = le32_to_cpu(gc_info->v2.gc_max_scratch_slots_per_cu);
-		adev->gfx.cu_info.lds_size = le32_to_cpu(gc_info->v2.gc_lds_size);
-		adev->gfx.config.num_sc_per_sh = le32_to_cpu(gc_info->v2.gc_num_sc_per_se) /
-			le32_to_cpu(gc_info->v2.gc_num_sh_per_se);
-		adev->gfx.config.num_packer_per_sc = le32_to_cpu(gc_info->v2.gc_num_packer_per_sc);
-		break;
-	default:
-		dev_err(adev->dev,
-			"Unhandled GC info table %d.%d\n",
-			gc_info->v1.header.version_major,
-			gc_info->v1.header.version_minor);
-		return -EINVAL;
-	}
-	return 0;
-=======
 	return res < 0 ? res : at;
 }
 
@@ -751,7 +686,6 @@ static ssize_t ip_hw_instance_attr_show(struct kobject *kobj,
 		return -EIO;
 
 	return ip_hw_attr->show(ip_hw_instance, buf);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct sysfs_ops ip_hw_instance_sysfs_ops = {

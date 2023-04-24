@@ -680,11 +680,7 @@ static void npcm_i2c_reset(struct npcm_i2c *bus)
 	}
 #endif
 
-<<<<<<< HEAD
-	/* clear status bits for spurious interrupts */
-=======
 	/* Clear status bits for spurious interrupts */
->>>>>>> origin/linux_6.1.15_upstream
 	npcm_i2c_clear_master_status(bus);
 
 	bus->state = I2C_IDLE;
@@ -1256,11 +1252,7 @@ static irqreturn_t npcm_i2c_int_slave_handler(struct npcm_i2c *bus)
 	} /* SDAST */
 
 	/*
-<<<<<<< HEAD
-	 * if irq is not one of the above, make sure EOB is disabled and all
-=======
 	 * If irq is not one of the above, make sure EOB is disabled and all
->>>>>>> origin/linux_6.1.15_upstream
 	 * status bits are cleared.
 	 */
 	if (ret == IRQ_NONE) {
@@ -1514,11 +1506,7 @@ static void npcm_i2c_irq_handle_nack(struct npcm_i2c *bus)
 		npcm_i2c_clear_master_status(bus);
 		readx_poll_timeout_atomic(ioread8, bus->reg + NPCM_I2CCST, val,
 					  !(val & NPCM_I2CCST_BUSY), 10, 200);
-<<<<<<< HEAD
-		/* verify no status bits are still set after bus is released */
-=======
 		/* Verify no status bits are still set after bus is released */
->>>>>>> origin/linux_6.1.15_upstream
 		npcm_i2c_clear_master_status(bus);
 	}
 	bus->state = I2C_IDLE;
@@ -1986,11 +1974,7 @@ static int npcm_i2c_init_module(struct npcm_i2c *bus, enum i2c_mode mode,
 
 	npcm_i2c_reset(bus);
 
-<<<<<<< HEAD
-	/* check HW is OK: SDA and SCL should be high at this point. */
-=======
 	/* Check HW is OK: SDA and SCL should be high at this point. */
->>>>>>> origin/linux_6.1.15_upstream
 	if ((npcm_i2c_get_SDA(&bus->adap) == 0) || (npcm_i2c_get_SCL(&bus->adap) == 0)) {
 		dev_err(bus->dev, "I2C%d init fail: lines are low\n", bus->num);
 		dev_err(bus->dev, "SDA=%d SCL=%d\n", npcm_i2c_get_SDA(&bus->adap),
@@ -2050,11 +2034,7 @@ static irqreturn_t npcm_i2c_bus_irq(int irq, void *dev_id)
 			return IRQ_HANDLED;
 	}
 #endif
-<<<<<<< HEAD
-	/* clear status bits for spurious interrupts */
-=======
 	/* Clear status bits for spurious interrupts */
->>>>>>> origin/linux_6.1.15_upstream
 	npcm_i2c_clear_master_status(bus);
 
 	return IRQ_HANDLED;
@@ -2233,17 +2213,10 @@ static int npcm_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
 	 * It cannot be cleared without resetting the module.
 	 */
 	else if (bus->cmd_err &&
-<<<<<<< HEAD
-		 (NPCM_I2CRXF_CTL_LAST_PEC & ioread8(bus->reg + NPCM_I2CRXF_CTL)))
-		npcm_i2c_reset(bus);
-
-	/* after any xfer, successful or not, stall and EOB must be disabled */
-=======
 		 (bus->data->rxf_ctl_last_pec & ioread8(bus->reg + NPCM_I2CRXF_CTL)))
 		npcm_i2c_reset(bus);
 
 	/* After any xfer, successful or not, stall and EOB must be disabled */
->>>>>>> origin/linux_6.1.15_upstream
 	npcm_i2c_stall_after_start(bus, false);
 	npcm_i2c_eob_int(bus, false);
 
@@ -2423,9 +2396,6 @@ static int __init npcm_i2c_init(void)
 	int ret;
 
 	npcm_i2c_debugfs_dir = debugfs_create_dir("npcm_i2c", NULL);
-<<<<<<< HEAD
-	return platform_driver_register(&npcm_i2c_bus_driver);
-=======
 
 	ret = platform_driver_register(&npcm_i2c_bus_driver);
 	if (ret) {
@@ -2434,7 +2404,6 @@ static int __init npcm_i2c_init(void)
 	}
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 module_init(npcm_i2c_init);
 

@@ -12,10 +12,6 @@
 #define AMDSFH_HID_H
 
 #define MAX_HID_DEVICES		5
-<<<<<<< HEAD
-#define BUS_AMD_SFH		0x20
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #define AMD_SFH_HID_VENDOR	0x1022
 #define AMD_SFH_HID_PRODUCT	0x0001
 

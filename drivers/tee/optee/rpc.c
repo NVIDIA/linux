@@ -230,109 +230,7 @@ struct tee_shm *optee_rpc_cmd_alloc_suppl(struct tee_context *ctx, size_t sz)
 	return shm;
 }
 
-<<<<<<< HEAD
-static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
-					  struct optee *optee,
-					  struct optee_msg_arg *arg,
-					  struct optee_call_ctx *call_ctx)
-{
-	phys_addr_t pa;
-	struct tee_shm *shm;
-	size_t sz;
-	size_t n;
-
-	arg->ret_origin = TEEC_ORIGIN_COMMS;
-
-	if (!arg->num_params ||
-	    arg->params[0].attr != OPTEE_MSG_ATTR_TYPE_VALUE_INPUT) {
-		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-		return;
-	}
-
-	for (n = 1; n < arg->num_params; n++) {
-		if (arg->params[n].attr != OPTEE_MSG_ATTR_TYPE_NONE) {
-			arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-			return;
-		}
-	}
-
-	sz = arg->params[0].u.value.b;
-	switch (arg->params[0].u.value.a) {
-	case OPTEE_RPC_SHM_TYPE_APPL:
-		shm = cmd_alloc_suppl(ctx, sz);
-		break;
-	case OPTEE_RPC_SHM_TYPE_KERNEL:
-		shm = tee_shm_alloc(optee->ctx, sz,
-				    TEE_SHM_MAPPED | TEE_SHM_PRIV);
-		break;
-	default:
-		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-		return;
-	}
-
-	if (IS_ERR(shm)) {
-		arg->ret = TEEC_ERROR_OUT_OF_MEMORY;
-		return;
-	}
-
-	if (tee_shm_get_pa(shm, 0, &pa)) {
-		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-		goto bad;
-	}
-
-	sz = tee_shm_get_size(shm);
-
-	if (tee_shm_is_registered(shm)) {
-		struct page **pages;
-		u64 *pages_list;
-		size_t page_num;
-
-		pages = tee_shm_get_pages(shm, &page_num);
-		if (!pages || !page_num) {
-			arg->ret = TEEC_ERROR_OUT_OF_MEMORY;
-			goto bad;
-		}
-
-		pages_list = optee_allocate_pages_list(page_num);
-		if (!pages_list) {
-			arg->ret = TEEC_ERROR_OUT_OF_MEMORY;
-			goto bad;
-		}
-
-		call_ctx->pages_list = pages_list;
-		call_ctx->num_entries = page_num;
-
-		arg->params[0].attr = OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT |
-				      OPTEE_MSG_ATTR_NONCONTIG;
-		/*
-		 * In the least bits of u.tmem.buf_ptr we store buffer offset
-		 * from 4k page, as described in OP-TEE ABI.
-		 */
-		arg->params[0].u.tmem.buf_ptr = virt_to_phys(pages_list) |
-			(tee_shm_get_page_offset(shm) &
-			 (OPTEE_MSG_NONCONTIG_PAGE_SIZE - 1));
-		arg->params[0].u.tmem.size = tee_shm_get_size(shm);
-		arg->params[0].u.tmem.shm_ref = (unsigned long)shm;
-
-		optee_fill_pages_list(pages_list, pages, page_num,
-				      tee_shm_get_page_offset(shm));
-	} else {
-		arg->params[0].attr = OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT;
-		arg->params[0].u.tmem.buf_ptr = pa;
-		arg->params[0].u.tmem.size = sz;
-		arg->params[0].u.tmem.shm_ref = (unsigned long)shm;
-	}
-
-	arg->ret = TEEC_SUCCESS;
-	return;
-bad:
-	tee_shm_free(shm);
-}
-
-static void cmd_free_suppl(struct tee_context *ctx, struct tee_shm *shm)
-=======
 void optee_rpc_cmd_free_suppl(struct tee_context *ctx, struct tee_shm *shm)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct tee_param param;
 
@@ -370,16 +268,6 @@ void optee_rpc_cmd(struct tee_context *ctx, struct optee *optee,
 	case OPTEE_RPC_CMD_SUSPEND:
 		handle_rpc_func_cmd_wait(arg);
 		break;
-<<<<<<< HEAD
-	case OPTEE_RPC_CMD_SHM_ALLOC:
-		free_pages_list(call_ctx);
-		handle_rpc_func_cmd_shm_alloc(ctx, optee, arg, call_ctx);
-		break;
-	case OPTEE_RPC_CMD_SHM_FREE:
-		handle_rpc_func_cmd_shm_free(ctx, arg);
-		break;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	case OPTEE_RPC_CMD_I2C_TRANSFER:
 		handle_rpc_func_cmd_i2c_transfer(ctx, arg);
 		break;
@@ -388,59 +276,4 @@ void optee_rpc_cmd(struct tee_context *ctx, struct optee *optee,
 	}
 }
 
-<<<<<<< HEAD
-/**
- * optee_handle_rpc() - handle RPC from secure world
- * @ctx:	context doing the RPC
- * @param:	value of registers for the RPC
- * @call_ctx:	call context. Preserved during one OP-TEE invocation
- *
- * Result of RPC is written back into @param.
- */
-void optee_handle_rpc(struct tee_context *ctx, struct optee_rpc_param *param,
-		      struct optee_call_ctx *call_ctx)
-{
-	struct tee_device *teedev = ctx->teedev;
-	struct optee *optee = tee_get_drvdata(teedev);
-	struct tee_shm *shm;
-	phys_addr_t pa;
-
-	switch (OPTEE_SMC_RETURN_GET_RPC_FUNC(param->a0)) {
-	case OPTEE_SMC_RPC_FUNC_ALLOC:
-		shm = tee_shm_alloc(optee->ctx, param->a1,
-				    TEE_SHM_MAPPED | TEE_SHM_PRIV);
-		if (!IS_ERR(shm) && !tee_shm_get_pa(shm, 0, &pa)) {
-			reg_pair_from_64(&param->a1, &param->a2, pa);
-			reg_pair_from_64(&param->a4, &param->a5,
-					 (unsigned long)shm);
-		} else {
-			param->a1 = 0;
-			param->a2 = 0;
-			param->a4 = 0;
-			param->a5 = 0;
-		}
-		break;
-	case OPTEE_SMC_RPC_FUNC_FREE:
-		shm = reg_pair_to_ptr(param->a1, param->a2);
-		tee_shm_free(shm);
-		break;
-	case OPTEE_SMC_RPC_FUNC_FOREIGN_INTR:
-		/*
-		 * A foreign interrupt was raised while secure world was
-		 * executing, since they are handled in Linux a dummy RPC is
-		 * performed to let Linux take the interrupt through the normal
-		 * vector.
-		 */
-		break;
-	case OPTEE_SMC_RPC_FUNC_CMD:
-		shm = reg_pair_to_ptr(param->a1, param->a2);
-		handle_rpc_func_cmd(ctx, optee, shm, call_ctx);
-		break;
-	default:
-		pr_warn("Unknown RPC func 0x%x\n",
-			(u32)OPTEE_SMC_RETURN_GET_RPC_FUNC(param->a0));
-		break;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 

@@ -288,12 +288,6 @@ static void vc4_hdmi_cec_update_clk_div(struct vc4_hdmi *vc4_hdmi)
 static void vc4_hdmi_cec_update_clk_div(struct vc4_hdmi *vc4_hdmi) {}
 #endif
 
-<<<<<<< HEAD
-static void vc4_hdmi_enable_scrambling(struct drm_encoder *encoder);
-
-static enum drm_connector_status
-vc4_hdmi_connector_detect(struct drm_connector *connector, bool force)
-=======
 static int reset_pipe(struct drm_crtc *crtc,
 			struct drm_modeset_acquire_ctx *ctx)
 {
@@ -324,7 +318,6 @@ out:
 
 static int vc4_hdmi_reset_link(struct drm_connector *connector,
 			       struct drm_modeset_acquire_ctx *ctx)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct drm_device *drm = connector->dev;
 	struct vc4_hdmi *vc4_hdmi = connector_to_vc4_hdmi(connector);
@@ -358,21 +351,9 @@ static int vc4_hdmi_reset_link(struct drm_connector *connector,
 
 	mutex_lock(&vc4_hdmi->mutex);
 
-<<<<<<< HEAD
-	WARN_ON(pm_runtime_resume_and_get(&vc4_hdmi->pdev->dev));
-
-	if (vc4_hdmi->hpd_gpio &&
-	    gpiod_get_value_cansleep(vc4_hdmi->hpd_gpio)) {
-		connected = true;
-	} else if (drm_probe_ddc(vc4_hdmi->ddc)) {
-		connected = true;
-	} else if (HDMI_READ(HDMI_HOTPLUG) & VC4_HDMI_HOTPLUG_CONNECTED) {
-		connected = true;
-=======
 	if (!vc4_hdmi_supports_scrambling(encoder)) {
 		mutex_unlock(&vc4_hdmi->mutex);
 		return 0;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	scrambling_needed = vc4_hdmi_mode_needs_scrambling(&vc4_hdmi->saved_adjusted_mode,
@@ -437,16 +418,6 @@ static void vc4_hdmi_handle_hotplug(struct vc4_hdmi *vc4_hdmi,
 	 * the lock for now.
 	 */
 
-<<<<<<< HEAD
-		vc4_hdmi_enable_scrambling(&vc4_hdmi->encoder.base.base);
-		pm_runtime_put(&vc4_hdmi->pdev->dev);
-		return connector_status_connected;
-	}
-
-	cec_phys_addr_invalidate(vc4_hdmi->cec_adap);
-	pm_runtime_put(&vc4_hdmi->pdev->dev);
-	return connector_status_disconnected;
-=======
 	if (status == connector_status_disconnected) {
 		cec_phys_addr_invalidate(vc4_hdmi->cec_adap);
 		return;
@@ -460,7 +431,6 @@ static void vc4_hdmi_handle_hotplug(struct vc4_hdmi *vc4_hdmi,
 	kfree(edid);
 
 	vc4_hdmi_reset_link(connector, ctx);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int vc4_hdmi_connector_detect_ctx(struct drm_connector *connector,
@@ -1473,28 +1443,18 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 		drm_atomic_get_new_connector_state(state, connector);
 	struct vc4_hdmi_connector_state *vc4_conn_state =
 		conn_state_to_vc4_hdmi_conn_state(conn_state);
-<<<<<<< HEAD
-	struct drm_display_mode *mode = &encoder->crtc->state->adjusted_mode;
-	struct vc4_hdmi *vc4_hdmi = encoder_to_vc4_hdmi(encoder);
-	unsigned long pixel_rate = vc4_conn_state->pixel_rate;
-	unsigned long bvb_rate, hsm_rate;
-=======
 	const struct drm_display_mode *mode = &vc4_hdmi->saved_adjusted_mode;
 	unsigned long tmds_char_rate = vc4_conn_state->tmds_char_rate;
 	unsigned long bvb_rate, hsm_rate;
 	unsigned long flags;
->>>>>>> origin/linux_6.1.15_upstream
 	int ret;
 	int idx;
 
-<<<<<<< HEAD
-=======
 	mutex_lock(&vc4_hdmi->mutex);
 
 	if (!drm_dev_enter(drm, &idx))
 		goto out;
 
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * As stated in RPi's vc4 firmware "HDMI state machine (HSM) clock must
 	 * be faster than pixel clock, infinitesimally faster, tested in
@@ -1521,17 +1481,6 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 	ret = pm_runtime_resume_and_get(&vc4_hdmi->pdev->dev);
 	if (ret < 0) {
 		DRM_ERROR("Failed to retain power domain: %d\n", ret);
-<<<<<<< HEAD
-		return;
-	}
-
-	ret = clk_set_rate(vc4_hdmi->pixel_clock, pixel_rate);
-	if (ret) {
-		DRM_ERROR("Failed to set pixel clock rate: %d\n", ret);
-		goto err_put_runtime_pm;
-	}
-
-=======
 		goto err_dev_exit;
 	}
 
@@ -1541,7 +1490,6 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 		goto err_put_runtime_pm;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	ret = clk_prepare_enable(vc4_hdmi->pixel_clock);
 	if (ret) {
 		DRM_ERROR("Failed to turn on pixel clock: %d\n", ret);
@@ -1585,27 +1533,20 @@ static void vc4_hdmi_encoder_pre_crtc_configure(struct drm_encoder *encoder,
 	if (vc4_hdmi->variant->set_timings)
 		vc4_hdmi->variant->set_timings(vc4_hdmi, conn_state, mode);
 
-<<<<<<< HEAD
-=======
 	drm_dev_exit(idx);
 
 	mutex_unlock(&vc4_hdmi->mutex);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return;
 
 err_disable_pixel_clock:
 	clk_disable_unprepare(vc4_hdmi->pixel_clock);
 err_put_runtime_pm:
 	pm_runtime_put(&vc4_hdmi->pdev->dev);
-<<<<<<< HEAD
-
-=======
 err_dev_exit:
 	drm_dev_exit(idx);
 out:
 	mutex_unlock(&vc4_hdmi->mutex);
->>>>>>> origin/linux_6.1.15_upstream
 	return;
 }
 
@@ -1973,13 +1914,6 @@ static int vc4_hdmi_encoder_atomic_check(struct drm_encoder *encoder,
 	unsigned long long tmds_bit_rate;
 	int ret;
 
-<<<<<<< HEAD
-	if (vc4_hdmi->variant->unsupported_odd_h_timings &&
-	    !(mode->flags & DRM_MODE_FLAG_DBLCLK) &&
-	    ((mode->hdisplay % 2) || (mode->hsync_start % 2) ||
-	     (mode->hsync_end % 2) || (mode->htotal % 2)))
-		return -EINVAL;
-=======
 	if (vc4_hdmi->variant->unsupported_odd_h_timings) {
 		if (mode->flags & DRM_MODE_FLAG_DBLCLK) {
 			/* Only try to fixup DBLCLK modes to get 480i and 576i
@@ -1999,7 +1933,6 @@ static int vc4_hdmi_encoder_atomic_check(struct drm_encoder *encoder,
 		    (mode->hsync_end % 2) || (mode->htotal % 2))
 			return -EINVAL;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * The 1440p@60 pixel rate is in the same range than the first
@@ -2597,13 +2530,10 @@ static int vc4_hdmi_audio_init(struct vc4_hdmi *vc4_hdmi)
 		return PTR_ERR(codec_pdev);
 	}
 	vc4_hdmi->audio.codec_pdev = codec_pdev;
-<<<<<<< HEAD
-=======
 
 	ret = devm_add_action_or_reset(dev, vc4_hdmi_audio_codec_release, vc4_hdmi);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	dai_link->cpus		= &vc4_hdmi->audio.cpu;
 	dai_link->codecs	= &vc4_hdmi->audio.codec;
@@ -3587,35 +3517,6 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 			vc4_hdmi->disable_4kp60 = true;
 	}
 
-<<<<<<< HEAD
-	/*
-	 * If we boot without any cable connected to the HDMI connector,
-	 * the firmware will skip the HSM initialization and leave it
-	 * with a rate of 0, resulting in a bus lockup when we're
-	 * accessing the registers even if it's enabled.
-	 *
-	 * Let's put a sensible default at runtime_resume so that we
-	 * don't end up in this situation.
-	 */
-	ret = clk_set_min_rate(vc4_hdmi->hsm_clock, HSM_MIN_CLOCK_FREQ);
-	if (ret)
-		goto err_put_ddc;
-
-	/*
-	 * We need to have the device powered up at this point to call
-	 * our reset hook and for the CEC init.
-	 */
-	ret = vc4_hdmi_runtime_resume(dev);
-	if (ret)
-		goto err_put_ddc;
-
-	pm_runtime_get_noresume(dev);
-	pm_runtime_set_active(dev);
-	pm_runtime_enable(dev);
-
-	if (vc4_hdmi->variant->reset)
-		vc4_hdmi->variant->reset(vc4_hdmi);
-=======
 	ret = devm_pm_runtime_enable(dev);
 	if (ret)
 		return ret;
@@ -3627,7 +3528,6 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 	ret = pm_runtime_resume_and_get(dev);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if ((of_device_is_compatible(dev->of_node, "brcm,bcm2711-hdmi0") ||
 	     of_device_is_compatible(dev->of_node, "brcm,bcm2711-hdmi1")) &&
@@ -3637,9 +3537,6 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 		clk_prepare_enable(vc4_hdmi->pixel_bvb_clock);
 	}
 
-<<<<<<< HEAD
-	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
-=======
 	ret = drmm_encoder_init(drm, encoder,
 				&vc4_hdmi_encoder_funcs,
 				DRM_MODE_ENCODER_TMDS,
@@ -3647,7 +3544,6 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		goto err_put_runtime_pm;
 
->>>>>>> origin/linux_6.1.15_upstream
 	drm_encoder_helper_add(encoder, &vc4_hdmi_encoder_helper_funcs);
 
 	ret = vc4_hdmi_connector_init(drm, vc4_hdmi);
@@ -3672,70 +3568,11 @@ static int vc4_hdmi_bind(struct device *dev, struct device *master, void *data)
 
 	return 0;
 
-<<<<<<< HEAD
-err_free_cec:
-	vc4_hdmi_cec_exit(vc4_hdmi);
-err_free_hotplug:
-	vc4_hdmi_hotplug_exit(vc4_hdmi);
-err_destroy_conn:
-	vc4_hdmi_connector_destroy(&vc4_hdmi->connector);
-err_destroy_encoder:
-	drm_encoder_cleanup(encoder);
-	pm_runtime_put_sync(dev);
-	pm_runtime_disable(dev);
-err_put_ddc:
-	put_device(&vc4_hdmi->ddc->dev);
-=======
 err_put_runtime_pm:
 	pm_runtime_put_sync(dev);
->>>>>>> origin/linux_6.1.15_upstream
-
 	return ret;
 }
 
-<<<<<<< HEAD
-static void vc4_hdmi_unbind(struct device *dev, struct device *master,
-			    void *data)
-{
-	struct vc4_hdmi *vc4_hdmi;
-
-	/*
-	 * ASoC makes it a bit hard to retrieve a pointer to the
-	 * vc4_hdmi structure. Registering the card will overwrite our
-	 * device drvdata with a pointer to the snd_soc_card structure,
-	 * which can then be used to retrieve whatever drvdata we want
-	 * to associate.
-	 *
-	 * However, that doesn't fly in the case where we wouldn't
-	 * register an ASoC card (because of an old DT that is missing
-	 * the dmas properties for example), then the card isn't
-	 * registered and the device drvdata wouldn't be set.
-	 *
-	 * We can deal with both cases by making sure a snd_soc_card
-	 * pointer and a vc4_hdmi structure are pointing to the same
-	 * memory address, so we can treat them indistinctly without any
-	 * issue.
-	 */
-	BUILD_BUG_ON(offsetof(struct vc4_hdmi_audio, card) != 0);
-	BUILD_BUG_ON(offsetof(struct vc4_hdmi, audio) != 0);
-	vc4_hdmi = dev_get_drvdata(dev);
-
-	kfree(vc4_hdmi->hdmi_regset.regs);
-	kfree(vc4_hdmi->hd_regset.regs);
-
-	vc4_hdmi_audio_exit(vc4_hdmi);
-	vc4_hdmi_cec_exit(vc4_hdmi);
-	vc4_hdmi_hotplug_exit(vc4_hdmi);
-	vc4_hdmi_connector_destroy(&vc4_hdmi->connector);
-	drm_encoder_cleanup(&vc4_hdmi->encoder.base.base);
-
-	pm_runtime_disable(dev);
-
-	put_device(&vc4_hdmi->ddc->dev);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static const struct component_ops vc4_hdmi_ops = {
 	.bind   = vc4_hdmi_bind,
 };

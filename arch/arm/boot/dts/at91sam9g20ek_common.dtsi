@@ -235,14 +235,10 @@
 			clock-names = "mclk";
 			assigned-clocks = <&pmc PMC_TYPE_SYSTEM 8>;
 			assigned-clock-rates = <12000000>;
-<<<<<<< HEAD
-=======
-
 			HPVDD-supply = <&vcc_dac>;
 			AVDD-supply = <&vcc_dac>;
 			DCVDD-supply = <&reg_3v3>;
 			DBVDD-supply = <&reg_3v3>;
->>>>>>> origin/linux_6.1.15_upstream
 		};
 	};
 

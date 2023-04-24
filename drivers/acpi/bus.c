@@ -371,24 +371,18 @@ static void acpi_bus_osc_negotiate_platform_control(void)
 
 	capbuf_ret = context.ret.pointer;
 	if (context.ret.length > OSC_SUPPORT_DWORD) {
-<<<<<<< HEAD
-=======
 #ifdef CONFIG_ACPI_CPPC_LIB
 		osc_sb_cppc2_support_acked = capbuf_ret[OSC_SUPPORT_DWORD] & OSC_SB_CPCV2_SUPPORT;
 #endif
 
->>>>>>> origin/linux_6.1.15_upstream
 		osc_sb_apei_support_acked =
 			capbuf_ret[OSC_SUPPORT_DWORD] & OSC_SB_APEI_SUPPORT;
 		osc_pc_lpi_support_confirmed =
 			capbuf_ret[OSC_SUPPORT_DWORD] & OSC_SB_PCLPI_SUPPORT;
 		osc_sb_native_usb4_support_confirmed =
 			capbuf_ret[OSC_SUPPORT_DWORD] & OSC_SB_NATIVE_USB4_SUPPORT;
-<<<<<<< HEAD
-=======
 		osc_cpc_flexible_adr_space_confirmed =
 			capbuf_ret[OSC_SUPPORT_DWORD] & OSC_SB_CPC_FLEXIBLE_ADR_SPACE;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	kfree(context.ret.pointer);

@@ -1329,8 +1329,6 @@ struct dynamic_fw_load_mgr {
 	size_t fw_image_size;
 	u32 wait_for_bl_timeout;
 	bool fw_desc_valid;
-<<<<<<< HEAD
-=======
 };
 
 /**
@@ -1349,7 +1347,6 @@ struct pre_fw_load_props {
 	u32 boot_err0_reg;
 	u32 boot_err1_reg;
 	u32 wait_for_preboot_timeout;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /**

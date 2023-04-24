@@ -2,12 +2,7 @@
 
 TEST_PROGS := gpio-mockup.sh gpio-sim.sh
 TEST_FILES := gpio-mockup-sysfs.sh
-<<<<<<< HEAD
-TEST_GEN_PROGS_EXTENDED := gpio-mockup-cdev
-CFLAGS += -I../../../../usr/include
-=======
 TEST_GEN_PROGS_EXTENDED := gpio-mockup-cdev gpio-chip-info gpio-line-name
 CFLAGS += -O2 -g -Wall -I../../../../usr/include/ $(KHDR_INCLUDES)
->>>>>>> origin/linux_6.1.15_upstream
 
 include ../lib.mk

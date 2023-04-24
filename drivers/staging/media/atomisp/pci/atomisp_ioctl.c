@@ -657,16 +657,6 @@ static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 
-<<<<<<< HEAD
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	rt_mutex_lock(&isp->mutex);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	*input = asd->input_curr;
 	return 0;
 }
@@ -684,20 +674,10 @@ static int atomisp_s_input(struct file *file, void *fh, unsigned int input)
 	struct v4l2_subdev *motor;
 	int ret;
 
-<<<<<<< HEAD
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	rt_mutex_lock(&isp->mutex);
-=======
 	ret = atomisp_pipe_check(pipe, true);
 	if (ret)
 		return ret;
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (input >= ATOM_ISP_MAX_INPUTS || input >= isp->input_cnt) {
 		dev_dbg(isp->dev, "input_cnt: %d\n", isp->input_cnt);
 		return -EINVAL;
@@ -831,23 +811,11 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 	struct v4l2_subdev_mbus_code_enum code = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 	};
-<<<<<<< HEAD
-=======
 	const struct atomisp_format_bridge *format;
->>>>>>> origin/linux_6.1.15_upstream
 	struct v4l2_subdev *camera;
 	unsigned int i, fi = 0;
 	int rval;
 
-<<<<<<< HEAD
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	camera = isp->inputs[asd->input_curr].camera;
 	if(!camera) {
 		dev_err(isp->dev, "%s(): camera is NULL, device is %s\n",
@@ -855,11 +823,6 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	rt_mutex_lock(&isp->mutex);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	rval = v4l2_subdev_call(camera, pad, enum_mbus_code, NULL, &code);
 	if (rval == -ENOIOCTLCMD) {
 		dev_warn(isp->dev,
@@ -1046,11 +1009,6 @@ static int atomisp_try_fmt_cap(struct file *file, void *fh,
 	f->fmt.pix.height += pad_h;
 
 	ret = atomisp_try_fmt(vdev, &f->fmt.pix, NULL);
-<<<<<<< HEAD
-	rt_mutex_unlock(&isp->mutex);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		return ret;
 
@@ -1222,10 +1180,6 @@ int atomisp_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *req
 	struct ia_css_frame *frame;
 	struct videobuf_vmalloc_memory *vm_mem;
 	u16 source_pad = atomisp_subdev_source_pad(vdev);
-<<<<<<< HEAD
-	u16 stream_id;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	int ret = 0, i = 0;
 
 	if (!asd) {
@@ -1321,23 +1275,7 @@ static int atomisp_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	struct ia_css_frame *handle = NULL;
 	u32 length;
 	u32 pgnr;
-<<<<<<< HEAD
-	int ret = 0;
-
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	rt_mutex_lock(&isp->mutex);
-	if (isp->isp_fatal_error) {
-		ret = -EIO;
-		goto error;
-	}
-=======
 	int ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = atomisp_pipe_check(pipe, false);
 	if (ret)
@@ -1489,31 +1427,7 @@ static int atomisp_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	struct atomisp_video_pipe *pipe = atomisp_to_video_pipe(vdev);
 	struct atomisp_sub_device *asd = pipe->asd;
 	struct atomisp_device *isp = video_get_drvdata(vdev);
-<<<<<<< HEAD
-	int ret = 0;
-
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	rt_mutex_lock(&isp->mutex);
-
-	if (isp->isp_fatal_error) {
-		rt_mutex_unlock(&isp->mutex);
-		return -EIO;
-	}
-
-	if (asd->streaming == ATOMISP_DEVICE_STREAMING_STOPPING) {
-		rt_mutex_unlock(&isp->mutex);
-		dev_err(isp->dev, "%s: reject, as ISP at stopping.\n",
-			__func__);
-		return -EIO;
-	}
-=======
 	int ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret = atomisp_pipe_check(pipe, false);
 	if (ret)

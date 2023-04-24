@@ -81,8 +81,6 @@
 #define HWCAP2_ECV		(1 << 19)
 #define HWCAP2_AFP		(1 << 20)
 #define HWCAP2_RPRES		(1 << 21)
-<<<<<<< HEAD
-=======
 #define HWCAP2_MTE3		(1 << 22)
 #define HWCAP2_SME		(1 << 23)
 #define HWCAP2_SME_I16I64	(1 << 24)
@@ -95,6 +93,5 @@
 #define HWCAP2_WFXT		(1UL << 31)
 #define HWCAP2_EBF16		(1UL << 32)
 #define HWCAP2_SVE_EBF16	(1UL << 33)
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* _UAPI__ASM_HWCAP_H */

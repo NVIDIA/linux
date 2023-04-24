@@ -112,9 +112,6 @@ static int scmi_pm_domain_probe(struct scmi_device *sdev)
 	scmi_pd_data->domains = domains;
 	scmi_pd_data->num_domains = num_domains;
 
-<<<<<<< HEAD
-	return of_genpd_add_provider_onecell(np, scmi_pd_data);
-=======
 	dev_set_drvdata(dev, scmi_pd_data);
 
 	return of_genpd_add_provider_onecell(np, scmi_pd_data);
@@ -135,7 +132,6 @@ static void scmi_pm_domain_remove(struct scmi_device *sdev)
 			continue;
 		pm_genpd_remove(scmi_pd_data->domains[i]);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct scmi_device_id scmi_id_table[] = {

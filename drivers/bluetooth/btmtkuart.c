@@ -122,11 +122,7 @@ static int mtk_hci_wmt_sync(struct hci_dev *hdev,
 	err = __hci_cmd_send(hdev, 0xfc6f, hlen, wc);
 	if (err < 0) {
 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
-<<<<<<< HEAD
-		goto err_free_skb;
-=======
 		goto err_free_wc;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* The vendor specific WMT commands are all answered by a vendor
@@ -143,22 +139,14 @@ static int mtk_hci_wmt_sync(struct hci_dev *hdev,
 	if (err == -EINTR) {
 		bt_dev_err(hdev, "Execution of wmt command interrupted");
 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
-<<<<<<< HEAD
-		goto err_free_skb;
-=======
 		goto err_free_wc;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (err) {
 		bt_dev_err(hdev, "Execution of wmt command timed out");
 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
 		err = -ETIMEDOUT;
-<<<<<<< HEAD
-		goto err_free_skb;
-=======
 		goto err_free_wc;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	/* Parse and handle the return WMT event */

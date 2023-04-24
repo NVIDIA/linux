@@ -3405,19 +3405,12 @@ bool intel_bios_is_port_edp(struct drm_i915_private *i915, enum port port)
 	return devdata && intel_bios_encoder_supports_edp(devdata);
 }
 
-<<<<<<< HEAD
-static bool child_dev_is_dp_dual_mode(const struct child_device_config *child)
-{
-	if ((child->device_type & DEVICE_TYPE_DP_DUAL_MODE_BITS) !=
-	    (DEVICE_TYPE_DP_DUAL_MODE & DEVICE_TYPE_DP_DUAL_MODE_BITS))
-=======
 static bool intel_bios_encoder_supports_dp_dual_mode(const struct intel_bios_encoder_data *devdata)
 {
 	const struct child_device_config *child = &devdata->child;
 
 	if (!intel_bios_encoder_supports_dp(devdata) ||
 	    !intel_bios_encoder_supports_hdmi(devdata))
->>>>>>> origin/linux_6.1.15_upstream
 		return false;
 
 	if (dvo_port_type(child->dvo_port) == DVO_PORT_DPA)
@@ -3434,43 +3427,8 @@ static bool intel_bios_encoder_supports_dp_dual_mode(const struct intel_bios_enc
 bool intel_bios_is_port_dp_dual_mode(struct drm_i915_private *i915,
 				     enum port port)
 {
-<<<<<<< HEAD
-	static const struct {
-		u16 dp, hdmi;
-	} port_mapping[] = {
-		/*
-		 * Buggy VBTs may declare DP ports as having
-		 * HDMI type dvo_port :( So let's check both.
-		 */
-		[PORT_B] = { DVO_PORT_DPB, DVO_PORT_HDMIB, },
-		[PORT_C] = { DVO_PORT_DPC, DVO_PORT_HDMIC, },
-		[PORT_D] = { DVO_PORT_DPD, DVO_PORT_HDMID, },
-		[PORT_E] = { DVO_PORT_DPE, DVO_PORT_HDMIE, },
-		[PORT_F] = { DVO_PORT_DPF, DVO_PORT_HDMIF, },
-	};
-	const struct intel_bios_encoder_data *devdata;
-
-	if (HAS_DDI(i915)) {
-		const struct intel_bios_encoder_data *devdata;
-
-		devdata = intel_bios_encoder_data_lookup(i915, port);
-
-		return devdata && child_dev_is_dp_dual_mode(&devdata->child);
-	}
-
-	if (port == PORT_A || port >= ARRAY_SIZE(port_mapping))
-		return false;
-
-	list_for_each_entry(devdata, &i915->vbt.display_devices, node) {
-		if ((devdata->child.dvo_port == port_mapping[port].dp ||
-		     devdata->child.dvo_port == port_mapping[port].hdmi) &&
-		    child_dev_is_dp_dual_mode(&devdata->child))
-			return true;
-	}
-=======
 	const struct intel_bios_encoder_data *devdata =
 		intel_bios_encoder_data_lookup(i915, port);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return devdata && intel_bios_encoder_supports_dp_dual_mode(devdata);
 }

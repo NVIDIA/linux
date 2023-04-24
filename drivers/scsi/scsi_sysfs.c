@@ -828,8 +828,6 @@ store_state_field(struct device *dev, struct device_attribute *attr,
 	}
 
 	mutex_lock(&sdev->state_mutex);
-<<<<<<< HEAD
-=======
 	switch (sdev->sdev_state) {
 	case SDEV_RUNNING:
 	case SDEV_OFFLINE:
@@ -838,7 +836,6 @@ store_state_field(struct device *dev, struct device_attribute *attr,
 		mutex_unlock(&sdev->state_mutex);
 		return -EINVAL;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	if (sdev->sdev_state == SDEV_RUNNING && state == SDEV_RUNNING) {
 		ret = 0;
 	} else {
@@ -1424,13 +1421,6 @@ int scsi_sysfs_add_sdev(struct scsi_device *sdev)
 	if (IS_ENABLED(CONFIG_BLK_DEV_BSG)) {
 		sdev->bsg_dev = scsi_bsg_register_queue(sdev);
 		if (IS_ERR(sdev->bsg_dev)) {
-<<<<<<< HEAD
-			/*
-			 * We're treating error on bsg register as non-fatal, so
-			 * pretend nothing went wrong.
-			 */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			error = PTR_ERR(sdev->bsg_dev);
 			sdev_printk(KERN_INFO, sdev,
 				    "Failed to register bsg queue, errno=%d\n",

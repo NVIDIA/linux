@@ -138,12 +138,9 @@ static void s2idle_loop(void)
 			break;
 		}
 
-<<<<<<< HEAD
-=======
 		if (s2idle_ops && s2idle_ops->check)
 			s2idle_ops->check();
 
->>>>>>> origin/linux_6.1.15_upstream
 		s2idle_enter();
 	}
 

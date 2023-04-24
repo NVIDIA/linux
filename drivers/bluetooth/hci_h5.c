@@ -861,15 +861,7 @@ static int h5_serdev_probe(struct serdev_device *serdev)
 	if (IS_ERR(h5->device_wake_gpio))
 		return PTR_ERR(h5->device_wake_gpio);
 
-<<<<<<< HEAD
-	err = hci_uart_register_device(&h5->serdev_hu, &h5p);
-	if (err)
-		return err;
-
-	return 0;
-=======
 	return hci_uart_register_device(&h5->serdev_hu, &h5p);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void h5_serdev_remove(struct serdev_device *serdev)
@@ -975,14 +967,11 @@ static void h5_btrtl_open(struct h5 *h5)
 						 SUSPEND_TIMEOUT_MS);
 		pm_runtime_enable(&h5->hu->serdev->dev);
 	}
-<<<<<<< HEAD
-=======
 
 	/* The controller needs reset to startup */
 	gpiod_set_value_cansleep(h5->enable_gpio, 0);
 	gpiod_set_value_cansleep(h5->device_wake_gpio, 0);
 	msleep(100);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* The controller needs up to 500ms to wakeup */
 	gpiod_set_value_cansleep(h5->enable_gpio, 1);

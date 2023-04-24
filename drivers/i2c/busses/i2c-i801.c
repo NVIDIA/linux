@@ -1481,13 +1481,10 @@ static struct platform_device *
 i801_add_tco_spt(struct i801_priv *priv, struct pci_dev *pci_dev,
 		 struct resource *tco_res)
 {
-<<<<<<< HEAD
-=======
 	static const struct itco_wdt_platform_data pldata = {
 		.name = "Intel PCH",
 		.version = 4,
 	};
->>>>>>> origin/linux_6.1.15_upstream
 	struct resource *res;
 	int ret;
 
@@ -1495,28 +1492,6 @@ i801_add_tco_spt(struct i801_priv *priv, struct pci_dev *pci_dev,
 	 * We must access the NO_REBOOT bit over the Primary to Sideband
 	 * (P2SB) bridge.
 	 */
-<<<<<<< HEAD
-	pci_lock_rescan_remove();
-
-	devfn = PCI_DEVFN(PCI_SLOT(pci_dev->devfn), 1);
-
-	/* Unhide the P2SB device, if it is hidden */
-	pci_bus_read_config_byte(pci_dev->bus, devfn, 0xe1, &hidden);
-	if (hidden)
-		pci_bus_write_config_byte(pci_dev->bus, devfn, 0xe1, 0x0);
-
-	pci_bus_read_config_dword(pci_dev->bus, devfn, SBREG_BAR, &base_addr);
-	base64_addr = base_addr & 0xfffffff0;
-
-	pci_bus_read_config_dword(pci_dev->bus, devfn, SBREG_BAR + 0x4, &base_addr);
-	base64_addr |= (u64)base_addr << 32;
-
-	/* Hide the P2SB device, if it was hidden before */
-	if (hidden)
-		pci_bus_write_config_byte(pci_dev->bus, devfn, 0xe1, hidden);
-	pci_unlock_rescan_remove();
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	res = &tco_res[1];
 	ret = p2sb_bar(pci_dev->bus, 0, res);

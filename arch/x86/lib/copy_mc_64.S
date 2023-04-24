@@ -78,10 +78,6 @@ SYM_FUNC_START(copy_mc_fragile)
 	xorl %eax, %eax
 .L_done:
 	RET
-<<<<<<< HEAD
-SYM_FUNC_END(copy_mc_fragile)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Return number of bytes not copied for any failure. Note that
@@ -135,10 +131,6 @@ SYM_FUNC_START(copy_mc_enhanced_fast_string)
 	/* Copy successful. Return zero */
 	xorl %eax, %eax
 	RET
-<<<<<<< HEAD
-SYM_FUNC_END(copy_mc_enhanced_fast_string)
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 .E_copy:
 	/*

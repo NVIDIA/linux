@@ -150,15 +150,10 @@ void rxrpc_put_bundle(struct rxrpc_bundle *bundle)
 	bool dead;
 	int r;
 
-<<<<<<< HEAD
-	_debug("PUT B=%x %u", d, u);
-	if (u == 0)
-=======
 	dead = __refcount_dec_and_test(&bundle->ref, &r);
 
 	_debug("PUT B=%x %d", d, r - 1);
 	if (dead)
->>>>>>> origin/linux_6.1.15_upstream
 		rxrpc_free_bundle(bundle);
 }
 

@@ -143,16 +143,11 @@ struct optee_ops {
  * struct optee - main service struct
  * @supp_teedev:	supplicant device
  * @teedev:		client device
-<<<<<<< HEAD
- * @ctx:		driver internal TEE context
- * @invoke_fn:		function to issue smc or hvc
-=======
  * @ops:		internal callbacks for different ways to reach secure
  *			world
  * @ctx:		driver internal TEE context
  * @smc:		specific to SMC ABI
  * @ffa:		specific to FF-A ABI
->>>>>>> origin/linux_6.1.15_upstream
  * @call_queue:		queue of threads waiting to call @invoke_fn
  * @notif:		notification synchronization struct
  * @supp:		supplicant synchronization struct for RPC to supplicant
@@ -165,10 +160,6 @@ struct optee_ops {
 struct optee {
 	struct tee_device *supp_teedev;
 	struct tee_device *teedev;
-<<<<<<< HEAD
-	optee_invoke_fn *invoke_fn;
-	struct tee_context *ctx;
-=======
 	const struct optee_ops *ops;
 	struct tee_context *ctx;
 	union {
@@ -176,7 +167,6 @@ struct optee {
 		struct optee_ffa ffa;
 	};
 	struct optee_shm_arg_cache shm_arg_cache;
->>>>>>> origin/linux_6.1.15_upstream
 	struct optee_call_queue call_queue;
 	struct optee_notif notif;
 	struct optee_supp supp;

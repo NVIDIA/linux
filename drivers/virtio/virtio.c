@@ -170,12 +170,7 @@ EXPORT_SYMBOL_GPL(virtio_add_status);
 /* Do some validation, then set FEATURES_OK */
 static int virtio_features_ok(struct virtio_device *dev)
 {
-<<<<<<< HEAD
-	unsigned status;
-	int ret;
-=======
 	unsigned int status;
->>>>>>> origin/linux_6.1.15_upstream
 
 	might_sleep();
 
@@ -205,8 +200,6 @@ static int virtio_features_ok(struct virtio_device *dev)
 	}
 	return 0;
 }
-<<<<<<< HEAD
-=======
 
 /**
  * virtio_reset_device - quiesce device for removal
@@ -240,7 +233,6 @@ void virtio_reset_device(struct virtio_device *dev)
 	dev->config->reset(dev);
 }
 EXPORT_SYMBOL_GPL(virtio_reset_device);
->>>>>>> origin/linux_6.1.15_upstream
 
 static int virtio_dev_probe(struct device *_d)
 {

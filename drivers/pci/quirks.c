@@ -5840,8 +5840,6 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
 DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
 			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
 
-<<<<<<< HEAD
-=======
 /*
  * Pericom PI7C9X2G404/PI7C9X2G304/PI7C9X2G303 switch erratum E5 -
  * ACS P2P Request Redirect is not functional
@@ -5897,14 +5895,11 @@ DECLARE_PCI_FIXUP_ENABLE(PCI_VENDOR_ID_PERICOM, 0x2303,
 DECLARE_PCI_FIXUP_RESUME(PCI_VENDOR_ID_PERICOM, 0x2303,
 			 pci_fixup_pericom_acs_store_forward);
 
->>>>>>> origin/linux_6.1.15_upstream
 static void nvidia_ion_ahci_fixup(struct pci_dev *pdev)
 {
 	pdev->dev_flags |= PCI_DEV_FLAGS_HAS_MSI_MASKING;
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_NVIDIA, 0x0ab8, nvidia_ion_ahci_fixup);
-<<<<<<< HEAD
-=======
 
 static void rom_bar_overlap_defect(struct pci_dev *dev)
 {
@@ -5997,4 +5992,3 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x9a2d, dpc_log_size);
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x9a2f, dpc_log_size);
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x9a31, dpc_log_size);
 #endif
->>>>>>> origin/linux_6.1.15_upstream

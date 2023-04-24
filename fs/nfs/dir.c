@@ -963,16 +963,10 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
 	pglen = status;
 	if (pglen != 0)
 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
-<<<<<<< HEAD
-						 arrays, narrays);
-	} while (!status && nfs_readdir_page_needs_filling(page) &&
-		page_mapping(page));
-=======
 						 arrays, narrays, change_attr);
 	else
 		nfs_readdir_page_set_eof(page);
 	desc->buffer_fills++;
->>>>>>> origin/linux_6.1.15_upstream
 
 free_pages:
 	nfs_readdir_free_pages(pages, array_size);
@@ -2713,12 +2707,8 @@ int nfs_rename(struct user_namespace *mnt_userns, struct inode *old_dir,
 
 	if (S_ISREG(old_inode->i_mode))
 		nfs_sync_inode(old_inode);
-<<<<<<< HEAD
-	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
-=======
 	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry,
 				must_unblock ? nfs_unblock_rename : NULL);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(task)) {
 		error = PTR_ERR(task);
 		goto out;

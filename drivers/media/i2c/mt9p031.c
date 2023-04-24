@@ -80,13 +80,8 @@
 #define		MT9P031_PIXEL_CLOCK_SHIFT(n)		((n) << 8)
 #define		MT9P031_PIXEL_CLOCK_DIVIDE(n)		((n) << 0)
 #define MT9P031_RESTART					0x0b
-<<<<<<< HEAD
-#define		MT9P031_FRAME_PAUSE_RESTART		(1 << 1)
-#define		MT9P031_FRAME_RESTART			(1 << 0)
-=======
 #define		MT9P031_FRAME_PAUSE_RESTART		BIT(1)
 #define		MT9P031_FRAME_RESTART			BIT(0)
->>>>>>> origin/linux_6.1.15_upstream
 #define MT9P031_SHUTTER_DELAY				0x0c
 #define MT9P031_RST					0x0d
 #define		MT9P031_RST_ENABLE			BIT(0)

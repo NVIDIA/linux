@@ -461,38 +461,6 @@ static void close_endpoints(struct snd_usb_audio *chip,
 	}
 }
 
-<<<<<<< HEAD
-static int configure_endpoints(struct snd_usb_audio *chip,
-			       struct snd_usb_substream *subs)
-{
-	int err;
-
-	if (subs->data_endpoint->need_setup) {
-		/* stop any running stream beforehand */
-		if (stop_endpoints(subs, false))
-			sync_pending_stops(subs);
-		if (subs->sync_endpoint) {
-			err = snd_usb_endpoint_configure(chip, subs->sync_endpoint);
-			if (err < 0)
-				return err;
-		}
-		err = snd_usb_endpoint_configure(chip, subs->data_endpoint);
-		if (err < 0)
-			return err;
-		snd_usb_set_format_quirk(subs, subs->cur_audiofmt);
-	} else {
-		if (subs->sync_endpoint) {
-			err = snd_usb_endpoint_configure(chip, subs->sync_endpoint);
-			if (err < 0)
-				return err;
-		}
-	}
-
-	return 0;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * hw_params callback
  *
@@ -707,11 +675,7 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 
 	subs->lowlatency_playback = lowlatency_playback_available(runtime, subs);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&
-<<<<<<< HEAD
-	    !subs->lowlatency_playback)
-=======
 	    !subs->lowlatency_playback) {
->>>>>>> origin/linux_6.1.15_upstream
 		ret = start_endpoints(subs);
 		/* if XRUN happens at starting streams (possibly with implicit
 		 * fb case), restart again, but only try once.
@@ -1480,11 +1444,7 @@ static int prepare_playback_urb(struct snd_usb_substream *subs,
 	transfer_done = subs->transfer_done;
 
 	if (subs->lowlatency_playback &&
-<<<<<<< HEAD
-	    runtime->status->state != SNDRV_PCM_STATE_DRAINING) {
-=======
 	    runtime->state != SNDRV_PCM_STATE_DRAINING) {
->>>>>>> origin/linux_6.1.15_upstream
 		unsigned int hwptr = subs->hwptr_done / stride;
 
 		/* calculate the byte offset-in-buffer of the appl_ptr */
@@ -1672,11 +1632,7 @@ static int snd_usb_substream_playback_trigger(struct snd_pcm_substream *substrea
 		return 0;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
-<<<<<<< HEAD
-		stop_endpoints(subs, substream->runtime->status->state == SNDRV_PCM_STATE_DRAINING);
-=======
 		stop_endpoints(subs, substream->runtime->state == SNDRV_PCM_STATE_DRAINING);
->>>>>>> origin/linux_6.1.15_upstream
 		snd_usb_endpoint_set_callback(subs->data_endpoint,
 					      NULL, NULL, NULL);
 		subs->running = 0;

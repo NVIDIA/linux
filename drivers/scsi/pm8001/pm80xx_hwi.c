@@ -1803,17 +1803,6 @@ static void pm80xx_send_abort_all(struct pm8001_hba_info *pm8001_ha,
 		return;
 	}
 
-<<<<<<< HEAD
-	ccb = &pm8001_ha->ccb_info[ccb_tag];
-	ccb->device = pm8001_ha_dev;
-	ccb->ccb_tag = ccb_tag;
-	ccb->task = task;
-	ccb->n_elem = 0;
-
-	circularQ = &pm8001_ha->inbnd_q_tbl[0];
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	memset(&task_abort, 0, sizeof(task_abort));
 	task_abort.abort_all = cpu_to_le32(1);
 	task_abort.device_id = cpu_to_le32(pm8001_ha_dev->device_id);
@@ -2185,11 +2174,7 @@ mpi_ssp_completion(struct pm8001_hba_info *pm8001_ha, void *piomb)
 		pm8001_dbg(pm8001_ha, FAIL,
 			   "task 0x%p done with io_status 0x%x resp 0x%x stat 0x%x but aborted by upper layer!\n",
 			   t, status, ts->resp, ts->stat);
-<<<<<<< HEAD
-		pm8001_ccb_task_free(pm8001_ha, t, ccb, tag);
-=======
 		pm8001_ccb_task_free(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 		if (t->slow_task)
 			complete(&t->slow_task->completion);
 	} else {
@@ -2603,11 +2588,7 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 			ts->stat = SAS_QUEUE_FULL;
 			spin_unlock_irqrestore(&circularQ->oq_lock,
 					circularQ->lock_flags);
-<<<<<<< HEAD
-			pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 			pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 			spin_lock_irqsave(&circularQ->oq_lock,
 					circularQ->lock_flags);
 			return;
@@ -2627,11 +2608,7 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 			ts->stat = SAS_QUEUE_FULL;
 			spin_unlock_irqrestore(&circularQ->oq_lock,
 					circularQ->lock_flags);
-<<<<<<< HEAD
-			pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 			pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 			spin_lock_irqsave(&circularQ->oq_lock,
 					circularQ->lock_flags);
 			return;
@@ -2659,11 +2636,7 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 			ts->stat = SAS_QUEUE_FULL;
 			spin_unlock_irqrestore(&circularQ->oq_lock,
 					circularQ->lock_flags);
-<<<<<<< HEAD
-			pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 			pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 			spin_lock_irqsave(&circularQ->oq_lock,
 					circularQ->lock_flags);
 			return;
@@ -2738,11 +2711,7 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 			ts->stat = SAS_QUEUE_FULL;
 			spin_unlock_irqrestore(&circularQ->oq_lock,
 					circularQ->lock_flags);
-<<<<<<< HEAD
-			pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 			pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 			spin_lock_irqsave(&circularQ->oq_lock,
 					circularQ->lock_flags);
 			return;
@@ -2766,11 +2735,7 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 			ts->stat = SAS_QUEUE_FULL;
 			spin_unlock_irqrestore(&circularQ->oq_lock,
 					circularQ->lock_flags);
-<<<<<<< HEAD
-			pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 			pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 			spin_lock_irqsave(&circularQ->oq_lock,
 					circularQ->lock_flags);
 			return;
@@ -2804,22 +2769,14 @@ mpi_sata_completion(struct pm8001_hba_info *pm8001_ha,
 		pm8001_dbg(pm8001_ha, FAIL,
 			   "task 0x%p done with io_status 0x%x resp 0x%x stat 0x%x but aborted by upper layer!\n",
 			   t, status, ts->resp, ts->stat);
-<<<<<<< HEAD
-		pm8001_ccb_task_free(pm8001_ha, t, ccb, tag);
-=======
 		pm8001_ccb_task_free(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 		if (t->slow_task)
 			complete(&t->slow_task->completion);
 	} else {
 		spin_unlock_irqrestore(&t->task_state_lock, flags);
 		spin_unlock_irqrestore(&circularQ->oq_lock,
 				circularQ->lock_flags);
-<<<<<<< HEAD
-		pm8001_ccb_task_free_done(pm8001_ha, t, ccb, tag);
-=======
 		pm8001_ccb_task_free_done(pm8001_ha, ccb);
->>>>>>> origin/linux_6.1.15_upstream
 		spin_lock_irqsave(&circularQ->oq_lock,
 				circularQ->lock_flags);
 	}
@@ -2839,11 +2796,6 @@ static void mpi_sata_event(struct pm8001_hba_info *pm8001_ha,
 	u32 tag = le32_to_cpu(psataPayload->tag);
 	u32 port_id = le32_to_cpu(psataPayload->port_id);
 	u32 dev_id = le32_to_cpu(psataPayload->device_id);
-<<<<<<< HEAD
-
-	ccb = &pm8001_ha->ccb_info[tag];
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (event)
 		pm8001_dbg(pm8001_ha, FAIL, "SATA EVENT 0x%x\n", event);
@@ -4439,10 +4391,6 @@ static int pm80xx_chip_ssp_io_req(struct pm8001_hba_info *pm8001_ha,
 	struct pm8001_device *pm8001_dev = dev->lldd_dev;
 	struct ssp_ini_io_start_req ssp_cmd;
 	u32 tag = ccb->ccb_tag;
-<<<<<<< HEAD
-	int ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u64 phys_addr, end_addr;
 	u32 end_addr_high, end_addr_low;
 	u32 q_index;
@@ -4606,11 +4554,8 @@ static int pm80xx_chip_sata_req(struct pm8001_hba_info *pm8001_ha,
 	u32 opc = OPC_INB_SATA_HOST_OPSTART;
 	memset(&sata_cmd, 0, sizeof(sata_cmd));
 
-<<<<<<< HEAD
-=======
 	q_index = pm80xx_chip_get_q_index(task);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (task->data_dir == DMA_NONE && !task->ata_task.use_ncq) {
 		ATAP = 0x04; /* no data*/
 		pm8001_dbg(pm8001_ha, IO, "no data\n");
@@ -4974,11 +4919,7 @@ static int pm80xx_chip_phy_ctl_req(struct pm8001_hba_info *pm8001_ha,
 	payload.phyop_phyid =
 		cpu_to_le32(((phy_op & 0xFF) << 8) | (phyId & 0xFF));
 
-<<<<<<< HEAD
-	rc = pm8001_mpi_build_cmd(pm8001_ha, circularQ, opc, &payload,
-=======
 	rc = pm8001_mpi_build_cmd(pm8001_ha, 0, opc, &payload,
->>>>>>> origin/linux_6.1.15_upstream
 				  sizeof(payload), 0);
 	if (rc)
 		pm8001_tag_free(pm8001_ha, tag);

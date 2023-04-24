@@ -1541,15 +1541,12 @@ static bool mei_me_fw_type_sps_ign(const struct pci_dev *pdev)
 #define MEI_CFG_KIND_ITOUCH                     \
 	.kind = "itouch"
 
-<<<<<<< HEAD
-=======
 #define MEI_CFG_TYPE_GSC                        \
 	.kind = "gsc"
 
 #define MEI_CFG_TYPE_GSCFI                      \
 	.kind = "gscfi"
 
->>>>>>> origin/linux_6.1.15_upstream
 #define MEI_CFG_FW_SPS_IGN                      \
 	.quirk_probe = mei_me_fw_type_sps_ign
 
@@ -1680,8 +1677,6 @@ static const struct mei_cfg mei_me_pch15_sps_cfg = {
 	MEI_CFG_DMA_128,
 	MEI_CFG_TRC,
 	MEI_CFG_FW_SPS_IGN,
-<<<<<<< HEAD
-=======
 };
 
 /* Graphics System Controller */
@@ -1696,7 +1691,6 @@ static const struct mei_cfg mei_me_gscfi_cfg = {
 	MEI_CFG_TYPE_GSCFI,
 	MEI_CFG_PCH8_HFS,
 	MEI_CFG_FW_VER_SUPP,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 /*

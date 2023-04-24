@@ -1341,13 +1341,6 @@ static inline struct efi_mokvar_table_entry *efi_mokvar_entry_find(
 }
 #endif
 
-<<<<<<< HEAD
-#ifdef CONFIG_SYSFB
-extern void efifb_setup_from_dmi(struct screen_info *si, const char *opt);
-#else
-static inline void efifb_setup_from_dmi(struct screen_info *si, const char *opt) { }
-#endif
-=======
 extern void efifb_setup_from_dmi(struct screen_info *si, const char *opt);
 
 struct linux_efi_coco_secret_area {
@@ -1362,6 +1355,5 @@ struct linux_efi_initrd {
 
 /* Header of a populated EFI secret area */
 #define EFI_SECRET_TABLE_HEADER_GUID	EFI_GUID(0x1e74f542, 0x71dd, 0x4d66,  0x96, 0x3e, 0xef, 0x42, 0x87, 0xff, 0x17, 0x3b)
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* _LINUX_EFI_H */

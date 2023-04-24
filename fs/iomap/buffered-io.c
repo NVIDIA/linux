@@ -265,18 +265,8 @@ static loff_t iomap_readpage_iter(const struct iomap_iter *iter,
 	size_t poff, plen;
 	sector_t sector;
 
-<<<<<<< HEAD
-	if (iomap->type == IOMAP_INLINE) {
-		loff_t ret = iomap_read_inline_data(iter, page);
-
-		if (ret < 0)
-			return ret;
-		return 0;
-	}
-=======
 	if (iomap->type == IOMAP_INLINE)
 		return iomap_read_inline_data(iter, folio);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* zero post-eof blocks as the page may be mapped */
 	iop = iomap_page_create(iter->inode, folio, iter->flags);
@@ -775,11 +765,7 @@ again:
 		 * page has already been faulted in. This can be optimized by
 		 * faulting the user page.
 		 */
-<<<<<<< HEAD
-		if (unlikely(fault_in_iov_iter_readable(i, bytes))) {
-=======
 		if (unlikely(fault_in_iov_iter_readable(i, bytes) == bytes)) {
->>>>>>> origin/linux_6.1.15_upstream
 			status = -EFAULT;
 			break;
 		}

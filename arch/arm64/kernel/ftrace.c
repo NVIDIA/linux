@@ -217,13 +217,6 @@ int ftrace_make_nop(struct module *mod, struct dyn_ftrace *rec,
 	unsigned long pc = rec->ip;
 	u32 old = 0, new;
 
-<<<<<<< HEAD
-	if (!ftrace_find_callable_addr(rec, mod, &addr))
-		return -EINVAL;
-
-	old = aarch64_insn_gen_branch_imm(pc, addr, AARCH64_INSN_BRANCH_LINK);
-	new = aarch64_insn_gen_nop();
-=======
 	new = aarch64_insn_gen_nop();
 
 	/*
@@ -244,7 +237,6 @@ int ftrace_make_nop(struct module *mod, struct dyn_ftrace *rec,
 		return -EINVAL;
 
 	old = aarch64_insn_gen_branch_imm(pc, addr, AARCH64_INSN_BRANCH_LINK);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return ftrace_modify_code(pc, old, new, true);
 }

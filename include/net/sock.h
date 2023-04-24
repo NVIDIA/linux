@@ -436,12 +436,6 @@ struct sock {
 #ifdef CONFIG_XFRM
 	struct xfrm_policy __rcu *sk_policy[2];
 #endif
-<<<<<<< HEAD
-	struct dst_entry __rcu	*sk_rx_dst;
-	int			sk_rx_dst_ifindex;
-	u32			sk_rx_dst_cookie;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	struct dst_entry __rcu	*sk_dst_cache;
 	atomic_t		sk_omem_alloc;

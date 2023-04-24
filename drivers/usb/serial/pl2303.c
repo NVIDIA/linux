@@ -436,10 +436,6 @@ static int pl2303_detect_type(struct usb_serial *serial)
 		break;
 	case 0x200:
 		switch (bcdDevice) {
-<<<<<<< HEAD
-		case 0x100:
-		case 0x105:
-=======
 		case 0x100:	/* GC */
 		case 0x105:
 			return TYPE_HXN;
@@ -447,24 +443,9 @@ static int pl2303_detect_type(struct usb_serial *serial)
 			if (pl2303_supports_hx_status(serial))
 				return TYPE_TA;
 			fallthrough;
->>>>>>> origin/linux_6.1.15_upstream
 		case 0x305:
 		case 0x400:	/* GL */
 		case 0x405:
-<<<<<<< HEAD
-		case 0x605:
-			/*
-			 * Assume it's an HXN-type if the device doesn't
-			 * support the old read request value.
-			 */
-			if (!pl2303_supports_hx_status(serial))
-				return TYPE_HXN;
-			break;
-		case 0x300:
-			return TYPE_TA;
-		case 0x500:
-			return TYPE_TB;
-=======
 			return TYPE_HXN;
 		case 0x500:	/* GE / TB */
 			if (pl2303_supports_hx_status(serial))
@@ -476,7 +457,6 @@ static int pl2303_detect_type(struct usb_serial *serial)
 		case 0x700:	/* GR */
 		case 0x705:
 			return TYPE_HXN;
->>>>>>> origin/linux_6.1.15_upstream
 		}
 		break;
 	}

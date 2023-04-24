@@ -58,10 +58,6 @@ static int shm_get_kernel_pages(unsigned long start, size_t page_count,
 	return rc;
 }
 
-<<<<<<< HEAD
-static void tee_shm_release(struct tee_device *teedev, struct tee_shm *shm)
-{
-=======
 static void release_registered_pages(struct tee_shm *shm)
 {
 	if (shm->pages) {
@@ -76,7 +72,6 @@ static void release_registered_pages(struct tee_shm *shm)
 
 static void tee_shm_release(struct tee_device *teedev, struct tee_shm *shm)
 {
->>>>>>> origin/linux_6.1.15_upstream
 	if (shm->flags & TEE_SHM_POOL) {
 		teedev->pool->ops->free(teedev->pool, shm);
 	} else if (shm->flags & TEE_SHM_DYNAMIC) {
@@ -96,12 +91,8 @@ static void tee_shm_release(struct tee_device *teedev, struct tee_shm *shm)
 	tee_device_put(teedev);
 }
 
-<<<<<<< HEAD
-struct tee_shm *tee_shm_alloc(struct tee_context *ctx, size_t size, u32 flags)
-=======
 static struct tee_shm *shm_alloc_helper(struct tee_context *ctx, size_t size,
 					size_t align, u32 flags, int id)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct tee_device *teedev = ctx->teedev;
 	struct tee_shm *shm;
@@ -124,9 +115,6 @@ static struct tee_shm *shm_alloc_helper(struct tee_context *ctx, size_t size,
 	}
 
 	refcount_set(&shm->refcount, 1);
-<<<<<<< HEAD
-	shm->flags = flags | TEE_SHM_POOL;
-=======
 	shm->flags = flags;
 	shm->id = id;
 
@@ -136,7 +124,6 @@ static struct tee_shm *shm_alloc_helper(struct tee_context *ctx, size_t size,
 	 * to call teedev_ctx_get() or clear shm->ctx in case it's not
 	 * needed any longer.
 	 */
->>>>>>> origin/linux_6.1.15_upstream
 	shm->ctx = ctx;
 
 	rc = teedev->pool->ops->alloc(teedev->pool, shm, size, align);
@@ -145,9 +132,6 @@ static struct tee_shm *shm_alloc_helper(struct tee_context *ctx, size_t size,
 		goto err_kfree;
 	}
 
-<<<<<<< HEAD
-	if (flags & TEE_SHM_DMA_BUF) {
-=======
 	teedev_ctx_get(ctx);
 	return shm;
 err_kfree:
@@ -185,18 +169,10 @@ struct tee_shm *tee_shm_alloc_user_buf(struct tee_context *ctx, size_t size)
 
 	shm = shm_alloc_helper(ctx, size, PAGE_SIZE, flags, id);
 	if (IS_ERR(shm)) {
->>>>>>> origin/linux_6.1.15_upstream
 		mutex_lock(&teedev->mutex);
 		idr_remove(&teedev->idr, id);
 		mutex_unlock(&teedev->mutex);
-<<<<<<< HEAD
-		if (shm->id < 0) {
-			ret = ERR_PTR(shm->id);
-			goto err_pool_free;
-		}
-=======
 		return shm;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	mutex_lock(&teedev->mutex);
@@ -208,16 +184,6 @@ struct tee_shm *tee_shm_alloc_user_buf(struct tee_context *ctx, size_t size)
 	}
 
 	return shm;
-<<<<<<< HEAD
-err_pool_free:
-	poolm->ops->free(poolm, shm);
-err_kfree:
-	kfree(shm);
-err_dev_put:
-	tee_device_put(teedev);
-	return ret;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -293,11 +259,7 @@ register_shm_helper(struct tee_context *ctx, unsigned long addr,
 	}
 
 	refcount_set(&shm->refcount, 1);
-<<<<<<< HEAD
-	shm->flags = flags | TEE_SHM_REGISTER;
-=======
 	shm->flags = flags;
->>>>>>> origin/linux_6.1.15_upstream
 	shm->ctx = ctx;
 	shm->id = id;
 	addr = untagged_addr(addr);
@@ -329,11 +291,7 @@ register_shm_helper(struct tee_context *ctx, unsigned long addr,
 					     shm->num_pages, start);
 	if (rc) {
 		ret = ERR_PTR(rc);
-<<<<<<< HEAD
-		goto err;
-=======
 		goto err_put_shm_pages;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return shm;
@@ -401,14 +359,6 @@ struct tee_shm *tee_shm_register_user_buf(struct tee_context *ctx,
 	if (!access_ok((void __user *)addr, length))
 		return ERR_PTR(-EFAULT);
 
-<<<<<<< HEAD
-	/* matched by tee_shm_put() in tee_shm_op_release() */
-	refcount_inc(&shm->refcount);
-	fd = anon_inode_getfd("tee_shm", &tee_shm_fops, shm, O_RDWR);
-	if (fd < 0)
-		tee_shm_put(shm);
-	return fd;
-=======
 	mutex_lock(&teedev->mutex);
 	id = idr_alloc(&teedev->idr, NULL, 1, 0, GFP_KERNEL);
 	mutex_unlock(&teedev->mutex);
@@ -432,7 +382,6 @@ struct tee_shm *tee_shm_register_user_buf(struct tee_context *ctx,
 	}
 
 	return shm;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -448,13 +397,9 @@ struct tee_shm *tee_shm_register_user_buf(struct tee_context *ctx,
 struct tee_shm *tee_shm_register_kernel_buf(struct tee_context *ctx,
 					    void *addr, size_t length)
 {
-<<<<<<< HEAD
-	tee_shm_put(shm);
-=======
 	u32 flags = TEE_SHM_DYNAMIC;
 
 	return register_shm_helper(ctx, (unsigned long)addr, length, flags, -1);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(tee_shm_register_kernel_buf);
 
@@ -601,11 +546,7 @@ void tee_shm_put(struct tee_shm *shm)
 		 * the refcount_inc() in tee_shm_get_from_id() never starts
 		 * from 0.
 		 */
-<<<<<<< HEAD
-		if (shm->flags & TEE_SHM_DMA_BUF)
-=======
 		if (shm->id >= 0)
->>>>>>> origin/linux_6.1.15_upstream
 			idr_remove(&teedev->idr, shm->id);
 		do_release = true;
 	}

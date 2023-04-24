@@ -129,8 +129,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	if (addr->smctp_network == MCTP_NET_ANY)
 		addr->smctp_network = mctp_default_net(sock_net(sk));
 
-<<<<<<< HEAD
-=======
 	/* direct addressing */
 	if (msk->addr_ext && addrlen >= sizeof(struct sockaddr_mctp_ext)) {
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
@@ -159,7 +157,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		hlen = LL_RESERVED_SPACE(rt->dev->dev) + sizeof(struct mctp_hdr);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	skb = sock_alloc_send_skb(sk, hlen + 1 + len,
 				  msg->msg_flags & MSG_DONTWAIT, &rc);
 	if (!skb)
@@ -178,13 +175,8 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	cb = __mctp_cb(skb);
 	cb->net = addr->smctp_network;
 
-<<<<<<< HEAD
-	/* direct addressing */
-	if (msk->addr_ext && addrlen >= sizeof(struct sockaddr_mctp_ext)) {
-=======
 	if (!rt) {
 		/* fill extended address in cb */
->>>>>>> origin/linux_6.1.15_upstream
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
 				 extaddr, msg->msg_name);
 
@@ -195,23 +187,9 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		}
 
 		cb->ifindex = extaddr->smctp_ifindex;
-<<<<<<< HEAD
-		cb->halen = extaddr->smctp_halen;
-		memcpy(cb->haddr, extaddr->smctp_haddr, cb->halen);
-
-		rt = NULL;
-	} else {
-		rt = mctp_route_lookup(sock_net(sk), addr->smctp_network,
-				       addr->smctp_addr.s_addr);
-		if (!rt) {
-			rc = -EHOSTUNREACH;
-			goto err_free;
-		}
-=======
 		/* smctp_halen is checked above */
 		cb->halen = extaddr->smctp_halen;
 		memcpy(cb->haddr, extaddr->smctp_haddr, cb->halen);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	rc = mctp_local_output(sk, rt, skb, addr->smctp_addr.s_addr,
@@ -317,20 +295,12 @@ __must_hold(&net->mctp.keys_lock)
 	mctp_dev_release_key(key->dev, key);
 	spin_unlock_irqrestore(&key->lock, flags);
 
-<<<<<<< HEAD
-	hlist_del(&key->hlist);
-	hlist_del(&key->sklist);
-
-	/* unref for the lists */
-	mctp_key_unref(key);
-=======
 	if (!hlist_unhashed(&key->hlist)) {
 		hlist_del_init(&key->hlist);
 		hlist_del_init(&key->sklist);
 		/* unref for the lists */
 		mctp_key_unref(key);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	kfree_skb(skb);
 }
@@ -377,103 +347,6 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		return 0;
 	}
 
-<<<<<<< HEAD
-	return -EINVAL;
-}
-
-static int mctp_ioctl_alloctag(struct mctp_sock *msk, unsigned long arg)
-{
-	struct net *net = sock_net(&msk->sk);
-	struct mctp_sk_key *key = NULL;
-	struct mctp_ioc_tag_ctl ctl;
-	unsigned long flags;
-	u8 tag;
-
-	if (copy_from_user(&ctl, (void __user *)arg, sizeof(ctl)))
-		return -EFAULT;
-
-	if (ctl.tag)
-		return -EINVAL;
-
-	if (ctl.flags)
-		return -EINVAL;
-
-	key = mctp_alloc_local_tag(msk, ctl.peer_addr, MCTP_ADDR_ANY,
-				   true, &tag);
-	if (IS_ERR(key))
-		return PTR_ERR(key);
-
-	ctl.tag = tag | MCTP_TAG_OWNER | MCTP_TAG_PREALLOC;
-	if (copy_to_user((void __user *)arg, &ctl, sizeof(ctl))) {
-		spin_lock_irqsave(&key->lock, flags);
-		__mctp_key_remove(key, net, flags, MCTP_TRACE_KEY_DROPPED);
-		mctp_key_unref(key);
-		return -EFAULT;
-	}
-
-	mctp_key_unref(key);
-	return 0;
-}
-
-static int mctp_ioctl_droptag(struct mctp_sock *msk, unsigned long arg)
-{
-	struct net *net = sock_net(&msk->sk);
-	struct mctp_ioc_tag_ctl ctl;
-	unsigned long flags, fl2;
-	struct mctp_sk_key *key;
-	struct hlist_node *tmp;
-	int rc;
-	u8 tag;
-
-	if (copy_from_user(&ctl, (void __user *)arg, sizeof(ctl)))
-		return -EFAULT;
-
-	if (ctl.flags)
-		return -EINVAL;
-
-	/* Must be a local tag, TO set, preallocated */
-	if ((ctl.tag & ~MCTP_TAG_MASK) != (MCTP_TAG_OWNER | MCTP_TAG_PREALLOC))
-		return -EINVAL;
-
-	tag = ctl.tag & MCTP_TAG_MASK;
-	rc = -EINVAL;
-
-	spin_lock_irqsave(&net->mctp.keys_lock, flags);
-	hlist_for_each_entry_safe(key, tmp, &msk->keys, sklist) {
-		/* we do an irqsave here, even though we know the irq state,
-		 * so we have the flags to pass to __mctp_key_remove
-		 */
-		spin_lock_irqsave(&key->lock, fl2);
-		if (key->manual_alloc &&
-		    ctl.peer_addr == key->peer_addr &&
-		    tag == key->tag) {
-			__mctp_key_remove(key, net, fl2,
-					  MCTP_TRACE_KEY_DROPPED);
-			rc = 0;
-		} else {
-			spin_unlock_irqrestore(&key->lock, fl2);
-		}
-	}
-	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
-
-	return rc;
-}
-
-static int mctp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
-{
-	struct mctp_sock *msk = container_of(sock->sk, struct mctp_sock, sk);
-
-	switch (cmd) {
-	case SIOCMCTPALLOCTAG:
-		return mctp_ioctl_alloctag(msk, arg);
-	case SIOCMCTPDROPTAG:
-		return mctp_ioctl_droptag(msk, arg);
-	}
-
-	return -EINVAL;
-}
-
-=======
 	return -EINVAL;
 }
 
@@ -710,8 +583,6 @@ static void mctp_sk_unhash(struct sock *sk)
 	}
 	sock_set_flag(sk, SOCK_DEAD);
 	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
-<<<<<<< HEAD
-=======
 
 	/* Since there are no more tag allocations (we have removed all of the
 	 * keys), stop any pending expiry events. the timer cannot be re-queued
@@ -723,7 +594,6 @@ static void mctp_sk_unhash(struct sock *sk)
 static void mctp_sk_destruct(struct sock *sk)
 {
 	skb_queue_purge(&sk->sk_receive_queue);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct proto mctp_proto = {

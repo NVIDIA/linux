@@ -30,10 +30,7 @@
 #include <linux/ftrace.h>
 #include <linux/cpu.h>
 #include <linux/kgdb.h>
-<<<<<<< HEAD
-=======
 #include <linux/sched/hotplug.h>
->>>>>>> origin/linux_6.1.15_upstream
 
 #include <linux/atomic.h>
 #include <asm/current.h>

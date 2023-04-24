@@ -15,17 +15,8 @@
 # Mike Shaver, Helge Deller and Martin K. Petersen
 #
 
-<<<<<<< HEAD
-ifdef CONFIG_PARISC_SELF_EXTRACT
 boot := arch/parisc/boot
 KBUILD_IMAGE := $(boot)/bzImage
-else
-KBUILD_IMAGE := vmlinuz
-endif
-=======
-boot := arch/parisc/boot
-KBUILD_IMAGE := $(boot)/bzImage
->>>>>>> origin/linux_6.1.15_upstream
 
 CHECKFLAGS	+= -D__hppa__=1
 

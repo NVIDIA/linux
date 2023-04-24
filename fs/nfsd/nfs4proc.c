@@ -1638,11 +1638,6 @@ static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy,
 				     struct file *dst,
 				     struct file *src)
 {
-<<<<<<< HEAD
-	struct file *dst = copy->nf_dst->nf_file;
-	struct file *src = copy->nf_src->nf_file;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	errseq_t since;
 	ssize_t bytes_copied = 0;
 	u64 bytes_total = copy->cp_count;
@@ -1667,17 +1662,10 @@ static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy,
 		dst_pos += bytes_copied;
 	} while (bytes_total > 0 && nfsd4_copy_is_async(copy));
 	/* for a non-zero asynchronous copy do a commit of data */
-<<<<<<< HEAD
-	if (!copy->cp_synchronous && copy->cp_res.wr_bytes_written > 0) {
-		since = READ_ONCE(dst->f_wb_err);
-		status = vfs_fsync_range(dst, copy->cp_dst_pos,
-					 copy->cp_res.wr_bytes_written, 0);
-=======
 	if (nfsd4_copy_is_async(copy) && copy->cp_res.wr_bytes_written > 0) {
 		since = READ_ONCE(dst->f_wb_err);
 		end = copy->cp_dst_pos + copy->cp_res.wr_bytes_written - 1;
 		status = vfs_fsync_range(dst, copy->cp_dst_pos, end, 0);
->>>>>>> origin/linux_6.1.15_upstream
 		if (!status)
 			status = filemap_check_wb_err(dst->f_mapping, since);
 		if (!status)
@@ -1771,12 +1759,9 @@ static int nfsd4_do_async_copy(void *data)
 	struct nfsd4_copy *copy = (struct nfsd4_copy *)data;
 	__be32 nfserr;
 
-<<<<<<< HEAD
-=======
 	if (nfsd4_ssc_is_inter(copy)) {
 		struct file *filp;
 
->>>>>>> origin/linux_6.1.15_upstream
 		filp = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
 				      &copy->stateid);
 		if (IS_ERR(filp)) {
@@ -1787,11 +1772,7 @@ static int nfsd4_do_async_copy(void *data)
 			default:
 				nfserr = nfserr_offload_denied;
 			}
-<<<<<<< HEAD
-			nfsd4_interssc_disconnect(copy->ss_mnt);
-=======
 			/* ss_mnt will be unmounted by the laundromat */
->>>>>>> origin/linux_6.1.15_upstream
 			goto do_callback;
 		}
 		nfserr = nfsd4_do_copy(copy, filp, copy->nf_dst->nf_file,

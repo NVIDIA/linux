@@ -1613,13 +1613,8 @@ int ip6mr_sk_done(struct sock *sk)
 			 * so the RCU grace period before sk freeing
 			 * is guaranteed by sk_destruct()
 			 */
-<<<<<<< HEAD
-			atomic_dec(&net->ipv6.devconf_all->mc_forwarding);
-			write_unlock_bh(&mrt_lock);
-=======
 			atomic_dec(&devconf->mc_forwarding);
 			spin_unlock(&mrt_lock);
->>>>>>> origin/linux_6.1.15_upstream
 			inet6_netconf_notify_devconf(net, RTM_NEWNETCONF,
 						     NETCONFA_MC_FORWARDING,
 						     NETCONFA_IFINDEX_ALL,

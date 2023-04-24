@@ -292,13 +292,10 @@ enum packet_merge {
 struct mlx5e_packet_merge_param {
 	enum packet_merge type;
 	u32 timeout;
-<<<<<<< HEAD
-=======
 	struct {
 		u8 match_criteria_type;
 		u8 alignment_granularity;
 	} shampo;
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct mlx5e_params {

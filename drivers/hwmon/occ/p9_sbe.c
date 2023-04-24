@@ -85,13 +85,7 @@ static int p9_sbe_occ_send_cmd(struct occ *occ, u8 *cmd, size_t len,
 {
 	size_t original_resp_len = resp_len;
 	struct p9_sbe_occ *ctx = to_p9_sbe_occ(occ);
-<<<<<<< HEAD
-	size_t resp_len = sizeof(*resp);
-	int i;
-	int rc;
-=======
 	int rc, i;
->>>>>>> origin/linux_6.1.15_upstream
 
 	for (i = 0; i < OCC_CHECKSUM_RETRIES; ++i) {
 		rc = fsi_occ_submit(ctx->sbe, cmd, len, resp, &resp_len);
@@ -101,18 +95,11 @@ static int p9_sbe_occ_send_cmd(struct occ *occ, u8 *cmd, size_t len,
 			if (p9_sbe_occ_save_ffdc(ctx, resp, resp_len))
 				sysfs_notify(&occ->bus_dev->kobj, NULL,
 					     bin_attr_ffdc.attr.name);
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 			return rc;
 		}
 		if (rc != -EBADE)
 			return rc;
-<<<<<<< HEAD
-=======
 		resp_len = original_resp_len;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	switch (((struct occ_response *)resp)->return_status) {

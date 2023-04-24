@@ -133,10 +133,6 @@ int freeze_processes(void)
 		static_branch_inc(&freezer_active);
 
 	pm_wakeup_clear(0);
-<<<<<<< HEAD
-	pr_info("Freezing user space processes ... ");
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	pm_freezing = true;
 	error = try_to_freeze_tasks(true);
 	if (!error)

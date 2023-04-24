@@ -2641,24 +2641,12 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	pgoff_t end;
 	bool is_hzp;
 
-<<<<<<< HEAD
-	VM_BUG_ON_PAGE(!PageLocked(head), head);
-	VM_BUG_ON_PAGE(!PageCompound(head), head);
-
-	is_hzp = is_huge_zero_page(head);
-	VM_WARN_ON_ONCE_PAGE(is_hzp, head);
-	if (is_hzp)
-		return -EBUSY;
-
-	if (PageWriteback(head))
-=======
 	VM_BUG_ON_FOLIO(!folio_test_locked(folio), folio);
 	VM_BUG_ON_FOLIO(!folio_test_large(folio), folio);
 
 	is_hzp = is_huge_zero_page(&folio->page);
 	VM_WARN_ON_ONCE_FOLIO(is_hzp, folio);
 	if (is_hzp)
->>>>>>> origin/linux_6.1.15_upstream
 		return -EBUSY;
 
 	if (folio_test_writeback(folio))

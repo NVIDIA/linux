@@ -906,12 +906,6 @@ try_again_reset:
 			return err;
 	}
 
-<<<<<<< HEAD
-	/*
-	 * Enable counters and exec the command:
-	 */
-	if (forks) {
-=======
 	if (stat_config.initial_delay) {
 		pr_info(EVLIST_DISABLED_MSG);
 	} else {
@@ -926,7 +920,6 @@ try_again_reset:
 
 	if (stat_config.initial_delay > 0) {
 		usleep(stat_config.initial_delay * USEC_PER_MSEC);
->>>>>>> origin/linux_6.1.15_upstream
 		err = enable_counters();
 		if (err)
 			return -1;

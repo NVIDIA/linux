@@ -213,8 +213,6 @@ static int nft_socket_dump(struct sk_buff *skb,
 	return 0;
 }
 
-<<<<<<< HEAD
-=======
 static bool nft_socket_reduce(struct nft_regs_track *track,
 			      const struct nft_expr *expr)
 {
@@ -240,7 +238,6 @@ static bool nft_socket_reduce(struct nft_regs_track *track,
 	return nft_expr_reduce_bitwise(track, expr);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static int nft_socket_validate(const struct nft_ctx *ctx,
 			       const struct nft_expr *expr,
 			       const struct nft_data **data)
@@ -259,10 +256,7 @@ static const struct nft_expr_ops nft_socket_ops = {
 	.init		= nft_socket_init,
 	.dump		= nft_socket_dump,
 	.validate	= nft_socket_validate,
-<<<<<<< HEAD
-=======
 	.reduce		= nft_socket_reduce,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static struct nft_expr_type nft_socket_type __read_mostly = {

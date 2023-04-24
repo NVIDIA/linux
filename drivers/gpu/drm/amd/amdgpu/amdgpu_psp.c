@@ -514,14 +514,11 @@ static int psp_sw_fini(void *handle)
 	kfree(cmd);
 	cmd = NULL;
 
-<<<<<<< HEAD
-=======
 	if (psp->km_ring.ring_mem)
 		amdgpu_bo_free_kernel(&adev->firmware.rbuf,
 				      &psp->km_ring.ring_mem_mc_addr,
 				      (void **)&psp->km_ring.ring_mem);
 
->>>>>>> origin/linux_6.1.15_upstream
 	amdgpu_bo_free_kernel(&psp->fw_pri_bo,
 			      &psp->fw_pri_mc_addr, &psp->fw_pri_buf);
 	amdgpu_bo_free_kernel(&psp->fence_buf_bo,
@@ -2674,11 +2671,8 @@ static int psp_hw_fini(void *handle)
 
 	psp_ring_destroy(psp, PSP_RING_TYPE__KM);
 
-<<<<<<< HEAD
-=======
 	psp_free_shared_bufs(psp);
 
->>>>>>> origin/linux_6.1.15_upstream
 	return 0;
 }
 

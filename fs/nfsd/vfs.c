@@ -1033,32 +1033,11 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
 	if (stable && !use_wgather)
 		flags |= RWF_SYNC;
 
-<<<<<<< HEAD
-	iov_iter_kvec(&iter, WRITE, vec, vlen, *cnt);
-	since = READ_ONCE(file->f_wb_err);
-	if (flags & RWF_SYNC) {
-		if (verf)
-			nfsd_copy_boot_verifier(verf,
-					net_generic(SVC_NET(rqstp),
-					nfsd_net_id));
-		host_err = vfs_iter_write(file, &iter, &pos, flags);
-		if (host_err < 0)
-			nfsd_reset_boot_verifier(net_generic(SVC_NET(rqstp),
-						 nfsd_net_id));
-	} else {
-		if (verf)
-			nfsd_copy_boot_verifier(verf,
-					net_generic(SVC_NET(rqstp),
-					nfsd_net_id));
-		host_err = vfs_iter_write(file, &iter, &pos, flags);
-	}
-=======
 	iov_iter_kvec(&iter, ITER_SOURCE, vec, vlen, *cnt);
 	since = READ_ONCE(file->f_wb_err);
 	if (verf)
 		nfsd_copy_write_verifier(verf, nn);
 	host_err = vfs_iter_write(file, &iter, &pos, flags);
->>>>>>> origin/linux_6.1.15_upstream
 	if (host_err < 0) {
 		nfsd_reset_write_verifier(nn);
 		trace_nfsd_writeverf_reset(nn, rqstp, host_err);
@@ -1150,11 +1129,6 @@ out:
 	return err;
 }
 
-<<<<<<< HEAD
-#ifdef CONFIG_NFSD_V3
-/*
- * Commit all pending writes to stable storage.
-=======
 /**
  * nfsd_commit - Commit pending writes to stable storage
  * @rqstp: RPC request being processed
@@ -1163,7 +1137,6 @@ out:
  * @offset: raw offset from beginning of file
  * @count: raw count of bytes to sync
  * @verf: filled in with the server's current write verifier
->>>>>>> origin/linux_6.1.15_upstream
  *
  * Note: we guarantee that data that lies within the range specified
  * by the 'offset' and 'count' parameters will be synced. The server
@@ -1205,15 +1178,6 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
 		errseq_t since = READ_ONCE(nf->nf_file->f_wb_err);
 		int err2;
 
-<<<<<<< HEAD
-		err2 = vfs_fsync_range(nf->nf_file, offset, end, 0);
-		switch (err2) {
-		case 0:
-			nfsd_copy_boot_verifier(verf, net_generic(nf->nf_net,
-						nfsd_net_id));
-			err2 = filemap_check_wb_err(nf->nf_file->f_mapping,
-						    since);
-=======
 		err2 = vfs_fsync_range(nf->nf_file, start, end, 0);
 		switch (err2) {
 		case 0:
@@ -1221,23 +1185,15 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
 			err2 = filemap_check_wb_err(nf->nf_file->f_mapping,
 						    since);
 			err = nfserrno(err2);
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		case -EINVAL:
 			err = nfserr_notsupp;
 			break;
 		default:
-<<<<<<< HEAD
-			nfsd_reset_boot_verifier(net_generic(nf->nf_net,
-						 nfsd_net_id));
-		}
-		err = nfserrno(err2);
-=======
 			nfsd_reset_write_verifier(nn);
 			trace_nfsd_writeverf_reset(nn, rqstp, err2);
 			err = nfserrno(err2);
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	} else
 		nfsd_copy_write_verifier(verf, nn);
 

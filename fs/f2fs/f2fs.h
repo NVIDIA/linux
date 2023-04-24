@@ -59,10 +59,7 @@ enum {
 	FAULT_WRITE_IO,
 	FAULT_SLAB_ALLOC,
 	FAULT_DQUOT_INIT,
-<<<<<<< HEAD
-=======
 	FAULT_LOCK_OP,
->>>>>>> origin/linux_6.1.15_upstream
 	FAULT_MAX,
 };
 

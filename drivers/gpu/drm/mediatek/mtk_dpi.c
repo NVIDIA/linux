@@ -935,8 +935,6 @@ static const struct mtk_dpi_conf mt8192_conf = {
 	.max_clock_khz = 150000,
 	.output_fmts = mt8183_output_fmts,
 	.num_output_fmts = ARRAY_SIZE(mt8183_output_fmts),
-<<<<<<< HEAD
-=======
 	.pixels_per_iter = 1,
 	.is_ck_de_pol = true,
 	.swap_input_support = true,
@@ -960,7 +958,6 @@ static const struct mtk_dpi_conf mt8195_dpintf_conf = {
 	.channel_swap_shift = DPINTF_CH_SWAP,
 	.yuv422_en_bit = DPINTF_YUV422_EN,
 	.csc_enable_bit = DPINTF_CSC_ENABLE,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 static int mtk_dpi_probe(struct platform_device *pdev)

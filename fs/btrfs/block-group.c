@@ -1537,17 +1537,10 @@ void btrfs_reclaim_bgs_work(struct work_struct *work)
 	if (!test_bit(BTRFS_FS_OPEN, &fs_info->flags))
 		return;
 
-<<<<<<< HEAD
-	sb_start_write(fs_info->sb);
-
-	if (!btrfs_exclop_start(fs_info, BTRFS_EXCLOP_BALANCE)) {
-		sb_end_write(fs_info->sb);
-=======
 	if (btrfs_fs_closing(fs_info))
 		return;
 
 	if (!btrfs_should_reclaim(fs_info))
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 
@@ -1628,12 +1621,8 @@ void btrfs_reclaim_bgs_work(struct work_struct *work)
 				div64_u64(zone_unusable * 100, bg->length));
 		trace_btrfs_reclaim_block_group(bg);
 		ret = btrfs_relocate_chunk(fs_info, bg->start);
-<<<<<<< HEAD
-		if (ret)
-=======
 		if (ret) {
 			btrfs_dec_block_group_ro(bg);
->>>>>>> origin/linux_6.1.15_upstream
 			btrfs_err(fs_info, "error relocating chunk %llu",
 				  bg->start);
 		}

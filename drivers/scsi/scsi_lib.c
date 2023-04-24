@@ -1167,12 +1167,6 @@ void scsi_init_command(struct scsi_device *dev, struct scsi_cmnd *cmd)
 	}
 
 	cmd->device = dev;
-<<<<<<< HEAD
-	cmd->sense_buffer = buf;
-	cmd->prot_sdb = prot;
-	cmd->flags = flags;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	INIT_LIST_HEAD(&cmd->eh_entry);
 	INIT_DELAYED_WORK(&cmd->abort_work, scmd_eh_abort_handler);
 }
@@ -1198,11 +1192,6 @@ static blk_status_t scsi_setup_scsi_cmnd(struct scsi_device *sdev,
 		memset(&cmd->sdb, 0, sizeof(cmd->sdb));
 	}
 
-<<<<<<< HEAD
-	cmd->cmd_len = scsi_req(req)->cmd_len;
-	cmd->cmnd = scsi_req(req)->cmd;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	cmd->transfersize = blk_rq_bytes(req);
 	return BLK_STS_OK;
 }

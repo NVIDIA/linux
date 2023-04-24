@@ -714,14 +714,10 @@ static int occ_remove(struct platform_device *pdev)
 	occ->buffer = NULL;
 	mutex_unlock(&occ->occ_lock);
 
-<<<<<<< HEAD
-	device_for_each_child(&pdev->dev, NULL, occ_unregister_child);
-=======
 	if (occ->platform_hwmon)
 		device_for_each_child(&pdev->dev, NULL, occ_unregister_platform_child);
 	else
 		device_for_each_child(&pdev->dev, NULL, occ_unregister_of_child);
->>>>>>> origin/linux_6.1.15_upstream
 
 	ida_simple_remove(&occ_ida, occ->idx);
 

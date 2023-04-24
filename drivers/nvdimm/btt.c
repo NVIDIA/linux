@@ -1532,18 +1532,9 @@ static int btt_blk_init(struct btt *btt)
 	blk_queue_flag_set(QUEUE_FLAG_NONROT, btt->btt_disk->queue);
 
 	if (btt_meta_size(btt)) {
-<<<<<<< HEAD
-		int rc = nd_integrity_init(btt->btt_disk, btt_meta_size(btt));
-
-		if (rc) {
-			blk_cleanup_disk(btt->btt_disk);
-			return rc;
-		}
-=======
 		rc = nd_integrity_init(btt->btt_disk, btt_meta_size(btt));
 		if (rc)
 			goto out_cleanup_disk;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	set_capacity(btt->btt_disk, btt->nlba * btt->sector_size >> 9);

@@ -1449,14 +1449,7 @@ static struct sk_buff *ena_rx_skb(struct ena_ring *rx_ring,
 		netif_err(adapter, rx_err, rx_ring->netdev,
 			  "Page is NULL. qid %u req_id %u\n", rx_ring->qid, req_id);
 		ena_increase_stat(&rx_ring->rx_stats.bad_req_id, 1, &rx_ring->syncp);
-<<<<<<< HEAD
-		adapter->reset_reason = ENA_REGS_RESET_INV_RX_REQ_ID;
-		/* Make sure reset reason is set before triggering the reset */
-		smp_mb__before_atomic();
-		set_bit(ENA_FLAG_TRIGGER_RESET, &adapter->flags);
-=======
 		ena_reset_device(adapter, ENA_REGS_RESET_INV_RX_REQ_ID);
->>>>>>> origin/linux_6.1.15_upstream
 		return NULL;
 	}
 

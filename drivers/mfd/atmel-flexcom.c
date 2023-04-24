@@ -105,11 +105,7 @@ static int __maybe_unused atmel_flexcom_resume_noirq(struct device *dev)
 	return 0;
 }
 
-<<<<<<< HEAD
-static const struct dev_pm_ops atmel_flexcom_pm_ops = {
-=======
 static const struct dev_pm_ops __maybe_unused atmel_flexcom_pm_ops = {
->>>>>>> origin/linux_6.1.15_upstream
 	.resume_noirq = atmel_flexcom_resume_noirq,
 };
 

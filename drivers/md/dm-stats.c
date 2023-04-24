@@ -400,12 +400,9 @@ static int dm_stats_create(struct dm_stats *stats, sector_t start, sector_t end,
 
 	dm_stats_recalc_precise_timestamps(stats);
 
-<<<<<<< HEAD
-=======
 	if (!static_key_enabled(&stats_enabled.key))
 		static_branch_enable(&stats_enabled);
 
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&stats->mutex);
 
 	resume_callback(md);

@@ -352,20 +352,6 @@
 };
 
 &i2c1 {
-<<<<<<< HEAD
-	status = "okay";
-
-	rtc@51 {
-		compatible = "nxp,pcf2129";
-		reg = <0x51>;
-	};
-};
-
-&enetc_port1 {
-	phy-handle = <&qds_phy1>;
-	phy-connection-type = "rgmii-id";
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	status = "okay";
 
 	rtc@51 {

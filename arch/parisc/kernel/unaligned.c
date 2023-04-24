@@ -537,11 +537,7 @@ void handle_unaligned(struct pt_regs *regs)
 	case OPCODE_FSTD_L:
 		ret = emulate_std(regs, R2(regs->iir),1);
 		break;
-<<<<<<< HEAD
-#ifdef CONFIG_PA20
-=======
 #ifdef CONFIG_64BIT
->>>>>>> origin/linux_6.1.15_upstream
 	case OPCODE_LDD_L:
 		ret = emulate_ldd(regs, R2(regs->iir),0);
 		break;
@@ -553,10 +549,6 @@ void handle_unaligned(struct pt_regs *regs)
 	switch (regs->iir & OPCODE3_MASK)
 	{
 	case OPCODE_FLDW_L:
-<<<<<<< HEAD
-		flop=1;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 		ret = emulate_ldw(regs, R2(regs->iir), 1);
 		break;
 	case OPCODE_LDW_M:

@@ -103,8 +103,6 @@ struct tpm_tis_data {
 	unsigned short rng_quality;
 	unsigned int timeout_min; /* usecs */
 	unsigned int timeout_max; /* usecs */
-<<<<<<< HEAD
-=======
 };
 
 /*

@@ -3756,13 +3756,8 @@ static ssize_t pressure_write(struct kernfs_open_file *of, char *buf,
 		return -EBUSY;
 	}
 
-<<<<<<< HEAD
-	psi = cgroup_ino(cgrp) == 1 ? &psi_system : &cgrp->psi;
-	new = psi_trigger_create(psi, buf, nbytes, res);
-=======
 	psi = cgroup_psi(cgrp);
 	new = psi_trigger_create(psi, buf, res);
->>>>>>> origin/linux_6.1.15_upstream
 	if (IS_ERR(new)) {
 		cgroup_put(cgrp);
 		return PTR_ERR(new);

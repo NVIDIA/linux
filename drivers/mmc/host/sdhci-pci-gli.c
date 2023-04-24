@@ -13,10 +13,7 @@
 #include <linux/mmc/mmc.h>
 #include <linux/delay.h>
 #include <linux/of.h>
-<<<<<<< HEAD
-=======
 #include <linux/iopoll.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include "sdhci.h"
 #include "sdhci-pci.h"
 #include "cqhci.h"

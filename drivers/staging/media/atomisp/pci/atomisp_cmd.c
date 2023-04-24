@@ -1433,163 +1433,6 @@ void atomisp_css_flush(struct atomisp_device *isp)
 	dev_dbg(isp->dev, "atomisp css flush done\n");
 }
 
-<<<<<<< HEAD
-void atomisp_wdt(struct timer_list *t)
-{
-	struct atomisp_sub_device *asd;
-	struct atomisp_device *isp;
-
-	if (!IS_ISP2401) {
-		asd = from_timer(asd, t, wdt);
-		isp = asd->isp;
-	} else {
-		struct atomisp_video_pipe *pipe = from_timer(pipe, t, wdt);
-
-		asd = pipe->asd;
-		isp = asd->isp;
-
-		atomic_inc(&pipe->wdt_count);
-		dev_warn(isp->dev,
-			"[WARNING]asd %d pipe %s ISP timeout %d!\n",
-			asd->index, pipe->vdev.name,
-			atomic_read(&pipe->wdt_count));
-	}
-
-	if (atomic_read(&isp->wdt_work_queued)) {
-		dev_dbg(isp->dev, "ISP watchdog was put into workqueue\n");
-		return;
-	}
-	atomic_set(&isp->wdt_work_queued, 1);
-	queue_work(isp->wdt_work_queue, &isp->wdt_work);
-}
-
-/* ISP2400 */
-void atomisp_wdt_start(struct atomisp_sub_device *asd)
-{
-	atomisp_wdt_refresh(asd, ATOMISP_ISP_TIMEOUT_DURATION);
-}
-
-/* ISP2401 */
-void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
-			      unsigned int delay)
-{
-	unsigned long next;
-
-	if (!pipe->asd) {
-		dev_err(pipe->isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, pipe->vdev.name);
-		return;
-	}
-
-	if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
-		pipe->wdt_duration = delay;
-
-	next = jiffies + pipe->wdt_duration;
-
-	/* Override next if it has been pushed beyon the "next" time */
-	if (atomisp_is_wdt_running(pipe) && time_after(pipe->wdt_expires, next))
-		next = pipe->wdt_expires;
-
-	pipe->wdt_expires = next;
-
-	if (atomisp_is_wdt_running(pipe))
-		dev_dbg(pipe->asd->isp->dev, "WDT will hit after %d ms (%s)\n",
-			((int)(next - jiffies) * 1000 / HZ), pipe->vdev.name);
-	else
-		dev_dbg(pipe->asd->isp->dev, "WDT starts with %d ms period (%s)\n",
-			((int)(next - jiffies) * 1000 / HZ), pipe->vdev.name);
-
-	mod_timer(&pipe->wdt, next);
-}
-
-void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
-{
-	if (!IS_ISP2401) {
-		unsigned long next;
-
-		if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
-			asd->wdt_duration = delay;
-
-		next = jiffies + asd->wdt_duration;
-
-		/* Override next if it has been pushed beyon the "next" time */
-		if (atomisp_is_wdt_running(asd) && time_after(asd->wdt_expires, next))
-			next = asd->wdt_expires;
-
-		asd->wdt_expires = next;
-
-		if (atomisp_is_wdt_running(asd))
-			dev_dbg(asd->isp->dev, "WDT will hit after %d ms\n",
-				((int)(next - jiffies) * 1000 / HZ));
-		else
-			dev_dbg(asd->isp->dev, "WDT starts with %d ms period\n",
-				((int)(next - jiffies) * 1000 / HZ));
-
-		mod_timer(&asd->wdt, next);
-		atomic_set(&asd->isp->wdt_count, 0);
-	} else {
-		dev_dbg(asd->isp->dev, "WDT refresh all:\n");
-		if (atomisp_is_wdt_running(&asd->video_out_capture))
-			atomisp_wdt_refresh_pipe(&asd->video_out_capture, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_preview))
-			atomisp_wdt_refresh_pipe(&asd->video_out_preview, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_vf))
-			atomisp_wdt_refresh_pipe(&asd->video_out_vf, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_video_capture))
-			atomisp_wdt_refresh_pipe(&asd->video_out_video_capture, delay);
-	}
-}
-
-/* ISP2401 */
-void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync)
-{
-	if (!pipe->asd) {
-		dev_err(pipe->isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, pipe->vdev.name);
-		return;
-	}
-
-	if (!atomisp_is_wdt_running(pipe))
-		return;
-
-	dev_dbg(pipe->asd->isp->dev,
-		"WDT stop asd %d (%s)\n", pipe->asd->index, pipe->vdev.name);
-
-	if (sync) {
-		del_timer_sync(&pipe->wdt);
-		cancel_work_sync(&pipe->asd->isp->wdt_work);
-	} else {
-		del_timer(&pipe->wdt);
-	}
-}
-
-/* ISP 2401 */
-void atomisp_wdt_start_pipe(struct atomisp_video_pipe *pipe)
-{
-	atomisp_wdt_refresh_pipe(pipe, ATOMISP_ISP_TIMEOUT_DURATION);
-}
-
-void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync)
-{
-	dev_dbg(asd->isp->dev, "WDT stop:\n");
-
-	if (!IS_ISP2401) {
-		if (sync) {
-			del_timer_sync(&asd->wdt);
-			cancel_work_sync(&asd->isp->wdt_work);
-		} else {
-			del_timer(&asd->wdt);
-		}
-	} else {
-		atomisp_wdt_stop_pipe(&asd->video_out_capture, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_preview, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_vf, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_video_capture, sync);
-	}
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 void atomisp_setup_flash(struct atomisp_sub_device *asd)
 {
 	struct atomisp_device *isp = asd->isp;
@@ -3849,11 +3692,8 @@ void atomisp_handle_parameter_and_buffer(struct atomisp_video_pipe *pipe)
 	unsigned long irqflags;
 	bool need_to_enqueue_buffer = false;
 
-<<<<<<< HEAD
-=======
 	lockdep_assert_held(&asd->isp->mutex);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (!asd) {
 		dev_err(pipe->isp->dev, "%s(): asd is NULL, device is %s\n",
 			__func__, pipe->vdev.name);
@@ -3934,11 +3774,8 @@ int atomisp_set_parameters(struct video_device *vdev,
 	struct atomisp_css_params *css_param = &asd->params.css_param;
 	int ret;
 
-<<<<<<< HEAD
-=======
 	lockdep_assert_held(&asd->isp->mutex);
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (!asd) {
 		dev_err(pipe->isp->dev, "%s(): asd is NULL, device is %s\n",
 			__func__, vdev->name);
@@ -4902,10 +4739,6 @@ static int atomisp_set_fmt_to_isp(struct video_device *vdev,
 	int (*configure_pp_input)(struct atomisp_sub_device *asd,
 				  unsigned int width, unsigned int height) =
 				      configure_pp_input_nop;
-<<<<<<< HEAD
-	u16 stream_index;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	const struct atomisp_in_fmt_conv *fc;
 	int ret, i;
 
@@ -4914,10 +4747,6 @@ static int atomisp_set_fmt_to_isp(struct video_device *vdev,
 			__func__, vdev->name);
 		return -EINVAL;
 	}
-<<<<<<< HEAD
-	stream_index = atomisp_source_pad_to_stream_id(asd, source_pad);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	v4l2_fh_init(&fh.vfh, vdev);
 
@@ -5240,11 +5069,6 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 	}
 
 	isp = asd->isp;
-<<<<<<< HEAD
-
-	v4l2_fh_init(&fh.vfh, vdev);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	v4l2_fh_init(&fh.vfh, vdev);
 
@@ -5341,17 +5165,9 @@ int atomisp_set_fmt(struct file *file, void *unused, struct v4l2_format *f)
 	struct v4l2_subdev_fh fh;
 	int ret;
 
-<<<<<<< HEAD
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-=======
 	ret = atomisp_pipe_check(pipe, true);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (source_pad >= ATOMISP_SUBDEV_PADS_NUM)
 		return -EINVAL;
@@ -5757,58 +5573,10 @@ done:
 	f->fmt.pix.sizeimage = pipe->pix.sizeimage;
 	f->fmt.pix.bytesperline = pipe->pix.bytesperline;
 
-<<<<<<< HEAD
-int atomisp_set_fmt_file(struct video_device *vdev, struct v4l2_format *f)
-{
-	struct atomisp_device *isp = video_get_drvdata(vdev);
-	struct atomisp_video_pipe *pipe = atomisp_to_video_pipe(vdev);
-	struct atomisp_sub_device *asd = pipe->asd;
-	struct v4l2_mbus_framefmt ffmt = {0};
-	const struct atomisp_format_bridge *format_bridge;
-	struct v4l2_subdev_fh fh;
-	int ret;
-
-	if (!asd) {
-		dev_err(isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	v4l2_fh_init(&fh.vfh, vdev);
-
-	dev_dbg(isp->dev, "setting fmt %ux%u 0x%x for file inject\n",
-		f->fmt.pix.width, f->fmt.pix.height, f->fmt.pix.pixelformat);
-	ret = atomisp_try_fmt_file(isp, f);
-	if (ret) {
-		dev_err(isp->dev, "atomisp_try_fmt_file err: %d\n", ret);
-		return ret;
-	}
-
-	format_bridge = atomisp_get_format_bridge(f->fmt.pix.pixelformat);
-	if (!format_bridge) {
-		dev_dbg(isp->dev, "atomisp_get_format_bridge err! fmt:0x%x\n",
-			f->fmt.pix.pixelformat);
-		return -EINVAL;
-	}
-
-	pipe->pix = f->fmt.pix;
-	atomisp_css_input_set_mode(asd, IA_CSS_INPUT_MODE_FIFO);
-	atomisp_css_input_configure_port(asd,
-					 __get_mipi_port(isp, ATOMISP_CAMERA_PORT_PRIMARY), 2, 0xffff4,
-					 0, 0, 0, 0);
-	ffmt.width = f->fmt.pix.width;
-	ffmt.height = f->fmt.pix.height;
-	ffmt.code = format_bridge->mbus_code;
-
-	atomisp_subdev_set_ffmt(&asd->subdev, fh.state,
-				V4L2_SUBDEV_FORMAT_ACTIVE,
-				ATOMISP_SUBDEV_PAD_SINK, &ffmt);
-=======
 	dev_dbg(isp->dev, "%s: %dx%d, image size: %d, %d bytes per line\n",
 		__func__,
 		f->fmt.pix.width, f->fmt.pix.height,
 		f->fmt.pix.sizeimage, f->fmt.pix.bytesperline);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return 0;
 }
@@ -6339,22 +6107,6 @@ int atomisp_get_invalid_frame_num(struct video_device *vdev,
 	struct ia_css_pipe_info p_info;
 	int ret;
 
-<<<<<<< HEAD
-	if (!asd) {
-		dev_err(pipe->isp->dev, "%s(): asd is NULL, device is %s\n",
-			__func__, vdev->name);
-		return -EINVAL;
-	}
-
-	if (asd->isp->inputs[asd->input_curr].camera_caps->
-	    sensor[asd->sensor_curr].stream_num > 1) {
-		/* External ISP */
-		*invalid_frame_num = 0;
-		return 0;
-	}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	pipe_id = atomisp_get_pipe_id(pipe);
 	if (!asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL].pipes[pipe_id]) {
 		dev_warn(asd->isp->dev,

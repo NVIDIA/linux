@@ -137,12 +137,8 @@ kill_whiteout:
 	goto out;
 }
 
-<<<<<<< HEAD
-int ovl_mkdir_real(struct inode *dir, struct dentry **newdentry, umode_t mode)
-=======
 int ovl_mkdir_real(struct ovl_fs *ofs, struct inode *dir,
 		   struct dentry **newdentry, umode_t mode)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	int err;
 	struct dentry *d, *dentry = *newdentry;

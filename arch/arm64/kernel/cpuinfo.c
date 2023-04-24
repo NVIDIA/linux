@@ -104,8 +104,6 @@ static const char *const hwcap_str[] = {
 	[KERNEL_HWCAP_ECV]		= "ecv",
 	[KERNEL_HWCAP_AFP]		= "afp",
 	[KERNEL_HWCAP_RPRES]		= "rpres",
-<<<<<<< HEAD
-=======
 	[KERNEL_HWCAP_MTE3]		= "mte3",
 	[KERNEL_HWCAP_SME]		= "sme",
 	[KERNEL_HWCAP_SME_I16I64]	= "smei16i64",
@@ -118,7 +116,6 @@ static const char *const hwcap_str[] = {
 	[KERNEL_HWCAP_WFXT]		= "wfxt",
 	[KERNEL_HWCAP_EBF16]		= "ebf16",
 	[KERNEL_HWCAP_SVE_EBF16]	= "sveebf16",
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 #ifdef CONFIG_COMPAT

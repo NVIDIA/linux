@@ -1516,25 +1516,15 @@ unlock:
 /* get the current rate set to the given clock by any endpoint */
 int snd_usb_endpoint_get_clock_rate(struct snd_usb_audio *chip, int clock)
 {
-<<<<<<< HEAD
-	struct snd_usb_endpoint *ep;
-=======
 	struct snd_usb_clock_ref *ref;
->>>>>>> origin/linux_6.1.15_upstream
 	int rate = 0;
 
 	if (!clock)
 		return 0;
 	mutex_lock(&chip->mutex);
-<<<<<<< HEAD
-	list_for_each_entry(ep, &chip->ep_list, list) {
-		if (ep->cur_clock == clock && ep->cur_rate) {
-			rate = ep->cur_rate;
-=======
 	list_for_each_entry(ref, &chip->clock_ref_list, list) {
 		if (ref->clock == clock) {
 			rate = ref->rate;
->>>>>>> origin/linux_6.1.15_upstream
 			break;
 		}
 	}
@@ -1687,8 +1677,6 @@ void snd_usb_endpoint_stop(struct snd_usb_endpoint *ep, bool keep_pending)
 		if (ep->sync_source)
 			WRITE_ONCE(ep->sync_source->sync_sink, NULL);
 		stop_urbs(ep, false, keep_pending);
-<<<<<<< HEAD
-=======
 		if (ep->clock_ref)
 			atomic_dec(&ep->clock_ref->locked);
 
@@ -1698,7 +1686,6 @@ void snd_usb_endpoint_stop(struct snd_usb_endpoint *ep, bool keep_pending)
 			if (ep->iface_ref)
 				ep->iface_ref->need_setup = true;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 

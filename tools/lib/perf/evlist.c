@@ -620,10 +620,6 @@ int perf_evlist__mmap_ops(struct perf_evlist *evlist,
 {
 	const struct perf_cpu_map *cpus = evlist->all_cpus;
 	struct perf_evsel *evsel;
-<<<<<<< HEAD
-	const struct perf_cpu_map *cpus = evlist->cpus;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!ops || !ops->get || !ops->mmap)
 		return -EINVAL;

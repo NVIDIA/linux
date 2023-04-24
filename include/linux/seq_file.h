@@ -210,11 +210,7 @@ static const struct file_operations __name ## _fops = {			\
 #define DEFINE_PROC_SHOW_ATTRIBUTE(__name)				\
 static int __name ## _open(struct inode *inode, struct file *file)	\
 {									\
-<<<<<<< HEAD
-	return single_open(file, __name ## _show, PDE_DATA(inode));	\
-=======
 	return single_open(file, __name ## _show, pde_data(inode));	\
->>>>>>> origin/linux_6.1.15_upstream
 }									\
 									\
 static const struct proc_ops __name ## _proc_ops = {			\

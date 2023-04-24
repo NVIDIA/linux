@@ -784,13 +784,6 @@ static int dim2_probe(struct platform_device *pdev)
 
 	of_id = of_match_node(dim2_of_match, pdev->dev.of_node);
 	pdata = of_id->data;
-<<<<<<< HEAD
-	ret = pdata && pdata->enable ? pdata->enable(pdev) : 0;
-	if (ret)
-		goto err_free_dev;
-
-	dev->disable_platform = pdata ? pdata->disable : NULL;
-=======
 	if (pdata) {
 		if (pdata->enable) {
 			ret = pdata->enable(pdev);
@@ -801,7 +794,6 @@ static int dim2_probe(struct platform_device *pdev)
 		if (pdata->fcnt)
 			dev_fcnt = pdata->fcnt;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev_info(&pdev->dev, "sync: num of frames per sub-buffer: %u\n",
 		 dev_fcnt);

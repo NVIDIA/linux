@@ -708,58 +708,13 @@ static int axienet_free_tx_chain(struct axienet_local *lp, u32 first_bd,
  * This function is invoked before BDs are allocated and transmission starts.
  * This function returns 0 if a BD or group of BDs can be allocated for
  * transmission. If the BD or any of the BDs are not free the function
-<<<<<<< HEAD
- * returns a busy status. This is invoked from axienet_start_xmit.
-=======
  * returns a busy status.
->>>>>>> origin/linux_6.1.15_upstream
  */
 static inline int axienet_check_tx_bd_space(struct axienet_local *lp,
 					    int num_frag)
 {
 	struct axidma_bd *cur_p;
 
-<<<<<<< HEAD
-	/* Ensure we see all descriptor updates from device or TX IRQ path */
-	rmb();
-	cur_p = &lp->tx_bd_v[(lp->tx_bd_tail + num_frag) % lp->tx_bd_num];
-	if (cur_p->cntrl)
-		return NETDEV_TX_BUSY;
-	return 0;
-}
-
-/**
- * axienet_start_xmit_done - Invoked once a transmit is completed by the
- * Axi DMA Tx channel.
- * @ndev:	Pointer to the net_device structure
- *
- * This function is invoked from the Axi DMA Tx isr to notify the completion
- * of transmit operation. It clears fields in the corresponding Tx BDs and
- * unmaps the corresponding buffer so that CPU can regain ownership of the
- * buffer. It finally invokes "netif_wake_queue" to restart transmission if
- * required.
- */
-static void axienet_start_xmit_done(struct net_device *ndev)
-{
-	struct axienet_local *lp = netdev_priv(ndev);
-	u32 packets = 0;
-	u32 size = 0;
-
-	packets = axienet_free_tx_chain(ndev, lp->tx_bd_ci, -1, &size);
-
-	lp->tx_bd_ci += packets;
-	if (lp->tx_bd_ci >= lp->tx_bd_num)
-		lp->tx_bd_ci -= lp->tx_bd_num;
-
-	ndev->stats.tx_packets += packets;
-	ndev->stats.tx_bytes += size;
-
-	/* Matches barrier in axienet_start_xmit */
-	smp_mb();
-
-	if (!axienet_check_tx_bd_space(lp, MAX_SKB_FRAGS + 1))
-		netif_wake_queue(ndev);
-=======
 	/* Ensure we see all descriptor updates from device or TX polling */
 	rmb();
 	cur_p = &lp->tx_bd_v[(READ_ONCE(lp->tx_bd_tail) + num_frag) %
@@ -767,7 +722,6 @@ static void axienet_start_xmit_done(struct net_device *ndev)
 	if (cur_p->cntrl)
 		return NETDEV_TX_BUSY;
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /**
@@ -849,12 +803,9 @@ axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	orig_tail_ptr = lp->tx_bd_tail;
 	new_tail_ptr = orig_tail_ptr;
 
-<<<<<<< HEAD
-=======
 	num_frag = skb_shinfo(skb)->nr_frags;
 	cur_p = &lp->tx_bd_v[orig_tail_ptr];
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (axienet_check_tx_bd_space(lp, num_frag + 1)) {
 		/* Should not happen as last start_xmit call should have
 		 * checked for sufficient space and queue should only be
@@ -989,19 +940,11 @@ static int axienet_rx_poll(struct napi_struct *napi, int budget)
 			length = cur_p->app4 & 0x0000FFFF;
 
 			phys = desc_get_phys_addr(lp, cur_p);
-<<<<<<< HEAD
-			dma_unmap_single(ndev->dev.parent, phys, lp->max_frm_size,
-					 DMA_FROM_DEVICE);
-
-			skb_put(skb, length);
-			skb->protocol = eth_type_trans(skb, ndev);
-=======
 			dma_unmap_single(lp->dev, phys, lp->max_frm_size,
 					 DMA_FROM_DEVICE);
 
 			skb_put(skb, length);
 			skb->protocol = eth_type_trans(skb, lp->ndev);
->>>>>>> origin/linux_6.1.15_upstream
 			/*skb_checksum_none_assert(skb);*/
 			skb->ip_summed = CHECKSUM_NONE;
 
@@ -1020,11 +963,7 @@ static int axienet_rx_poll(struct napi_struct *napi, int budget)
 				skb->ip_summed = CHECKSUM_COMPLETE;
 			}
 
-<<<<<<< HEAD
-			netif_rx(skb);
-=======
 			napi_gro_receive(napi, skb);
->>>>>>> origin/linux_6.1.15_upstream
 
 			size += length;
 			packets++;
@@ -2180,23 +2119,6 @@ static int axienet_probe(struct platform_device *pdev)
 		dev_warn(&pdev->dev,
 			 "error registering MDIO bus: %d\n", ret);
 
-<<<<<<< HEAD
-	/* Reset core now that clocks are enabled, prior to accessing MDIO */
-	ret = __axienet_device_reset(lp);
-	if (ret)
-		goto cleanup_clk;
-
-	ret = axienet_mdio_setup(lp);
-	if (ret)
-		dev_warn(&pdev->dev,
-			 "error registering MDIO bus: %d\n", ret);
-
-	if (lp->phy_mode == PHY_INTERFACE_MODE_SGMII ||
-	    lp->phy_mode == PHY_INTERFACE_MODE_1000BASEX) {
-		lp->phy_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
-		if (!lp->phy_node) {
-			dev_err(&pdev->dev, "phy-handle required for 1000BaseX/SGMII\n");
-=======
 	if (lp->phy_mode == PHY_INTERFACE_MODE_SGMII ||
 	    lp->phy_mode == PHY_INTERFACE_MODE_1000BASEX) {
 		np = of_parse_phandle(pdev->dev.of_node, "pcs-handle", 0);
@@ -2209,7 +2131,6 @@ static int axienet_probe(struct platform_device *pdev)
 		}
 		if (!np) {
 			dev_err(&pdev->dev, "pcs-handle (preferred) or phy-handle required for 1000BaseX/SGMII\n");
->>>>>>> origin/linux_6.1.15_upstream
 			ret = -EINVAL;
 			goto cleanup_mdio;
 		}

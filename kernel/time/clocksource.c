@@ -107,9 +107,6 @@ static u64 suspend_start;
  * This delay could be due to SMIs, NMIs, or to VCPU preemptions.  Used as
  * a lower bound for cs->uncertainty_margin values when registering clocks.
  */
-<<<<<<< HEAD
-#define WATCHDOG_MAX_SKEW (100 * NSEC_PER_USEC)
-=======
 #ifdef CONFIG_CLOCKSOURCE_WATCHDOG_MAX_SKEW_US
 #define MAX_SKEW_USEC	CONFIG_CLOCKSOURCE_WATCHDOG_MAX_SKEW_US
 #else
@@ -117,7 +114,6 @@ static u64 suspend_start;
 #endif
 
 #define WATCHDOG_MAX_SKEW (MAX_SKEW_USEC * NSEC_PER_USEC)
->>>>>>> origin/linux_6.1.15_upstream
 
 #ifdef CONFIG_CLOCKSOURCE_WATCHDOG
 static void clocksource_watchdog_work(struct work_struct *work);

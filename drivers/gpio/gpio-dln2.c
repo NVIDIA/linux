@@ -386,8 +386,6 @@ static void dln2_irq_bus_unlock(struct irq_data *irqd)
 	mutex_unlock(&dln2->irq_lock);
 }
 
-<<<<<<< HEAD
-=======
 static const struct irq_chip dln2_irqchip = {
 	.name = "dln2-irq",
 	.irq_mask = dln2_irq_mask,
@@ -399,7 +397,6 @@ static const struct irq_chip dln2_irqchip = {
 	GPIOCHIP_IRQ_RESOURCE_HELPERS,
 };
 
->>>>>>> origin/linux_6.1.15_upstream
 static void dln2_gpio_event(struct platform_device *pdev, u16 echo,
 			    const void *data, int len)
 {
@@ -489,11 +486,7 @@ static int dln2_gpio_probe(struct platform_device *pdev)
 	dln2->irqchip.irq_bus_sync_unlock = dln2_irq_bus_unlock,
 
 	girq = &dln2->gpio.irq;
-<<<<<<< HEAD
-	girq->chip = &dln2->irqchip;
-=======
 	gpio_irq_chip_set_chip(girq, &dln2_irqchip);
->>>>>>> origin/linux_6.1.15_upstream
 	/* The event comes from the outside so no parent handler */
 	girq->parent_handler = NULL;
 	girq->num_parents = 0;

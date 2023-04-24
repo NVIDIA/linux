@@ -805,13 +805,9 @@ static int sun8i_a33_ccu_probe(struct platform_device *pdev)
 	val &= ~BIT(16);
 	writel(val, reg + SUN8I_A33_PLL_MIPI_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, &sun8i_a33_ccu_desc);
-=======
 	ret = devm_sunxi_ccu_probe(&pdev->dev, reg, &sun8i_a33_ccu_desc);
 	if (ret)
 		return ret;
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Gate then ungate PLL CPU after any rate changes */
 	ccu_pll_notifier_register(&sun8i_a33_pll_cpu_nb);

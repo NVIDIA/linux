@@ -188,21 +188,9 @@ static void mlx5_sync_reset_reload_work(struct work_struct *work)
 	struct mlx5_fw_reset *fw_reset = container_of(work, struct mlx5_fw_reset,
 						      reset_reload_work);
 	struct mlx5_core_dev *dev = fw_reset->dev;
-<<<<<<< HEAD
-	int err;
 
 	mlx5_sync_reset_clear_reset_requested(dev, false);
 	mlx5_enter_error_state(dev, true);
-	mlx5_unload_one(dev);
-	err = mlx5_health_wait_pci_up(dev);
-	if (err)
-		mlx5_core_err(dev, "reset reload flow aborted, PCI reads still not working\n");
-	fw_reset->ret = err;
-=======
-
-	mlx5_sync_reset_clear_reset_requested(dev, false);
-	mlx5_enter_error_state(dev, true);
->>>>>>> origin/linux_6.1.15_upstream
 	mlx5_fw_reset_complete_reload(dev);
 }
 
@@ -220,14 +208,10 @@ static void poll_sync_reset(struct timer_list *t)
 
 	if (fatal_error) {
 		mlx5_core_warn(dev, "Got Device Reset\n");
-<<<<<<< HEAD
-		queue_work(fw_reset->wq, &fw_reset->reset_reload_work);
-=======
 		if (!test_bit(MLX5_FW_RESET_FLAGS_DROP_NEW_REQUESTS, &fw_reset->reset_flags))
 			queue_work(fw_reset->wq, &fw_reset->reset_reload_work);
 		else
 			mlx5_core_err(dev, "Device is being removed, Drop new reset work\n");
->>>>>>> origin/linux_6.1.15_upstream
 		return;
 	}
 

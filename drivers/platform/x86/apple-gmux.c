@@ -584,15 +584,6 @@ static int gmux_probe(struct pnp_dev *pnp, const struct pnp_device_id *id)
 	res = pnp_get_resource(pnp, IORESOURCE_IO, 0);
 	gmux_data->iostart = res->start;
 	gmux_data->iolen = resource_size(res);
-<<<<<<< HEAD
-
-	if (gmux_data->iolen < GMUX_MIN_IO_LEN) {
-		pr_err("gmux I/O region too small (%lu < %u)\n",
-		       gmux_data->iolen, GMUX_MIN_IO_LEN);
-		goto err_free;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (!request_region(gmux_data->iostart, gmux_data->iolen,
 			    "Apple gmux")) {

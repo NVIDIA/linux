@@ -838,14 +838,10 @@ u32  rvu_cgx_get_fifolen(struct rvu *rvu);
 void *rvu_first_cgx_pdata(struct rvu *rvu);
 int cgxlmac_to_pf(struct rvu *rvu, int cgx_id, int lmac_id);
 int rvu_cgx_config_tx(void *cgxd, int lmac_id, bool enable);
-<<<<<<< HEAD
-
-=======
 int rvu_cgx_prio_flow_ctrl_cfg(struct rvu *rvu, u16 pcifunc, u8 tx_pause, u8 rx_pause,
 			       u16 pfc_en);
 int rvu_cgx_cfg_pause_frm(struct rvu *rvu, u16 pcifunc, u8 tx_pause, u8 rx_pause);
 u32 rvu_cgx_get_lmac_fifolen(struct rvu *rvu, int cgx, int lmac);
->>>>>>> origin/linux_6.1.15_upstream
 int npc_get_nixlf_mcam_index(struct npc_mcam *mcam, u16 pcifunc, int nixlf,
 			     int type);
 bool is_mcam_entry_enabled(struct rvu *rvu, struct npc_mcam *mcam, int blkaddr,
@@ -886,8 +882,6 @@ void rvu_switch_update_rules(struct rvu *rvu, u16 pcifunc);
 int rvu_npc_set_parse_mode(struct rvu *rvu, u16 pcifunc, u64 mode, u8 dir,
 			   u64 pkind, u8 var_len_off, u8 var_len_off_mask,
 			   u8 shift_dir);
-<<<<<<< HEAD
-=======
 int rvu_get_hwvf(struct rvu *rvu, int pcifunc);
 
 /* CN10K MCS */
@@ -895,5 +889,4 @@ int rvu_mcs_init(struct rvu *rvu);
 int rvu_mcs_flr_handler(struct rvu *rvu, u16 pcifunc);
 void rvu_mcs_exit(struct rvu *rvu);
 
->>>>>>> origin/linux_6.1.15_upstream
 #endif /* RVU_H */

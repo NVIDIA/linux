@@ -1398,14 +1398,8 @@ static int tulip_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	irq = pdev->irq;
 
 	/* alloc_etherdev ensures aligned and zeroed private structures */
-<<<<<<< HEAD
-	dev = alloc_etherdev (sizeof (*tp));
-	if (!dev) {
-		pci_disable_device(pdev);
-=======
 	dev = devm_alloc_etherdev(&pdev->dev, sizeof(*tp));
 	if (!dev)
->>>>>>> origin/linux_6.1.15_upstream
 		return -ENOMEM;
 	}
 
@@ -1777,27 +1771,6 @@ static int tulip_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	tulip_set_power_state (tp, 0, 1);
 
 	return 0;
-<<<<<<< HEAD
-
-err_out_free_ring:
-	dma_free_coherent(&pdev->dev,
-			  sizeof(struct tulip_rx_desc) * RX_RING_SIZE +
-			  sizeof(struct tulip_tx_desc) * TX_RING_SIZE,
-			  tp->rx_ring, tp->rx_ring_dma);
-
-err_out_mtable:
-	kfree (tp->mtable);
-	pci_iounmap(pdev, ioaddr);
-
-err_out_free_res:
-	pci_release_regions (pdev);
-
-err_out_free_netdev:
-	free_netdev (dev);
-	pci_disable_device(pdev);
-	return -ENODEV;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 

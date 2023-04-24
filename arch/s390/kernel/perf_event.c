@@ -30,11 +30,7 @@ static struct kvm_s390_sie_block *sie_block(struct pt_regs *regs)
 	if (!stack)
 		return NULL;
 
-<<<<<<< HEAD
-	return (struct kvm_s390_sie_block *)stack->empty1[1];
-=======
 	return (struct kvm_s390_sie_block *)stack->sie_control_block;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static bool is_in_guest(struct pt_regs *regs)

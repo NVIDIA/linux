@@ -773,13 +773,8 @@ void dml20_rq_dlg_get_rq_reg(struct display_mode_lib *mode_lib,
 	display_rq_params_st rq_param = {0};
 
 	memset(rq_regs, 0, sizeof(*rq_regs));
-<<<<<<< HEAD
-	dml20_rq_dlg_get_rq_params(mode_lib, &rq_param, pipe_param->src);
-	extract_rq_regs(mode_lib, rq_regs, rq_param);
-=======
 	dml20_rq_dlg_get_rq_params(mode_lib, &rq_param, &pipe_param->src);
 	extract_rq_regs(mode_lib, rq_regs, &rq_param);
->>>>>>> origin/linux_6.1.15_upstream
 
 	print__rq_regs_st(mode_lib, rq_regs);
 }

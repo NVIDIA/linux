@@ -101,9 +101,6 @@ void intel_gt_info_print(const struct intel_gt_info *info,
 
 void intel_gt_watchdog_work(struct work_struct *work);
 
-<<<<<<< HEAD
-void intel_gt_invalidate_tlbs(struct intel_gt *gt);
-=======
 static inline u32 intel_gt_tlb_seqno(const struct intel_gt *gt)
 {
 	return seqprop_sequence(&gt->tlb.seqno);
@@ -115,6 +112,5 @@ static inline u32 intel_gt_next_invalidate_tlb_full(const struct intel_gt *gt)
 }
 
 void intel_gt_invalidate_tlb(struct intel_gt *gt, u32 seqno);
->>>>>>> origin/linux_6.1.15_upstream
 
 #endif /* __INTEL_GT_H__ */

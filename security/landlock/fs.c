@@ -148,8 +148,6 @@ retry:
 	LANDLOCK_ACCESS_FS_WRITE_FILE | \
 	LANDLOCK_ACCESS_FS_READ_FILE)
 /* clang-format on */
-<<<<<<< HEAD
-=======
 
 /*
  * All access rights that are denied by default whether they are handled or not
@@ -160,7 +158,6 @@ retry:
 #define ACCESS_INITIALLY_DENIED ( \
 	LANDLOCK_ACCESS_FS_REFER)
 /* clang-format on */
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * @path: Should have been checked by get_path_from_fd().
@@ -277,17 +274,6 @@ unmask_layers(const struct landlock_rule *const rule,
 	return false;
 }
 
-<<<<<<< HEAD
-static int check_access_path(const struct landlock_ruleset *const domain,
-			     const struct path *const path,
-			     const access_mask_t access_request)
-{
-	layer_mask_t layer_masks[LANDLOCK_NUM_ACCESS_FS] = {};
-	bool allowed = false, has_access = false;
-	struct path walker_path;
-	size_t i;
-
-=======
 /*
  * Allows access to pseudo filesystems that will never be mountable (e.g.
  * sockfs, pipefs), but can still be reachable through
@@ -321,7 +307,6 @@ init_layer_masks(const struct landlock_ruleset *const domain,
 
 	memset(layer_masks, 0, sizeof(*layer_masks));
 	/* An empty access request can happen because of O_WRONLY | O_RDWR. */
->>>>>>> origin/linux_6.1.15_upstream
 	if (!access_request)
 		return 0;
 
@@ -510,40 +495,11 @@ static int check_access_path_dual(
 		return 0;
 	if (WARN_ON_ONCE(!domain || !path))
 		return 0;
-<<<<<<< HEAD
-	/*
-	 * Allows access to pseudo filesystems that will never be mountable
-	 * (e.g. sockfs, pipefs), but can still be reachable through
-	 * /proc/<pid>/fd/<file-descriptor> .
-	 */
-	if ((path->dentry->d_sb->s_flags & SB_NOUSER) ||
-	    (d_is_positive(path->dentry) &&
-	     unlikely(IS_PRIVATE(d_backing_inode(path->dentry)))))
-=======
 	if (is_nouser_or_private(path->dentry))
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 	if (WARN_ON_ONCE(domain->num_layers < 1 || !layer_masks_parent1))
 		return -EACCES;
 
-<<<<<<< HEAD
-	/* Saves all layers handling a subset of requested accesses. */
-	for (i = 0; i < domain->num_layers; i++) {
-		const unsigned long access_req = access_request;
-		unsigned long access_bit;
-
-		for_each_set_bit(access_bit, &access_req,
-				 ARRAY_SIZE(layer_masks)) {
-			if (domain->fs_access_masks[i] & BIT_ULL(access_bit)) {
-				layer_masks[access_bit] |= BIT_ULL(i);
-				has_access = true;
-			}
-		}
-	}
-	/* An access request not handled by the domain is allowed. */
-	if (!has_access)
-		return 0;
-=======
 	if (unlikely(layer_masks_parent2)) {
 		if (WARN_ON_ONCE(!dentry_child1))
 			return -EACCES;
@@ -580,7 +536,6 @@ static int check_access_path_dual(
 		layer_masks_child2 = &_layer_masks_child2;
 		child2_is_directory = d_is_dir(dentry_child2);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	walker_path = *path;
 	path_get(&walker_path);
@@ -592,13 +547,6 @@ static int check_access_path_dual(
 		struct dentry *parent_dentry;
 		const struct landlock_rule *rule;
 
-<<<<<<< HEAD
-		allowed = unmask_layers(find_rule(domain, walker_path.dentry),
-					access_request, &layer_masks);
-		if (allowed)
-			/* Stops when a rule from each layer grants access. */
-			break;
-=======
 		/*
 		 * If at least all accesses allowed on the destination are
 		 * already allowed on the source, respectively if there is at
@@ -634,7 +582,6 @@ static int check_access_path_dual(
 			access_masked_parent1 = access_request_parent1;
 			access_masked_parent2 = access_request_parent2;
 		}
->>>>>>> origin/linux_6.1.15_upstream
 
 		rule = find_rule(domain, walker_path.dentry);
 		allowed_parent1 = unmask_layers(rule, access_masked_parent1,
@@ -1139,106 +1086,23 @@ static int hook_sb_pivotroot(const struct path *const old_path,
 
 /* Path hooks */
 
-<<<<<<< HEAD
-static inline access_mask_t get_mode_access(const umode_t mode)
-{
-	switch (mode & S_IFMT) {
-	case S_IFLNK:
-		return LANDLOCK_ACCESS_FS_MAKE_SYM;
-	case 0:
-		/* A zero mode translates to S_IFREG. */
-	case S_IFREG:
-		return LANDLOCK_ACCESS_FS_MAKE_REG;
-	case S_IFDIR:
-		return LANDLOCK_ACCESS_FS_MAKE_DIR;
-	case S_IFCHR:
-		return LANDLOCK_ACCESS_FS_MAKE_CHAR;
-	case S_IFBLK:
-		return LANDLOCK_ACCESS_FS_MAKE_BLOCK;
-	case S_IFIFO:
-		return LANDLOCK_ACCESS_FS_MAKE_FIFO;
-	case S_IFSOCK:
-		return LANDLOCK_ACCESS_FS_MAKE_SOCK;
-	default:
-		WARN_ON_ONCE(1);
-		return 0;
-	}
-}
-
-/*
- * Creating multiple links or renaming may lead to privilege escalations if not
- * handled properly.  Indeed, we must be sure that the source doesn't gain more
- * privileges by being accessible from the destination.  This is getting more
- * complex when dealing with multiple layers.  The whole picture can be seen as
- * a multilayer partial ordering problem.  A future version of Landlock will
- * deal with that.
- */
-static int hook_path_link(struct dentry *const old_dentry,
-			  const struct path *const new_dir,
-			  struct dentry *const new_dentry)
-{
-	const struct landlock_ruleset *const dom =
-		landlock_get_current_domain();
-
-	if (!dom)
-		return 0;
-	/* The mount points are the same for old and new paths, cf. EXDEV. */
-	if (old_dentry->d_parent != new_dir->dentry)
-		/* Gracefully forbids reparenting. */
-		return -EXDEV;
-	if (unlikely(d_is_negative(old_dentry)))
-		return -ENOENT;
-	return check_access_path(
-		dom, new_dir,
-		get_mode_access(d_backing_inode(old_dentry)->i_mode));
-}
-
-static inline access_mask_t maybe_remove(const struct dentry *const dentry)
-{
-	if (d_is_negative(dentry))
-		return 0;
-	return d_is_dir(dentry) ? LANDLOCK_ACCESS_FS_REMOVE_DIR :
-				  LANDLOCK_ACCESS_FS_REMOVE_FILE;
-=======
 static int hook_path_link(struct dentry *const old_dentry,
 			  const struct path *const new_dir,
 			  struct dentry *const new_dentry)
 {
 	return current_check_refer_path(old_dentry, new_dir, new_dentry, false,
 					false);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int hook_path_rename(const struct path *const old_dir,
 			    struct dentry *const old_dentry,
 			    const struct path *const new_dir,
-<<<<<<< HEAD
-			    struct dentry *const new_dentry)
-{
-	const struct landlock_ruleset *const dom =
-		landlock_get_current_domain();
-
-	if (!dom)
-		return 0;
-	/* The mount points are the same for old and new paths, cf. EXDEV. */
-	if (old_dir->dentry != new_dir->dentry)
-		/* Gracefully forbids reparenting. */
-		return -EXDEV;
-	if (unlikely(d_is_negative(old_dentry)))
-		return -ENOENT;
-	/* RENAME_EXCHANGE is handled because directories are the same. */
-	return check_access_path(
-		dom, old_dir,
-		maybe_remove(old_dentry) | maybe_remove(new_dentry) |
-			get_mode_access(d_backing_inode(old_dentry)->i_mode));
-=======
 			    struct dentry *const new_dentry,
 			    const unsigned int flags)
 {
 	/* old_dir refers to old_dentry->d_parent and new_dir->mnt */
 	return current_check_refer_path(old_dentry, new_dir, new_dentry, true,
 					!!(flags & RENAME_EXCHANGE));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int hook_path_mkdir(const struct path *const dir,

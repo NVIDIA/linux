@@ -1648,13 +1648,10 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	if (ret == 0)
 		ret = iwl_mvm_sar_geo_init(mvm);
 	if (ret < 0)
-<<<<<<< HEAD
-=======
 		goto error;
 
 	ret = iwl_mvm_sgom_init(mvm);
 	if (ret)
->>>>>>> origin/linux_6.1.15_upstream
 		goto error;
 
 	iwl_mvm_tas_init(mvm);

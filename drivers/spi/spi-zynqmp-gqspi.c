@@ -1184,8 +1184,6 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 	if (ret)
 		goto clk_dis_all;
 
-<<<<<<< HEAD
-=======
 	ret = of_property_read_u32(np, "num-cs", &num_cs);
 	if (ret < 0) {
 		ctlr->num_chipselect = GQSPI_DEFAULT_NUM_CS;
@@ -1198,7 +1196,6 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 		ctlr->num_chipselect = num_cs;
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 	ctlr->mem_ops = &zynqmp_qspi_mem_ops;
 	ctlr->setup = zynqmp_qspi_setup_op;

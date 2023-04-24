@@ -80,10 +80,7 @@ static __always_inline __sum16 csum16_sub(__sum16 csum, __be16 addend)
 	return csum16_add(csum, ~addend);
 }
 
-<<<<<<< HEAD
-=======
 #ifndef HAVE_ARCH_CSUM_SHIFT
->>>>>>> origin/linux_6.1.15_upstream
 static __always_inline __wsum csum_shift(__wsum sum, int offset)
 {
 	/* rotate sum to align it with a 16b boundary */

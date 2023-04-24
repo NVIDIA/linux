@@ -34,8 +34,6 @@
 #include "bnxt_nvm_defs.h"	/* NVRAM content constant and structure defs */
 #include "bnxt_fw_hdr.h"	/* Firmware hdr constant and structure defs */
 #include "bnxt_coredump.h"
-<<<<<<< HEAD
-=======
 
 #define BNXT_NVM_ERR_MSG(dev, extack, msg)			\
 	do {							\
@@ -43,7 +41,6 @@
 			NL_SET_ERR_MSG_MOD(extack, msg);	\
 		netdev_err(dev, "%s\n", msg);			\
 	} while (0)
->>>>>>> origin/linux_6.1.15_upstream
 
 static u32 bnxt_get_msglevel(struct net_device *dev)
 {

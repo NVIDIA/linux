@@ -2251,13 +2251,8 @@ static void shadow_walk_init_using_root(struct kvm_shadow_walk_iterator *iterato
 	iterator->level = vcpu->arch.mmu->root_role.level;
 
 	if (iterator->level >= PT64_ROOT_4LEVEL &&
-<<<<<<< HEAD
-	    vcpu->arch.mmu->root_level < PT64_ROOT_4LEVEL &&
-	    !vcpu->arch.mmu->direct_map)
-=======
 	    vcpu->arch.mmu->cpu_role.base.level < PT64_ROOT_4LEVEL &&
 	    !vcpu->arch.mmu->root_role.direct)
->>>>>>> origin/linux_6.1.15_upstream
 		iterator->level = PT32E_ROOT_LEVEL;
 
 	if (iterator->level == PT32E_ROOT_LEVEL) {
@@ -3428,11 +3423,7 @@ static void mmu_free_root_page(struct kvm *kvm, hpa_t *root_hpa,
 	if (!VALID_PAGE(*root_hpa))
 		return;
 
-<<<<<<< HEAD
-	sp = to_shadow_page(*root_hpa & PT64_BASE_ADDR_MASK);
-=======
 	sp = to_shadow_page(*root_hpa & SPTE_BASE_ADDR_MASK);
->>>>>>> origin/linux_6.1.15_upstream
 	if (WARN_ON(!sp))
 		return;
 
@@ -4196,17 +4187,11 @@ static int kvm_faultin_pfn(struct kvm_vcpu *vcpu, struct kvm_page_fault *fault)
 		}
 	}
 
-<<<<<<< HEAD
-	*pfn = __gfn_to_pfn_memslot(slot, gfn, false, NULL,
-				    write, writable, hva);
-	return false;
-=======
 	fault->pfn = __gfn_to_pfn_memslot(slot, fault->gfn, false, NULL,
 					  fault->write, &fault->map_writable,
 					  &fault->hva);
 	return RET_PF_CONTINUE;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 /*
  * Returns true if the page fault is stale and needs to be retried, i.e. if the
@@ -4974,35 +4959,7 @@ static void paging32_init_context(struct kvm_mmu *context)
 static union kvm_cpu_role
 kvm_calc_cpu_role(struct kvm_vcpu *vcpu, const struct kvm_mmu_role_regs *regs)
 {
-<<<<<<< HEAD
-	union kvm_mmu_extended_role ext = {0};
-
-	if (____is_cr0_pg(regs)) {
-		ext.cr0_pg = 1;
-		ext.cr4_pae = ____is_cr4_pae(regs);
-		ext.cr4_smep = ____is_cr4_smep(regs);
-		ext.cr4_smap = ____is_cr4_smap(regs);
-		ext.cr4_pse = ____is_cr4_pse(regs);
-
-		/* PKEY and LA57 are active iff long mode is active. */
-		ext.cr4_pke = ____is_efer_lma(regs) && ____is_cr4_pke(regs);
-		ext.cr4_la57 = ____is_efer_lma(regs) && ____is_cr4_la57(regs);
-		ext.efer_lma = ____is_efer_lma(regs);
-	}
-
-	ext.valid = 1;
-
-	return ext;
-}
-
-static union kvm_mmu_role kvm_calc_mmu_role_common(struct kvm_vcpu *vcpu,
-						   struct kvm_mmu_role_regs *regs,
-						   bool base_only)
-{
-	union kvm_mmu_role role = {0};
-=======
 	union kvm_cpu_role role = {0};
->>>>>>> origin/linux_6.1.15_upstream
 
 	role.base.access = ACC_ALL;
 	role.base.smm = is_smm(vcpu);
@@ -5225,14 +5182,7 @@ void kvm_init_shadow_ept_mmu(struct kvm_vcpu *vcpu, bool execonly,
 		reset_ept_shadow_zero_bits_mask(context, execonly);
 	}
 
-<<<<<<< HEAD
-	update_permission_bitmask(context, true);
-	context->pkru_mask = 0;
-	reset_rsvds_bits_mask_ept(vcpu, context, execonly);
-	reset_ept_shadow_zero_bits_mask(vcpu, context, execonly);
-=======
 	kvm_mmu_new_pgd(vcpu, new_eptp);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL_GPL(kvm_init_shadow_ept_mmu);
 
@@ -5695,11 +5645,7 @@ void kvm_mmu_invpcid_gva(struct kvm_vcpu *vcpu, gva_t gva, unsigned long pcid)
 
 	if (pcid == kvm_get_active_pcid(vcpu)) {
 		if (mmu->invlpg)
-<<<<<<< HEAD
-			mmu->invlpg(vcpu, gva, mmu->root_hpa);
-=======
 			mmu->invlpg(vcpu, gva, mmu->root.hpa);
->>>>>>> origin/linux_6.1.15_upstream
 		tlb_flush = true;
 	}
 
@@ -6117,13 +6063,8 @@ void kvm_zap_gfn_range(struct kvm *kvm, gfn_t gfn_start, gfn_t gfn_end)
 
 	if (is_tdp_mmu_enabled(kvm)) {
 		for (i = 0; i < KVM_ADDRESS_SPACE_NUM; i++)
-<<<<<<< HEAD
-			flush = kvm_tdp_mmu_zap_gfn_range(kvm, i, gfn_start,
-							  gfn_end, flush);
-=======
 			flush = kvm_tdp_mmu_zap_leafs(kvm, i, gfn_start,
 						      gfn_end, true, flush);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (flush)
@@ -6496,17 +6437,7 @@ void kvm_mmu_zap_collapsible_sptes(struct kvm *kvm,
 {
 	if (kvm_memslots_have_rmaps(kvm)) {
 		write_lock(&kvm->mmu_lock);
-<<<<<<< HEAD
-		/*
-		 * Zap only 4k SPTEs since the legacy MMU only supports dirty
-		 * logging at a 4k granularity and never creates collapsible
-		 * 2m SPTEs during dirty logging.
-		 */
-		if (slot_handle_level_4k(kvm, slot, kvm_mmu_zap_collapsible_spte, true))
-			kvm_arch_flush_remote_tlbs_memslot(kvm, slot);
-=======
 		kvm_rmap_zap_collapsible_sptes(kvm, slot);
->>>>>>> origin/linux_6.1.15_upstream
 		write_unlock(&kvm->mmu_lock);
 	}
 
@@ -6541,11 +6472,7 @@ void kvm_mmu_slot_leaf_clear_dirty(struct kvm *kvm,
 		 * Clear dirty bits only on 4k SPTEs since the legacy MMU only
 		 * support dirty logging at a 4k granularity.
 		 */
-<<<<<<< HEAD
-		flush = slot_handle_level_4k(kvm, memslot, __rmap_clear_dirty, false);
-=======
 		slot_handle_level_4k(kvm, memslot, __rmap_clear_dirty, false);
->>>>>>> origin/linux_6.1.15_upstream
 		write_unlock(&kvm->mmu_lock);
 	}
 
@@ -6741,15 +6668,10 @@ static int set_nx_huge_pages(const char *val, const struct kernel_param *kp)
 /*
  * nx_huge_pages needs to be resolved to true/false when kvm.ko is loaded, as
  * its default value of -1 is technically undefined behavior for a boolean.
-<<<<<<< HEAD
- */
-void kvm_mmu_x86_module_init(void)
-=======
  * Forward the module init call to SPTE code so that it too can handle module
  * params that need to be resolved/snapshot.
  */
 void __init kvm_mmu_x86_module_init(void)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	if (nx_huge_pages == -1)
 		__set_nx_huge_pages(get_nx_auto_mode());

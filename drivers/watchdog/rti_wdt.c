@@ -225,14 +225,8 @@ static int rti_wdt_probe(struct platform_device *pdev)
 		wdt->freq = wdt->freq * 9 / 10;
 
 	pm_runtime_enable(dev);
-<<<<<<< HEAD
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
-=======
 	ret = pm_runtime_resume_and_get(dev);
 	if (ret < 0) {
->>>>>>> origin/linux_6.1.15_upstream
 		pm_runtime_disable(&pdev->dev);
 		return dev_err_probe(dev, ret, "runtime pm failed\n");
 	}

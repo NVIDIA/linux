@@ -188,8 +188,4 @@ obj-$(CONFIG_INTERCONNECT)	+= interconnect/
 obj-$(CONFIG_COUNTER)		+= counter/
 obj-$(CONFIG_MOST)		+= most/
 obj-$(CONFIG_PECI)		+= peci/
-<<<<<<< HEAD
-obj-$(CONFIG_JTAG)		+= jtag/
-=======
 obj-$(CONFIG_HTE)		+= hte/
->>>>>>> origin/linux_6.1.15_upstream

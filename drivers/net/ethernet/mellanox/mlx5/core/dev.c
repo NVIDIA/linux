@@ -593,20 +593,6 @@ static void *pci_get_other_drvdata(struct device *this, struct device *other)
 	return pci_get_drvdata(to_pci_dev(other));
 }
 
-<<<<<<< HEAD
-static int next_phys_dev(struct device *dev, const void *data)
-{
-	struct mlx5_core_dev *mdev, *this = (struct mlx5_core_dev *)data;
-
-	mdev = pci_get_other_drvdata(this->device, dev);
-	if (!mdev)
-		return 0;
-
-	return _next_phys_dev(mdev, data);
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 static int next_phys_dev_lag(struct device *dev, const void *data)
 {
 	struct mlx5_core_dev *mdev, *this = (struct mlx5_core_dev *)data;
@@ -617,12 +603,8 @@ static int next_phys_dev_lag(struct device *dev, const void *data)
 
 	if (!MLX5_CAP_GEN(mdev, vport_group_manager) ||
 	    !MLX5_CAP_GEN(mdev, lag_master) ||
-<<<<<<< HEAD
-	    MLX5_CAP_GEN(mdev, num_lag_ports) != MLX5_MAX_PORTS)
-=======
 	    (MLX5_CAP_GEN(mdev, num_lag_ports) > MLX5_MAX_PORTS ||
 	     MLX5_CAP_GEN(mdev, num_lag_ports) <= 1))
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 
 	return _next_phys_dev(mdev, data);
@@ -645,16 +627,6 @@ static struct mlx5_core_dev *mlx5_get_next_dev(struct mlx5_core_dev *dev,
 }
 
 /* Must be called with intf_mutex held */
-<<<<<<< HEAD
-struct mlx5_core_dev *mlx5_get_next_phys_dev(struct mlx5_core_dev *dev)
-{
-	lockdep_assert_held(&mlx5_intf_mutex);
-	return mlx5_get_next_dev(dev, &next_phys_dev);
-}
-
-/* Must be called with intf_mutex held */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 struct mlx5_core_dev *mlx5_get_next_phys_dev_lag(struct mlx5_core_dev *dev)
 {
 	lockdep_assert_held(&mlx5_intf_mutex);

@@ -1768,25 +1768,9 @@ static int nvme_pci_alloc_admin_tag_set(struct nvme_dev *dev)
 	set->flags = BLK_MQ_F_NO_SCHED;
 	set->driver_data = dev;
 
-<<<<<<< HEAD
-		dev->ctrl.admin_q = blk_mq_init_queue(&dev->admin_tagset);
-		if (IS_ERR(dev->ctrl.admin_q)) {
-			blk_mq_free_tag_set(&dev->admin_tagset);
-			dev->ctrl.admin_q = NULL;
-			return -ENOMEM;
-		}
-		if (!blk_get_queue(dev->ctrl.admin_q)) {
-			nvme_dev_remove_admin(dev);
-			dev->ctrl.admin_q = NULL;
-			return -ENODEV;
-		}
-	} else
-		blk_mq_unquiesce_queue(dev->ctrl.admin_q);
-=======
 	if (blk_mq_alloc_tag_set(set))
 		return -ENOMEM;
 	dev->ctrl.admin_tagset = set;
->>>>>>> origin/linux_6.1.15_upstream
 
 	dev->ctrl.admin_q = blk_mq_init_queue(set);
 	if (IS_ERR(dev->ctrl.admin_q)) {
@@ -3531,8 +3515,6 @@ static const struct pci_device_id nvme_id_table[] = {
 		.driver_data = NVME_QUIRK_NO_DEEPEST_PS, },
 	{ PCI_DEVICE(0x2646, 0x2263),   /* KINGSTON A2000 NVMe SSD  */
 		.driver_data = NVME_QUIRK_NO_DEEPEST_PS, },
-<<<<<<< HEAD
-=======
 	{ PCI_DEVICE(0x2646, 0x5018),   /* KINGSTON OM8SFP4xxxxP OS21012 NVMe SSD */
 		.driver_data = NVME_QUIRK_DISABLE_WRITE_ZEROES, },
 	{ PCI_DEVICE(0x2646, 0x5016),   /* KINGSTON OM3PGP4xxxxP OS21011 NVMe SSD */
@@ -3547,13 +3529,10 @@ static const struct pci_device_id nvme_id_table[] = {
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
 	{ PCI_DEVICE(0x1e4B, 0x1001),   /* MAXIO MAP1001 */
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
->>>>>>> origin/linux_6.1.15_upstream
 	{ PCI_DEVICE(0x1e4B, 0x1002),   /* MAXIO MAP1002 */
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
 	{ PCI_DEVICE(0x1e4B, 0x1202),   /* MAXIO MAP1202 */
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
-<<<<<<< HEAD
-=======
 	{ PCI_DEVICE(0x1cc1, 0x5350),   /* ADATA XPG GAMMIX S50 */
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
 	{ PCI_DEVICE(0x1dbe, 0x5236),   /* ADATA XPG GAMMIX S70 */
@@ -3568,7 +3547,6 @@ static const struct pci_device_id nvme_id_table[] = {
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
 	{ PCI_DEVICE(0x1d97, 0x2269), /* Lexar NM760 */
 		.driver_data = NVME_QUIRK_BOGUS_NID, },
->>>>>>> origin/linux_6.1.15_upstream
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMAZON, 0x0061),
 		.driver_data = NVME_QUIRK_DMA_ADDRESS_BITS_48, },
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMAZON, 0x0065),
@@ -3589,13 +3567,6 @@ static const struct pci_device_id nvme_id_table[] = {
 				NVME_QUIRK_128_BYTES_SQES |
 				NVME_QUIRK_SHARED_TAGS |
 				NVME_QUIRK_SKIP_CID_GEN },
-<<<<<<< HEAD
-	{ PCI_DEVICE(0x144d, 0xa808),   /* Samsung X5 */
-		.driver_data =  NVME_QUIRK_DELAY_BEFORE_CHK_RDY|
-				NVME_QUIRK_NO_DEEPEST_PS |
-				NVME_QUIRK_IGNORE_DEV_SUBNQN, },
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	{ PCI_DEVICE_CLASS(PCI_CLASS_STORAGE_EXPRESS, 0xffffff) },
 	{ 0, }
 };

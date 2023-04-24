@@ -480,15 +480,9 @@ static ssize_t dbgfs_target_ids_write(struct file *file,
 		const char __user *buf, size_t count, loff_t *ppos)
 {
 	struct damon_ctx *ctx = file->private_data;
-<<<<<<< HEAD
-	struct damon_target *t, *next_t;
-	char *kbuf, *nrs;
-	unsigned long *targets;
-=======
 	bool id_is_pid = true;
 	char *kbuf;
 	struct pid **target_pids = NULL;
->>>>>>> origin/linux_6.1.15_upstream
 	ssize_t nr_targets;
 	ssize_t ret;
 
@@ -679,22 +673,8 @@ static ssize_t dbgfs_init_regions_write(struct file *file,
 		goto unlock_out;
 	}
 
-<<<<<<< HEAD
-	/* remove previously set targets */
-	damon_for_each_target_safe(t, next_t, ctx) {
-		if (targetid_is_pid(ctx))
-			put_pid((struct pid *)t->id);
-		damon_destroy_target(t);
-	}
-
-	err = damon_set_targets(ctx, targets, nr_targets);
-	if (err) {
-		if (targetid_is_pid(ctx))
-			dbgfs_put_pids(targets, nr_targets);
-=======
 	err = set_init_regions(ctx, kbuf, ret);
 	if (err)
->>>>>>> origin/linux_6.1.15_upstream
 		ret = err;
 
 unlock_out:
@@ -790,10 +770,6 @@ static void dbgfs_before_terminate(struct damon_ctx *ctx)
 		damon_destroy_target(t);
 	}
 	mutex_unlock(&ctx->kdamond_lock);
-<<<<<<< HEAD
-	return 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct damon_ctx *dbgfs_new_ctx(void)
@@ -1039,14 +1015,6 @@ static ssize_t dbgfs_monitor_on_write(struct file *file,
 	}
 
 	mutex_lock(&damon_dbgfs_lock);
-<<<<<<< HEAD
-	if (!strncmp(kbuf, "on", count))
-		err = damon_start(dbgfs_ctxs, dbgfs_nr_ctxs);
-	else if (!strncmp(kbuf, "off", count))
-		err = damon_stop(dbgfs_ctxs, dbgfs_nr_ctxs);
-	else
-		err = -EINVAL;
-=======
 	if (!strncmp(kbuf, "on", count)) {
 		int i;
 
@@ -1063,7 +1031,6 @@ static ssize_t dbgfs_monitor_on_write(struct file *file,
 	} else {
 		ret = -EINVAL;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 	mutex_unlock(&damon_dbgfs_lock);
 
 	if (!ret)

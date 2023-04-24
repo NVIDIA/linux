@@ -1728,14 +1728,8 @@ static int ca8210_async_xmit_complete(
 			"Link transmission unsuccessful, status = %d\n",
 			status
 		);
-<<<<<<< HEAD
-		if (status != MAC_TRANSACTION_OVERFLOW) {
-			dev_kfree_skb_any(priv->tx_skb);
-			ieee802154_wake_queue(priv->hw);
-=======
 		if (status != IEEE802154_TRANSACTION_OVERFLOW) {
 			ieee802154_xmit_error(priv->hw, priv->tx_skb, status);
->>>>>>> origin/linux_6.1.15_upstream
 			return 0;
 		}
 	}

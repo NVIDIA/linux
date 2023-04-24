@@ -169,11 +169,6 @@ guc_create_parallel(struct intel_engine_cs **engines,
 
 static inline void init_sched_state(struct intel_context *ce)
 {
-<<<<<<< HEAD
-	/* Only should be called from guc_lrc_desc_pin() */
-	atomic_set(&ce->guc_sched_state_no_lock, 0);
-	ce->guc_state.sched_state &= SCHED_STATE_BLOCKED_MASK;
-=======
 	lockdep_assert_held(&ce->guc_state.lock);
 	ce->guc_state.sched_state &= SCHED_STATE_BLOCKED_MASK;
 }
@@ -184,7 +179,6 @@ static bool sched_state_is_init(struct intel_context *ce)
 	/* Kernel contexts can have SCHED_STATE_REGISTERED after suspend. */
 	return !(ce->guc_state.sched_state &
 		 ~(SCHED_STATE_BLOCKED_MASK | SCHED_STATE_REGISTERED));
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static inline bool
@@ -578,8 +572,6 @@ static inline void set_ctx_id_mapping(struct intel_guc *guc, u32 id,
 	xa_unlock_irqrestore(&guc->context_lookup, flags);
 }
 
-<<<<<<< HEAD
-=======
 static inline void clr_ctx_id_mapping(struct intel_guc *guc, u32 id)
 {
 	unsigned long flags;
@@ -598,7 +590,6 @@ static inline void clr_ctx_id_mapping(struct intel_guc *guc, u32 id)
 	xa_unlock_irqrestore(&guc->context_lookup, flags);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void decr_outstanding_submission_g2h(struct intel_guc *guc)
 {
 	if (atomic_dec_and_test(&guc->outstanding_submission_g2h))
@@ -1116,12 +1107,8 @@ static void scrub_guc_desc_for_outstanding_g2h(struct intel_guc *guc)
 			}
 			intel_context_sched_disable_unpin(ce);
 			decr_outstanding_submission_g2h(guc);
-<<<<<<< HEAD
-			spin_lock_irqsave(&ce->guc_state.lock, flags);
-=======
 
 			spin_lock(&ce->guc_state.lock);
->>>>>>> origin/linux_6.1.15_upstream
 			guc_blocked_fence_complete(ce);
 			spin_unlock(&ce->guc_state.lock);
 
@@ -1642,15 +1629,9 @@ __unwind_incomplete_requests(struct intel_context *ce)
 	unsigned long flags;
 
 	spin_lock_irqsave(&sched_engine->lock, flags);
-<<<<<<< HEAD
-	spin_lock(&ce->guc_active.lock);
-	list_for_each_entry_safe_reverse(rq, rn,
-					 &ce->guc_active.requests,
-=======
 	spin_lock(&ce->guc_state.lock);
 	list_for_each_entry_safe_reverse(rq, rn,
 					 &ce->guc_state.requests,
->>>>>>> origin/linux_6.1.15_upstream
 					 sched.link) {
 		if (i915_request_completed(rq))
 			continue;
@@ -1679,46 +1660,20 @@ static void __guc_reset_context(struct intel_context *ce, intel_engine_mask_t st
 	struct i915_request *rq;
 	unsigned long flags;
 	u32 head;
-<<<<<<< HEAD
-	bool skip = false;
-=======
 	int i, number_children = ce->parallel.number_children;
 	struct intel_context *parent = ce;
 
 	GEM_BUG_ON(intel_context_is_child(ce));
->>>>>>> origin/linux_6.1.15_upstream
-
 	intel_context_get(ce);
 
 	/*
 	 * GuC will implicitly mark the context as non-schedulable when it sends
 	 * the reset notification. Make sure our state reflects this change. The
 	 * context will be marked enabled on resubmission.
-<<<<<<< HEAD
-	 *
-	 * XXX: If the context is reset as a result of the request cancellation
-	 * this G2H is received after the schedule disable complete G2H which is
-	 * wrong as this creates a race between the request cancellation code
-	 * re-submitting the context and this G2H handler. This is a bug in the
-	 * GuC but can be worked around in the meantime but converting this to a
-	 * NOP if a pending enable is in flight as this indicates that a request
-	 * cancellation has occurred.
-	 */
-	spin_lock_irqsave(&ce->guc_state.lock, flags);
-	if (likely(!context_pending_enable(ce)))
-		clr_context_enabled(ce);
-	else
-		skip = true;
-	spin_unlock_irqrestore(&ce->guc_state.lock, flags);
-	if (unlikely(skip))
-		goto out_put;
-=======
 	 */
 	spin_lock_irqsave(&ce->guc_state.lock, flags);
 	clr_context_enabled(ce);
 	spin_unlock_irqrestore(&ce->guc_state.lock, flags);
->>>>>>> origin/linux_6.1.15_upstream
-
 	/*
 	 * For each context in the relationship find the hanging request
 	 * resetting each context / request as needed
@@ -1743,12 +1698,6 @@ static void __guc_reset_context(struct intel_context *ce, intel_engine_mask_t st
 		__i915_request_reset(rq, guilty);
 		i915_request_put(rq);
 out_replay:
-<<<<<<< HEAD
-	guc_reset_state(ce, head, stalled);
-	__unwind_incomplete_requests(ce);
-out_put:
-	intel_context_put(ce);
-=======
 		guc_reset_state(ce, head, guilty);
 next_context:
 		if (i != number_children)
@@ -1757,7 +1706,6 @@ next_context:
 
 	__unwind_incomplete_requests(parent);
 	intel_context_put(parent);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 void intel_guc_submission_reset(struct intel_guc *guc, intel_engine_mask_t stalled)
@@ -2716,11 +2664,7 @@ static int try_context_registration(struct intel_context *ce, bool loop)
 		}
 		spin_unlock_irqrestore(&ce->guc_state.lock, flags);
 		if (unlikely(disabled)) {
-<<<<<<< HEAD
-			reset_lrc_desc(guc, desc_idx);
-=======
 			clr_ctx_id_mapping(guc, ctx_id);
->>>>>>> origin/linux_6.1.15_upstream
 			return 0;	/* Will get registered later */
 		}
 
@@ -2729,11 +2673,7 @@ static int try_context_registration(struct intel_context *ce, bool loop)
 		 * context whose guc_id was stolen.
 		 */
 		with_intel_runtime_pm(runtime_pm, wakeref)
-<<<<<<< HEAD
-			ret = deregister_context(ce, ce->guc_id);
-=======
 			ret = deregister_context(ce, ce->guc_id.id);
->>>>>>> origin/linux_6.1.15_upstream
 		if (unlikely(ret == -ENODEV))
 			ret = 0;	/* Will get registered later */
 	} else {
@@ -3001,18 +2941,8 @@ static void guc_context_cancel_request(struct intel_context *ce,
 					true);
 		}
 
-<<<<<<< HEAD
-		/*
-		 * XXX: Racey if context is reset, see comment in
-		 * __guc_reset_context().
-		 */
-		flush_work(&ce_to_guc(ce)->ct.requests.worker);
-
-		guc_context_unblock(ce);
-=======
 		guc_context_unblock(block_context);
 		intel_context_put(ce);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 }
 
@@ -3141,10 +3071,6 @@ static inline void guc_lrc_desc_unpin(struct intel_context *ce)
 	GEM_BUG_ON(ce != __get_context(guc, ce->guc_id.id));
 	GEM_BUG_ON(context_enabled(ce));
 
-<<<<<<< HEAD
-	clr_context_registered(ce);
-	deregister_context(ce, ce->guc_id);
-=======
 	/* Seal race with Reset */
 	spin_lock_irqsave(&ce->guc_state.lock, flags);
 	disabled = submission_disabled(guc);
@@ -3161,7 +3087,6 @@ static inline void guc_lrc_desc_unpin(struct intel_context *ce)
 	}
 
 	deregister_context(ce, ce->guc_id.id);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void __guc_context_destroy(struct intel_context *ce)
@@ -4363,12 +4288,9 @@ g2h_context_lookup(struct intel_guc *guc, u32 ctx_id)
 		return NULL;
 	}
 
-<<<<<<< HEAD
-=======
 	return ce;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 int intel_guc_deregister_done_process_msg(struct intel_guc *guc,
 					  const u32 *msg,
 					  u32 len)
@@ -4526,16 +4448,7 @@ static void guc_handle_context_reset(struct intel_guc *guc,
 {
 	trace_intel_context_reset(ce);
 
-<<<<<<< HEAD
-	/*
-	 * XXX: Racey if request cancellation has occurred, see comment in
-	 * __guc_reset_context().
-	 */
-	if (likely(!intel_context_is_banned(ce) &&
-		   !context_blocked(ce))) {
-=======
 	if (likely(intel_context_is_schedulable(ce))) {
->>>>>>> origin/linux_6.1.15_upstream
 		capture_error_state(guc, ce);
 		guc_context_replay(ce);
 	} else {

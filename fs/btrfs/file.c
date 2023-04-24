@@ -1454,10 +1454,7 @@ static ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)
 	loff_t endbyte;
 	ssize_t err;
 	unsigned int ilock_flags = 0;
-<<<<<<< HEAD
-=======
 	struct iomap_dio *dio;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (iocb->ki_flags & IOCB_NOWAIT)
 		ilock_flags |= BTRFS_ILOCK_TRY;
@@ -1501,40 +1498,6 @@ relock:
 	}
 
 	/*
-<<<<<<< HEAD
-	 * We remove IOCB_DSYNC so that we don't deadlock when iomap_dio_rw()
-	 * calls generic_write_sync() (through iomap_dio_complete()), because
-	 * that results in calling fsync (btrfs_sync_file()) which will try to
-	 * lock the inode in exclusive/write mode.
-	 */
-	if (is_sync_write)
-		iocb->ki_flags &= ~IOCB_DSYNC;
-
-	/*
-	 * The iov_iter can be mapped to the same file range we are writing to.
-	 * If that's the case, then we will deadlock in the iomap code, because
-	 * it first calls our callback btrfs_dio_iomap_begin(), which will create
-	 * an ordered extent, and after that it will fault in the pages that the
-	 * iov_iter refers to. During the fault in we end up in the readahead
-	 * pages code (starting at btrfs_readahead()), which will lock the range,
-	 * find that ordered extent and then wait for it to complete (at
-	 * btrfs_lock_and_flush_ordered_range()), resulting in a deadlock since
-	 * obviously the ordered extent can never complete as we didn't submit
-	 * yet the respective bio(s). This always happens when the buffer is
-	 * memory mapped to the same file range, since the iomap DIO code always
-	 * invalidates pages in the target file range (after starting and waiting
-	 * for any writeback).
-	 *
-	 * So here we disable page faults in the iov_iter and then retry if we
-	 * got -EFAULT, faulting in the pages before the retry.
-	 */
-again:
-	from->nofault = true;
-	err = iomap_dio_rw(iocb, from, &btrfs_dio_iomap_ops, &btrfs_dio_ops,
-			   IOMAP_DIO_PARTIAL, written);
-	from->nofault = false;
-
-=======
 	 * The iov_iter can be mapped to the same file range we are writing to.
 	 * If that's the case, then we will deadlock in the iomap code, because
 	 * it first calls our callback btrfs_dio_iomap_begin(), which will create
@@ -1568,7 +1531,6 @@ again:
 	else
 		err = iomap_dio_complete(dio);
 
->>>>>>> origin/linux_6.1.15_upstream
 	/* No increment (+=) because iomap returns a cumulative value. */
 	if (err > 0)
 		written = err;
@@ -1594,22 +1556,6 @@ again:
 		} else {
 			fault_in_iov_iter_readable(from, left);
 			prev_left = left;
-<<<<<<< HEAD
-			goto again;
-		}
-	}
-
-	btrfs_inode_unlock(inode, ilock_flags);
-
-	/*
-	 * Add back IOCB_DSYNC. Our caller, btrfs_file_write_iter(), will do
-	 * the fsync (call generic_write_sync()).
-	 */
-	if (is_sync_write)
-		iocb->ki_flags |= IOCB_DSYNC;
-
-	/* If 'err' is -ENOTBLK then it means we must fallback to buffered IO. */
-=======
 			goto relock;
 		}
 	}
@@ -1618,7 +1564,6 @@ again:
 	 * If 'err' is -ENOTBLK or we have not written all data, then it means
 	 * we must fallback to buffered IO.
 	 */
->>>>>>> origin/linux_6.1.15_upstream
 	if ((err < 0 && err != -ENOTBLK) || !iov_iter_count(from))
 		goto out;
 
@@ -1657,8 +1602,6 @@ buffered:
 				 endbyte >> PAGE_SHIFT);
 out:
 	return err < 0 ? err : written;
-<<<<<<< HEAD
-=======
 }
 
 static ssize_t btrfs_encoded_write(struct kiocb *iocb, struct iov_iter *from,
@@ -1690,7 +1633,6 @@ static ssize_t btrfs_encoded_write(struct kiocb *iocb, struct iov_iter *from,
 out:
 	btrfs_inode_unlock(inode, 0);
 	return ret;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 ssize_t btrfs_do_write_iter(struct kiocb *iocb, struct iov_iter *from,
@@ -2670,14 +2612,8 @@ static int btrfs_punch_hole(struct file *file, loff_t offset, loff_t len)
 	if (ret)
 		goto out_only_mutex;
 
-<<<<<<< HEAD
-	lockstart = round_up(offset, btrfs_inode_sectorsize(BTRFS_I(inode)));
-	lockend = round_down(offset + len,
-			     btrfs_inode_sectorsize(BTRFS_I(inode))) - 1;
-=======
 	lockstart = round_up(offset, fs_info->sectorsize);
 	lockend = round_down(offset + len, fs_info->sectorsize) - 1;
->>>>>>> origin/linux_6.1.15_upstream
 	same_block = (BTRFS_BYTES_TO_BLKS(fs_info, offset))
 		== (BTRFS_BYTES_TO_BLKS(fs_info, offset + len - 1));
 	/*
@@ -3113,21 +3049,6 @@ static long btrfs_fallocate(struct file *file, int mode,
 
 	if (mode & FALLOC_FL_PUNCH_HOLE)
 		return btrfs_punch_hole(file, offset, len);
-<<<<<<< HEAD
-
-	/*
-	 * Only trigger disk allocation, don't trigger qgroup reserve
-	 *
-	 * For qgroup space, it will be checked later.
-	 */
-	if (!(mode & FALLOC_FL_ZERO_RANGE)) {
-		ret = btrfs_alloc_data_chunk_ondemand(BTRFS_I(inode),
-						      alloc_end - alloc_start);
-		if (ret < 0)
-			return ret;
-	}
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	btrfs_inode_lock(inode, BTRFS_ILOCK_MMAP);
 
@@ -3820,12 +3741,7 @@ again:
 	 */
 	pagefault_disable();
 	to->nofault = true;
-<<<<<<< HEAD
-	ret = iomap_dio_rw(iocb, to, &btrfs_dio_iomap_ops, &btrfs_dio_ops,
-			   IOMAP_DIO_PARTIAL, read);
-=======
 	ret = btrfs_dio_read(iocb, to, read);
->>>>>>> origin/linux_6.1.15_upstream
 	to->nofault = false;
 	pagefault_enable();
 

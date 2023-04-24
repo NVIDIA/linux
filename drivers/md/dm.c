@@ -489,47 +489,6 @@ EXPORT_SYMBOL_GPL(dm_start_time_ns_from_clone);
 static bool bio_is_flush_with_data(struct bio *bio)
 {
 	return ((bio->bi_opf & REQ_PREFLUSH) && bio->bi_iter.bi_size);
-<<<<<<< HEAD
-}
-
-static void dm_io_acct(bool end, struct mapped_device *md, struct bio *bio,
-		       unsigned long start_time, struct dm_stats_aux *stats_aux)
-{
-	bool is_flush_with_data;
-	unsigned int bi_size;
-
-	/* If REQ_PREFLUSH set save any payload but do not account it */
-	is_flush_with_data = bio_is_flush_with_data(bio);
-	if (is_flush_with_data) {
-		bi_size = bio->bi_iter.bi_size;
-		bio->bi_iter.bi_size = 0;
-	}
-
-	if (!end)
-		bio_start_io_acct_time(bio, start_time);
-	else
-		bio_end_io_acct(bio, start_time);
-
-	if (unlikely(dm_stats_used(&md->stats)))
-		dm_stats_account_io(&md->stats, bio_data_dir(bio),
-				    bio->bi_iter.bi_sector, bio_sectors(bio),
-				    end, start_time, stats_aux);
-
-	/* Restore bio's payload so it does get accounted upon requeue */
-	if (is_flush_with_data)
-		bio->bi_iter.bi_size = bi_size;
-}
-
-static void start_io_acct(struct dm_io *io)
-{
-	dm_io_acct(false, io->md, io->orig_bio, io->start_time, &io->stats_aux);
-}
-
-static void end_io_acct(struct mapped_device *md, struct bio *bio,
-			unsigned long start_time, struct dm_stats_aux *stats_aux)
-{
-	dm_io_acct(true, md, bio, start_time, stats_aux);
-=======
 }
 
 static void dm_io_acct(struct dm_io *io, bool end)
@@ -606,7 +565,6 @@ static void dm_start_io_acct(struct dm_io *io, struct bio *clone)
 static void dm_end_io_acct(struct dm_io *io)
 {
 	dm_io_acct(io, true);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct dm_io *alloc_io(struct mapped_device *md, struct bio *bio)
@@ -623,15 +581,10 @@ static struct dm_io *alloc_io(struct mapped_device *md, struct bio *bio)
 
 	io = container_of(tio, struct dm_io, tio);
 	io->magic = DM_IO_MAGIC;
-<<<<<<< HEAD
-	io->status = 0;
-	atomic_set(&io->io_count, 1);
-=======
 	io->status = BLK_STS_OK;
 
 	/* one ref is for submission, the other is for completion */
 	atomic_set(&io->io_count, 2);
->>>>>>> origin/linux_6.1.15_upstream
 	this_cpu_inc(*md->pending_io);
 	io->orig_bio = bio;
 	io->md = md;
@@ -639,14 +592,8 @@ static struct dm_io *alloc_io(struct mapped_device *md, struct bio *bio)
 	io->start_time = jiffies;
 	io->flags = 0;
 
-<<<<<<< HEAD
-	io->start_time = jiffies;
-
-	dm_stats_record_start(&md->stats, &io->stats_aux);
-=======
 	if (static_branch_unlikely(&stats_enabled))
 		dm_stats_record_start(&md->stats, &io->stats_aux);
->>>>>>> origin/linux_6.1.15_upstream
 
 	return io;
 }
@@ -978,24 +925,6 @@ static bool dm_handle_requeue(struct dm_io *io, bool first_stage)
 			bio_clear_polled(bio);
 		}
 
-<<<<<<< HEAD
-		io_error = io->status;
-		start_time = io->start_time;
-		stats_aux = io->stats_aux;
-		free_io(md, io);
-		end_io_acct(md, bio, start_time, &stats_aux);
-		smp_wmb();
-		this_cpu_dec(*md->pending_io);
-
-		/* nudge anyone waiting on suspend queue */
-		if (unlikely(wq_has_sleeper(&md->wait)))
-			wake_up(&md->wait);
-
-		if (io_error == BLK_STS_DM_REQUEUE)
-			return;
-
-		if (bio_is_flush_with_data(bio)) {
-=======
 		/*
 		 * Target requested pushing back the I/O or
 		 * polled IO hit BLK_STS_AGAIN.
@@ -1007,7 +936,6 @@ static bool dm_handle_requeue(struct dm_io *io, bool first_stage)
 			dm_requeue_add_io(io, first_stage);
 			requeued = true;
 		} else {
->>>>>>> origin/linux_6.1.15_upstream
 			/*
 			 * noflush suspend was interrupted or this is
 			 * a write to a zoned target.
@@ -1803,15 +1731,12 @@ static void init_clone_info(struct clone_info *ci, struct mapped_device *md,
 	ci->sector = bio->bi_iter.bi_sector;
 	ci->sector_count = bio_sectors(bio);
 
-<<<<<<< HEAD
-=======
 	/* Shouldn't happen but sector_count was being set to 0 so... */
 	if (static_branch_unlikely(&zoned_enabled) &&
 	    WARN_ON_ONCE(op_is_zone_mgmt(bio_op(bio)) && ci->sector_count))
 		ci->sector_count = 0;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * Entry point to split a bio into clones and submit them to the targets.
  */
@@ -1837,19 +1762,11 @@ static void dm_split_and_process_bio(struct mapped_device *md,
 	init_clone_info(&ci, md, map, bio, is_abnormal);
 	io = ci.io;
 
-<<<<<<< HEAD
-			bio_chain(b, bio);
-			trace_block_split(b, bio->bi_iter.bi_sector);
-			ret = submit_bio_noacct(bio);
-		}
-=======
 	if (bio->bi_opf & REQ_PREFLUSH) {
 		__send_empty_flush(&ci);
 		/* dm_io_complete submits any data associated with flush */
 		goto out;
->>>>>>> origin/linux_6.1.15_upstream
 	}
-	start_io_acct(ci.io);
 
 	error = __split_and_process_bio(&ci);
 	if (error || !ci.sector_count)
@@ -1889,11 +1806,7 @@ static void dm_submit_bio(struct bio *bio)
 	struct dm_table *map;
 	blk_opf_t bio_opf = bio->bi_opf;
 
-<<<<<<< HEAD
-	map = dm_get_live_table(md, &srcu_idx);
-=======
 	map = dm_get_live_table_bio(md, &srcu_idx, bio_opf);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* If suspended, or map not yet available, queue this IO for later */
 	if (unlikely(test_bit(DMF_BLOCK_IO_FOR_SUSPEND, &md->flags)) ||
@@ -2086,11 +1999,6 @@ static void cleanup_mapped_device(struct mapped_device *md)
 		md->pending_io = NULL;
 	}
 
-	if (md->pending_io) {
-		free_percpu(md->pending_io);
-		md->pending_io = NULL;
-	}
-
 	cleanup_srcu_struct(&md->io_barrier);
 
 	mutex_destroy(&md->suspend_lock);
@@ -2175,13 +2083,6 @@ static struct mapped_device *alloc_dev(int minor)
 	md->disk->private_data = md;
 	sprintf(md->disk->disk_name, "dm-%d", minor);
 
-<<<<<<< HEAD
-	if (IS_ENABLED(CONFIG_DAX_DRIVER)) {
-		md->dax_dev = alloc_dax(md, md->disk->disk_name,
-					&dm_dax_ops, 0);
-		if (IS_ERR(md->dax_dev)) {
-			md->dax_dev = NULL;
-=======
 	if (IS_ENABLED(CONFIG_FS_DAX)) {
 		md->dax_dev = alloc_dax(md, &dm_dax_ops);
 		if (IS_ERR(md->dax_dev)) {
@@ -2191,9 +2092,7 @@ static struct mapped_device *alloc_dev(int minor)
 		set_dax_nocache(md->dax_dev);
 		set_dax_nomc(md->dax_dev);
 		if (dax_add_host(md->dax_dev, md->disk))
->>>>>>> origin/linux_6.1.15_upstream
 			goto bad;
-		}
 	}
 
 	format_dev_t(md->name, MKDEV(_major, minor));

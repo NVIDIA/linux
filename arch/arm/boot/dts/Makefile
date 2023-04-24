@@ -1633,7 +1633,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-tyan-s8036.dtb \
 	aspeed-bmc-vegman-n110.dtb \
 	aspeed-bmc-vegman-rx20.dtb \
-<<<<<<< HEAD
 	aspeed-bmc-vegman-sx20.dtb \
 	apseed-bmc-nvidia-dgx.dtb \
 	apseed-bmc-nvidia-dgx-a100-dp.dtb \
@@ -1645,6 +1644,3 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb \
 	aspeed-bmc-nvidia-mgx-p3712.dtb \
 	aspeed-bmc-nvidia-mgx-3809.dtb 
-=======
-	aspeed-bmc-vegman-sx20.dtb
->>>>>>> origin/linux_6.1.15_upstream

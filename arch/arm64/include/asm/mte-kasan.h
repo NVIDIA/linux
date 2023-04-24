@@ -6,10 +6,7 @@
 #define __ASM_MTE_KASAN_H
 
 #include <asm/compiler.h>
-<<<<<<< HEAD
-=======
 #include <asm/cputype.h>
->>>>>>> origin/linux_6.1.15_upstream
 #include <asm/mte-def.h>
 
 #ifndef __ASSEMBLY__

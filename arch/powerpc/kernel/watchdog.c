@@ -181,13 +181,8 @@ static void wd_lockup_ipi(struct pt_regs *regs)
 
 static bool set_cpu_stuck(int cpu)
 {
-<<<<<<< HEAD
-	cpumask_or(&wd_smp_cpus_stuck, &wd_smp_cpus_stuck, cpumask);
-	cpumask_andnot(&wd_smp_cpus_pending, &wd_smp_cpus_pending, cpumask);
-=======
 	cpumask_set_cpu(cpu, &wd_smp_cpus_stuck);
 	cpumask_clear_cpu(cpu, &wd_smp_cpus_pending);
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * See wd_smp_clear_cpu_pending()
 	 */
@@ -307,25 +302,6 @@ static void wd_smp_clear_cpu_pending(int cpu)
 		return;
 	}
 
-<<<<<<< HEAD
-=======
-	/*
-	 * All other updates to wd_smp_cpus_pending are performed under
-	 * wd_smp_lock. All of them are atomic except the case where the
-	 * mask becomes empty and is reset. This will not happen here because
-	 * cpu was tested to be in the bitmap (above), and a CPU only clears
-	 * its own bit. _Except_ in the case where another CPU has detected a
-	 * hard lockup on our CPU and takes us out of the pending mask. So in
-	 * normal operation there will be no race here, no problem.
-	 *
-	 * In the lockup case, this atomic clear-bit vs a store that refills
-	 * other bits in the accessed word wll not be a problem. The bit clear
-	 * is atomic so it will not cause the store to get lost, and the store
-	 * will never set this bit so it will not overwrite the bit clear. The
-	 * only way for a stuck CPU to return to the pending bitmap is to
-	 * become unstuck itself.
-	 */
->>>>>>> origin/linux_6.1.15_upstream
 	cpumask_clear_cpu(cpu, &wd_smp_cpus_pending);
 
 	/*

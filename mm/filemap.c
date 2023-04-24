@@ -2096,11 +2096,7 @@ unsigned find_lock_entries(struct address_space *mapping, pgoff_t start,
 		if (!xa_is_value(folio)) {
 			if (folio->index < start)
 				goto put;
-<<<<<<< HEAD
-			if (page->index + thp_nr_pages(page) - 1 > end)
-=======
 			if (folio->index + folio_nr_pages(folio) - 1 > end)
->>>>>>> origin/linux_6.1.15_upstream
 				goto put;
 			if (!folio_trylock(folio))
 				goto put;
@@ -2381,16 +2377,7 @@ static void filemap_get_read_batch(struct address_space *mapping,
 			break;
 		if (folio_test_readahead(folio))
 			break;
-<<<<<<< HEAD
-		if (PageHead(head)) {
-			xas_set(&xas, head->index + thp_nr_pages(head));
-			/* Handle wrap correctly */
-			if (xas.xa_index - 1 >= max)
-				break;
-		}
-=======
 		xas_advance(&xas, folio->index + folio_nr_pages(folio) - 1);
->>>>>>> origin/linux_6.1.15_upstream
 		continue;
 put_folio:
 		folio_put(folio);
@@ -3754,11 +3741,7 @@ again:
 		 * same page as we're writing to, without it being marked
 		 * up-to-date.
 		 */
-<<<<<<< HEAD
-		if (unlikely(fault_in_iov_iter_readable(i, bytes))) {
-=======
 		if (unlikely(fault_in_iov_iter_readable(i, bytes) == bytes)) {
->>>>>>> origin/linux_6.1.15_upstream
 			status = -EFAULT;
 			break;
 		}

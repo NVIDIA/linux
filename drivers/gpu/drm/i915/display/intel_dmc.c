@@ -547,11 +547,7 @@ static bool dmc_mmio_addr_sanity_check(struct intel_dmc *dmc,
 				       const u32 *mmioaddr, u32 mmio_count,
 				       int header_ver, u8 dmc_id)
 {
-<<<<<<< HEAD
-	struct drm_i915_private *i915 = container_of(dmc, typeof(*i915), dmc);
-=======
 	struct drm_i915_private *i915 = container_of(dmc, typeof(*i915), display.dmc);
->>>>>>> origin/linux_6.1.15_upstream
 	u32 start_range, end_range;
 	int i;
 

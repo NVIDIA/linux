@@ -274,11 +274,7 @@ do {									\
 	__chk_user_ptr(ptr);						\
 									\
 	uaccess_ttbr0_enable();						\
-<<<<<<< HEAD
-	__raw_get_mem("ldtr", __rgu_val, __rgu_ptr, err);		\
-=======
 	__raw_get_mem("ldtr", __rgu_val, __rgu_ptr, err, U);		\
->>>>>>> origin/linux_6.1.15_upstream
 	uaccess_ttbr0_disable();					\
 									\
 	(x) = __rgu_val;						\
@@ -318,11 +314,7 @@ do {									\
 									\
 	__uaccess_enable_tco_async();					\
 	__raw_get_mem("ldr", *((type *)(__gkn_dst)),			\
-<<<<<<< HEAD
-		      (__force type *)(__gkn_src), __gkn_err);		\
-=======
 		      (__force type *)(__gkn_src), __gkn_err, K);	\
->>>>>>> origin/linux_6.1.15_upstream
 	__uaccess_disable_tco_async();					\
 									\
 	if (unlikely(__gkn_err))					\
@@ -370,11 +362,7 @@ do {									\
 	__chk_user_ptr(__rpu_ptr);					\
 									\
 	uaccess_ttbr0_enable();						\
-<<<<<<< HEAD
-	__raw_put_mem("sttr", __rpu_val, __rpu_ptr, err);		\
-=======
 	__raw_put_mem("sttr", __rpu_val, __rpu_ptr, err, U);		\
->>>>>>> origin/linux_6.1.15_upstream
 	uaccess_ttbr0_disable();					\
 } while (0)
 
@@ -412,11 +400,7 @@ do {									\
 									\
 	__uaccess_enable_tco_async();					\
 	__raw_put_mem("str", *((type *)(__pkn_src)),			\
-<<<<<<< HEAD
-		      (__force type *)(__pkn_dst), __pkn_err);		\
-=======
 		      (__force type *)(__pkn_dst), __pkn_err, K);	\
->>>>>>> origin/linux_6.1.15_upstream
 	__uaccess_disable_tco_async();					\
 									\
 	if (unlikely(__pkn_err))					\

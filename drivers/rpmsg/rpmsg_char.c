@@ -431,57 +431,12 @@ int rpmsg_chrdev_eptdev_create(struct rpmsg_device *rpdev, struct device *parent
 	if (IS_ERR(eptdev))
 		return PTR_ERR(eptdev);
 
-<<<<<<< HEAD
-	ida_simple_remove(&rpmsg_ctrl_ida, dev->id);
-	ida_simple_remove(&rpmsg_minor_ida, MINOR(dev->devt));
-	kfree(ctrldev);
-=======
 	return rpmsg_chrdev_eptdev_add(eptdev, chinfo);
->>>>>>> origin/linux_6.1.15_upstream
 }
 EXPORT_SYMBOL(rpmsg_chrdev_eptdev_create);
 
 static int rpmsg_chrdev_probe(struct rpmsg_device *rpdev)
 {
-<<<<<<< HEAD
-	struct rpmsg_ctrldev *ctrldev;
-	struct device *dev;
-	int ret;
-
-	ctrldev = kzalloc(sizeof(*ctrldev), GFP_KERNEL);
-	if (!ctrldev)
-		return -ENOMEM;
-
-	ctrldev->rpdev = rpdev;
-
-	dev = &ctrldev->dev;
-	device_initialize(dev);
-	dev->parent = &rpdev->dev;
-	dev->class = rpmsg_class;
-
-	cdev_init(&ctrldev->cdev, &rpmsg_ctrldev_fops);
-	ctrldev->cdev.owner = THIS_MODULE;
-
-	ret = ida_simple_get(&rpmsg_minor_ida, 0, RPMSG_DEV_MAX, GFP_KERNEL);
-	if (ret < 0)
-		goto free_ctrldev;
-	dev->devt = MKDEV(MAJOR(rpmsg_major), ret);
-
-	ret = ida_simple_get(&rpmsg_ctrl_ida, 0, 0, GFP_KERNEL);
-	if (ret < 0)
-		goto free_minor_ida;
-	dev->id = ret;
-	dev_set_name(&ctrldev->dev, "rpmsg_ctrl%d", ret);
-
-	ret = cdev_device_add(&ctrldev->cdev, &ctrldev->dev);
-	if (ret)
-		goto free_ctrl_ida;
-
-	/* We can now rely on the release function for cleanup */
-	dev->release = rpmsg_ctrldev_release_device;
-
-	dev_set_drvdata(&rpdev->dev, ctrldev);
-=======
 	struct rpmsg_channel_info chinfo;
 	struct rpmsg_eptdev *eptdev;
 	struct device *dev = &rpdev->dev;
@@ -493,7 +448,6 @@ static int rpmsg_chrdev_probe(struct rpmsg_device *rpdev)
 	eptdev = rpmsg_chrdev_eptdev_alloc(rpdev, dev);
 	if (IS_ERR(eptdev))
 		return PTR_ERR(eptdev);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/* Set the default_ept to the rpmsg device endpoint */
 	eptdev->default_ept = rpdev->ept;
@@ -513,14 +467,7 @@ static void rpmsg_chrdev_remove(struct rpmsg_device *rpdev)
 
 	ret = device_for_each_child(&rpdev->dev, NULL, rpmsg_chrdev_eptdev_destroy);
 	if (ret)
-<<<<<<< HEAD
-		dev_warn(&rpdev->dev, "failed to nuke endpoints: %d\n", ret);
-
-	cdev_device_del(&ctrldev->cdev, &ctrldev->dev);
-	put_device(&ctrldev->dev);
-=======
 		dev_warn(&rpdev->dev, "failed to destroy endpoints: %d\n", ret);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct rpmsg_device_id rpmsg_chrdev_id_table[] = {

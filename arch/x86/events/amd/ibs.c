@@ -1206,16 +1206,8 @@ static __init int perf_ibs_pmu_init(struct perf_ibs *perf_ibs, char *name)
 	return ret;
 }
 
-<<<<<<< HEAD
-static __init int perf_event_ibs_init(void)
-{
-	struct attribute **attr = ibs_op_format_attrs;
-	int ret;
-
-=======
 static __init int perf_ibs_fetch_init(void)
 {
->>>>>>> origin/linux_6.1.15_upstream
 	/*
 	 * Some chips fail to reset the fetch count when it is written; instead
 	 * they need a 0-1 transition of IbsFetchEn.
@@ -1226,14 +1218,8 @@ static __init int perf_ibs_fetch_init(void)
 	if (boot_cpu_data.x86 == 0x19 && boot_cpu_data.x86_model < 0x10)
 		perf_ibs_fetch.fetch_ignore_if_zero_rip = 1;
 
-<<<<<<< HEAD
-	ret = perf_ibs_pmu_init(&perf_ibs_fetch, "ibs_fetch");
-	if (ret)
-		return ret;
-=======
 	if (ibs_caps & IBS_CAPS_ZEN4)
 		perf_ibs_fetch.config_mask |= IBS_FETCH_L3MISSONLY;
->>>>>>> origin/linux_6.1.15_upstream
 
 	perf_ibs_fetch.pmu.attr_groups = fetch_attr_groups;
 	perf_ibs_fetch.pmu.attr_update = fetch_attr_update;
@@ -1252,9 +1238,6 @@ static __init int perf_ibs_op_init(void)
 		perf_ibs_op.cnt_mask    |= IBS_OP_MAX_CNT_EXT_MASK;
 	}
 
-<<<<<<< HEAD
-	ret = perf_ibs_pmu_init(&perf_ibs_op, "ibs_op");
-=======
 	if (ibs_caps & IBS_CAPS_ZEN4)
 		perf_ibs_op.config_mask |= IBS_OP_L3MISSONLY;
 
@@ -1273,7 +1256,6 @@ static __init int perf_event_ibs_init(void)
 		return ret;
 
 	ret = perf_ibs_op_init();
->>>>>>> origin/linux_6.1.15_upstream
 	if (ret)
 		goto err_op;
 

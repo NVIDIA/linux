@@ -157,20 +157,12 @@ out_disable_rpm:
 static int rpcif_hb_remove(struct platform_device *pdev)
 {
 	struct rpcif_hyperbus *hyperbus = platform_get_drvdata(pdev);
-<<<<<<< HEAD
-	int error = hyperbus_unregister_device(&hyperbus->hbdev);
-
-	rpcif_disable_rpm(&hyperbus->rpc);
-
-	return error;
-=======
 
 	hyperbus_unregister_device(&hyperbus->hbdev);
 
 	rpcif_disable_rpm(&hyperbus->rpc);
 
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static struct platform_driver rpcif_platform_driver = {

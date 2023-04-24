@@ -321,10 +321,7 @@ struct gs_usb {
 	struct gs_can *canch[GS_MAX_INTF];
 	struct usb_anchor rx_submitted;
 	struct usb_device *udev;
-<<<<<<< HEAD
-=======
 	unsigned int hf_size_rx;
->>>>>>> origin/linux_6.1.15_upstream
 	u8 active_channels;
 };
 
@@ -756,12 +753,9 @@ static netdev_tx_t gs_can_start_xmit(struct sk_buff *skb,
 	hf->channel = dev->channel;
 	hf->flags = 0;
 	hf->reserved = 0;
-<<<<<<< HEAD
-=======
 
 	if (can_is_canfd_skb(skb)) {
 		cfd = (struct canfd_frame *)skb->data;
->>>>>>> origin/linux_6.1.15_upstream
 
 		hf->can_id = cpu_to_le32(cfd->can_id);
 		hf->can_dlc = can_fd_len2dlc(cfd->len);
@@ -847,8 +841,6 @@ static int gs_can_open(struct net_device *netdev)
 	if (rc)
 		return rc;
 
-<<<<<<< HEAD
-=======
 	ctrlmode = dev->can.ctrlmode;
 	if (ctrlmode & CAN_CTRLMODE_FD) {
 		flags |= GS_CAN_MODE_FD;
@@ -864,7 +856,6 @@ static int gs_can_open(struct net_device *netdev)
 			dev->hf_size_tx = struct_size(hf, classic_can, 1);
 	}
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (!parent->active_channels) {
 		for (i = 0; i < GS_MAX_RX_URBS; i++) {
 			struct urb *urb;
@@ -956,13 +947,6 @@ static int gs_can_open(struct net_device *netdev)
 		return rc;
 	}
 
-<<<<<<< HEAD
-	kfree(dm);
-
-	dev->can.state = CAN_STATE_ERROR_ACTIVE;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	parent->active_channels++;
 	if (!(dev->can.ctrlmode & CAN_CTRLMODE_LISTENONLY))
 		netif_start_queue(netdev);
@@ -984,11 +968,7 @@ static int gs_can_close(struct net_device *netdev)
 
 	/* Stop polling */
 	parent->active_channels--;
-<<<<<<< HEAD
-	if (!parent->active_channels)
-=======
 	if (!parent->active_channels) {
->>>>>>> origin/linux_6.1.15_upstream
 		usb_kill_anchored_urbs(&parent->rx_submitted);
 	}
 

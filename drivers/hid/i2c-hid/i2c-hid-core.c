@@ -657,21 +657,11 @@ static int i2c_hid_get_raw_report(struct hid_device *hid,
 	 * not have the report ID that the upper layers expect, so we need
 	 * to stash it the buffer ourselves and adjust the data size.
 	 */
-<<<<<<< HEAD
-	if (!report_number) {
-=======
 	if (!report_id) {
->>>>>>> origin/linux_6.1.15_upstream
 		buf[0] = 0;
 		buf++;
 		count--;
 	}
-<<<<<<< HEAD
-
-	/* +2 bytes to include the size of the reply in the query buffer */
-	ask_count = min(count + 2, (size_t)ihid->bufsize);
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	ret_count = i2c_hid_get_report(ihid,
 			report_type == HID_FEATURE_REPORT ? 0x03 : 0x01,
@@ -680,14 +670,7 @@ static int i2c_hid_get_raw_report(struct hid_device *hid,
 	if (ret_count > 0 && !report_id)
 		ret_count++;
 
-<<<<<<< HEAD
-	if (!report_number)
-		count++;
-
-	return count;
-=======
 	return ret_count;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int i2c_hid_output_raw_report(struct hid_device *hid, u8 report_type,
@@ -710,15 +693,9 @@ static int i2c_hid_output_raw_report(struct hid_device *hid, u8 report_type,
 	 * to i2c_hid_set_or_send_report which takes care of encoding
 	 * everything properly.
 	 */
-<<<<<<< HEAD
-	ret = i2c_hid_set_or_send_report(client,
-				report_type == HID_FEATURE_REPORT ? 0x03 : 0x02,
-				report_id, buf + 1, count - 1, use_data);
-=======
 	ret = i2c_hid_set_or_send_report(ihid,
 				report_type == HID_FEATURE_REPORT ? 0x03 : 0x02,
 				report_id, buf + 1, count - 1, do_set);
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (ret >= 0)
 		ret++; /* add report_id to the number of transferred bytes */

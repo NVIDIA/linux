@@ -684,8 +684,6 @@ static void clk_core_get_boundaries(struct clk_core *core,
 		*max_rate = min(*max_rate, clk_user->max_rate);
 }
 
-<<<<<<< HEAD
-=======
 /*
  * clk_hw_get_rate_range() - returns the clock rate range for a hw clk
  * @hw: the hw clk we want to get the range from
@@ -702,7 +700,6 @@ void clk_hw_get_rate_range(struct clk_hw *hw, unsigned long *min_rate,
 }
 EXPORT_SYMBOL_GPL(clk_hw_get_rate_range);
 
->>>>>>> origin/linux_6.1.15_upstream
 static bool clk_core_check_boundaries(struct clk_core *core,
 				      unsigned long min_rate,
 				      unsigned long max_rate)
@@ -2514,24 +2511,6 @@ static int clk_set_rate_range_nolock(struct clk *clk,
 		ret = -EINVAL;
 		goto out;
 	}
-<<<<<<< HEAD
-
-	rate = clk_core_get_rate_nolock(clk->core);
-	if (rate < min || rate > max) {
-		/*
-		 * FIXME:
-		 * We are in bit of trouble here, current rate is outside the
-		 * the requested range. We are going try to request appropriate
-		 * range boundary but there is a catch. It may fail for the
-		 * usual reason (clock broken, clock protected, etc) but also
-		 * because:
-		 * - round_rate() was not favorable and fell on the wrong
-		 *   side of the boundary
-		 * - the determine_rate() callback does not really check for
-		 *   this corner case when determining the rate
-		 */
-=======
->>>>>>> origin/linux_6.1.15_upstream
 
 	rate = clk->core->req_rate;
 	if (clk->core->flags & CLK_GET_RATE_NOCACHE)
@@ -3650,11 +3629,7 @@ static void clk_core_reparent_orphans_nolock(void)
 			__clk_set_parent_before(orphan, parent);
 			__clk_set_parent_after(orphan, parent, NULL);
 			__clk_recalc_accuracies(orphan);
-<<<<<<< HEAD
-			__clk_recalc_rates(orphan, 0);
-=======
 			__clk_recalc_rates(orphan, true, 0);
->>>>>>> origin/linux_6.1.15_upstream
 
 			/*
 			 * __clk_init_parent() will set the initial req_rate to

@@ -87,11 +87,7 @@ struct imx_mu_priv {
 	struct imx_mu_con_priv  con_priv[IMX_MU_CHANS];
 	const struct imx_mu_dcfg	*dcfg;
 	struct clk		*clk;
-<<<<<<< HEAD
-	int			irq;
-=======
 	int			irq[IMX_MU_CHANS];
->>>>>>> origin/linux_6.1.15_upstream
 	bool			suspend;
 
 	u32 xcr[IMX_MU_xCR_MAX];

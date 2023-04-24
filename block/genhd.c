@@ -424,11 +424,7 @@ int __must_check device_add_disk(struct device *parent, struct gendisk *disk,
 			disk->minors = DISK_MAX_PARTS;
 		}
 		if (disk->first_minor + disk->minors > MINORMASK + 1)
-<<<<<<< HEAD
-			return -EINVAL;
-=======
 			goto out_exit_elevator;
->>>>>>> origin/linux_6.1.15_upstream
 	} else {
 		if (WARN_ON(disk->minors))
 			goto out_exit_elevator;
@@ -1160,9 +1156,6 @@ static void disk_release(struct device *dev)
 	might_sleep();
 	WARN_ON_ONCE(disk_live(disk));
 
-<<<<<<< HEAD
-	blk_mq_cancel_work_sync(disk->queue);
-=======
 	/*
 	 * To undo the all initialization from blk_mq_init_allocated_queue in
 	 * case of a probe failure where add_disk is never called we have to
@@ -1178,7 +1171,6 @@ static void disk_release(struct device *dev)
 	blkcg_exit_disk(disk);
 
 	bioset_exit(&disk->bio_split);
->>>>>>> origin/linux_6.1.15_upstream
 
 	disk_release_events(disk);
 	kfree(disk->random);

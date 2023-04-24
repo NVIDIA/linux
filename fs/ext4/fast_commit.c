@@ -302,20 +302,8 @@ restart:
 		goto restart;
 	}
 
-<<<<<<< HEAD
-/*
- * Mark file system as fast commit ineligible, and record latest
- * ineligible transaction tid. This means until the recorded
- * transaction, commit operation would result in a full jbd2 commit.
- */
-void ext4_fc_mark_ineligible(struct super_block *sb, int reason, handle_t *handle)
-{
-	struct ext4_sb_info *sbi = EXT4_SB(sb);
-	tid_t tid;
-=======
 	if (!list_empty(&ei->i_fc_list))
 		list_del_init(&ei->i_fc_list);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Since this inode is getting removed, let's also remove all FC
@@ -326,25 +314,6 @@ void ext4_fc_mark_ineligible(struct super_block *sb, int reason, handle_t *handl
 		return;
 	}
 
-<<<<<<< HEAD
-	ext4_set_mount_flag(sb, EXT4_MF_FC_INELIGIBLE);
-	if (handle && !IS_ERR(handle))
-		tid = handle->h_transaction->t_tid;
-	else {
-		read_lock(&sbi->s_journal->j_state_lock);
-		tid = sbi->s_journal->j_running_transaction ?
-				sbi->s_journal->j_running_transaction->t_tid : 0;
-		read_unlock(&sbi->s_journal->j_state_lock);
-	}
-	spin_lock(&sbi->s_fc_lock);
-	if (sbi->s_fc_ineligible_tid < tid)
-		sbi->s_fc_ineligible_tid = tid;
-	spin_unlock(&sbi->s_fc_lock);
-	WARN_ON(reason >= EXT4_FC_REASON_MAX);
-	sbi->s_fc_stats.fc_ineligible_reason_count[reason]++;
-}
-
-=======
 	fc_dentry = list_first_entry(&ei->i_fc_dilist, struct ext4_fc_dentry_update, fcd_dilist);
 	WARN_ON(fc_dentry->fcd_op != EXT4_FC_TAG_CREAT);
 	list_del_init(&fc_dentry->fcd_list);
@@ -391,7 +360,6 @@ void ext4_fc_mark_ineligible(struct super_block *sb, int reason, handle_t *handl
 	sbi->s_fc_stats.fc_ineligible_reason_count[reason]++;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * Generic fast commit tracking function. If this is the first time this we are
  * called after a full commit, we initialize fast commit fields and then call
@@ -413,16 +381,6 @@ static int ext4_fc_track_template(
 	tid_t tid = 0;
 	int ret;
 
-<<<<<<< HEAD
-	if (!test_opt2(inode->i_sb, JOURNAL_FAST_COMMIT) ||
-	    (sbi->s_mount_state & EXT4_FC_REPLAY))
-		return -EOPNOTSUPP;
-
-	if (ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE))
-		return -EINVAL;
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	tid = handle->h_transaction->t_tid;
 	mutex_lock(&ei->i_fc_lock);
 	if (tid == ei->i_sync_tid) {
@@ -477,11 +435,7 @@ static int __track_dentry_update(struct inode *inode, void *arg, bool update)
 
 	node = kmem_cache_alloc(ext4_fc_dentry_cachep, GFP_NOFS);
 	if (!node) {
-<<<<<<< HEAD
-		ext4_fc_mark_ineligible(inode->i_sb, EXT4_FC_REASON_NOMEM, NULL);
-=======
 		ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_NOMEM, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 		mutex_lock(&ei->i_fc_lock);
 		return -ENOMEM;
 	}
@@ -493,12 +447,7 @@ static int __track_dentry_update(struct inode *inode, void *arg, bool update)
 		node->fcd_name.name = kmalloc(dentry->d_name.len, GFP_NOFS);
 		if (!node->fcd_name.name) {
 			kmem_cache_free(ext4_fc_dentry_cachep, node);
-<<<<<<< HEAD
-			ext4_fc_mark_ineligible(inode->i_sb,
-				EXT4_FC_REASON_NOMEM, NULL);
-=======
 			ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_NOMEM, NULL);
->>>>>>> origin/linux_6.1.15_upstream
 			mutex_lock(&ei->i_fc_lock);
 			return -ENOMEM;
 		}
@@ -1227,20 +1176,12 @@ out:
 }
 
 static void ext4_fc_update_stats(struct super_block *sb, int status,
-<<<<<<< HEAD
-				 u64 commit_time, int nblks)
-{
-	struct ext4_fc_stats *stats = &EXT4_SB(sb)->s_fc_stats;
-
-	jbd_debug(1, "Fast commit ended with status = %d", status);
-=======
 				 u64 commit_time, int nblks, tid_t commit_tid)
 {
 	struct ext4_fc_stats *stats = &EXT4_SB(sb)->s_fc_stats;
 
 	ext4_debug("Fast commit ended with status = %d for tid %u",
 			status, commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 	if (status == EXT4_FC_STATUS_OK) {
 		stats->fc_num_commits++;
 		stats->fc_numblks += nblks;
@@ -1258,11 +1199,7 @@ static void ext4_fc_update_stats(struct super_block *sb, int status,
 	} else {
 		stats->fc_skipped_commits++;
 	}
-<<<<<<< HEAD
-	trace_ext4_fc_commit_stop(sb, nblks, status);
-=======
 	trace_ext4_fc_commit_stop(sb, nblks, status, commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -1285,12 +1222,7 @@ int ext4_fc_commit(journal_t *journal, tid_t commit_tid)
 
 	trace_ext4_fc_commit_start(sb, commit_tid);
 
-<<<<<<< HEAD
-	if (!test_opt2(sb, JOURNAL_FAST_COMMIT))
-		return jbd2_complete_transaction(journal, commit_tid);
-=======
 	start_time = ktime_get();
->>>>>>> origin/linux_6.1.15_upstream
 
 restart_fc:
 	ret = jbd2_fc_begin_commit(journal, commit_tid);
@@ -1299,24 +1231,16 @@ restart_fc:
 		if (atomic_read(&sbi->s_fc_subtid) <= subtid &&
 			commit_tid > journal->j_commit_sequence)
 			goto restart_fc;
-<<<<<<< HEAD
-		ext4_fc_update_stats(sb, EXT4_FC_STATUS_SKIPPED, 0, 0);
-=======
 		ext4_fc_update_stats(sb, EXT4_FC_STATUS_SKIPPED, 0, 0,
 				commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 		return 0;
 	} else if (ret) {
 		/*
 		 * Commit couldn't start. Just update stats and perform a
 		 * full commit.
 		 */
-<<<<<<< HEAD
-		ext4_fc_update_stats(sb, EXT4_FC_STATUS_FAILED, 0, 0);
-=======
 		ext4_fc_update_stats(sb, EXT4_FC_STATUS_FAILED, 0, 0,
 				commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 		return jbd2_complete_transaction(journal, commit_tid);
 	}
 
@@ -1348,20 +1272,12 @@ restart_fc:
 	 * don't react too strongly to vast changes in the commit time
 	 */
 	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
-<<<<<<< HEAD
-	ext4_fc_update_stats(sb, status, commit_time, nblks);
-=======
 	ext4_fc_update_stats(sb, status, commit_time, nblks, commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 
 fallback:
 	ret = jbd2_fc_end_commit_fallback(journal);
-<<<<<<< HEAD
-	ext4_fc_update_stats(sb, status, 0, 0);
-=======
 	ext4_fc_update_stats(sb, status, 0, 0, commit_tid);
->>>>>>> origin/linux_6.1.15_upstream
 	return ret;
 }
 
@@ -1593,15 +1509,6 @@ static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
 		if (state->fc_modified_inodes[i] == ino)
 			return 0;
 	if (state->fc_modified_inodes_used == state->fc_modified_inodes_size) {
-<<<<<<< HEAD
-		state->fc_modified_inodes = krealloc(
-				state->fc_modified_inodes,
-				sizeof(int) * (state->fc_modified_inodes_size +
-				EXT4_FC_REPLAY_REALLOC_INCREMENT),
-				GFP_KERNEL);
-		if (!state->fc_modified_inodes)
-			return -ENOMEM;
-=======
 		int *fc_modified_inodes;
 
 		fc_modified_inodes = krealloc(state->fc_modified_inodes,
@@ -1611,7 +1518,6 @@ static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
 		if (!fc_modified_inodes)
 			return -ENOMEM;
 		state->fc_modified_inodes = fc_modified_inodes;
->>>>>>> origin/linux_6.1.15_upstream
 		state->fc_modified_inodes_size +=
 			EXT4_FC_REPLAY_REALLOC_INCREMENT;
 	}
@@ -1888,12 +1794,7 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
 			ret = ext4_ext_insert_extent(
 				NULL, inode, &path, &newex, 0);
 			up_write((&EXT4_I(inode)->i_data_sem));
-<<<<<<< HEAD
-			ext4_ext_drop_refs(path);
-			kfree(path);
-=======
 			ext4_free_ext_path(path);
->>>>>>> origin/linux_6.1.15_upstream
 			if (ret)
 				goto out;
 			goto next;

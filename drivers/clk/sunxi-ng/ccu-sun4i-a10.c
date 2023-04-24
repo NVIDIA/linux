@@ -1467,11 +1467,7 @@ static int sun4i_a10_ccu_probe(struct platform_device *pdev)
 	val &= ~GENMASK(7, 6);
 	writel(val | (2 << 6), reg + SUN4I_AHB_REG);
 
-<<<<<<< HEAD
-	of_sunxi_ccu_probe(node, reg, desc);
-=======
 	return devm_sunxi_ccu_probe(&pdev->dev, reg, desc);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct of_device_id sun4i_a10_ccu_ids[] = {

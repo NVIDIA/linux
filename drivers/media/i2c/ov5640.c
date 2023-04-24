@@ -2961,13 +2961,8 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 	/* update format even if code is unchanged, resolution might change */
 	sensor->fmt = *mbus_fmt;
 
-<<<<<<< HEAD
-	__v4l2_ctrl_s_ctrl_int64(sensor->ctrls.pixel_rate,
-				 ov5640_calc_pixel_rate(sensor));
-=======
 	ov5640_update_pixel_rate(sensor);
 
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	mutex_unlock(&sensor->lock);
 	return ret;

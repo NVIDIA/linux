@@ -195,11 +195,6 @@ ltq_dma_init_port(int p, int tx_burst, int rx_burst)
 			LTQ_DMA_PCTRL);
 		break;
 
-<<<<<<< HEAD
-	case DMA_PORT_DEU:
-		ltq_dma_w32((DMA_PCTRL_2W_BURST << DMA_TX_BURST_SHIFT) |
-			(DMA_PCTRL_2W_BURST << DMA_RX_BURST_SHIFT),
-=======
 	default:
 		break;
 	}
@@ -215,7 +210,6 @@ ltq_dma_init_port(int p, int tx_burst, int rx_burst)
 		break;
 	case 2:
 		ltq_dma_w32_mask(0x0c, (DMA_PCTRL_2W_BURST << DMA_RX_BURST_SHIFT),
->>>>>>> origin/linux_6.1.15_upstream
 			LTQ_DMA_PCTRL);
 		break;
 	default:

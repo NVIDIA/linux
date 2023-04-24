@@ -176,20 +176,6 @@ static int plic_set_affinity(struct irq_data *d,
 }
 #endif
 
-<<<<<<< HEAD
-static void plic_irq_eoi(struct irq_data *d)
-{
-	struct plic_handler *handler = this_cpu_ptr(&plic_handlers);
-
-	if (irqd_irq_masked(d)) {
-		plic_irq_unmask(d);
-		writel(d->hwirq, handler->hart_base + CONTEXT_CLAIM);
-		plic_irq_mask(d);
-	} else {
-		writel(d->hwirq, handler->hart_base + CONTEXT_CLAIM);
-	}
-}
-=======
 static struct irq_chip plic_edge_chip = {
 	.name		= "SiFive PLIC",
 	.irq_enable	= plic_irq_enable,
@@ -203,7 +189,6 @@ static struct irq_chip plic_edge_chip = {
 	.irq_set_type	= plic_irq_set_type,
 	.flags		= IRQCHIP_AFFINITY_PRE_STARTUP,
 };
->>>>>>> origin/linux_6.1.15_upstream
 
 static struct irq_chip plic_chip = {
 	.name		= "SiFive PLIC",
@@ -494,9 +479,6 @@ static int __init plic_init(struct device_node *node,
 
 IRQCHIP_DECLARE(sifive_plic, "sifive,plic-1.0.0", plic_init);
 IRQCHIP_DECLARE(riscv_plic0, "riscv,plic0", plic_init); /* for legacy systems */
-<<<<<<< HEAD
-IRQCHIP_DECLARE(thead_c900_plic, "thead,c900-plic", plic_init); /* for firmware driver */
-=======
 
 static int __init plic_edge_init(struct device_node *node,
 				 struct device_node *parent)
@@ -506,4 +488,3 @@ static int __init plic_edge_init(struct device_node *node,
 
 IRQCHIP_DECLARE(andestech_nceplic100, "andestech,nceplic100", plic_edge_init);
 IRQCHIP_DECLARE(thead_c900_plic, "thead,c900-plic", plic_edge_init);
->>>>>>> origin/linux_6.1.15_upstream

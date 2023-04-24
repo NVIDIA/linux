@@ -134,17 +134,12 @@ int nfs_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
 	VM_BUG_ON(iov_iter_count(iter) != PAGE_SIZE);
 
 	if (iov_iter_rw(iter) == READ)
-<<<<<<< HEAD
-		return nfs_file_direct_read(iocb, iter, true);
-	return nfs_file_direct_write(iocb, iter, true);
-=======
 		ret = nfs_file_direct_read(iocb, iter, true);
 	else
 		ret = nfs_file_direct_write(iocb, iter, true);
 	if (ret < 0)
 		return ret;
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
@@ -781,11 +776,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
 	size_t requested_bytes = 0;
 	size_t wsize = max_t(size_t, NFS_SERVER(inode)->wsize, PAGE_SIZE);
 
-<<<<<<< HEAD
-=======
 	trace_nfs_direct_write_schedule_iovec(dreq);
 
->>>>>>> origin/linux_6.1.15_upstream
 	nfs_pageio_init_write(&desc, inode, ioflags, false,
 			      &nfs_direct_write_completion_ops);
 	desc.pg_dreq = dreq;

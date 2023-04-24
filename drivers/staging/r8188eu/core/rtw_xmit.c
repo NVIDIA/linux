@@ -202,11 +202,7 @@ s32	_rtw_init_xmit_priv(struct xmit_priv *pxmitpriv, struct adapter *padapter)
 
 	if (rtw_alloc_hwxmits(padapter)) {
 		res = _FAIL;
-<<<<<<< HEAD
-		goto exit;
-=======
 		goto free_xmit_extbuf;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	rtw_init_hwxmits(pxmitpriv->hwxmits, pxmitpriv->hwxmit_entry);

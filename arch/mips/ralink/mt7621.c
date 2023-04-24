@@ -25,8 +25,6 @@
 #define MT7621_MEM_TEST_PATTERN         0xaa5555aa
 
 static u32 detect_magic __initdata;
-<<<<<<< HEAD
-=======
 static struct ralink_soc_info *soc_info_ptr;
 
 int pcibios_root_bridge_prepare(struct pci_host_bridge *bridge)
@@ -57,7 +55,6 @@ int pcibios_root_bridge_prepare(struct pci_host_bridge *bridge)
 
 	return 0;
 }
->>>>>>> origin/linux_6.1.15_upstream
 
 phys_addr_t mips_cpc_default_phys_base(void)
 {

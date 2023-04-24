@@ -1097,8 +1097,6 @@ void __weak arch_evsel__set_sample_weight(struct evsel *evsel)
 	evsel__set_sample_bit(evsel, WEIGHT);
 }
 
-<<<<<<< HEAD
-=======
 void __weak arch_evsel__fixup_new_cycles(struct perf_event_attr *attr __maybe_unused)
 {
 }
@@ -1108,7 +1106,6 @@ void __weak arch__post_evsel_config(struct evsel *evsel __maybe_unused,
 {
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static void evsel__set_default_freq_period(struct record_opts *opts,
 					   struct perf_event_attr *attr)
 {
@@ -1120,14 +1117,11 @@ static void evsel__set_default_freq_period(struct record_opts *opts,
 	}
 }
 
-<<<<<<< HEAD
-=======
 static bool evsel__is_offcpu_event(struct evsel *evsel)
 {
 	return evsel__is_bpf_output(evsel) && !strcmp(evsel->name, OFFCPU_EVENT);
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * The enable_on_exec/disabled value strategy:
  *

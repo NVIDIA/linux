@@ -340,10 +340,6 @@ static void inode_free_security(struct inode *inode)
 }
 
 struct selinux_mnt_opts {
-<<<<<<< HEAD
-	const char *fscontext, *context, *rootcontext, *defcontext;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u32 fscontext_sid;
 	u32 context_sid;
 	u32 rootcontext_sid;
@@ -599,20 +595,6 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
 	return 0;
 }
 
-<<<<<<< HEAD
-static int parse_sid(struct super_block *sb, const char *s, u32 *sid)
-{
-	int rc = security_context_str_to_sid(&selinux_state, s,
-					     sid, GFP_KERNEL);
-	if (rc)
-		pr_warn("SELinux: security_context_str_to_sid"
-		       "(%s) failed for (dev %s, type %s) errno=%d\n",
-		       s, sb ? sb->s_id : "?", sb ? sb->s_type->name : "?", rc);
-	return rc;
-}
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 /*
  * Allow filesystems with binary mount data to explicitly set mount point
  * labeling information.
@@ -969,12 +951,8 @@ out:
 static int selinux_add_opt(int token, const char *s, void **mnt_opts)
 {
 	struct selinux_mnt_opts *opts = *mnt_opts;
-<<<<<<< HEAD
-	bool is_alloc_opts = false;
-=======
 	u32 *dst_sid;
 	int rc;
->>>>>>> origin/linux_6.1.15_upstream
 
 	if (token == Opt_seclabel)
 		/* eaten and completely ignored */
@@ -1000,60 +978,6 @@ static int selinux_add_opt(int token, const char *s, void **mnt_opts)
 
 	switch (token) {
 	case Opt_context:
-<<<<<<< HEAD
-		if (opts->context || opts->defcontext)
-			goto Einval;
-		opts->context = s;
-		if (selinux_initialized(&selinux_state))
-			parse_sid(NULL, s, &opts->context_sid);
-		break;
-	case Opt_fscontext:
-		if (opts->fscontext)
-			goto Einval;
-		opts->fscontext = s;
-		if (selinux_initialized(&selinux_state))
-			parse_sid(NULL, s, &opts->fscontext_sid);
-		break;
-	case Opt_rootcontext:
-		if (opts->rootcontext)
-			goto Einval;
-		opts->rootcontext = s;
-		if (selinux_initialized(&selinux_state))
-			parse_sid(NULL, s, &opts->rootcontext_sid);
-		break;
-	case Opt_defcontext:
-		if (opts->context || opts->defcontext)
-			goto Einval;
-		opts->defcontext = s;
-		if (selinux_initialized(&selinux_state))
-			parse_sid(NULL, s, &opts->defcontext_sid);
-		break;
-	}
-	return 0;
-Einval:
-	if (is_alloc_opts) {
-		kfree(opts);
-		*mnt_opts = NULL;
-	}
-	pr_warn(SEL_MOUNT_FAIL_MSG);
-	return -EINVAL;
-}
-
-static int selinux_add_mnt_opt(const char *option, const char *val, int len,
-			       void **mnt_opts)
-{
-	int token = Opt_error;
-	int rc, i;
-
-	for (i = 0; i < ARRAY_SIZE(tokens); i++) {
-		if (strcmp(option, tokens[i].name) == 0) {
-			token = tokens[i].opt;
-			break;
-		}
-	}
-
-	if (token == Opt_error)
-=======
 		if (opts->context_sid || opts->defcontext_sid)
 			goto err;
 		dst_sid = &opts->context_sid;
@@ -1075,7 +999,6 @@ static int selinux_add_mnt_opt(const char *option, const char *val, int len,
 		break;
 	default:
 		WARN_ON(1);
->>>>>>> origin/linux_6.1.15_upstream
 		return -EINVAL;
 	}
 	rc = security_context_str_to_sid(&selinux_state, s, dst_sid, GFP_KERNEL);
@@ -2728,24 +2651,6 @@ static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
 	if (!opts)
 		return (sbsec->flags & SE_MNTMASK) ? 1 : 0;
 
-<<<<<<< HEAD
-	if (opts->fscontext) {
-		if (opts->fscontext_sid == SECSID_NULL)
-			return 1;
-		else if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid,
-				       opts->fscontext_sid))
-			return 1;
-	}
-	if (opts->context) {
-		if (opts->context_sid == SECSID_NULL)
-			return 1;
-		else if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid,
-				       opts->context_sid))
-			return 1;
-	}
-	if (opts->rootcontext) {
-		if (opts->rootcontext_sid == SECSID_NULL)
-=======
 	if (opts->fscontext_sid) {
 		if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid,
 			       opts->fscontext_sid))
@@ -2762,7 +2667,6 @@ static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
 		root_isec = backing_inode_security(sb->s_root);
 		if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid,
 			       opts->rootcontext_sid))
->>>>>>> origin/linux_6.1.15_upstream
 			return 1;
 		else {
 			struct inode_security_struct *root_isec;
@@ -2773,17 +2677,9 @@ static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
 				return 1;
 		}
 	}
-<<<<<<< HEAD
-	if (opts->defcontext) {
-		if (opts->defcontext_sid == SECSID_NULL)
-			return 1;
-		else if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid,
-				       opts->defcontext_sid))
-=======
 	if (opts->defcontext_sid) {
 		if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid,
 			       opts->defcontext_sid))
->>>>>>> origin/linux_6.1.15_upstream
 			return 1;
 	}
 	return 0;
@@ -2913,15 +2809,7 @@ static int selinux_fs_context_parse_param(struct fs_context *fc,
 	if (opt < 0)
 		return opt;
 
-<<<<<<< HEAD
-	rc = selinux_add_opt(opt, param->string, &fc->security);
-	if (!rc)
-		param->string = NULL;
-
-	return rc;
-=======
 	return selinux_add_opt(opt, param->string, &fc->security);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /* inode security operations */
@@ -5854,10 +5742,6 @@ static unsigned int selinux_ip_postroute_compat(struct sk_buff *skb,
 	struct sk_security_struct *sksec;
 	struct common_audit_data ad;
 	struct lsm_network_audit net = {0,};
-<<<<<<< HEAD
-	char *addrp;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	u8 proto = 0;
 
 	sk = skb_to_full_sk(skb);

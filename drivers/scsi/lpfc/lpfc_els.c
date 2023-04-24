@@ -1028,14 +1028,8 @@ stop_rr_fcf_flogi:
 		lpfc_printf_vlog(vport, KERN_WARNING, LOG_TRACE_EVENT,
 				 "0150 FLOGI failure Status:x%x/x%x "
 				 "xri x%x TMO:x%x refcnt %d\n",
-<<<<<<< HEAD
-				 irsp->ulpStatus, irsp->un.ulpWord[4],
-				 cmdiocb->sli4_xritag, irsp->ulpTimeout,
-				 kref_read(&ndlp->kref));
-=======
 				 ulp_status, ulp_word4, cmdiocb->sli4_xritag,
 				 tmo, kref_read(&ndlp->kref));
->>>>>>> origin/linux_6.1.15_upstream
 
 		/* If this is not a loop open failure, bail out */
 		if (!(ulp_status == IOSTAT_LOCAL_REJECT &&
@@ -1102,11 +1096,7 @@ stop_rr_fcf_flogi:
 
 	/* FLOGI completes successfully */
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_ELS,
-<<<<<<< HEAD
-			 "0101 FLOGI completes successfully, I/O tag:x%x, "
-=======
 			 "0101 FLOGI completes successfully, I/O tag:x%x "
->>>>>>> origin/linux_6.1.15_upstream
 			 "xri x%x Data: x%x x%x x%x x%x x%x x%x x%x %d\n",
 			 cmdiocb->iotag, cmdiocb->sli4_xritag,
 			 ulp_word4, sp->cmn.e_d_tov,
@@ -1192,11 +1182,7 @@ flogifail:
 	phba->fcf.fcf_flag &= ~FCF_DISCOVERY;
 	spin_unlock_irq(&phba->hbalock);
 
-<<<<<<< HEAD
-	if (!lpfc_error_lost_link(irsp)) {
-=======
 	if (!lpfc_error_lost_link(ulp_status, ulp_word4)) {
->>>>>>> origin/linux_6.1.15_upstream
 		/* FLOGI failed, so just use loop map to make discovery list */
 		lpfc_disc_list_loopmap(vport);
 
@@ -7194,14 +7180,8 @@ lpfc_get_rdp_info(struct lpfc_hba *phba, struct lpfc_rdp_context *rdp_context)
 	mbox->ctx_ndlp = (struct lpfc_rdp_context *)rdp_context;
 	rc = lpfc_sli_issue_mbox(phba, mbox, MBX_NOWAIT);
 	if (rc == MBX_NOT_FINISHED) {
-<<<<<<< HEAD
-		mp = (struct lpfc_dmabuf *)mbox->ctx_buf;
-		lpfc_mbuf_free(phba, mp->virt, mp->phys);
-		goto issue_mbox_fail;
-=======
 		lpfc_mbox_rsrc_cleanup(phba, mbox, MBOX_THD_UNLOCKED);
 		return 1;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	return 0;

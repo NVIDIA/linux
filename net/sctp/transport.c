@@ -386,10 +386,7 @@ static bool sctp_transport_pl_toobig(struct sctp_transport *t, u32 pmtu)
 			t->pl.probe_high = 0;
 			t->pl.pmtu = SCTP_BASE_PLPMTU;
 			t->pathmtu = t->pl.pmtu + sctp_transport_pl_hlen(t);
-<<<<<<< HEAD
-=======
 			sctp_transport_reset_probe_timer(t);
->>>>>>> origin/linux_6.1.15_upstream
 			return true;
 		}
 	}

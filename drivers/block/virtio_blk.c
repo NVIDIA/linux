@@ -1054,37 +1054,14 @@ static int virtblk_probe(struct virtio_device *vdev)
 
 	if (virtio_has_feature(vdev, VIRTIO_BLK_F_DISCARD)) {
 		virtio_cread(vdev, struct virtio_blk_config,
-<<<<<<< HEAD
-			     discard_sector_alignment, &v);
-		if (v)
-			q->limits.discard_granularity = v << SECTOR_SHIFT;
-		else
-			q->limits.discard_granularity = blk_size;
-=======
 			     discard_sector_alignment, &discard_granularity);
->>>>>>> origin/linux_6.1.15_upstream
 
 		virtio_cread(vdev, struct virtio_blk_config,
 			     max_discard_sectors, &v);
 		blk_queue_max_discard_sectors(q, v ? v : UINT_MAX);
 
 		virtio_cread(vdev, struct virtio_blk_config, max_discard_seg,
-<<<<<<< HEAD
-			     &v);
-
-		/*
-		 * max_discard_seg == 0 is out of spec but we always
-		 * handled it.
-		 */
-		if (!v)
-			v = sg_elems - 2;
-		blk_queue_max_discard_segments(q,
-					       min(v, MAX_DISCARD_SEGMENTS));
-
-		blk_queue_flag_set(QUEUE_FLAG_DISCARD, q);
-=======
 			     &max_discard_segs);
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (virtio_has_feature(vdev, VIRTIO_BLK_F_WRITE_ZEROES)) {

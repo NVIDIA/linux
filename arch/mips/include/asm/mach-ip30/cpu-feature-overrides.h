@@ -28,10 +28,6 @@
 #define cpu_has_4kex			1
 #define cpu_has_3k_cache		0
 #define cpu_has_4k_cache		1
-<<<<<<< HEAD
-#define cpu_has_tx39_cache		0
-=======
->>>>>>> origin/linux_6.1.15_upstream
 #define cpu_has_nofpuex			0
 #define cpu_has_32fpr			1
 #define cpu_has_counter			1

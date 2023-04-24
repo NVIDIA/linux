@@ -58,11 +58,7 @@ bool is_ses_using_iface(struct cifs_ses *ses, struct cifs_server_iface *iface)
 
 	spin_lock(&ses->chan_lock);
 	for (i = 0; i < ses->chan_count; i++) {
-<<<<<<< HEAD
-		if (is_server_using_iface(ses->chans[i].server, iface)) {
-=======
 		if (ses->chans[i].iface == iface) {
->>>>>>> origin/linux_6.1.15_upstream
 			spin_unlock(&ses->chan_lock);
 			return true;
 		}
@@ -165,10 +161,6 @@ int cifs_try_adding_channels(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses)
 {
 	int old_chan_count, new_chan_count;
 	int left;
-<<<<<<< HEAD
-	int i = 0;
-=======
->>>>>>> origin/linux_6.1.15_upstream
 	int rc = 0;
 	int tries = 0;
 	struct cifs_server_iface *iface = NULL, *niface = NULL;
@@ -201,36 +193,10 @@ int cifs_try_adding_channels(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses)
 	if (!(ses->server->capabilities & SMB2_GLOBAL_CAP_MULTI_CHANNEL)) {
 		ses->chan_max = 1;
 		spin_unlock(&ses->chan_lock);
-<<<<<<< HEAD
-		return 0;
-	}
-	spin_unlock(&ses->chan_lock);
-
-	/*
-	 * Make a copy of the iface list at the time and use that
-	 * instead so as to not hold the iface spinlock for opening
-	 * channels
-	 */
-	spin_lock(&ses->iface_lock);
-	iface_count = ses->iface_count;
-	if (iface_count <= 0) {
-		spin_unlock(&ses->iface_lock);
-		cifs_dbg(VFS, "no iface list available to open channels\n");
-		return 0;
-	}
-	ifaces = kmemdup(ses->iface_list, iface_count*sizeof(*ifaces),
-			 GFP_ATOMIC);
-	if (!ifaces) {
-		spin_unlock(&ses->iface_lock);
-		return 0;
-	}
-	spin_unlock(&ses->iface_lock);
-=======
 		cifs_dbg(VFS, "server %s does not support multichannel\n", ses->server->hostname);
 		return 0;
 	}
 	spin_unlock(&ses->chan_lock);
->>>>>>> origin/linux_6.1.15_upstream
 
 	/*
 	 * Keep connecting to same, fastest, iface for all channels as
@@ -291,10 +257,6 @@ int cifs_try_adding_channels(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses)
 		new_chan_count++;
 	}
 
-<<<<<<< HEAD
-	kfree(ifaces);
-	return new_chan_count - old_chan_count;
-=======
 	return new_chan_count - old_chan_count;
 }
 
@@ -479,18 +441,8 @@ cifs_ses_add_channel(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses,
 	       SMB2_CLIENT_GUID_SIZE);
 	ctx.use_client_guid = true;
 
-<<<<<<< HEAD
-	chan_server = cifs_get_tcp_session(&ctx);
-
-	mutex_lock(&ses->session_mutex);
-	spin_lock(&ses->chan_lock);
-	chan = ses->binding_chan = &ses->chans[ses->chan_count];
-=======
-	chan_server = cifs_get_tcp_session(&ctx, ses->server);
-
 	spin_lock(&ses->chan_lock);
 	chan = &ses->chans[ses->chan_count];
->>>>>>> origin/linux_6.1.15_upstream
 	chan->server = chan_server;
 	if (IS_ERR(chan->server)) {
 		rc = PTR_ERR(chan->server);
@@ -498,20 +450,12 @@ cifs_ses_add_channel(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses,
 		spin_unlock(&ses->chan_lock);
 		goto out;
 	}
-<<<<<<< HEAD
-	spin_unlock(&ses->chan_lock);
-
-	spin_lock(&cifs_tcp_ses_lock);
-	chan->server->is_channel = true;
-	spin_unlock(&cifs_tcp_ses_lock);
-=======
 	chan->iface = iface;
 	ses->chan_count++;
 	atomic_set(&ses->chan_seq, 0);
 
 	/* Mark this channel as needing connect/setup */
 	cifs_chan_set_need_reconnect(ses, chan->server);
->>>>>>> origin/linux_6.1.15_upstream
 
 	spin_unlock(&ses->chan_lock);
 
@@ -534,14 +478,6 @@ cifs_ses_add_channel(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses,
 
 	mutex_unlock(&ses->session_mutex);
 
-<<<<<<< HEAD
-	spin_lock(&ses->chan_lock);
-	ses->chan_count++;
-	atomic_set(&ses->chan_seq, 0);
-	spin_unlock(&ses->chan_lock);
-
-=======
->>>>>>> origin/linux_6.1.15_upstream
 out:
 	if (rc && chan->server) {
 		/*

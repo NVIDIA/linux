@@ -562,14 +562,9 @@ static int bq24190_vbus_is_enabled(struct regulator_dev *dev)
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	return (val == BQ24190_REG_POC_CHG_CONFIG_OTG ||
-		val == BQ24190_REG_POC_CHG_CONFIG_OTG_ALT);
-=======
 	bdi->otg_vbus_enabled = (val == BQ24190_REG_POC_CHG_CONFIG_OTG ||
 				 val == BQ24190_REG_POC_CHG_CONFIG_OTG_ALT);
 	return bdi->otg_vbus_enabled;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static const struct regulator_ops bq24190_vbus_ops = {

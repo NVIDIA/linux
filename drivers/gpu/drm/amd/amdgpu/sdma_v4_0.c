@@ -1960,15 +1960,10 @@ static int sdma_v4_0_suspend(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
 	/* SMU saves SDMA state for us */
-<<<<<<< HEAD
-	if (adev->in_s0ix)
-		return 0;
-=======
 	if (adev->in_s0ix) {
 		sdma_v4_0_gfx_enable(adev, false);
 		return 0;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return sdma_v4_0_hw_fini(adev);
 }
@@ -1978,17 +1973,12 @@ static int sdma_v4_0_resume(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
 	/* SMU restores SDMA state for us */
-<<<<<<< HEAD
-	if (adev->in_s0ix)
-		return 0;
-=======
 	if (adev->in_s0ix) {
 		sdma_v4_0_enable(adev, true);
 		sdma_v4_0_gfx_enable(adev, true);
 		amdgpu_ttm_set_buffer_funcs_status(adev, true);
 		return 0;
 	}
->>>>>>> origin/linux_6.1.15_upstream
 
 	return sdma_v4_0_hw_init(adev);
 }

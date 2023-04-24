@@ -16,12 +16,7 @@ SYNOPSIS
 
 	**bpftool** [*OPTIONS*] **gen** *COMMAND*
 
-<<<<<<< HEAD
-	*OPTIONS* := { { **-j** | **--json** } [{ **-p** | **--pretty** }] | { **-d** | **--debug** } |
-	{ **-L** | **--use-loader** } }
-=======
 	*OPTIONS* := { |COMMON_OPTIONS| | { **-L** | **--use-loader** } }
->>>>>>> origin/linux_6.1.15_upstream
 
 	*COMMAND* := { **object** | **skeleton** | **help** }
 

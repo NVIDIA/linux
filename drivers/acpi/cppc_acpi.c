@@ -424,12 +424,9 @@ bool acpi_cpc_valid(void)
 	struct cpc_desc *cpc_ptr;
 	int cpu;
 
-<<<<<<< HEAD
-=======
 	if (acpi_disabled)
 		return false;
 
->>>>>>> origin/linux_6.1.15_upstream
 	for_each_present_cpu(cpu) {
 		cpc_ptr = per_cpu(cpc_desc_ptr, cpu);
 		if (!cpc_ptr)

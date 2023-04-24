@@ -1428,17 +1428,10 @@ static void test_task_vma_common(struct bpf_iter_attach_opts *opts)
 	len = 0;
 	while (len < CMP_BUFFER_SIZE) {
 		err = read_fd_into_buffer(iter_fd, task_vma_output + len,
-<<<<<<< HEAD
-					  min(read_size, CMP_BUFFER_SIZE - len));
-		if (!err)
-			break;
-		if (CHECK(err < 0, "read_iter_fd", "read_iter_fd failed\n"))
-=======
 					  MIN(read_size, CMP_BUFFER_SIZE - len));
 		if (!err)
 			break;
 		if (!ASSERT_GE(err, 0, "read_iter_fd"))
->>>>>>> origin/linux_6.1.15_upstream
 			goto out;
 		len += err;
 	}

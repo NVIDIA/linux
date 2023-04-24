@@ -192,11 +192,7 @@ int bpf_jit_emit_func_call_rel(u32 *image, struct codegen_context *ctx, u64 func
 	s32 rel = (s32)func - (s32)(image + ctx->idx);
 
 	if (image && rel < 0x2000000 && rel >= -0x2000000) {
-<<<<<<< HEAD
-		PPC_BL_ABS(func);
-=======
 		PPC_BL(func);
->>>>>>> origin/linux_6.1.15_upstream
 		EMIT(PPC_RAW_NOP());
 		EMIT(PPC_RAW_NOP());
 		EMIT(PPC_RAW_NOP());

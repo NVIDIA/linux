@@ -306,8 +306,6 @@ static void nft_exthdr_tcp_set_eval(const struct nft_expr *expr,
 	return;
 err:
 	regs->verdict.code = NFT_BREAK;
-<<<<<<< HEAD
-=======
 }
 
 static void nft_exthdr_tcp_strip_eval(const struct nft_expr *expr,
@@ -365,7 +363,6 @@ err:
 drop:
 	/* can't remove, no choice but to drop */
 	regs->verdict.code = NF_DROP;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static void nft_exthdr_sctp_eval(const struct nft_expr *expr,

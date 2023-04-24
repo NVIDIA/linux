@@ -159,10 +159,7 @@ struct landlock_path_beneath_attr {
 #define LANDLOCK_ACCESS_FS_MAKE_FIFO			(1ULL << 10)
 #define LANDLOCK_ACCESS_FS_MAKE_BLOCK			(1ULL << 11)
 #define LANDLOCK_ACCESS_FS_MAKE_SYM			(1ULL << 12)
-<<<<<<< HEAD
-=======
 #define LANDLOCK_ACCESS_FS_REFER			(1ULL << 13)
->>>>>>> origin/linux_6.1.15_upstream
 /* clang-format on */
 
 #endif /* _UAPI_LINUX_LANDLOCK_H */
