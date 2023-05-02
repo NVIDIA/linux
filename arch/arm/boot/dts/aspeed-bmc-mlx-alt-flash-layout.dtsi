@@ -6,12 +6,12 @@ partitions {
 	#size-cells = <1>;
 
 	alt-u-boot@0 {
-		reg = <0x0 0x60000>; //384KB
+		reg = <0x0 0x60000>;
 		label = "alt-u-boot";
 	};
 
 	alt-u-boot-env@60000 {
-		reg = <0x60000 0x10000>; // 64KB
+		reg = <0x60000 0x10000>;
 		label = "alt-u-boot-env";
 	};
 };
