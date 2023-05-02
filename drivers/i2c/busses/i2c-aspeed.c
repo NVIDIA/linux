@@ -526,7 +526,8 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	if (bus->slave_state[0] != ASPEED_I2C_SLAVE_INACTIVE ||
-		bus->slave_state[1] != ASPEED_I2C_SLAVE_INACTIVE)
+		bus->slave_state[1] != ASPEED_I2C_SLAVE_INACTIVE ||
+		bus->slave_state[2] != ASPEED_I2C_SLAVE_INACTIVE)
 		return -ETIMEDOUT;
 #endif /* CONFIG_I2C_SLAVE */
 
