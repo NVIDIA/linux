@@ -612,7 +612,7 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
 	addr_reg_val &= ~dev_add_mask;
 	addr_reg_val |= en_slave_dev_add2;
-	shift = en_slave_dev_add2 ? ASPEED_I2CD_DEV_ADDR2_SHIFT : ASPEED_I2CD_DEV_ADDR1_SHIFT;
+	shift = ffs(dev_add_mask) - 1;
 	addr_reg_val |= ((slave_addr << shift) & dev_add_mask);
 	writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
 
