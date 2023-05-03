@@ -117,7 +117,9 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 
 	slave = bus->slave[idx];
 
-	idx = (irq_status & ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORH) ? 1 : 0;
+	idx = (irq_status >> bus->slave_addr_ind_offset) & bus->slave_addr_ind_mask;
+	irq_handled |= (bus->slave_addr_ind & irq_status);
+
 	slave = bus->slave[idx];
 
 	if (!slave)
@@ -156,11 +158,6 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	}
 
 	command = readl(bus->base + ASPEED_I2C_CMD_REG);
-
-	if (idx)
-		irq_handled |= ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORH;
-	else
-		irq_handled |= ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORL;
 
 	/* Slave was requested, restart state machine. */
 	if (irq_status & ASPEED_I2CD_INTR_SLAVE_MATCH) {
@@ -590,7 +587,7 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 	irq_handled = aspeed_i2c_master_irq(bus, irq_remaining);
 #endif /* CONFIG_I2C_SLAVE */
 
-	irq_remaining &= ~irq_handled;
+	irq_remaining &= ~(irq_handled | bus->slave_addr_ind);
 	if (irq_remaining)
 		dev_err(bus->dev,
 			"irq handled != irq. expected 0x%08x, but was 0x%08x irq_remaining:0x%08x\n",
@@ -721,13 +718,13 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 				u32 dev_add_mask, u32 en_slave_dev_add2)
 {
 	u32 addr_reg_val, func_ctrl_reg_val;
-	u8 shift = ASPEED_I2CD_DEV_ADDR1_SHIFT;
+	u8 shift;
 
 	/* Set slave device address 1 or 2 */
 	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
 	addr_reg_val &= ~dev_add_mask;
 	addr_reg_val |= en_slave_dev_add2;
-	shift = ffs(dev_add_mask) - 1;
+	shift = en_slave_dev_add2 ? ASPEED_I2CD_DEV_ADDR2_SHIFT : ASPEED_I2CD_DEV_ADDR1_SHIFT;
 	addr_reg_val |= ((slave_addr << shift) & dev_add_mask);
 	writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
 
@@ -761,7 +758,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 
 	if (id == 0) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR1_MASK;
-		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR1;
+		en_slave_dev_add2 = 0;
 	} else if (id == 1) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR2_MASK;
 		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR2;
@@ -799,35 +796,27 @@ static int aspeed_i2c_unreg_slave(struct i2c_client *client)
 	}
 
 	WARN_ON(!bus->slave[id]);
+	/* for 2nd or 3rd slaves disable slave address 2 or 3 accordingly */
+	if (id == 1) {
+		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR2;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	} else if (id == 2) {
+		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR3;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
 
-	if ((id == 1) && (bus->slave[0])) {
-		/*
-		 * Both slave[0] and slave[1] are registered and we want to
-		 * unregister slave[1], so disable slave device address 2,
-		 */
-		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
-		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR2;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
-	} else if ((id == 0) && !bus->slave[1]) {
-		/* If only slave[0] is registered, turn off slave mode. */
-		func_ctrl_reg_val = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
-		func_ctrl_reg_val &= ~ASPEED_I2CD_SLAVE_EN;
-		writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
-	} else if ((id == 1) && !bus->slave[0]) {
-		/*
-		 * If only slave[1] is registered, disable slave device address 2
-		 * and turn off slave mode.
-		 */
-		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
-		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR2;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	/* if no other slave is registered turn off slave mode. */
+	if (!bus->slave[(id + 1) % ASPEED_I2C_MAX_SLAVE] &&
+	    !bus->slave[(id + 2) % ASPEED_I2C_MAX_SLAVE]) {
 
 		func_ctrl_reg_val = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
 		func_ctrl_reg_val &= ~ASPEED_I2CD_SLAVE_EN;
 		writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
 	}
 	/*
-	 * If both slave[0] and slave[1] are registered and we want to unregister
+	 * If more than one registered slave and we want to unregister
 	 * slave[0], leave ASPEED_I2C_FUN_CTRL_REG and ASPEED_I2C_DEV_ADDR_REG as they
 	 * are.
 	 */
@@ -989,7 +978,10 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 				ASPEED_I2CD_DEV_ADDR3_MASK,
 				ASPEED_I2CD_EN_SLAVE_DEV_ADDR3);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 90eee9be0412 (adding support for aspeed2600 multi slave mode)
 #endif /* CONFIG_I2C_SLAVE */
 
 	/* Set interrupt generation of I2C controller */
