@@ -43,7 +43,7 @@
     "IOM0_OVT_WARN_L-I",
 
     /*G0-G7*/
-    "", "", "", "", "", "", "", "",
+    "", "", "SCM_FPGA_JTAG_SEL", "", "", "", "", "",
 
     /*H0-H7*/
     "FPGA_RSVD_FFU4-I/O",

@@ -371,6 +371,11 @@
     status = "okay";
 };
 
+&jtag0 {
+    mux-gpios = <&gpio0 50 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    status = "okay";
+};
+
 &jtag1 {
     mux-gpios = <&gpio0 126 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
     status = "okay";
