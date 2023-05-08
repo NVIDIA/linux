@@ -74,6 +74,17 @@
     };
 };
 
+&spi1raw {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+    spidev@0 {
+        spi-max-frequency = <25000000>;
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
 &spi2 {
     status = "okay";
     pinctrl-names = "default";
