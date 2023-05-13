@@ -14,7 +14,6 @@
 #include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/regmap.h>
-#include <linux/reset.h>
 #include <linux/sched/signal.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
@@ -27,9 +26,7 @@ struct aspeed_espi {
 	struct regmap		*map;
 	struct clk		*clk;
 	struct device		*dev;
-	struct reset_control	*reset;
 	int			irq;
-	int			rst_irq;
 
 	/* for PLTRST_N signal monitoring interface */
 	struct miscdevice	pltrstn_miscdev;
@@ -146,6 +143,20 @@ static void aspeed_espi_boot_ack(struct aspeed_espi *priv)
 	}
 }
 
+static void aspeed_espi_config_irq(struct aspeed_espi *priv)
+{
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T0, ASPEED_ESPI_SYSEVT_INT_T0_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T1, ASPEED_ESPI_SYSEVT_INT_T1_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T2, ASPEED_ESPI_SYSEVT_INT_T2_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_EN, 0xFFFFFFFF);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T0, ASPEED_ESPI_SYSEVT1_INT_T0_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T1, ASPEED_ESPI_SYSEVT1_INT_T1_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T2, ASPEED_ESPI_SYSEVT1_INT_T2_MASK);
+	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_EN, ASPEED_ESPI_SYSEVT1_INT_MASK);
+	regmap_write_bits(priv->map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_MASK,
+			  ASPEED_ESPI_INT_MASK);
+}
+
 static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 {
 	struct aspeed_espi *priv = arg;
@@ -165,7 +176,7 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 	}
 	if (sts & ASPEED_ESPI_INT_STS_OOB_BITS) {
 		aspeed_espi_oob_event(sts, priv->espi_ctrl->oob);
-		regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts & ASPEED_ESPI_INT_STS_OOB_BITS);
+		sts_handled |= ASPEED_ESPI_INT_STS_OOB_BITS;
 	}
 	if (sts & ASPEED_ESPI_HW_RESET) {
 		spin_lock(&priv->pltrstn_lock);
@@ -175,60 +186,24 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 		wake_up_interruptible(&priv->pltrstn_waitq);
 		dev_dbg(priv->dev, "SYSEVT_PLTRSTN: %c\n", priv->pltrstn);
 
-		if (priv->rst_irq < 0) {
-			regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-					  ASPEED_ESPI_CTRL_SW_RESET, 0);
-			regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-					  ASPEED_ESPI_CTRL_SW_RESET,
-					  ASPEED_ESPI_CTRL_SW_RESET);
-		}
-
 		regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-				  ASPEED_ESPI_CTRL_OOB_CHRDY,
-				  ASPEED_ESPI_CTRL_OOB_CHRDY);
+				  ASPEED_ESPI_CTRL_SW_RESET, 0);
+		regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
+				  ASPEED_ESPI_CTRL_SW_RESET,
+				  ASPEED_ESPI_CTRL_SW_RESET);
+
+		aspeed_espi_config_irq(priv);
+
 		aspeed_espi_boot_ack(priv);
-		sts_handled |= ASPEED_ESPI_HW_RESET;
 		aspeed_espi_oob_enable(priv->espi_ctrl->oob);
 		aspeed_espi_vw_enable(priv->espi_ctrl->vw);
+
+		sts_handled |= ASPEED_ESPI_HW_RESET;
 	}
 
 	regmap_write(priv->map, ASPEED_ESPI_INT_STS, sts);
 
 	return sts != sts_handled ? IRQ_NONE : IRQ_HANDLED;
-}
-
-static void aspeed_espi_config_irq(struct aspeed_espi *priv)
-{
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T0, ASPEED_ESPI_SYSEVT_INT_T0_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T1, ASPEED_ESPI_SYSEVT_INT_T1_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_T2, ASPEED_ESPI_SYSEVT_INT_T2_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT_INT_EN, 0xFFFFFFFF);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T0, ASPEED_ESPI_SYSEVT1_INT_T0_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T1, ASPEED_ESPI_SYSEVT1_INT_T1_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_T2, ASPEED_ESPI_SYSEVT1_INT_T2_MASK);
-	regmap_write(priv->map, ASPEED_ESPI_SYSEVT1_INT_EN, ASPEED_ESPI_SYSEVT1_INT_MASK);
-	regmap_write_bits(priv->map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_MASK,
-			  ASPEED_ESPI_INT_MASK);
-}
-
-static irqreturn_t aspeed_espi_reset_isr(int irq, void *arg)
-{
-	struct aspeed_espi *priv = arg;
-
-	reset_control_assert(priv->reset);
-	reset_control_deassert(priv->reset);
-
-	regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-			  ASPEED_ESPI_CTRL_SW_RESET, 0);
-	regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-			  ASPEED_ESPI_CTRL_SW_RESET, ASPEED_ESPI_CTRL_SW_RESET);
-
-	regmap_write_bits(priv->map, ASPEED_ESPI_CTRL,
-			  ASPEED_ESPI_CTRL_OOB_CHRDY, 0);
-
-	aspeed_espi_config_irq(priv);
-
-	return IRQ_HANDLED;
 }
 
 static inline struct aspeed_espi *to_aspeed_espi(struct file *filp)
@@ -491,25 +466,6 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	if (of_device_is_compatible(pdev->dev.of_node,
-				    "aspeed,ast2600-espi-slave")) {
-		priv->rst_irq = platform_get_irq(pdev, 1);
-		if (priv->rst_irq < 0)
-			return priv->rst_irq;
-
-		ret = devm_request_irq(&pdev->dev, priv->rst_irq,
-				       aspeed_espi_reset_isr, 0,
-				       "aspeed-espi-rst-irq", priv);
-		if (ret)
-			return ret;
-
-		priv->reset = devm_reset_control_get(&pdev->dev, NULL);
-		if (IS_ERR(priv->reset))
-			return PTR_ERR(priv->reset);
-	} else {
-		priv->rst_irq = -ENOTSUPP;
-	}
-
 	priv->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(priv->clk))
 		return dev_err_probe(&pdev->dev, PTR_ERR(priv->clk),
@@ -530,8 +486,6 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to read ctrl register\n");
 		goto err_clk_disable_out;
 	}
-	regmap_write(priv->map, ASPEED_ESPI_CTRL,
-		     ctrl | ASPEED_ESPI_CTRL_OOB_CHRDY);
 
 	priv->pltrstn_miscdev.minor = MISC_DYNAMIC_MINOR;
 	priv->pltrstn_miscdev.name = "espi-pltrstn";
