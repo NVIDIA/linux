@@ -263,6 +263,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <25>;
     };
 };
 
@@ -273,6 +274,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <29>;
     };
 };
 
@@ -283,6 +285,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <33>;
     };
 };
 
@@ -329,6 +332,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <37>;
     };
 };
 
@@ -402,4 +406,12 @@
 	wait-retry-us = <3000>;
 	wait-free-us = <50000>;
 	status = "okay";
+    eeprom@50 {
+        compatible = "atmel,24c64";
+        reg = <0x50>;
+    };
+    eeprom1@51 {
+        compatible = "atmel,24c64";
+        reg = <0x51>;
+    };
 };

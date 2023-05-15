@@ -256,6 +256,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <16>;
     };
 };
 
@@ -266,6 +267,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <20>;
     };
 };
 
@@ -276,6 +278,7 @@
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         reg = <0x70>;
+        numbered-adapter = <24>;
     };
 };
 
