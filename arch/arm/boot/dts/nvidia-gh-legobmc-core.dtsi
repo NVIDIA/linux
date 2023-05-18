@@ -22,12 +22,12 @@
     "", //Removed SHDN_OK_L-I, behind expander
     "", //REmoved SHDN_REQ_L-O behind expander
     "", 
-    "FPGA_RECOVERY_L-O",
+    "",
 
     /*C0-C7*/
     "", "", "", "", "", "", 
-    "BMC_EROT_FPGA_SPI_MUX_SEL-O", //Added
-    "EROT_FPGA_RST_L-O", 
+    "",
+    "",
 
     /*D0-D7*/
     "", "", "", "", "", "", "", "",
@@ -211,17 +211,17 @@
     "NODE_LOC_ID3-I",
     "NODE_LOC_ID2-I",
     "NODE_LOC_ID1-I",
-    "NODE_LOC_ID0-I",
+    "EROT_FPGA_RST_L-O",
 
     /*AC0-AC7*/
     "FAN0_PRESENT_L-I", 
-    "FAN1_PRESENT_L-I", 
+    "WP_HW_EXT_CTRL_L",
     "FAN2_PRESENT_L-I", 
     "FAN3_PRESENT_L-I", 
     "FAN4_PRESENT_L-I", 
     "FAN5_PRESENT_L-I", 
-    "FAN6_PRESENT_L-I", 
-    "FAN7_PRESENT_L-I", 
+    "BMC_EROT_FPGA_SPI_MUX_SEL-O",
+    "EROT_FPGA_RST_L-O",
 
     /*AD0-AD7*/
     "", "", "", "", "", "", "", "",
