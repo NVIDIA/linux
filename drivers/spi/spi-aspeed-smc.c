@@ -371,22 +371,9 @@ static int aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	int ret;
 	struct aspeed_spi *aspi = spi_controller_get_devdata(mem->spi->master);
 
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 1);
-		//spi mux takes time to settle down.
-		//50us has been shown not to experience
-		//communication failures
-		udelay(50);
-	}
-
 	ret = do_aspeed_spi_exec_op(mem, op);
 	if (ret)
 		dev_err(&mem->spi->dev, "operation failed: %d\n", ret);
-
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 0);
-	}
-
 
 	return ret;
 }
@@ -590,10 +577,6 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	/* Only for reads */
 	if (op->data.dir != SPI_MEM_DATA_IN)
 		return -EOPNOTSUPP;
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 1);
-		udelay(50);
-	}
 	aspeed_spi_chip_adjust_window(chip, desc->info.offset, desc->info.length);
 
 	if (desc->info.length > chip->ahb_window_size)
@@ -631,9 +614,6 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	writel(chip->ctl_val[ASPEED_SPI_READ], chip->ctl);
 
 	ret = aspeed_spi_do_calibration(chip);
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 0);
-	}
 	dev_info(aspi->dev, "CE%d read buswidth:%d [0x%08x]\n",
 		 chip->cs, op->data.buswidth, chip->ctl_val[ASPEED_SPI_READ]);
 
@@ -646,11 +626,6 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 	struct aspeed_spi *aspi = spi_controller_get_devdata(desc->mem->spi->master);
 	struct aspeed_spi_chip *chip = &aspi->chips[desc->mem->spi->chip_select];
 	int rlen = len;
-
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 1);
-		udelay(50);
-	}
 
 	/* Switch to USER command mode if mapping window is too small */
 	if (chip->ahb_window_size < offset + len) {
@@ -665,9 +640,6 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 		memcpy_fromio(buf, chip->ahb_base + offset, len);
 	}
 out:
-	if (!IS_ERR(aspi->mux_gpio)) {
-		gpiod_set_value(aspi->mux_gpio, 0);
-	}
 	return rlen;
 }
 
@@ -768,7 +740,6 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, aspi);
 	aspi->data = data;
 	aspi->dev = dev;
-
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	aspi->regs = devm_ioremap_resource(dev, res);
 	if (IS_ERR(aspi->regs)) {
@@ -784,26 +755,31 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 	}
 
 	aspi->mux_gpio = devm_gpiod_get(dev, "mux", GPIOD_OUT_LOW);
-
+	if (!IS_ERR(aspi->mux_gpio)) {
+		dev_info(dev, "permanently asserting the spi chip mux\n");
+		gpiod_set_value(aspi->mux_gpio, 1);
+	}
 	aspi->ahb_window_size = resource_size(res);
 	aspi->ahb_base_phy = res->start;
 
 	aspi->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(aspi->clk)) {
 		dev_err(dev, "missing clock\n");
-		return PTR_ERR(aspi->clk);
+		ret = PTR_ERR(aspi->clk);
+		goto disable_gpio;
 	}
 
 	aspi->clk_freq = clk_get_rate(aspi->clk);
 	if (!aspi->clk_freq) {
 		dev_err(dev, "invalid clock\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto disable_gpio;
 	}
 
 	ret = clk_prepare_enable(aspi->clk);
 	if (ret) {
 		dev_err(dev, "can not enable the clock\n");
-		return ret;
+		goto disable_gpio;
 	}
 
 	/* IRQ is for DMA, which the driver doesn't support yet */
@@ -825,15 +801,29 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 
 disable_clk:
 	clk_disable_unprepare(aspi->clk);
+
+disable_gpio:
+	if (!IS_ERR(aspi->mux_gpio)) {
+		dev_info(dev, "releasing the spi chip mux\n");
+		gpiod_set_value(aspi->mux_gpio, 0);
+		devm_gpiod_put(dev, aspi->mux_gpio);
+	}
 	return ret;
 }
 
 static int aspeed_spi_remove(struct platform_device *pdev)
 {
 	struct aspeed_spi *aspi = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
 
 	aspeed_spi_enable(aspi, false);
 	clk_disable_unprepare(aspi->clk);
+	if (!IS_ERR(aspi->mux_gpio)) {
+		dev_info(dev, "releasing the spi chip mux\n");
+		gpiod_set_value(aspi->mux_gpio, 0);
+		devm_gpiod_put(dev, aspi->mux_gpio);
+	}
+
 	return 0;
 }
 
