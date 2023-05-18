@@ -106,7 +106,7 @@
 
 /* HW buffer sizes */
 #define TX_PACKET_COUNT		48
-#define RX_PACKET_COUNT		96
+#define RX_PACKET_COUNT		1024
 #define TX_MAX_PACKET_COUNT	(TX_BUF_RD_PTR_MASK + 1)
 #define RX_MAX_PACKET_COUNT	(RX_BUF_RD_PTR_MASK + 1)
 
@@ -119,7 +119,7 @@
 	PAGE_ALIGN(RX_PACKET_COUNT * sizeof(struct mctp_pcie_packet_data))
 
 /* Per client packet cache sizes */
-#define RX_RING_COUNT		512
+#define RX_RING_COUNT		1024
 #define TX_RING_COUNT		512
 
 /* PCIe Host Controller registers */
