@@ -3801,6 +3801,12 @@ static int spi_nor_probe(struct spi_mem *spimem)
 	if (!nor)
 		return -ENOMEM;
 
+	nor->mux_gpio = devm_gpiod_get(dev, "mux", GPIOD_OUT_LOW);
+	if (!IS_ERR(nor->mux_gpio)) {
+		dev_info(dev, "permanently asserting the spi chip mux\n");
+		gpiod_set_value(nor->mux_gpio, 1);
+	}
+
 	nor->spimem = spimem;
 	nor->dev = dev;
 	spi_nor_set_flash_node(nor, dev->of_node);
@@ -3828,7 +3834,7 @@ static int spi_nor_probe(struct spi_mem *spimem)
 
 	ret = spi_nor_scan(nor, flash_name, &hwcaps);
 	if (ret)
-		return ret;
+		goto disable_gpio;
 
 	spi_nor_debugfs_register(nor);
 
@@ -3842,25 +3848,43 @@ static int spi_nor_probe(struct spi_mem *spimem)
 		devm_kfree(dev, nor->bouncebuf);
 		nor->bouncebuf = devm_kmalloc(dev, nor->bouncebuf_size,
 					      GFP_KERNEL);
-		if (!nor->bouncebuf)
-			return -ENOMEM;
+		if (!nor->bouncebuf) {
+			ret = -ENOMEM;
+			goto disable_gpio;
+		}
 	}
 
 	ret = spi_nor_create_read_dirmap(nor);
 	if (ret)
-		return ret;
+		goto disable_gpio;
 
 	ret = spi_nor_create_write_dirmap(nor);
 	if (ret)
-		return ret;
+		goto disable_gpio;
 
-	return mtd_device_register(&nor->mtd, data ? data->parts : NULL,
+	ret  = mtd_device_register(&nor->mtd, data ? data->parts : NULL,
 				   data ? data->nr_parts : 0);
+	if (!ret)
+		return 0;
+
+disable_gpio:
+	if (!IS_ERR(nor->mux_gpio)) {
+		dev_info(dev, "releasing the spi chip mux\n");
+		gpiod_set_value(nor->mux_gpio, 0);
+		devm_gpiod_put(dev, nor->mux_gpio);
+	}
+	return ret;
 }
 
 static int spi_nor_remove(struct spi_mem *spimem)
 {
 	struct spi_nor *nor = spi_mem_get_drvdata(spimem);
+
+	if (!IS_ERR(nor->mux_gpio)) {
+		dev_info(nor->dev, "releasing the spi chip mux\n");
+		gpiod_set_value(nor->mux_gpio, 0);
+		devm_gpiod_put(nor->dev, nor->mux_gpio);
+	}
 
 	spi_nor_restore(nor);
 
