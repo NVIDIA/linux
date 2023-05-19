@@ -133,6 +133,20 @@
     };
 };
 
+&spi1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+
+    flash@0 {
+        status = "okay";
+        mux-gpio = <&gpio0 140 GPIO_ACTIVE_LOW>;
+        label = "fpga1";
+        spi-rx-bus-width = <1>;
+        spi-max-frequency = <20000000>;
+    };
+};
+
 &uart1 {
         status = "okay";
 };
