@@ -274,72 +274,68 @@
     // interrupt-controller;
     // interrupt-parent = <&exp0>;
 
-    // pca9555@23 {
- 	// 	compatible = "nxp,pca9555";
- 	// 	reg = <0x23>;
-	// 	gpio-controller;
-	// 	#gpio-cells = <2>;
+    pca9555@23 {
+ 		compatible = "nxp,pca9555";
+ 		reg = <0x23>;
+		gpio-controller;
+		#gpio-cells = <2>;
 
-    //     // #address-cells = <1>;
-    //     // #size-cells = <0>;
-    //     // interrupt-controller;
-    //     // #interrupt-cells = <2>;
-    //     // interrupt-parent = <&exp0>;
-    //     // interrupts = <14 IRQ_TYPE_LEVEL_LOW>;
+        // #address-cells = <1>;
+        // #size-cells = <0>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        // interrupt-parent = <&exp0>;
+        // interrupts = <14 IRQ_TYPE_LEVEL_LOW>;
 
-    //     gpio-line-names =
-    //         "UPHY0_0_PRSNT_L_N-I",
-    //         "UPHY1_0_PRSNT_L_N-I",
-    //         "UPHY2_0_PRSNT_L_N-I",
-    //         "UPHY3_0_PRSNT_L_N-I",
-    //         "UPHY0_1_PRSNT_N-I",
-    //         "UPHY1_1_PRSNT_N-I",
-    //         "UPHY2_1_PRSNT_N-I",
-    //         "UPHY3_1_PRSNT_N-I",
-    //         "J118_FFU_STRAP-I",
-    //         "J119_FFU_STRAP-I",
-    //         "J127_FFU_STRAP-I",
-    //         "J128_FFU_STRAP-I",
-    //         "J132_FFU_STRAP-I",
-    //         "J133_FFU_STRAP-I",
-    //         "CEC_BOM-I",
-    //         "";
- 	// };
-    // pca9555@24 {
- 	// 	compatible = "nxp,pca9555";
- 	// 	reg = <0x24>;
-	// 	gpio-controller;
-	// 	#gpio-cells = <2>;
+        gpio-line-names =
+            "UPHY0_0_PRSNT_L_N-I",
+            "UPHY1_0_PRSNT_L_N-I",
+            "UPHY2_0_PRSNT_L_N-I",
+            "UPHY3_0_PRSNT_L_N-I",
+            "UPHY0_1_PRSNT_N-I",
+            "UPHY1_1_PRSNT_N-I",
+            "UPHY2_1_PRSNT_N-I",
+            "UPHY3_1_PRSNT_N-I",
+            "J118_FFU_STRAP-I",
+            "J119_FFU_STRAP-I",
+            "J127_FFU_STRAP-I",
+            "J128_FFU_STRAP-I",
+            "J132_FFU_STRAP-I",
+            "J133_FFU_STRAP-I",
+            "CEC_BOM-I",
+            "";
+ 	};
+    pca9555@24 {
+ 		compatible = "nxp,pca9555";
+ 		reg = <0x24>;
+		gpio-controller;
+		#gpio-cells = <2>;
 
-    //     // #address-cells = <1>;
-    //     // #size-cells = <0>;
-    //     // interrupt-controller;
-    //     // #interrupt-cells = <2>;
-    //     // interrupt-parent = <&exp0>;
-    //     // interrupts = <15 IRQ_TYPE_LEVEL_LOW>;
+        // #address-cells = <1>;
+        // #size-cells = <0>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        // interrupt-parent = <&exp0>;
+        // interrupts = <15 IRQ_TYPE_LEVEL_LOW>;
         
-    //     gpio-line-names = 
-    //         "ID_BTN_BMC_IO_N",
-    //         "SYS_RST_IN_IOEXP_L",
-    //         "IOB_PRSNT_N",
-    //         "M2_RISE_PRSNT_N",
-    //         "UPHY2_0_PRSNT_N",
-    //         "UPHY2_1_PRSNT_N",
-    //         "FAB_ID0",
-    //         "FAB_ID1",
-    //         "PSU0_PRSNT_N",
-    //         "PSU0_PWROK_R",
-    //         "PSU0_VIN_GOOD_R",
-    //         "PSU1_PRSNT_N",
-    //         "PSU1_PWROK_R",
-    //         "PSU1_VIN_GOOD_R",
-    //         "PWRGD_P12V_BRICK2_R",
-    //         "PSU0_PSU1_VIN_R_GOOD";
- 	// };
-    // i2c-switch@70 {
-    //     compatible = "nxp,pca9546";
-    //     reg = <0x70>;
-    // };
+        gpio-line-names = 
+            "ID_BTN_BMC_IO_N",
+            "SYS_RST_IN_IOEXP_L",
+            "IOB_PRSNT_N",
+            "M2_RISE_PRSNT_N",
+            "UPHY2_0_PRSNT_N",
+            "UPHY2_1_PRSNT_N",
+            "FAB_ID0",
+            "FAB_ID1",
+            "PSU0_PRSNT_N",
+            "PSU0_PWROK_R",
+            "PSU0_VIN_GOOD_R",
+            "PSU1_PRSNT_N",
+            "PSU1_PWROK_R",
+            "PSU1_VIN_GOOD_R",
+            "PWRGD_P12V_BRICK2_R",
+            "PSU0_PSU1_VIN_R_GOOD";
+ 	};
 };
 
 // I2C8, BMC_I2C_PCI
