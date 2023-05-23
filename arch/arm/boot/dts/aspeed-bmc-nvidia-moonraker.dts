@@ -147,8 +147,24 @@
 				label = "rwfs";
 			};
 
-			log@3800000 {
-				reg = <0x3800000 0xc800000>;	// 200 MB
+			rwfs_failover@1040000 {
+				reg = <0x1040000 0x400000>;	// 4 MB
+				label = "rwfs_failover";
+			};
+
+			images_primary@1440000 {
+				reg = <0x1440000 0x2400000>;	// 36 MB
+				label = "images_primary";
+			};
+
+			images_secondary@3840000 {
+				reg = <0x3840000 0x2400000>; // 36 MB
+
+				label = "images_secondary";
+			};
+
+			log@5C40000 {
+				reg = <0x5C40000 0x23C0000>;	// 35.75
 				label = "log";
 			};
 		};
