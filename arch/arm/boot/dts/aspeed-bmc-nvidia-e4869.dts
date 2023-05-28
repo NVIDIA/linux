@@ -197,6 +197,7 @@
 &i2c0 {
     status = "okay";
     bus-frequency = <400000>;
+	disable-master = <1>;
     ssif-bmc@10 {
         compatible = "ssif-bmc";
         alert-gpio = <&gpio0 8 GPIO_ACTIVE_LOW>;
