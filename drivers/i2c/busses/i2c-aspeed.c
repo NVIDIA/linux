@@ -836,7 +836,7 @@ static int aspeed_i2c_init_clk(struct aspeed_i2c_bus *bus)
 static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 			     struct platform_device *pdev)
 {
-	u32 fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
+	u32 fun_ctrl_reg = 0;
 	int ret;
 
 	/* Disable everything. */
@@ -846,14 +846,17 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 	if (ret < 0)
 		return ret;
 
-	if (of_property_read_bool(pdev->dev.of_node, "multi-master"))
-		bus->multi_master = true;
-	else
-		fun_ctrl_reg |= ASPEED_I2CD_MULTI_MASTER_DIS;
+	if (!of_property_read_bool(pdev->dev.of_node, "disable-master")) {
+		u32 fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
+		if (of_property_read_bool(pdev->dev.of_node, "multi-master"))
+			bus->multi_master = true;
+		else
+			fun_ctrl_reg |= ASPEED_I2CD_MULTI_MASTER_DIS;
 
-	/* Enable Master Mode */
-	writel(readl(bus->base + ASPEED_I2C_FUN_CTRL_REG) | fun_ctrl_reg,
-	       bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		/* Enable Master Mode */
+		writel(readl(bus->base + ASPEED_I2C_FUN_CTRL_REG) | fun_ctrl_reg,
+			   bus->base + ASPEED_I2C_FUN_CTRL_REG);
+	}
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	/* If slave has already been registered, re-enable it. */
