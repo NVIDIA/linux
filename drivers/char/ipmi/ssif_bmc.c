@@ -1027,7 +1027,8 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	}
 	ssif_bmc->ara = register_ast2600_ara(client);
 
-	gpiod_set_value(ssif_bmc->alert, 0);
+	if (!IS_ERR(ssif_bmc->alert))
+		gpiod_set_value(ssif_bmc->alert, 0);
 	device_create_file(&client->dev, &dev_attr_ssif_timeout);
 	return ret;
 }
