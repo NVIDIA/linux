@@ -411,7 +411,7 @@
     status = "okay";
     bus-frequency = <400000>;
 
-    // P4498 FRU EEPROM - 256 bytes
+    // BMC FRU EEPROM - 256 bytes
     eeprom@50 {
         compatible = "atmel,24c02";
         reg = <0x50>;
