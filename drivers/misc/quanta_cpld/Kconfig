@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Misc strange devices
+#
+
+config QUANTA_LEGOCG1_CPLD
+	tristate "Quanta LegoCG1 CPLD support"
+	depends on I2C
+	help
+	  Provides a support for custom CPLD. Supports fans, leds and reporting
+	  the firmware version used on the CPLD
