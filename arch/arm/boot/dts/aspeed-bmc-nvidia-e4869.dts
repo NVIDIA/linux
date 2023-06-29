@@ -337,24 +337,6 @@
     bus-frequency = <400000>;
 };
 
-// I2C16
-&i2c15 {
-    status = "okay";
-    bus-frequency = <400000>;
-    pca9847: mux@5e {
-        compatible = "nxp,pca9847";
-        reg = <0x5e>;
-        channel_0: max31790_1 {
-            compatible = "maxim,max31790";
-            reg = <0x20>;
-        };
-        channel_1: max31790_2 {
-            compatible = "maxim,max31790";
-            reg = <0x23>;
-        };
-    };
-};
-
 // PCIe RC
 &pcie {
     status = "okay";
