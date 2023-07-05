@@ -8,6 +8,7 @@
 #include <linux/regmap.h>
 
 #include <linux/mfd/syscon.h>
+#include <linux/soc/aspeed/aspeed-espi.h>
 
 #define ASPEED_ESPI_CTRL 0x000
 #define ASPEED_ESPI_CTRL_VW_SW_RDY BIT(3)
@@ -44,20 +45,12 @@ struct aspeed_espi_gpio {
 	struct gpio_chip chip;
 	struct regmap *map;
 	u32 dir_mask;
-	int irq;
 	/* Lock to protect GPIO val register access */
 	spinlock_t lock;
 };
 
-static int aspeed_espi_vw_gpio_enable(struct regmap *map, u32 dir_mask)
+static void aspeed_espi_vw_gpio_enable(struct regmap *map, u32 dir_mask)
 {
-	int ret;
-
-	/* Error check in first access only as this is an MMIO-backed regmap */
-	ret = regmap_write(map, ASPEED_ESPI_INT_STS, ASPEED_ESPI_INT_STS_VW_MASK);
-	if (ret)
-		return ret;
-
 	regmap_update_bits(map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_EN_VW_MASK,
 			   ASPEED_ESPI_INT_EN_VW_MASK);
 
@@ -66,7 +59,6 @@ static int aspeed_espi_vw_gpio_enable(struct regmap *map, u32 dir_mask)
 	regmap_write(map, ASPEED_ESPI_VW_GPIO_DIR, ~dir_mask);
 	regmap_write(map, ASPEED_ESPI_VW_GPIO_RESET_SELECTION,
 		     ASPEED_ESPI_VW_RESET_BY_ESPI);
-	return 0;
 }
 
 static void aspeed_espi_vw_gpio_disable(struct regmap *map)
@@ -198,11 +190,7 @@ static int aspeed_espi_vw_gpio_init(struct device *dev, struct aspeed_espi_gpio 
 		}
 	}
 
-	ret = aspeed_espi_vw_gpio_enable(gpio->map, dir_mask);
-	if (ret) {
-		dev_err(dev, "Error enabling VW GPIO: %d\n", ret);
-		return ret;
-	}
+	aspeed_espi_vw_gpio_enable(gpio->map, dir_mask);
 
 	spin_lock_init(&gpio->lock);
 
@@ -226,7 +214,7 @@ static int aspeed_espi_vw_gpio_init(struct device *dev, struct aspeed_espi_gpio 
 	return ret;
 }
 
-static irqreturn_t aspeed_espi_vw_irq(int irq, void *arg)
+static void aspeed_espi_vw_irq(int irq, void *arg)
 {
 	struct aspeed_espi_gpio *gpio = arg;
 	unsigned long flags;
@@ -234,7 +222,7 @@ static irqreturn_t aspeed_espi_vw_irq(int irq, void *arg)
 
 	if (regmap_read(gpio->map, ASPEED_ESPI_INT_STS, &sts)) {
 		dev_dbg(gpio->dev, "Error reading int status\n");
-		return IRQ_NONE;
+		return;
 	}
 
 	if (sts & ASPEED_ESPI_INT_STS_HW_RESET) {
@@ -247,7 +235,6 @@ static irqreturn_t aspeed_espi_vw_irq(int irq, void *arg)
 		spin_unlock_irqrestore(&gpio->lock, flags);
 	}
 	/* Clearing of status register will be done from parent driver*/
-	return IRQ_HANDLED;
 }
 static int aspeed_espi_gpio_probe(struct platform_device *pdev)
 {
@@ -271,12 +258,8 @@ static int aspeed_espi_gpio_probe(struct platform_device *pdev)
 		return ret;
 	}
 	gpio->dev = &pdev->dev;
-	gpio->irq = platform_get_irq(pdev, 0);
-	if (gpio->irq < 0)
-		return gpio->irq;
 
-	ret = devm_request_irq(&pdev->dev, gpio->irq, aspeed_espi_vw_irq,
-			       IRQF_SHARED, "aspeed-espi-vw-irq", gpio);
+	aspeed_espi_register_gpio(pdev->dev.parent, aspeed_espi_vw_irq, gpio);
 
 	return ret;
 }

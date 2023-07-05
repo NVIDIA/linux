@@ -15,6 +15,7 @@
 #include <linux/poll.h>
 #include <linux/regmap.h>
 #include <linux/sched/signal.h>
+#include <linux/soc/aspeed/aspeed-espi.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 
@@ -41,8 +42,17 @@ struct aspeed_espi {
 	char			smi;
 	bool			smi_is_avail;
 	struct aspeed_espi_ctrl *espi_ctrl;
-
+	aspeed_espi_irq_handler gpio_irq;
+	void			*gpio_data;
 };
+
+void aspeed_espi_register_gpio(struct device *device, aspeed_espi_irq_handler handler, void *data)
+{
+	struct aspeed_espi *espi_ctrl = dev_get_drvdata(device);
+
+	espi_ctrl->gpio_irq = handler;
+	espi_ctrl->gpio_data = data;
+}
 
 static void aspeed_espi_sys_event(struct aspeed_espi *priv)
 {
@@ -165,6 +175,9 @@ static irqreturn_t aspeed_espi_irq(int irq, void *arg)
 	regmap_read(priv->map, ASPEED_ESPI_INT_STS, &sts);
 
 	dev_dbg(priv->dev, "INT_STS: 0x%08x\n", sts);
+
+	if (priv->gpio_irq)
+		priv->gpio_irq(irq, priv->gpio_data);
 
 	if (sts & ASPEED_ESPI_VW_SYSEVT) {
 		aspeed_espi_sys_event(priv);
@@ -461,7 +474,7 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	if (priv->irq < 0)
 		return priv->irq;
 
-	ret = devm_request_irq(&pdev->dev, priv->irq, aspeed_espi_irq, IRQF_SHARED,
+	ret = devm_request_irq(&pdev->dev, priv->irq, aspeed_espi_irq, 0,
 			       "aspeed-espi-irq", priv);
 	if (ret)
 		return ret;
