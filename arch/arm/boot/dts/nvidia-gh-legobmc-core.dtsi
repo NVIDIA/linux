@@ -71,7 +71,7 @@
     "", "", "", "", "", "", "", "",
 
     /*M0-M7*/
-    "BMC_EP_PERST_EN-O", "", "FPGA_RST_L-O", 
+    "BMC_EP_PERST_EN-O", "BMC_FRU_WP", "FPGA_RST_L-O", 
     "HPM_STBY_EN-O", //New
     "STBY_POWER_PG-I",  //New
     "", "", "",
