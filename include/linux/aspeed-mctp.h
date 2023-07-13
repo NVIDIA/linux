@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /* Copyright (c) 2020 Intel Corporation */
 
 #ifndef __LINUX_ASPEED_MCTP_H
@@ -30,10 +30,16 @@ struct mctp_protocol_hdr {
 
 #define PCIE_VDM_HDR_SIZE 16
 #define MCTP_BTU_SIZE 64
-#define PCIE_VDM_DATA_SIZE_DW (MCTP_BTU_SIZE / 4)
+/* The MTU of the ASPEED MCTP can be 64/128/256 */
+#define ASPEED_MCTP_MTU MCTP_BTU_SIZE
+#define PCIE_VDM_DATA_SIZE_DW (ASPEED_MCTP_MTU / 4)
 #define PCIE_VDM_HDR_SIZE_DW (PCIE_VDM_HDR_SIZE / 4)
 
 #define PCIE_MCTP_MIN_PACKET_SIZE (PCIE_VDM_HDR_SIZE + 4)
+
+struct mctp_pcie_packet_data_2500 {
+	u32 data[32];
+};
 
 struct mctp_pcie_packet_data {
 	u32 hdr[PCIE_VDM_HDR_SIZE_DW];
@@ -128,6 +134,20 @@ void aspeed_mctp_flush_rx_queue(struct mctp_client *client);
  * * -ENOENT - there is no record for requested endpoint id.
  */
 int aspeed_mctp_get_eid_bdf(struct mctp_client *client, u8 eid, u16 *bdf);
+
+/**
+ * aspeed_mctp_get_eid() - return EID for requested BDF and domainId.
+ * @client: pointer to existing mctp_client context
+ * @bdf: requested BDF value
+ * @domain_id: requested domainId
+ * @eid: pointer to store EID value
+ *
+ * Return:
+ * * 0 - success,
+ * * -ENOENT - there is no record for requested bdf/domainId.
+ */
+int aspeed_mctp_get_eid(struct mctp_client *client, u16 bdf,
+			u8 domain_id, u8 *eid);
 
 void *aspeed_mctp_packet_alloc(gfp_t flags);
 void aspeed_mctp_packet_free(void *packet);
