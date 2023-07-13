@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /* Copyright (c) 2020 Intel Corporation */
 
 #ifndef _UAPI_LINUX_ASPEED_MCTP_H
@@ -46,10 +46,13 @@
  * messages of specified MCTP type or PCI vendor defined type
  * @ASPEED_MCTP_IOCTL_UNREGISTER_TYPE_HANDLER Unregister client as handler
  * for specified MCTP type or PCI vendor defined message type
- * @ASPEED_MCTP_GET_EID_INFO: read list of existing endpoint mappings
- * returns count which is less of the two requested count and existing count
- * @ASPEED_MCTP_SET_EID_INFO: write list of endpoint mappings
- * overwrites already existing endpoint mappings
+ * @ASPEED_MCTP_GET_EID_INFO - deprecated, use ASPEED_MCTP_GET_EID_EXT instead
+ * @ASPEED_MCTP_SET_EID_INFO - deprecated, use ASPEED_MCTP_SET_EID_EXT instead
+ * @ASPEED_MCTP_GET_EID_EXT_INFO: read list of existing CPU EID and Domain ID
+ * mappings and return count which is lesser of the two: requested count and existing count
+ * @ASPEED_MCTP_SET_EID_EXT_INFO: write or overwrite already existing list of
+ * CPU EID and Domain ID mappings
+ * @ASPEED_MCTP_SET_OWN_EID: write/overwrite own EID information
  */
 
 struct aspeed_mctp_filter_eid {
@@ -66,7 +69,7 @@ struct aspeed_mctp_get_medium_id {
 };
 
 struct aspeed_mctp_get_mtu {
-	__u8 mtu;
+	__u16 mtu;
 };
 
 struct aspeed_mctp_type_handler_ioctl {
@@ -82,6 +85,12 @@ struct aspeed_mctp_eid_info {
 	__u16 bdf;
 };
 
+struct aspeed_mctp_eid_ext_info {
+	__u8 eid;
+	__u16 bdf;
+	__u8 domain_id;
+};
+
 struct aspeed_mctp_get_eid_info {
 	__u64 ptr;
 	__u16 count;
@@ -91,6 +100,10 @@ struct aspeed_mctp_get_eid_info {
 struct aspeed_mctp_set_eid_info {
 	__u64 ptr;
 	__u16 count;
+};
+
+struct aspeed_mctp_set_own_eid {
+	__u8 eid;
 };
 
 #define ASPEED_MCTP_IOCTL_BASE	0x4d
@@ -110,8 +123,14 @@ struct aspeed_mctp_set_eid_info {
 #define ASPEED_MCTP_IOCTL_UNREGISTER_TYPE_HANDLER \
 	_IOW(ASPEED_MCTP_IOCTL_BASE, 7, struct aspeed_mctp_type_handler_ioctl)
 #define ASPEED_MCTP_IOCTL_GET_EID_INFO \
-	_IOWR(ASPEED_MCTP_IOCTL_BASE, 8, struct aspeed_mctp_get_eid_info)
+	_IOWR(ASPEED_MCTP_IOCTL_BASE, 8, struct aspeed_mctp_get_eid_info) /* deprecated */
 #define ASPEED_MCTP_IOCTL_SET_EID_INFO \
-	_IOW(ASPEED_MCTP_IOCTL_BASE, 9, struct aspeed_mctp_set_eid_info)
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 9, struct aspeed_mctp_set_eid_info) /* deprecated */
+#define ASPEED_MCTP_IOCTL_GET_EID_EXT_INFO \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 10, struct aspeed_mctp_get_eid_info)
+#define ASPEED_MCTP_IOCTL_SET_EID_EXT_INFO \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 11, struct aspeed_mctp_set_eid_info)
+#define ASPEED_MCTP_IOCTL_SET_OWN_EID \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 12, struct aspeed_mctp_set_own_eid)
 
 #endif /* _UAPI_LINUX_ASPEED_MCTP_H */
