@@ -187,7 +187,7 @@
 	memory-region = <&video_engine_memory>;
 };
 // USB 2.0 to HMC & Host BMC connectivity
-&ehci0 {
+&ehci1 {
    status = "okay";
 };
 
