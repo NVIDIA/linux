@@ -36,14 +36,14 @@
     "", "", "", "", "", "", "", "",
 
     /*F0-F7*/
-    "IOM0_MOD_ID0-O",
-    "IOM0_MOD_ID1-O",
-    "IOM0_MOD_ID2-O",
-    "IOM0_MOD_ID3-O",
-    "IOM_PWR_EN-O",
-    "IOM_PWR_SYS_GOOD-I",
-    "IOM0_OVT_SHTDN-I",
-    "IOM0_OVT_WARN_L-I",
+    "", //Removed IOM0_MOD_ID0-O
+    "", //Removed IOM0_MOD_ID1-O
+    "", //Removed IOM0_MOD_ID2-O
+    "", //Removed IOM0_MOD_ID3-O
+    "", //Removed IOM_PWR_EN-O
+    "", //Removed IOM_PWR_SYS_GOOD-I
+    "", //Removed IOM0_OVT_SHTDN-I
+    "", //Removed IOM0_OVT_WARN_L-I
 
     /*G0-G7*/
     "", "", "", "", "", "", "", "",
@@ -102,7 +102,7 @@
     "I2C_RTC_ALERT_L-I",
     "RTC_CLR_L-O",
     "BB_PRSNT_L-I",
-    "PCB_TEMP_ALERT_L-I",
+    "", // Moved to V4
     "JTAG_MUX_SELECT-O",
     "BMC_HBLED-O",
 
@@ -113,8 +113,8 @@
     "IOM1_MOD_ID3-O",
     "", //Removed SHDN_FORCE_L-O behind expander
     "IOM1_PGOOD-I",
-    "IOM1_OVT_SHTDN_LATCH-I",
-    "IOM1_OVT_WARN_L-I",
+    "", //Removed IOM1_OVT_SHTDN_LATCH-I, does not exist on Lego
+    "", //Removed IOM1_OVT_WARN_L-I, does not exist on Lego
 
     /*R0-R7*/
     "", //FPGA_READY goes to expander
@@ -159,7 +159,7 @@
     "EROT_AP_GNT-I",
     "", //Removed BMC_READY-O, behind expander
     "FPGA_RSVD_FFU1-I/O",
-    "LOC_PCB_TEMP_ALERT_L-I",
+    "PCB_TEMP_ALERT_L-I", //Removed LOC_PCB_TEMP_ALERT_L
     "I2C_BUS8_MUX_RESET_L-I/O",
     "I2C_BUS7_MUX_RESET_L-I/O",
     "I2C_BUS6_MUX_RESET_L-I/O",
