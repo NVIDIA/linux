@@ -201,7 +201,7 @@
 };
 
 /* Tegra USB Path */
-&ehci0 {
+&ehci1 {
    status = "okay";
 };
 
