@@ -260,7 +260,7 @@
         pagesize = <8>;
     };
     eeprom@51 {
-        compatible = "atmel,24c02";
+        compatible = "atmel,24c128";
         reg = <0x51>;
         pagesize = <8>;
     };
