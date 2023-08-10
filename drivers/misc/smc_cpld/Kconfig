@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Misc strange devices
+#
+
+config SMC_LEGOC2_CPLD
+	tristate "Supermicro LegoC2 CPLD support"
+	depends on I2C
+	help
+	  Provides a support for custom CPLD. Supports fans, leds and sensors

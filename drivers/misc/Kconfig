@@ -516,4 +516,5 @@ source "drivers/misc/habanalabs/Kconfig"
 source "drivers/misc/uacce/Kconfig"
 source "drivers/misc/pvpanic/Kconfig"
 source "drivers/misc/quanta_cpld/Kconfig"
+source "drivers/misc/smc_cpld/Kconfig"
 endmenu
