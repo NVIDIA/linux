@@ -73,6 +73,7 @@ lan966x-pci-objs		:= lan966x_pci.o
 lan966x-pci-objs		+= lan966x_pci.dtbo.o
 obj-$(CONFIG_MCHP_LAN966X_PCI)	+= lan966x-pci.o
 obj-$(CONFIG_QUANTA_LEGOCG1_CPLD)	+= quanta_cpld/
+obj-$(CONFIG_SMC_LEGOC2_CPLD)	+= smc_cpld/
 obj-y				+= keba/
 obj-y				+= amd-sbi/
 obj-$(CONFIG_MISC_RP1)		+= rp1/

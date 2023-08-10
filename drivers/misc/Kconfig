@@ -662,4 +662,5 @@ source "drivers/misc/keba/Kconfig"
 source "drivers/misc/amd-sbi/Kconfig"
 source "drivers/misc/rp1/Kconfig"
 source "drivers/misc/quanta_cpld/Kconfig"
+source "drivers/misc/smc_cpld/Kconfig"
 endmenu
