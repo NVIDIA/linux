@@ -629,4 +629,5 @@ source "drivers/misc/pvpanic/Kconfig"
 source "drivers/misc/mchp_pci1xxxx/Kconfig"
 source "drivers/misc/keba/Kconfig"
 source "drivers/misc/quanta_cpld/Kconfig"
+source "drivers/misc/smc_cpld/Kconfig"
 endmenu
