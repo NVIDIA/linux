@@ -469,7 +469,7 @@
 // I2C16
 &i2c15 {
     status = "okay";
-    bus-frequency = <400000>;
+    bus-frequency = <100000>;
 	smc_cpld@28 {
         compatible = "smc_c2_cpld";
         reg = <0x33>;
