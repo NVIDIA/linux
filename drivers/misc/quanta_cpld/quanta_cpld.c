@@ -124,13 +124,13 @@ static umode_t quanta_cpld_is_visible(const void *data_in,
 	case hwmon_fan:
 		int virt = channel >> 1;
 		ret = i2c_smbus_read_byte_data(data->client, FAN_PRST);
-		if (ret > 0 && channel < NR_CHANNEL && !(ret & (1 << virt))) {
+		if (ret > 0 && channel < NR_CHANNEL) {
 			return 0444;
 		}
 		break; 
 	case hwmon_pwm:
 		ret = i2c_smbus_read_byte_data(data->client, FAN_PRST);
-		if (ret > 0 && channel < NR_CHANNEL_PWM && !(ret & (1 << channel))) {
+		if (ret > 0 && channel < NR_CHANNEL_PWM) {
 			return 0644;
 		}
 		break;
