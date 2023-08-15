@@ -253,6 +253,19 @@ static int quanta_cpld_init_client(struct quanta_cpld_data *data)
 	return ret;
 }
 
+static ssize_t cpld_version_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	u8 cmd = 0x0;
+	int ret = 0;
+
+	ret = i2c_smbus_read_byte_data(client, cmd);
+	return sprintf(buf, "%x\n", ret);
+}
+static DEVICE_ATTR_RO(cpld_version);
+
 static int quanta_cpld_probe(struct i2c_client *client)
 {
 	struct i2c_adapter *adapter = client->adapter;
@@ -275,6 +288,8 @@ static int quanta_cpld_probe(struct i2c_client *client)
 	if (err)
 		return err;
 
+	device_create_file(dev, &dev_attr_cpld_version);
+
 	hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name,
 							 data,
 							 &quanta_cpld_chip_info,
@@ -283,15 +298,23 @@ static int quanta_cpld_probe(struct i2c_client *client)
 	return PTR_ERR_OR_ZERO(hwmon_dev);
 }
 
+static int quanta_cpld_remove(struct i2c_client *client)
+{
+	device_remove_file(&client->dev, &dev_attr_cpld_version);
+    return 0;
+}
+
 static const struct i2c_device_id quanta_cpld_id[] = {
 	{ "quanta_cg1_cpld", 0 },
 	{ }
 };
+
 MODULE_DEVICE_TABLE(i2c, quanta_cpld_id);
 
 static struct i2c_driver quanta_cpld_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.probe_new	= quanta_cpld_probe,
+	.remove = quanta_cpld_remove,
 	.driver = {
 		.name	= "quanta_cg1_cpld",
 	},
