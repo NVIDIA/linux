@@ -342,7 +342,7 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 	struct pci_host_bridge *bridge;
 //	struct regmap *scu;
 	int err;
-	resource_size_t iobase = 0;
+//	resource_size_t iobase = 0;
 	LIST_HEAD(res);
 
 	if (!dev->of_node)
@@ -407,7 +407,7 @@ static int aspeed_pcie_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_PCI_MSI
 	pcie->aspeed_pcie_msi_chip.dev = dev;
-	bridge->msi = &pcie->aspeed_pcie_msi_chip;
+// TBD	bridge->msi = &pcie->aspeed_pcie_msi_chip;
 #endif
 	err = pci_scan_root_bus_bridge(bridge);
 	if (err)

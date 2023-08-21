@@ -1640,6 +1640,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-e4830-bmc.dtb \
 	aspeed-bmc-nvidia-e4830-hmc.dtb \
 	apseed-bmc-nvidia-hgx.dtb \
+        apseed-bmc-nvidia-e4900.dtb \
 	apseed-bmc-nvidia-vulcan-hmc.dtb \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb \
 	aspeed-bmc-nvidia-mgx-p3712.dtb \

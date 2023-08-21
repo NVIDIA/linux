@@ -1,0 +1,317 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "AST2600 E4900 BMC";
+	compatible = "aspeed,ast2600";
+
+	aliases {
+		serial4 = &uart5;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x40000000>;
+	};
+
+        power-gpios{
+                n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+                n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        };
+    reserved-memory {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+
+    ramoops@0xbc000000 {
+            compatible = "ramoops";
+            reg = <0 0xbc000000 0 0x100000>; // 1MB at 0xbc000000
+            record-size = <0x10000>; // 64kB per record
+            console-size = <0x10000>; // 64kB for console output
+            pmsg-size = <0x1000>; // 4kB for user messages
+    };
+};
+
+};
+
+&gpio0 {
+        gpio-line-names =
+        /*A0-A7*/       "","","","","","","","",
+        /*B0-B7*/       "","","","","","","","",
+        /*C0-C7*/       "","","","","","","","",
+        /*D0-D7*/       "","","","","","","","",
+        /*E0-E7*/       "","","","","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","","","","","","","",
+        /*H0-H7*/       "","","","","","","","",
+        /*I0-I7*/       "","","","","","","","",
+        /*J0-J7*/       "","","","","","","","",
+        /*K0-K7*/       "","BMC_RGMII_RST_L-O","","","","","","",
+        /*L0-L7*/       "","","","","","","","",
+        /*M0-M7*/       "","","","","","","","",
+        /*N0-N7*/       "","","","","","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "","","","","","","","",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "","","","","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+};
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+   status = "okay";
+   flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-vulcan-flash-layout-64.dtsi"
+   };
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
+&spi2 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
+
+    flash@0 {
+        status = "okay";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;         // 0.25 MB
+                label = "u-boot-env";
+            };
+
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;   // 16 MB
+                label = "rwfs";
+            };
+
+            log@3800000 {
+                reg = <0x3800000 0xc800000>; // 200 MB
+                label = "log";
+            };
+        };
+   };
+};
+
+&spi1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1cs1_default &pinctrl_qspi1_default>;
+
+    flash@0 {
+        status = "okay";
+        label = "ap0-bmc-flash";
+        spi-max-frequency = <50000000>;
+        spi-rx-bus-width = <4>;
+        spi-tx-bus-width = <4>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            test-partition@0 {
+                reg = <0x0 0xc800000>;         // 200 MB
+                label = "test-partition";
+            };
+        };
+   };
+};
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+// MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
+// This is "mac2" in zero-based DTS
+&mdio2 {
+    status = "okay";
+    ethphy0: ethernet-phy@0 {
+        compatible = "ethernet-phy-ieee802.3-c22";
+        reg = <0>;
+    };
+};
+
+&mac2 {
+    status = "okay";
+    pinctrl-names = "default";
+    phy-mode = "rgmii";
+    max-speed = <1000>;
+    phy-handle = <&ethphy0>;
+    pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+&jtag0 {
+    mux-gpios = <&gpio0 50 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    status = "okay";
+};
+
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+
+&vhub {
+   status = "okay";
+};
+// USB 2.0 to HMC & Host BMC connectivity
+&udc {
+    status = "okay";
+};
+
+/*
+&i2c2 {
+    status = "okay";
+
+    i2c-slave-mqueue@18 {
+        compatible = "slave-mqueue";
+        reg = <(I2C_OWN_SLAVE_ADDRESS | 0x18)>;
+    };
+};
+*/
+
+&i2c0 {             
+    status = "okay";
+};                  
+
+&i2c1 {
+    status = "okay";
+};
+
+// I2C3, BMC_I2C0_FPGA
+&i2c2 {
+    status = "okay";
+    bus-frequency = <400000>;
+};
+
+/*
+&i2c3 {
+    status = "okay";
+    // GPU Baseboard FRU
+    eeprom@53 {
+    compatible = "atmel,24c256";
+    reg = <0x53>;
+    };
+
+    // HMC FRU
+    eeprom@4e {
+    compatible = "atmel,24c02";
+    reg = <0x4E>;
+    };
+};
+
+&i2c4 {
+    status = "okay";
+    rtc@32 {
+        compatible = "epson,rx8130";
+        reg = <0x32>;
+    };
+};
+
+// HMC - FPGA Bus
+&i2c6 {
+    status = "okay";
+};
+*/
+
+/*
+// Ethernet SW
+&i2c10 {
+    status = "okay";
+};
+
+
+&i2c12 {
+    status = "okay";
+};
+
+&i2c13 {
+    status = "okay";
+};
+
+&i2c14 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
+*/
+
+//&i3c5 {
+//        status = "okay";
+//};
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
+};
+
+&mctp {
+    status = "okay";
+};
+
+&rng {
+    status = "okay";
+};

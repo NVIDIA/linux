@@ -130,6 +130,28 @@
 			};
 		};
 
+		fmcraw: spiraw@1e620000 {
+			/* reg : cs0 : cs1 : cs2 */
+			reg = <0x1e620000 0x100
+				0x20000000 0x200000
+				0x24000000 0x200000
+				0x28000000 0x200000>;
+			compatible = "aspeed,ast2600-fmc-spi";
+			number_of_chip_select = /bits/ 16 <3>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&syscon ASPEED_CLK_AHB>;
+			status = "disabled";
+			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+			num-cs = <3>;
+			spidev@0 {
+				reg = < 2 >;
+				spi-max-frequency = <50000000>;
+				status = "disabled";
+			};
+		};
+
+
 		spi1: spi@1e630000 {
 			reg = <0x1e630000 0xc4>, <0x30000000 0x10000000>;
 			#address-cells = <1>;
@@ -312,7 +334,7 @@
 			status = "disabled";
 		};
 
-		udc: usb@1e6a2000 {
+		udc: udc@1e6a2000 {
 			compatible = "aspeed,ast2600-udc";
 			reg = <0x1e6a2000 0x300>;
 			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
@@ -381,17 +403,6 @@
 				reg = <0x1e6e2520 0x20>;
 				aspeed,scu = <&syscon>;
 				status = "disabled";
-			};
-
-			gfx: display@1e6e6000 {
-				compatible = "aspeed,ast2600-gfx", "syscon";
-				reg = <0x1e6e6000 0x1000>;
-				reg-io-width = <4>;
-				clocks = <&syscon ASPEED_CLK_GATE_D1CLK>;
-				resets = <&syscon ASPEED_RESET_GRAPHICS>;
-				syscon = <&syscon>;
-				status = "disabled";
-				interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			pcie_ep:pcie_ep@1e6ed000 {
@@ -701,17 +712,6 @@
 				ranges = <0x0 0x1e78b000 0x100>;
 			};
 
-			peci0: peci-controller@1e78b000 {
-				compatible = "aspeed,ast2600-peci";
-				reg = <0x1e78b000 0x100>;
-				interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&syscon ASPEED_CLK_GATE_REF0CLK>;
-				resets = <&syscon ASPEED_RESET_PECI>;
-				cmd-timeout-ms = <1000>;
-				clock-frequency = <1000000>;
-				status = "disabled";
-			};
-
 			lpc: lpc@1e789000 {
 				compatible = "aspeed,ast2600-lpc-v2", "simple-mfd", "syscon";
 				reg = <0x1e789000 0x1000>;
@@ -807,16 +807,6 @@
 				compatible = "aspeed,ast2600-otp";
 				reg = <0x1e6f2000 0x940>;
 				aspeed,scu = <&syscon>;
-			};
-
-			hace: hace@1e6d0000 {
-				compatible = "aspeed,ast2600-hace";
-				reg = <0x1e6d0000 0x200>;
-				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&syscon ASPEED_CLK_GATE_YCLK>;
-				clock-names = "yclk";
-				resets = <&syscon ASPEED_RESET_HACE>;
-				status = "ok";
 			};
 
 			acry: acry@1e6fa000 {

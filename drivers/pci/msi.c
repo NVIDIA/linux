@@ -1533,6 +1533,7 @@ bool pci_dev_has_special_msi_domain(struct pci_dev *pdev)
 #endif /* CONFIG_PCI_MSI_IRQ_DOMAIN */
 #endif /* CONFIG_PCI_MSI */
 
+#if 0 // TBD
 void pci_msi_init(struct pci_dev *dev)
 {
 	u16 ctrl;
@@ -1568,3 +1569,4 @@ void pci_msix_init(struct pci_dev *dev)
 		pci_write_config_word(dev, dev->msix_cap + PCI_MSIX_FLAGS,
 				      ctrl & ~PCI_MSIX_FLAGS_ENABLE);
 }
+#endif 

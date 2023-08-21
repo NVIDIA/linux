@@ -239,11 +239,17 @@ static inline void msi_desc_set_iommu_cookie(struct msi_desc *desc,
 
 #ifdef CONFIG_PCI_MSI
 struct pci_dev *msi_desc_to_pci_dev(struct msi_desc *desc);
+void *msi_desc_to_pci_sysdata(struct msi_desc *desc);
 void pci_write_msi_msg(unsigned int irq, struct msi_msg *msg);
 #else /* CONFIG_PCI_MSI */
+static inline void *msi_desc_to_pci_sysdata(struct msi_desc *desc)
+{
+	return NULL;
+}
 static inline void pci_write_msi_msg(unsigned int irq, struct msi_msg *msg)
 {
 }
+
 #endif /* CONFIG_PCI_MSI */
 
 int msi_add_msi_desc(struct device *dev, struct msi_desc *init_desc);
