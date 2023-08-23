@@ -23,22 +23,6 @@ struct io_msg {
 	u32 flags;
 };
 
-static int io_msg_ring_data(struct io_kiocb *req)
-{
-	struct io_ring_ctx *target_ctx = req->file->private_data;
-	struct io_msg *msg = io_kiocb_to_cmd(req, struct io_msg);
-
-	if (msg->src_fd || msg->dst_fd || msg->flags)
-		return -EINVAL;
-	if (target_ctx->flags & IORING_SETUP_R_DISABLED)
-		return -EBADFD;
-
-	if (io_post_aux_cqe(target_ctx, msg->user_data, msg->len, 0, true))
-		return 0;
-
-	return -EOVERFLOW;
-}
-
 static void io_double_unlock_ctx(struct io_ring_ctx *ctx,
 				 struct io_ring_ctx *octx,
 				 unsigned int issue_flags)
@@ -73,6 +57,33 @@ static int io_double_lock_ctx(struct io_ring_ctx *ctx,
 	}
 
 	return 0;
+}
+
+static int io_msg_ring_data(struct io_kiocb *req, unsigned int issue_flags)
+{
+ 	struct io_ring_ctx *target_ctx = req->file->private_data;
+ 	struct io_msg *msg = io_kiocb_to_cmd(req, struct io_msg);
+	struct io_ring_ctx *ctx = req->ctx;
+	int ret;
+ 
+ 	if (msg->src_fd || msg->dst_fd || msg->flags)
+ 		return -EINVAL;
+ 	if (target_ctx->flags & IORING_SETUP_R_DISABLED)
+ 		return -EBADFD;
+ 
+	ret = -EOVERFLOW;
+	if (target_ctx->flags & IORING_SETUP_IOPOLL) {
+		if (unlikely(io_double_lock_ctx(ctx, target_ctx, issue_flags)))
+			return -EAGAIN;
+		if (io_post_aux_cqe(target_ctx, msg->user_data, msg->len, 0, true))
+			ret = 0;
+		io_double_unlock_ctx(ctx, target_ctx, issue_flags);
+	} else {
+		if (io_post_aux_cqe(target_ctx, msg->user_data, msg->len, 0, true))
+			ret = 0;
+	}
+ 
+	return ret;
 }
 
 static int io_msg_send_fd(struct io_kiocb *req, unsigned int issue_flags)
@@ -157,7 +168,7 @@ int io_msg_ring(struct io_kiocb *req, unsigned int issue_flags)
 
 	switch (msg->cmd) {
 	case IORING_MSG_DATA:
-		ret = io_msg_ring_data(req);
+		ret = io_msg_ring_data(req, issue_flags);
 		break;
 	case IORING_MSG_SEND_FD:
 		ret = io_msg_send_fd(req, issue_flags);
