@@ -814,6 +814,15 @@ static void xen_free_irq(unsigned irq)
 	queue_rcu_work(system_wq, &info->rwork);
 }
 
+static void xen_evtchn_close(evtchn_port_t port)
+{
+	struct evtchn_close close;
+
+	close.port = port;
+	if (HYPERVISOR_event_channel_op(EVTCHNOP_close, &close) != 0)
+		BUG();
+}
+
 /* Not called for lateeoi events. */
 static void event_handler_exit(struct irq_info *info)
 {
