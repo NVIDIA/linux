@@ -249,6 +249,12 @@
         compatible = "nuvoton,nct3018y";
         reg = <0x6f>;
         };
+    //MB FRU
+    eeprom@50 {
+        compatible = "atmel,24c02";
+        reg = <0x50>;
+        pagesize = <8>;
+    };
 };
 
 
@@ -256,6 +262,7 @@
 &i2c5 {
     status = "okay";
     bus-frequency = <400000>;
+    // Moved switch@70 to Entity Manager
     // tca9548@70 {
 	// 	compatible = "nxp,pca9548";
 	// 	pinctrl-names = "default";
@@ -270,20 +277,13 @@
 &i2c6 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@70 {
-        compatible = "nxp,pca9546";
-        reg = <0x70>;
-    };
 };
 
 // I2C8, BMC_I2C_PCI
 &i2c7 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@70 {
-        compatible = "nxp,pca9546";
-        reg = <0x70>;
-    };
+    // Moved switch@70 to Entity Manager
 };
 
 // I2C9
@@ -440,6 +440,7 @@
 // I2C12, I2C12_BSDL
 &i2c11 {
     status = "okay";
+    bus-frequency = <400000>;
 
     // enable in entity-manager instead
     //lm75@48 {
@@ -457,7 +458,9 @@
 // I2C14, BMC_I2C_HDR1
 &i2c13 {
     status = "okay";
-    bus-frequency = <400000>;
+    // More Lego-ness: PSU needs 100kHz here
+    // but works fine on CG1
+    bus-frequency = <100000>;
 };
 
 // I2C15, BMC_I2C_HDR2
