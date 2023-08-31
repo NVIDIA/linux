@@ -222,9 +222,8 @@ static int ast_vhub_hub_dev_feature(struct ast_vhub_ep *ep,
 		EPDBG(ep, "Hub remote wakeup %s\n",
 		      str_enabled_disabled(is_set));
 		return std_req_complete;
-	}
 
-	if (wValue == USB_DEVICE_TEST_MODE) {
+	} else if (wValue == USB_DEVICE_TEST_MODE) {
 		val = readl(ep->vhub->regs + AST_VHUB_CTRL);
 		val &= ~GENMASK(10, 8);
 		val |= VHUB_CTRL_SET_TEST_MODE((wIndex >> 8) & 0x7);
@@ -446,10 +445,9 @@ enum std_req_rc ast_vhub_std_hub_request(struct ast_vhub_ep *ep,
 
 		/* GET/SET_CONFIGURATION */
 	case DeviceRequest | USB_REQ_GET_CONFIGURATION:
-		return ast_vhub_simple_reply(ep, 1);
+		return ast_vhub_simple_reply(ep, vhub->current_config);
 	case DeviceOutRequest | USB_REQ_SET_CONFIGURATION:
-		if (wValue != 1)
-			return std_req_stall;
+		vhub->current_config = wValue;
 		return std_req_complete;
 
 		/* GET_DESCRIPTOR */
