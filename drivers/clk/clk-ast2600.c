@@ -954,6 +954,9 @@ static void __init aspeed_g6_cc_init(struct device_node *np)
 	u32 uart_clk_source = 0;
 	int ret;
 	int i;
+#ifdef CONFIG_CONTROL_AST2600_MAC_OPTIONS
+	u32 val = 0;
+#endif
 
 	scu_g6_base = of_iomap(np, 0);
 	if (!scu_g6_base)
@@ -1084,5 +1087,90 @@ static void __init aspeed_g6_cc_init(struct device_node *np)
 	ret = of_clk_add_hw_provider(np, of_clk_hw_onecell_get, aspeed_g6_clk_data);
 	if (ret)
 		pr_err("failed to add DT provider: %d\n", ret);
+
+#ifdef CONFIG_CONTROL_AST2600_MAC_OPTIONS
+	/* fixed settings for RGMII/RMII clock generator */
+	/* MAC1/2 RGMII 125MHz = EPLL / 8 */
+	regmap_update_bits(map, ASPEED_G6_CLK_SELECTION2, GENMASK(23, 20),
+			   (0x7 << 20));
+
+	/* MAC3/4 RMII 50MHz = HCLK / 4 */
+	regmap_update_bits(map, ASPEED_G6_CLK_SELECTION4, GENMASK(18, 16),
+			   (0x3 << 16));
+
+	/* BIT[31]: MAC1/2 RGMII 125M source = internal PLL
+	 * BIT[28]: RGMIICK pad direction = output
+	 */
+	regmap_write(map, ASPEED_MAC12_CLK_DLY,
+		     BIT(31) | BIT(28) | ASPEED_G6_DEF_MAC12_DELAY_1G);
+	regmap_write(map, ASPEED_MAC12_CLK_DLY_100M,
+		     ASPEED_G6_DEF_MAC12_DELAY_100M);
+	regmap_write(map, ASPEED_MAC12_CLK_DLY_10M,
+		     ASPEED_G6_DEF_MAC12_DELAY_10M);
+
+	/* MAC3/4 RGMII 125M source = RGMIICK pad */
+	regmap_write(map, ASPEED_MAC34_CLK_DLY,
+		     ASPEED_G6_DEF_MAC34_DELAY_1G);
+	regmap_write(map, ASPEED_MAC34_CLK_DLY_100M,
+		     ASPEED_G6_DEF_MAC34_DELAY_100M);
+	regmap_write(map, ASPEED_MAC34_CLK_DLY_10M,
+		     ASPEED_G6_DEF_MAC34_DELAY_10M);
+
+	/* MAC3/4 default pad driving strength */
+	regmap_read(map, ASPEED_G6_MAC34_DRIVING_CTRL, &val);
+	val &= 0xfffffff0;
+	val |= 0xe;
+	regmap_write(map, ASPEED_G6_MAC34_DRIVING_CTRL, val);
+
+	regmap_read(map, ASPEED_MAC12_CLK_DLY, &reg_1g.w);
+	regmap_read(map, ASPEED_MAC12_CLK_DLY_100M, &reg_100.w);
+	regmap_read(map, ASPEED_MAC12_CLK_DLY_10M, &reg_10.w);
+	ret = of_property_read_u32_array(np, "mac0-clk-delay", (u32 *)&mac_cfg, 6);
+	if (!ret) {
+		reg_1g.b.tx_delay_1 = mac_cfg.tx_delay_1000;
+		reg_1g.b.rx_delay_1 = mac_cfg.rx_delay_1000;
+		reg_100.b.tx_delay_1 = mac_cfg.tx_delay_100;
+		reg_100.b.rx_delay_1 = mac_cfg.rx_delay_100;
+		reg_10.b.tx_delay_1 = mac_cfg.tx_delay_10;
+		reg_10.b.rx_delay_1 = mac_cfg.rx_delay_10;
+	}
+	ret = of_property_read_u32_array(np, "mac1-clk-delay", (u32 *)&mac_cfg, 6);
+	if (!ret) {
+		reg_1g.b.tx_delay_2 = mac_cfg.tx_delay_1000;
+		reg_1g.b.rx_delay_2 = mac_cfg.rx_delay_1000;
+		reg_100.b.tx_delay_2 = mac_cfg.tx_delay_100;
+		reg_100.b.rx_delay_2 = mac_cfg.rx_delay_100;
+		reg_10.b.tx_delay_2 = mac_cfg.tx_delay_10;
+		reg_10.b.rx_delay_2 = mac_cfg.rx_delay_10;
+	}
+	regmap_write(map, ASPEED_MAC12_CLK_DLY, reg_1g.w);
+	regmap_write(map, ASPEED_MAC12_CLK_DLY_100M, reg_100.w);
+	regmap_write(map, ASPEED_MAC12_CLK_DLY_10M, reg_10.w);
+
+	regmap_read(map, ASPEED_MAC34_CLK_DLY, &reg_1g.w);
+	regmap_read(map, ASPEED_MAC34_CLK_DLY_100M, &reg_100.w);
+	regmap_read(map, ASPEED_MAC34_CLK_DLY_10M, &reg_10.w);
+	ret = of_property_read_u32_array(np, "mac2-clk-delay", (u32 *)&mac_cfg, 6);
+	if (!ret) {
+		reg_1g.b.tx_delay_1 = mac_cfg.tx_delay_1000;
+		reg_1g.b.rx_delay_1 = mac_cfg.rx_delay_1000;
+		reg_100.b.tx_delay_1 = mac_cfg.tx_delay_100;
+		reg_100.b.rx_delay_1 = mac_cfg.rx_delay_100;
+		reg_10.b.tx_delay_1 = mac_cfg.tx_delay_10;
+		reg_10.b.rx_delay_1 = mac_cfg.rx_delay_10;
+	}
+	ret = of_property_read_u32_array(np, "mac3-clk-delay", (u32 *)&mac_cfg, 6);
+	if (!ret) {
+		reg_1g.b.tx_delay_2 = mac_cfg.tx_delay_1000;
+		reg_1g.b.rx_delay_2 = mac_cfg.rx_delay_1000;
+		reg_100.b.tx_delay_2 = mac_cfg.tx_delay_100;
+		reg_100.b.rx_delay_2 = mac_cfg.rx_delay_100;
+		reg_10.b.tx_delay_2 = mac_cfg.tx_delay_10;
+		reg_10.b.rx_delay_2 = mac_cfg.rx_delay_10;
+	}
+	regmap_write(map, ASPEED_MAC34_CLK_DLY, reg_1g.w);
+	regmap_write(map, ASPEED_MAC34_CLK_DLY_100M, reg_100.w);
+	regmap_write(map, ASPEED_MAC34_CLK_DLY_10M, reg_10.w);
+#endif //CONTROL_AST2600_MAC_OPTIONS
 };
 CLK_OF_DECLARE_DRIVER(aspeed_cc_g6, "aspeed,ast2600-scu", aspeed_g6_cc_init);
