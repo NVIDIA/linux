@@ -70,4 +70,5 @@ static inline void i3c_readl_fifo(const void __iomem *addr, void *buf,
 }
 
 int i3c_dev_generate_ibi_locked(struct i3c_dev_desc *dev, const u8 *data, int len);
+int i3c_dev_is_ibi_enabled_locked(struct i3c_dev_desc *dev);
 #endif /* I3C_INTERNAL_H */
