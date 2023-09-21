@@ -192,11 +192,7 @@
 &vhub {
     status = "okay";
     pinctrl-names = "default"; 
-    /* 
-        Uncomment below line to enable internal EHCI controller
-        Current config uses xHCI Port1
-    */
-    // pinctrl-0 = <&pinctrl_usb2adp_default>;
+    pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
 &video {
