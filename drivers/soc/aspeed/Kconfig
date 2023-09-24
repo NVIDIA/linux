@@ -34,6 +34,14 @@ config ASPEED_UART_ROUTING
 	  users to perform runtime configuration of the RX muxes among
 	  the UART controllers and I/O pins.
 
+config ASPEED_MCTP
+	tristate "Aspeed ast2600 MCTP Controller support"
+	depends on REGMAP && MFD_SYSCON
+	help
+	  Enable support for ast2600 MCTP Controller.
+	  The MCTP controller allows the BMC to communicate with devices on
+	  the host PCIe network.
+
 config ASPEED_P2A_CTRL
 	tristate "ASPEED P2A (VGA MMIO to BMC) bridge control"
 	select REGMAP
