@@ -91,10 +91,13 @@ static void vgpio_set_value(struct gpio_chip *gc, unsigned int offset, int val)
 {
 	struct aspeed_espi_gpio *gpio = gpiochip_get_data(gc);
 	unsigned long flags;
+	int ret;
 
+	val = val ? BIT(offset) : 0;
 	spin_lock_irqsave(&gpio->lock, flags);
-	regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, BIT(offset), val);
-	set_nth_bit(&cached_reg_val, offset, val);
+	ret = regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, BIT(offset), val);
+	if (!ret)
+		set_nth_bit(&cached_reg_val, offset, val);
 	spin_unlock_irqrestore(&gpio->lock, flags);
 }
 
@@ -115,21 +118,14 @@ static int vgpio_direction_input(struct gpio_chip *gc, unsigned int offset)
 static int vgpio_direction_output(struct gpio_chip *gc, unsigned int offset, int val)
 {
 	struct aspeed_espi_gpio *gpio = gpiochip_get_data(gc);
-	unsigned long flags;
-	int ret;
 
 	if (!(gpio->dir_mask & BIT(offset))) {
 		dev_dbg(gpio->dev, "VW GPIO: Offset %d is not output\n", offset);
 		return -EOPNOTSUPP;
 	}
 
-	val = val ? BIT(offset) : 0;
-	spin_lock_irqsave(&gpio->lock, flags);
-	ret = regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, BIT(offset), val);
-	if (!ret)
-		set_nth_bit(&cached_reg_val, offset, val);
-	spin_unlock_irqrestore(&gpio->lock, flags);
-	return ret;
+	vgpio_set_value(gc, offset, val);
+	return 0;
 }
 
 static int aspeed_espi_vw_gpio_init(struct device *dev, struct aspeed_espi_gpio *gpio)
