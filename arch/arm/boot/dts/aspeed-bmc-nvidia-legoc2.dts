@@ -346,7 +346,7 @@
             "M2M_A_ALERT_N_3V3-I",
             "M2M_B_ALERT_N_3V3-I",
             "BUTTON_POWER_ON_IO-I",
-            "FPGA_RSVD_FFU1",
+            "CPU_BOOT_DONE-I",
             "FPGA_RSVD_FFU2",
             "FPGA_RSVD_FFU3",
             "FPGA_RSVD_FFU4",
