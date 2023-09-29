@@ -305,12 +305,12 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-        // #address-cells = <1>;
-        // #size-cells = <0>;
-        // interrupt-controller;
-        // #interrupt-cells = <2>;
-        // interrupt-parent = <&exp0>;
-        // interrupts = <14 IRQ_TYPE_LEVEL_LOW>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
 
         gpio-line-names =
             "UPHY0_0_PRSNT_L_N-I",
@@ -336,12 +336,12 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-        // #address-cells = <1>;
-        // #size-cells = <0>;
-        // interrupt-controller;
-        // #interrupt-cells = <2>;
-        // interrupt-parent = <&exp0>;
-        // interrupts = <15 IRQ_TYPE_LEVEL_LOW>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         
         gpio-line-names = 
             "ID_BTN_BMC_IO_N",
@@ -423,14 +423,12 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-        // #address-cells = <1>;
-        // #size-cells = <0>;
-        // interrupt-controller;
-        // #interrupt-cells = <2>;
-        // interrupt-parent = <&gpio0>;
-        // interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-parent = <&exp0>;
-        // interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
                
         gpio-line-names = 
             "SNN_PRSNT_L_FFU-I",
@@ -456,14 +454,12 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-        // #address-cells = <1>;
-        // #size-cells = <0>;
-        // interrupt-controller;
-        // #interrupt-cells = <2>;
-        // interrupt-parent = <&gpio0>;
-        // interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-parent = <&exp0>;
-        // interrupts = <13 IRQ_TYPE_LEVEL_LOW>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
        
         gpio-line-names =
             "SPI_TPM_INT_L3V3-O",
