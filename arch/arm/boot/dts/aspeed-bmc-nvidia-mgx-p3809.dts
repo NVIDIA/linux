@@ -200,6 +200,16 @@
        pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
+&ehci0 {
+   status = "disabled";
+};
+
+&vhub {
+       status = "okay";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_usb2adp_default>;
+};
+
 /* Tegra USB Path */
 &ehci1 {
    status = "okay";
