@@ -273,6 +273,7 @@
 &i2c5 {
     status = "okay";
     bus-frequency = <400000>;
+    multi-master;
     //Moved switch@70 to Entity Manager
 };
 
@@ -280,6 +281,7 @@
 &i2c6 {
     status = "okay";
     bus-frequency = <400000>;
+    multi-master;
     //Moved switch@70 to Entity Manager
 
 };
@@ -332,6 +334,7 @@
 &i2c12 {
     status = "okay";
     bus-frequency = <400000>;
+    multi-master;
     //Moved switch@70 to Entity Manager
 
 };
