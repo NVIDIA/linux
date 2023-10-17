@@ -121,7 +121,7 @@
     "SP0_AP_INTR_N-I",
     "",//Removed BMC_EP_PERST_EN-O
     "BMC_SPI_EROT_FPGA_INT_L-I",
-    //"BMC_EROT_FPGA_SPI_MUX_SEL-O",
+    "",//"BMC_EROT_FPGA_SPI_MUX_SEL-O",
     "", // Removed EROT_FPGA_RST_L and put in C7
     "FPGA_EROT_RECOVERY_L-O",
     "FPGA_EROT_FATAL_ERROR_L-I",

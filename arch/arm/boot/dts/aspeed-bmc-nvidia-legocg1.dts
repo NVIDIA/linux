@@ -357,10 +357,6 @@
             "PWRGD_P12V_BRICK2_R",
             "PSU0_PSU1_VIN_R_GOOD";
  	};
-    quanta_cpld@28 {
-        compatible = "quanta_cg1_cpld";
-        reg = <0x28>;
-    };
 };
 
 // I2C8, BMC_I2C_PCI
