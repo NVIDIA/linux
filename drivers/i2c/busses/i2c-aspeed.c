@@ -557,6 +557,8 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 		     ASPEED_I2CD_BUS_BUSY_STS))
 			aspeed_i2c_recover_bus(bus);
 
+		bus->msgs = NULL;
+
 		return -ETIMEDOUT;
 	}
 
