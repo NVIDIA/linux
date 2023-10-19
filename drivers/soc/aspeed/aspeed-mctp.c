@@ -2072,7 +2072,7 @@ static void aspeed_mctp_drv_init(struct aspeed_mctp *priv)
 
 static void aspeed_mctp_drv_fini(struct aspeed_mctp *priv)
 {
-	cancel_delayed_work(&priv->pcie.test_dwork);
+	cancel_delayed_work_sync(&priv->pcie.test_dwork);
 	dev_info(priv->dev, "Cancelled Rx poll work successfully..\n");
 
 	aspeed_mctp_eid_info_list_remove(&priv->endpoints);
