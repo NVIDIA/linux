@@ -13,8 +13,8 @@
 #include <linux/slab.h>
 #include <linux/leds.h>
 
-#define NR_CHANNEL 16
-#define NR_CHANNEL_PWM 8
+#define NR_CHANNEL_PWM 9
+#define NR_CHANNEL (2 * NR_CHANNEL_PWM)
 #define CPLD_VER_REG 0x0
 #define FAN_CONTROL_MODE 0x1
 #define FAN_PRST 0x4
@@ -50,12 +50,18 @@ static int quanta_cpld_write(struct device *dev, enum hwmon_sensor_types type,
 			  u32 attr, int channel, long val)
 {
 	struct quanta_cpld_data *data = dev_get_drvdata(dev);
+
 	if (channel >= NR_CHANNEL_PWM || channel < 0)
 		return -ENODEV;
 
 	switch (attr) {
 	case hwmon_pwm_input:
 		u8 cmd = PWM_FAN0 + channel;
+		//for some reason the spec does not increment
+		// the registers normally. channel 0 starts at
+		//0x18 and channel 8 ends at 0x17
+		if (channel == 8)
+			cmd = 0x17;
 		if (val > 100)
 			val = 100;
 		if (val < 0)
@@ -92,7 +98,6 @@ static int quanta_cpld_read(struct device *dev, enum hwmon_sensor_types type,
 
 	if (channel >= NR_CHANNEL || channel < 0)
 		return -ENODEV;
-
 	switch (attr) {
 	case hwmon_fan_input:
 		int tach_data;
@@ -103,6 +108,12 @@ static int quanta_cpld_read(struct device *dev, enum hwmon_sensor_types type,
 		break;
 	case hwmon_pwm_input:
 		u8 cmd = PWM_FAN0 + channel;
+		//for some reason the spec does not increment
+		// the registers normally. channel 0 starts at
+		//0x18 and channel 8 ends at 0x17
+		if (channel == 8)
+			cmd = 0x17;
+
 		ret = i2c_smbus_read_byte_data(data->client, cmd);
 		*val = ret;
 		break;
@@ -158,8 +169,11 @@ static const struct hwmon_channel_info *quanta_cpld_info[] = {
 			   HWMON_F_INPUT,
 			   HWMON_F_INPUT,
 			   HWMON_F_INPUT,
+			   HWMON_F_INPUT,
+			   HWMON_F_INPUT,
 			   HWMON_F_INPUT),
 	HWMON_CHANNEL_INFO(pwm,
+			   HWMON_PWM_INPUT,
 			   HWMON_PWM_INPUT,
 			   HWMON_PWM_INPUT,
 			   HWMON_PWM_INPUT,
