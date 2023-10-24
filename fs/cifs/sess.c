@@ -170,17 +170,11 @@ int cifs_try_adding_channels(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses)
 	new_chan_count = old_chan_count = ses->chan_count;
 	left = ses->chan_max - ses->chan_count;
 
-	spin_lock(&ses->chan_lock);
-
-	new_chan_count = old_chan_count = ses->chan_count;
-	left = ses->chan_max - ses->chan_count;
-
 	if (left <= 0) {
 		spin_unlock(&ses->chan_lock);
 		cifs_dbg(FYI,
 			 "ses already at max_channels (%zu), nothing to open\n",
 			 ses->chan_max);
-		spin_unlock(&ses->chan_lock);
 		return 0;
 	}
 
@@ -337,7 +331,6 @@ cifs_chan_update_iface(struct cifs_ses *ses, struct TCP_Server_Info *server)
 		cifs_put_tcp_session(server, false);
 
 	return rc;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 /*
@@ -440,6 +433,8 @@ cifs_ses_add_channel(struct cifs_sb_info *cifs_sb, struct cifs_ses *ses,
 	memcpy(&ctx.client_guid, ses->server->client_guid,
 	       SMB2_CLIENT_GUID_SIZE);
 	ctx.use_client_guid = true;
+
+	chan_server = cifs_get_tcp_session(&ctx, ses->server);
 
 	spin_lock(&ses->chan_lock);
 	chan = &ses->chans[ses->chan_count];

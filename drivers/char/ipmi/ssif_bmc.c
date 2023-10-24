@@ -22,6 +22,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 
+#include <linux/device.h>
 #include <linux/aspeed-2600-ara.h>
 #include <linux/i2c-aspeed.h>
 
@@ -121,6 +122,28 @@ struct ssif_bmc_ctx {
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 	struct ast2600_ara *ara;
 };
+
+static ssize_t ssif_timeout_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
+
+	return sprintf(buf, "%lu\n", ssif_bmc->response_timeout);
+}
+
+static ssize_t ssif_timeout_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
+
+	ssif_bmc->response_timeout = strtoul (buf, NULL, 10);
+	return count;
+}
+static DEVICE_ATTR_RW(ssif_timeout);
 
 void disable_ast2600_slave(struct i2c_client *client)
 {
@@ -485,7 +508,9 @@ static void set_singlepart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
 	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	part->length = (u8)ssif_bmc->response.header.len;
-
+	//it is not valid to have length of 0 in smbus read command
+	if (part->length == 0)
+		part->length = 1;
 	/* Clear the rest to 0 */
 	memset(part->payload + part->length, 0, MAX_PAYLOAD_PER_TRANSACTION - part->length);
 	memcpy(&part->payload[0], &ssif_bmc->response.payload[0], part->length);
@@ -1002,11 +1027,13 @@ static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id 
 	}
 	ssif_bmc->ara = register_ast2600_ara(client);
 
-	gpiod_set_value(ssif_bmc->alert, 0);
+	if (!IS_ERR(ssif_bmc->alert))
+		gpiod_set_value(ssif_bmc->alert, 0);
+	device_create_file(&client->dev, &dev_attr_ssif_timeout);
 	return ret;
 }
 
-static int ssif_bmc_remove(struct i2c_client *client)
+static void ssif_bmc_remove(struct i2c_client *client)
 {
 	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
 
@@ -1019,7 +1046,7 @@ static int ssif_bmc_remove(struct i2c_client *client)
 	misc_deregister(&ssif_bmc->miscdev_post);
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 
-	return 0;
+	device_remove_file(&client->dev, &dev_attr_ssif_timeout);
 }
 
 static const struct of_device_id ssif_bmc_match[] = {

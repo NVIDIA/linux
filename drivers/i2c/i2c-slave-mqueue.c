@@ -196,7 +196,7 @@ static int i2c_slave_mqueue_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int i2c_slave_mqueue_remove(struct i2c_client *client)
+static void i2c_slave_mqueue_remove(struct i2c_client *client)
 {
 	struct mq_queue *mq = i2c_get_clientdata(client);
 
@@ -205,7 +205,6 @@ static int i2c_slave_mqueue_remove(struct i2c_client *client)
 	kernfs_put(mq->kn);
 	sysfs_remove_bin_file(&client->dev.kobj, &mq->bin);
 
-	return 0;
 }
 
 static const struct i2c_device_id i2c_slave_mqueue_id[] = {

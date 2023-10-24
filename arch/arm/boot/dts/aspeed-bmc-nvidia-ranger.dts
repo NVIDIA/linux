@@ -75,13 +75,24 @@
         compatible = "jedec,spi-nor";
         label = "bmc";
         spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-e4830-flash-layout-64.dtsi"
+#include "aspeed-bmc-nvidia-gh-flash-layout-64.dtsi"
     };
 };
 
 &fmcraw {
     status = "okay";
     spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
+&spi1raw {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+    spidev@0 {
+        spi-max-frequency = <25000000>;
         compatible = "hgx,glacier";
         status = "okay";
     };

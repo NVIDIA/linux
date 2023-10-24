@@ -175,6 +175,31 @@
 			};
 		};
 
+		spi1raw: spiraw@1e630000 {
+			/* reg : cs0 : cs1 : cs2 */
+			reg = <0x1e630000 0x100
+							0x30000000 0x200000
+							0x34000000 0x200000>;
+			compatible = "aspeed,ast2600-fmc-spi";
+			number_of_chip_select = /bits/ 16 <2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&syscon ASPEED_CLK_AHB>;
+			status = "disabled";
+			interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
+			num-cs = <2>;
+			spidev@0 {
+				reg = < 0 >;
+				spi-max-frequency = <50000000>;
+				status = "disabled";
+			};
+			spidev@1 {
+				reg = < 1 >;
+				spi-max-frequency = <50000000>;
+				status = "disabled";
+			};
+		};
+
 		spi2: spi@1e631000 {
 			reg = <0x1e631000 0xc4>, <0x50000000 0x10000000>;
 			#address-cells = <1>;
