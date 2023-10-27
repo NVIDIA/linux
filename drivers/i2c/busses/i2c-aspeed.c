@@ -608,7 +608,7 @@ static int aspeed_i2c_get_free_slave_id(struct aspeed_i2c_bus *bus,
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 /* precondition: bus.lock has been acquired. */
 static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
-				u32 dev_add_mask, u32 en_slave_dev_add2)
+				u32 dev_add_mask, u32 en_slave_dev_add)
 {
 	u32 addr_reg_val, func_ctrl_reg_val;
 	u8 shift;
@@ -616,7 +616,7 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 	/* Set slave device address 1 or 2 */
 	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
 	addr_reg_val &= ~dev_add_mask;
-	addr_reg_val |= en_slave_dev_add2;
+	addr_reg_val |= en_slave_dev_add;
 	shift = ffs(dev_add_mask) - 1;
 	addr_reg_val |= ((slave_addr << shift) & dev_add_mask);
 	writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
@@ -636,7 +636,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 	struct aspeed_i2c_bus *bus = i2c_get_adapdata(client->adapter);
 	unsigned long flags;
 	int id, ret;
-	u32 dev_add_mask, en_slave_dev_add2;
+	u32 dev_add_mask, en_slave_dev_add;
 	spin_lock_irqsave(&bus->lock, flags);
 
 	ret = aspeed_i2c_get_free_slave_id(bus, client, &id);
@@ -648,13 +648,13 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 
 	if (id == 0) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR1_MASK;
-		en_slave_dev_add2 = 0;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR1;
 	} else if (id == 1) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR2_MASK;
-		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR2;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR2;
 	} else if (id == 2 && bus->max_slaves_enable == 3) {
 		dev_add_mask = ASPEED_I2CD_DEV_ADDR3_MASK;
-		en_slave_dev_add2 = ASPEED_I2CD_EN_SLAVE_DEV_ADDR3;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR3;
 	} else {
 		/* never supposed to go here */
 		return -ENODEV;
@@ -663,7 +663,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 	bus->slave[id] = client;
 	bus->slave_state[id] = ASPEED_I2C_SLAVE_INACTIVE;
 	__aspeed_i2c_reg_slave(bus, client->addr, dev_add_mask,
-				en_slave_dev_add2);
+				en_slave_dev_add);
 
 	spin_unlock_irqrestore(&bus->lock, flags);
 	return 0;
