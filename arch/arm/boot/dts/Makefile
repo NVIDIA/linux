@@ -1432,5 +1432,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	apseed-bmc-nvidia-hgx.dtb \
 	apseed-bmc-nvidia-vulcan-hmc.dtb \
 	aspeed-bmc-nvidia-moonraker.dtb \
-	aspeed-bmc-nvidia-moonraker-smbus.dtb \
+	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb 
