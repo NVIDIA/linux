@@ -1106,13 +1106,32 @@ static inline bool i2c_acpi_waive_d0_probe(struct device *dev)
 {
 	return false;
 }
-#endif /* CONFIG_ACPI */
-
 static inline struct i2c_client *i2c_acpi_new_device(struct device *dev,
 						     int index,
 						     struct i2c_board_info *info)
 {
 	return i2c_acpi_new_device_by_fwnode(dev_fwnode(dev), index, info);
+}
+#endif /* CONFIG_ACPI */
+
+
+
+enum i2c_hold_msg_type {
+	I2C_HOLD_MSG_NONE,
+	I2C_HOLD_MSG_SET,
+	I2C_HOLD_MSG_RESET
+};
+
+static inline enum i2c_hold_msg_type i2c_check_hold_msg(u16 flags, u16 len, u16 *buf)
+{
+	if (flags & I2C_M_HOLD && len == sizeof(u16)) {
+		if (*buf)
+			return I2C_HOLD_MSG_SET;
+
+		return I2C_HOLD_MSG_RESET;
+	}
+
+	return I2C_HOLD_MSG_NONE;
 }
 
 #endif /* _LINUX_I2C_H */
