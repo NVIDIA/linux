@@ -1611,6 +1611,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-lenovo-hr630.dtb \
 	aspeed-bmc-lenovo-hr855xg2.dtb \
 	aspeed-bmc-microsoft-olympus.dtb \
+	aspeed-bmc-nvidia-bluesphere.dtb \
 	aspeed-bmc-nuvia-dc-scm.dtb \
 	aspeed-bmc-opp-lanyang.dtb \
 	aspeed-bmc-opp-mihawk.dtb \
@@ -1642,6 +1643,11 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	apseed-bmc-nvidia-hgx.dtb \
         apseed-bmc-nvidia-e4900.dtb \
 	apseed-bmc-nvidia-vulcan-hmc.dtb \
+	aspeed-bmc-nvidia-moonraker.dtb \
+	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb \
 	aspeed-bmc-nvidia-mgx-p3712.dtb \
-	aspeed-bmc-nvidia-mgx-3809.dtb 
+	aspeed-bmc-nvidia-mgx-3809.dtb  \
+	aspeed-bmc-nvidia-legoc2.dtb \
+	aspeed-bmc-nvidia-legocg1.dtb
+

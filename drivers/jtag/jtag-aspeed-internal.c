@@ -16,7 +16,6 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
-#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/jtag.h>
 #include <linux/platform_device.h>
@@ -163,7 +162,7 @@ static int aspeed_jtag_set_freq(struct jtag *jtag, u32 freq)
 	aspeed_jtag->sw_delay = DIV_ROUND_UP(NSEC_PER_SEC, freq);
 	/*
 	 * HW mode frequency setting
-	 * AST2600: TCK period = Period of PCLK * (JTAG14[10:0] + 1)
+	 * AST2600: TCK period = Period of HCLK * (JTAG14[10:0] + 1)
 	 * AST2500: TCK period = Period of PCLK * (JTAG14[10:0] + 1) * 2
 	 */
 	if (aspeed_jtag->config->jtag_version == 6)
@@ -219,7 +218,7 @@ static int aspeed_jtag_get_freq(struct jtag *jtag, u32 *freq)
 	struct aspeed_jtag_info *aspeed_jtag = jtag_priv(jtag);
 
 	if (aspeed_jtag->config->jtag_version == 6) {
-		/* TCK period = Period of PCLK * (JTAG14[10:0] + 1) */
+		/* TCK period = Period of HCLK * (JTAG14[10:0] + 1) */
 		*freq = aspeed_jtag->clkin /
 		       (JTAG_GET_TCK_DIVISOR(aspeed_jtag_read(
 				aspeed_jtag, ASPEED_JTAG_TCK)) + 1);
@@ -248,9 +247,10 @@ static u8 TCK_Cycle(struct aspeed_jtag_info *aspeed_jtag, u8 TMS, u8 TDI)
 			  JTAG_SW_MODE_EN | (TMS * JTAG_SW_MODE_TMS) |
 				  (TDI * JTAG_SW_MODE_TDIO),
 			  ASPEED_JTAG_SW);
+	aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_SW);
 
 	/* Target device have their operating frequency*/
-	ndelay(aspeed_jtag->sw_delay);
+	ndelay(aspeed_jtag->sw_delay >> 1);
 
 	// TCK = 1
 	aspeed_jtag_write(aspeed_jtag,
@@ -258,8 +258,9 @@ static u8 TCK_Cycle(struct aspeed_jtag_info *aspeed_jtag, u8 TMS, u8 TDI)
 				  (TMS * JTAG_SW_MODE_TMS) |
 				  (TDI * JTAG_SW_MODE_TDIO),
 			  ASPEED_JTAG_SW);
+	aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_SW);
 
-	ndelay(aspeed_jtag->sw_delay);
+	ndelay(aspeed_jtag->sw_delay >> 1);
 	/* Sampled TDI(slave, master's TDO) on the rising edge */
 	if (aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_SW) & JTAG_SW_MODE_TDIO)
 		tdo = 1;
@@ -414,6 +415,8 @@ static int aspeed_jtag_status_set(struct jtag *jtag,
 
 	if (tapstate->from == JTAG_STATE_CURRENT)
 		tapstate->from = aspeed_jtag->sts;
+	if (tapstate->endstate == JTAG_STATE_CURRENT)
+		tapstate->endstate = aspeed_jtag->sts;
 	JTAG_DBUG("reset:%d from:%s end:%s tck:%d", tapstate->reset,
 		  end_status_str[tapstate->from],
 		  end_status_str[tapstate->endstate], tapstate->tck);
@@ -888,6 +891,9 @@ static int aspeed_jtag_bitbang(struct jtag *jtag,
 			TCK_Cycle(aspeed_jtag, bitbang_data[i].tms,
 					      bitbang_data[i].tdi);
 	}
+	if (aspeed_jtag->mode == JTAG_XFER_HW_MODE)
+		aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_SW);
+
 	return 0;
 }
 
@@ -911,6 +917,15 @@ static int aspeed_jtag_mode_set(struct jtag *jtag, struct jtag_mode *jtag_mode)
 	default:
 		return -EINVAL;
 	}
+	return 0;
+}
+
+static int aspeed_jtag_trst_set(struct jtag *jtag, u32 active)
+{
+	struct aspeed_jtag_info *aspeed_jtag = jtag_priv(jtag);
+
+	aspeed_jtag_write(aspeed_jtag, active ? 0 : JTAG_CTRL_TRSTn_HIGH,
+			  ASPEED_JTAG_IDLE);
 	return 0;
 }
 
@@ -940,6 +955,7 @@ static const struct jtag_ops aspeed_jtag_ops = {
 	.status_set = aspeed_jtag_status_set,
 	.xfer = aspeed_jtag_xfer,
 	.mode_set = aspeed_jtag_mode_set,
+	.trst_set = aspeed_jtag_trst_set,
 	.bitbang = aspeed_jtag_bitbang,
 	.enable = aspeed_jtag_enable,
 	.disable = aspeed_jtag_disable,

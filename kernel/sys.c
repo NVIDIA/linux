@@ -1640,6 +1640,68 @@ static void rlim64_to_rlim(const struct rlimit64 *rlim64, struct rlimit *rlim)
 		rlim->rlim_max = (unsigned long)rlim64->rlim_max;
 }
 
+<<<<<<< HEAD
+=======
+/* make sure you are allowed to change @tsk limits before calling this */
+int do_prlimit(struct task_struct *tsk, unsigned int resource,
+		struct rlimit *new_rlim, struct rlimit *old_rlim)
+{
+	struct rlimit *rlim;
+	int retval = 0;
+
+	if (resource >= RLIM_NLIMITS)
+		return -EINVAL;
+	resource = array_index_nospec(resource, RLIM_NLIMITS);
+
+	if (new_rlim) {
+		if (new_rlim->rlim_cur > new_rlim->rlim_max)
+			return -EINVAL;
+		if (resource == RLIMIT_NOFILE &&
+				new_rlim->rlim_max > sysctl_nr_open)
+			return -EPERM;
+	}
+
+	/* protect tsk->signal and tsk->sighand from disappearing */
+	read_lock(&tasklist_lock);
+	if (!tsk->sighand) {
+		retval = -ESRCH;
+		goto out;
+	}
+
+	rlim = tsk->signal->rlim + resource;
+	task_lock(tsk->group_leader);
+	if (new_rlim) {
+		/* Keep the capable check against init_user_ns until
+		   cgroups can contain all limits */
+		if (new_rlim->rlim_max > rlim->rlim_max &&
+				!capable(CAP_SYS_RESOURCE))
+			retval = -EPERM;
+		if (!retval)
+			retval = security_task_setrlimit(tsk, resource, new_rlim);
+	}
+	if (!retval) {
+		if (old_rlim)
+			*old_rlim = *rlim;
+		if (new_rlim)
+			*rlim = *new_rlim;
+	}
+	task_unlock(tsk->group_leader);
+
+	/*
+	 * RLIMIT_CPU handling. Arm the posix CPU timer if the limit is not
+	 * infinite. In case of RLIM_INFINITY the posix CPU timer code
+	 * ignores the rlimit.
+	 */
+	 if (!retval && new_rlim && resource == RLIMIT_CPU &&
+	     new_rlim->rlim_cur != RLIM_INFINITY &&
+	     IS_ENABLED(CONFIG_POSIX_TIMERS))
+		update_rlimit_cpu(tsk, new_rlim->rlim_cur);
+out:
+	read_unlock(&tasklist_lock);
+	return retval;
+}
+
+>>>>>>> origin/develop-5.15
 /* rcu lock must be held */
 static int check_prlimit_permission(struct task_struct *task,
 				    unsigned int flags)

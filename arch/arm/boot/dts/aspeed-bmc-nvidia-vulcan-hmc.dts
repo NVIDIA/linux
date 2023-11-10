@@ -138,6 +138,17 @@
 	status = "okay";
 };
 
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
+};
+
 /*
  * Enable port A as device (via the virtual hub) and port B as
  * host by default on the eval board. This can be easily changed
@@ -171,7 +182,7 @@
 
     // HMC FRU
     eeprom@4e {
-    compatible = "atmel,24c256";
+    compatible = "atmel,24c02";
     reg = <0x4E>;
     };
 };

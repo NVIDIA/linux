@@ -571,6 +571,10 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	/* Only for reads */
 	if (op->data.dir != SPI_MEM_DATA_IN)
 		return -EOPNOTSUPP;
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/develop-5.15
 	aspeed_spi_chip_adjust_window(chip, desc->info.offset, desc->info.length);
 
 	if (desc->info.length > chip->ahb_window_size)

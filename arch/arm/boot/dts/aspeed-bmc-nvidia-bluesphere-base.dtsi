@@ -1,0 +1,199 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include "aspeed-g5.dtsi"
+
+/ {
+	model = "BlueSphere BMC";
+	compatible = "nvidia,nvidia-bmc", "aspeed,ast2500";
+
+	aliases {
+		serial0 = &uart1;
+		serial4 = &uart5;
+        };
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x40000000>;	/* 1GiB SDRAM DDR4 @ 0x8000_0000 */
+	};
+	
+	i2c-15 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&gpio 7 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpio 6 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&adc 0>, <&adc 1>, <&adc 2>, <&adc 3>,
+						<&adc 4>, <&adc 5>, <&adc 6>, <&adc 7>,
+						<&adc 8>, <&adc 9>, <&adc 10>, <&adc 11>,
+						<&adc 12>;
+		io-channel-names = "adc_12v_PCIe", "adc_12v_core_in", "adc_3.3v_aux", "adc_3.3v",
+							"adc_2.5v_ddr", "adc_5v", "adc_vcore", "adc_1.8v",
+							"adc_1.2v_ddr", "adc_1.2v", "adc_1.2v_bmc_ddr", "adc_1.15v_bmc",
+							"adc_0.6v_vit";
+	};
+};
+
+&adc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc0_default
+			&pinctrl_adc1_default
+			&pinctrl_adc2_default
+			&pinctrl_adc3_default
+			&pinctrl_adc4_default
+			&pinctrl_adc5_default
+			&pinctrl_adc6_default
+			&pinctrl_adc7_default
+			&pinctrl_adc8_default
+			&pinctrl_adc9_default
+			&pinctrl_adc10_default
+			&pinctrl_adc11_default
+			&pinctrl_adc12_default
+			&pinctrl_adc13_default
+			&pinctrl_adc14_default
+			&pinctrl_adc15_default>;
+};
+
+&fmc {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		label = "bmc";
+                compatible = "sst,w25q256", "jedec,spi-nor";
+#include "aspeed-bmc-nvidia-secureboot-flash-layout-64.dtsi"
+	};
+	flash@1 {
+		status = "okay";
+		label = "alt-bmc";
+                compatible = "sst,w25q256", "jedec,spi-nor";
+#include "aspeed-bmc-nvidia-secureboot-alt-flash-layout-64.dtsi"
+	};
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2ck_default
+		     &pinctrl_spi2cs0_default
+		     &pinctrl_spi2cs1_default
+		     &pinctrl_spi2miso_default
+		     &pinctrl_spi2mosi_default>;
+	flash@0 {
+		status = "okay";
+		label = "staging";
+		compatible = "sst,w25q256", "jedec,spi-nor";
+#include "aspeed-bmc-nvidia-config-flash-layout-64.dtsi"
+	};
+};
+
+&uart5 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&mac1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii2_default>;
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&pinctrl {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ncts1_default
+		&pinctrl_ndcd1_default
+		&pinctrl_ndsr1_default
+		&pinctrl_nri1_default
+		&pinctrl_ndtr1_default
+		&pinctrl_nrts1_default
+		&pinctrl_txd1_default
+		&pinctrl_rxd1_default>;
+};
+
+&i2c0 {
+	status = "okay";
+	multi-master;
+	// BF to BMC
+	ipmb-0@10 {
+		compatible = "ipmb-dev";
+		// TODO: replace with 0x40000000 with I2C_OWN_SLAVE_ADDRESS
+		reg = <(0x10 | 0x40000000)>;
+		i2c-protocol;
+	};
+	// BMC to BF
+	ipmb-0@20 {
+		compatible = "ipmb-dev";
+		// TODO: replace with 0x40000000 with I2C_OWN_SLAVE_ADDRESS
+		reg = <(0x20 | 0x40000000)>;
+		i2c-protocol;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {
+	status = "okay";
+
+	tmp102@49 {
+		compatible = "ti,tmp102";
+		reg = <0x49>;
+	};
+};
+
+&i2c5 { 
+	status = "okay";
+};
+
+&i2c6 {
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "st,24c128", "atmel,24c128";
+		reg = <0x50>;
+		pagesize = <64>;
+	};
+};
+
+&i2c7 {
+	status = "okay";
+};
+
+&i2c9 {
+	status = "disabled";
+};
+
+&i2c12 {
+	status = "okay";
+};
+
+&i2c13 {
+	status = "okay";
+};
+
+&vuart {
+	status = "okay";
+};
+
+&wdt2 {
+	status = "okay";
+	aspeed,alt-boot;
+};

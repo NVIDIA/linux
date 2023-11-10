@@ -47,9 +47,12 @@
  * These share bit definitions, so use the same values for the enable &
  * status bits.
  */
+#define ASPEED_2500_I2CD_SLAVE_ADDR_MATCH_INDICATOR_MASK 0x1
+#define ASPEED_2500_I2CD_SLAVE_ADDR_MATCH_INDICATOR_OFFESET 31
+#define ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_MASK 0x3
+#define ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_OFFESET 30
+
 #define ASPEED_I2CD_INTR_RECV_MASK			0xf000efff
-#define ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORH		BIT(31)
-#define ASPEED_I2CD_SLAVE_ADDR_MATCH_INDICATORL		BIT(30)
 #define ASPEED_I2CD_INTR_SDA_DL_TIMEOUT			BIT(14)
 #define ASPEED_I2CD_INTR_BUS_RECOVER_DONE		BIT(13)
 #define ASPEED_I2CD_INTR_SLAVE_MATCH			BIT(7)
@@ -97,14 +100,15 @@
 		 ASPEED_I2CD_M_START_CMD)
 
 /* 0x18 : I2CD Slave Device Address Register   */
-#define ASPEED_I2CD_EN_SLAVE_DEV_ADDR2			BIT(23)
-#define ASPEED_I2CD_EN_SLAVE_DEV_ADDR1			BIT(15)
+#define ASPEED_I2CD_EN_SLAVE_DEV_ADDR3			BIT(23)
+#define ASPEED_I2CD_DIS_SLAVE_DEV_ADDR3			~ASPEED_I2CD_EN_SLAVE_DEV_ADDR3
+#define ASPEED_I2CD_DEV_ADDR3_MASK			GENMASK(22, 16)
+#define ASPEED_I2CD_EN_SLAVE_DEV_ADDR2			BIT(15)
 #define ASPEED_I2CD_DIS_SLAVE_DEV_ADDR2			~ASPEED_I2CD_EN_SLAVE_DEV_ADDR2
-#define ASPEED_I2CD_DIS_SLAVE_DEV_ADDR1			~ASPEED_I2CD_EN_SLAVE_DEV_ADDR1
-#define ASPEED_I2CD_DEV_ADDR2_MASK			GENMASK(22, 16)
-#define ASPEED_I2CD_DEV_ADDR1_MASK			GENMASK(14, 8)
-#define ASPEED_I2CD_DEV_ADDR2_SHIFT			16
-#define ASPEED_I2CD_DEV_ADDR1_SHIFT			8
+#define ASPEED_I2CD_DEV_ADDR2_MASK			GENMASK(14, 8)
+#define ASPEED_I2CD_DEV_ADDR1_MASK			GENMASK(6, 0)
+/* slave 1 is always enabled */
+#define ASPEED_I2CD_EN_SLAVE_DEV_ADDR1		0x0
 
 enum aspeed_i2c_master_state {
 	ASPEED_I2C_MASTER_INACTIVE,
@@ -126,7 +130,8 @@ enum aspeed_i2c_slave_state {
 	ASPEED_I2C_SLAVE_STOP,
 };
 
-#define ASPEED_I2C_MAX_SLAVE 0x2
+#define ASPEED_I2C_MAX_SLAVE 0x3
+
 struct aspeed_i2c_bus {
 	struct i2c_adapter		adap;
 	struct device			*dev;
@@ -154,6 +159,10 @@ struct aspeed_i2c_bus {
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	struct i2c_client		*slave[ASPEED_I2C_MAX_SLAVE];
 	enum aspeed_i2c_slave_state	slave_state[ASPEED_I2C_MAX_SLAVE];
+	u32 slave_addr_ind_mask;
+	u32 slave_addr_ind_offset;
+	u32 slave_addr_ind;
+	int max_slaves_enable;
 #endif /* CONFIG_I2C_SLAVE */
 };
 

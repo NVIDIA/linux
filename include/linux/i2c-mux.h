@@ -29,6 +29,10 @@ struct i2c_mux_core {
 	int (*deselect)(struct i2c_mux_core *, u32 chan_id);
 
 	struct mutex hold_lock; /* mutex for channel holding */
+<<<<<<< HEAD
+=======
+	u32 holder_chan_id;
+>>>>>>> origin/develop-5.15
 	struct delayed_work unhold_work;
 
 	int num_adapters;

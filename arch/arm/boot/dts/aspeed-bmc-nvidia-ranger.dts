@@ -169,6 +169,14 @@
     pinctrl-0 = <&pinctrl_rgmii3_default>;
 };
 
+&mac3 { 
+    status = "okay"; 
+    phy-mode = "rmii"; 
+    use-ncsi; 
+    pinctrl-names = "default"; 
+    pinctrl-0 = <&pinctrl_rmii4_default>; 
+};
+
 // Enable emmc
 &emmc_controller {
     status = "okay";
@@ -178,6 +186,7 @@
     non-removable;
     bus-width = <4>;
     max-frequency = <52000000>;
+    clk-phase-mmc-hs200 = <9>, <225>;
 };
 
 /*
@@ -189,7 +198,11 @@
 &vhub {
     status = "okay";
     pinctrl-names = "default"; 
-    pinctrl-0 = <&pinctrl_usb2adp_default>;
+    /* 
+        Uncomment below line to enable internal EHCI controller
+        Current config uses xHCI Port1
+    */
+    // pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
 &video {
@@ -210,11 +223,12 @@
 &i2c0 {
     status = "okay";
     bus-frequency = <400000>;
+	disable-master = <1>;
     ssif-bmc@10 {
         compatible = "ssif-bmc";
         alert-gpio = <&gpio0 8 GPIO_ACTIVE_LOW>;
         pulse_width_us = <5>;
-        timeout_ms = <475>;
+        timeout_ms = <4995>;
         reg = <0x10>;
         };
 };
@@ -229,6 +243,12 @@
 &i2c2 {
     status = "okay";
     bus-frequency = <400000>;
+    // PDB EEPROM 
+    eeprom@67 {
+        compatible = "atmel,24c02";
+        reg = <0x67>;
+        pagesize = <8>;
+    };
 };
 
 // I2C4, BMC_I2C0_FPGA
@@ -253,7 +273,11 @@
 &i2c5 {
     status = "okay";
     bus-frequency = <400000>;
+<<<<<<< HEAD
      multi-master;
+=======
+    multi-master;
+>>>>>>> origin/develop-5.15
     //Moved switch@70 to Entity Manager
 };
 
@@ -270,10 +294,8 @@
 &i2c7 {
     status = "okay";
     bus-frequency = <400000>;
-    i2c-switch@71 {
-        compatible = "nxp,pca9546";
-        reg = <0x71>;
-    };
+    //Moved switch@70 to Entity Manager
+
 };
 
 // I2C9
@@ -367,6 +389,11 @@
 };
 
 &mctp {
+    status = "okay";
+};
+
+&jtag0 {
+    mux-gpios = <&gpio0 50 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
     status = "okay";
 };
 

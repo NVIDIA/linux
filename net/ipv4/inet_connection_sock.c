@@ -1210,7 +1210,11 @@ static int inet_ulp_can_listen(const struct sock *sk)
 	return 0;
 }
 
+<<<<<<< HEAD
 int inet_csk_listen_start(struct sock *sk)
+=======
+int inet_csk_listen_start(struct sock *sk, int backlog)
+>>>>>>> origin/develop-5.15
 {
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	struct inet_sock *inet = inet_sk(sk);
@@ -1219,6 +1223,13 @@ int inet_csk_listen_start(struct sock *sk)
 	err = inet_ulp_can_listen(sk);
 	if (unlikely(err))
 		return err;
+<<<<<<< HEAD
+=======
+
+	err = inet_ulp_can_listen(sk);
+	if (unlikely(err))
+		return err;
+>>>>>>> origin/develop-5.15
 
 	reqsk_queue_alloc(&icsk->icsk_accept_queue);
 

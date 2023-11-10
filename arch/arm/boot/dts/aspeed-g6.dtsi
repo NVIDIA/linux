@@ -544,14 +544,20 @@
 				compatible = "aspeed,ast2600-pcieh", "syscon";
 				reg = <0x1e6ed000 0x100>;
 			};
-
+			pcie_phy1: rc_bridge@1e6ed200 {
+				compatible = "aspeed,ast2600-pcie-phy", "syscon";
+				reg = <0x1e6ed200 0x100>;
+			};
 			mctp: mctp@1e6f9000 {
 				compatible = "aspeed,ast2600-mctp";
 				reg = <0x1e6f9000 0x1000>;
 				interrupts-extended = <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
 				resets = <&syscon ASPEED_RESET_RC_MCTP>, <&syscon ASPEED_RESET_DEV_MCTP>;
 				reset-names = "mctp-rc", "mctp-dev";
-				aspeed,pcieh = <&pcieh>;
+				aspeed,scu = <&syscon>;
+				aspeed,pcieh = <&pcie_phy1>;
+				pcie_rc;
+				interrupt-names = "pcie";
 				status = "disabled";
 			};
 

@@ -24,13 +24,60 @@
 
 };
 
+&pinctrl {
+	pinctrl_gpioj0_unbiased_default: gpioj0 {
+						pins = "B20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj1_unbiased_default: gpioj1 {
+						pins = "A20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj2_unbiased_default: gpioj2 {
+						pins = "E19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj3_unbiased_default: gpioj3 {
+						pins = "D20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj4_unbiased_default: gpioj4 {
+						pins = "C19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj5_unbiased_default: gpioj5 {
+						pins = "A19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj6_unbiased_default: gpioj6 {
+						pins = "C20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj7_unbiased_default: gpioj7 {
+						pins = "D19";
+						bias-disable;
+					};
+
+};
+
 &gpio0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpioj0_unbiased_default &pinctrl_gpioj1_unbiased_default &pinctrl_gpioj2_unbiased_default
+			&pinctrl_gpioj3_unbiased_default &pinctrl_gpioj4_unbiased_default &pinctrl_gpioj5_unbiased_default
+			&pinctrl_gpioj6_unbiased_default &pinctrl_gpioj7_unbiased_default>;
         gpio-line-names =
-        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","tlf_aurix_reset_i2c","","VM_EN1",
+        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","tlf_aurix_reset_i2c","bmc_i2c10_en","VM_EN1",
         /*B0-B7*/       "","","","","","","","",
         /*C0-C7*/       "","","soc_reset","soc_safestate","","","vmon_irq","",
         /*D0-D7*/       "soc_pwr_req","bmc_pwr_btn_n","bmc_rec_btn_n","","","","","",
-        /*E0-E7*/       "","","","bmc_gpio_e3","","","tlf_aurix_reset_gpio","",
+        /*E0-E7*/       "","","","bmc_gpio_e3","","","","",
         /*F0-F7*/       "","","","","","","","",
         /*G0-G7*/       "","","","","","","","",
         /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","shifter_enable_gpio","",
@@ -52,6 +99,13 @@
         /*X0-X7*/       "","","","","","","","",
         /*Y0-Y7*/       "","","","","","","","",
         /*Z0-Z7*/       "","","","","","","","";
+
+	/* Keep GPIOM1 output direction to feed in FRU */
+	fru_wp_gpiom1 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(M, 1) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
 };
 
 &gpio1 {
@@ -146,8 +200,18 @@
        pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
-/* Tegra USB Path */
 &ehci0 {
+   status = "disabled";
+};
+
+&vhub {
+       status = "okay";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_usb2adp_default>;
+};
+
+/* Tegra USB Path */
+&ehci1 {
    status = "okay";
 };
 

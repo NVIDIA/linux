@@ -1047,6 +1047,10 @@ static void ssif_bmc_remove(struct i2c_client *client)
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 
 	device_remove_file(&client->dev, &dev_attr_ssif_timeout);
+<<<<<<< HEAD
+=======
+	return 0;
+>>>>>>> origin/develop-5.15
 }
 
 static const struct of_device_id ssif_bmc_match[] = {

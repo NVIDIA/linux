@@ -244,13 +244,24 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	u32 command, irq_handled = 0;
 	struct i2c_client *slave = bus->slave;
 	u8 value;
+<<<<<<< HEAD
 	int ret;
+=======
+
+	idx = (irq_status >> bus->slave_addr_ind_offset) & bus->slave_addr_ind_mask;
+	irq_handled |= (bus->slave_addr_ind & irq_status);
+
+	slave = bus->slave[idx];
+>>>>>>> origin/develop-5.15
 
 	if (!slave)
 		return 0;
 
+<<<<<<< HEAD
 	command = readl(bus->base + ASPEED_I2C_CMD_REG);
 
+=======
+>>>>>>> origin/develop-5.15
 	/* Slave was requested, restart state machine. */
 	if (irq_status & ASPEED_I2CD_INTR_SLAVE_MATCH) {
 		if (irq_status & ASPEED_I2CD_INTR_NORMAL_STOP &&
@@ -635,7 +646,11 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 	irq_handled = aspeed_i2c_master_irq(bus, irq_remaining);
 #endif /* CONFIG_I2C_SLAVE */
 
+<<<<<<< HEAD
 	irq_remaining &= ~irq_handled;
+=======
+	irq_remaining &= ~(irq_handled | bus->slave_addr_ind);
+>>>>>>> origin/develop-5.15
 	if (irq_remaining)
 		dev_err(bus->dev,
 			"irq handled != irq. expected 0x%08x, but was 0x%08x\n",
@@ -663,7 +678,13 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 	}
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
+<<<<<<< HEAD
 	if (bus->slave_state != ASPEED_I2C_SLAVE_INACTIVE)
+=======
+	if (bus->slave_state[0] != ASPEED_I2C_SLAVE_INACTIVE ||
+		bus->slave_state[1] != ASPEED_I2C_SLAVE_INACTIVE ||
+		bus->slave_state[2] != ASPEED_I2C_SLAVE_INACTIVE)
+>>>>>>> origin/develop-5.15
 		return -ETIMEDOUT;
 #endif /* CONFIG_I2C_SLAVE */
 
@@ -689,7 +710,13 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 		    (readl(bus->base + ASPEED_I2C_CMD_REG) &
 		     ASPEED_I2CD_BUS_BUSY_STS))
 			aspeed_i2c_recover_bus(bus);
-
+		spin_lock_irqsave(&bus->lock, flags);
+		/*
+		 * All the buffers may be freed after returning to caller, so
+		 * set msgs to NULL to avoid memory reference after freeing.
+		 */
+		bus->msgs = NULL;
+		spin_unlock_irqrestore(&bus->lock, flags);
 		return -ETIMEDOUT;
 	}
 
@@ -703,6 +730,7 @@ static u32 aspeed_i2c_functionality(struct i2c_adapter *adap)
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 /* precondition: bus.lock has been acquired. */
+<<<<<<< HEAD
 static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr)
 {
 	u32 addr_reg_val, func_ctrl_reg_val;
@@ -715,6 +743,20 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr)
 	 * end up with additional phantom devices responding on the bus.
 	 */
 	addr_reg_val = slave_addr & ASPEED_I2CD_DEV_ADDR_MASK;
+=======
+static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
+				u32 dev_add_mask, u32 en_slave_dev_add)
+{
+	u32 addr_reg_val, func_ctrl_reg_val;
+	u8 shift;
+
+	/* Set slave device address 1 or 2 */
+	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	addr_reg_val &= ~dev_add_mask;
+	addr_reg_val |= en_slave_dev_add;
+	shift = ffs(dev_add_mask) - 1;
+	addr_reg_val |= ((slave_addr << shift) & dev_add_mask);
+>>>>>>> origin/develop-5.15
 	writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
 
 	/* Turn on slave mode. */
@@ -727,15 +769,41 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 {
 	struct aspeed_i2c_bus *bus = i2c_get_adapdata(client->adapter);
 	unsigned long flags;
+<<<<<<< HEAD
 
+=======
+	int id, ret;
+	u32 dev_add_mask, en_slave_dev_add;
+>>>>>>> origin/develop-5.15
 	spin_lock_irqsave(&bus->lock, flags);
 	if (bus->slave) {
 		spin_unlock_irqrestore(&bus->lock, flags);
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	bus->slave = client;
 	bus->slave_state = ASPEED_I2C_SLAVE_INACTIVE;
+=======
+	if (id == 0) {
+		dev_add_mask = ASPEED_I2CD_DEV_ADDR1_MASK;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR1;
+	} else if (id == 1) {
+		dev_add_mask = ASPEED_I2CD_DEV_ADDR2_MASK;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR2;
+	} else if (id == 2 && bus->max_slaves_enable == 3) {
+		dev_add_mask = ASPEED_I2CD_DEV_ADDR3_MASK;
+		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR3;
+	} else {
+		/* never supposed to go here */
+		return -ENODEV;
+	}
+
+	bus->slave[id] = client;
+	bus->slave_state[id] = ASPEED_I2C_SLAVE_INACTIVE;
+	__aspeed_i2c_reg_slave(bus, client->addr, dev_add_mask,
+				en_slave_dev_add);
+>>>>>>> origin/develop-5.15
 
 	__aspeed_i2c_reg_slave(bus, client->addr);
 	spin_unlock_irqrestore(&bus->lock, flags);
@@ -754,10 +822,41 @@ static int aspeed_i2c_unreg_slave(struct i2c_client *client)
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	/* Turn off slave mode. */
 	func_ctrl_reg_val = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
 	func_ctrl_reg_val &= ~ASPEED_I2CD_SLAVE_EN;
 	writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
+=======
+	WARN_ON(!bus->slave[id]);
+	/* for 2nd or 3rd slaves disable slave address 2 or 3 accordingly */
+	if (id == 1) {
+		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR2;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	} else if (id == 2) {
+		addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		addr_reg_val &= ASPEED_I2CD_DIS_SLAVE_DEV_ADDR3;
+		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	}
+
+	/* if no other slave is registered turn off slave mode. */
+	if (!bus->slave[(id + 1) % ASPEED_I2C_MAX_SLAVE] &&
+	    !bus->slave[(id + 2) % ASPEED_I2C_MAX_SLAVE]) {
+
+		func_ctrl_reg_val = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		func_ctrl_reg_val &= ~ASPEED_I2CD_SLAVE_EN;
+		writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
+	}
+	/*
+	 * If more than one registered slave and we want to unregister
+	 * slave[0], leave ASPEED_I2C_FUN_CTRL_REG and ASPEED_I2C_DEV_ADDR_REG as they
+	 * are.
+	 */
+
+	/* Set the unregistered slave to NULL */
+	bus->slave[id] = NULL;
+>>>>>>> origin/develop-5.15
 
 	bus->slave = NULL;
 	spin_unlock_irqrestore(&bus->lock, flags);
@@ -881,7 +980,7 @@ static int aspeed_i2c_init_clk(struct aspeed_i2c_bus *bus)
 static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 			     struct platform_device *pdev)
 {
-	u32 fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
+	u32 fun_ctrl_reg = 0;
 	int ret;
 
 	/* Disable everything. */
@@ -891,19 +990,38 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 	if (ret < 0)
 		return ret;
 
-	if (of_property_read_bool(pdev->dev.of_node, "multi-master"))
-		bus->multi_master = true;
-	else
-		fun_ctrl_reg |= ASPEED_I2CD_MULTI_MASTER_DIS;
+	if (!of_property_read_bool(pdev->dev.of_node, "disable-master")) {
+		u32 fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
+		if (of_property_read_bool(pdev->dev.of_node, "multi-master"))
+			bus->multi_master = true;
+		else
+			fun_ctrl_reg |= ASPEED_I2CD_MULTI_MASTER_DIS;
 
-	/* Enable Master Mode */
-	writel(readl(bus->base + ASPEED_I2C_FUN_CTRL_REG) | fun_ctrl_reg,
-	       bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		/* Enable Master Mode */
+		writel(readl(bus->base + ASPEED_I2C_FUN_CTRL_REG) | fun_ctrl_reg,
+			   bus->base + ASPEED_I2C_FUN_CTRL_REG);
+	}
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	/* If slave has already been registered, re-enable it. */
+<<<<<<< HEAD
 	if (bus->slave)
 		__aspeed_i2c_reg_slave(bus, bus->slave->addr);
+=======
+	if (bus->slave[0])
+		__aspeed_i2c_reg_slave(bus, bus->slave[0]->addr,
+				ASPEED_I2CD_DEV_ADDR1_MASK, 0);
+
+	if (bus->slave[1])
+		__aspeed_i2c_reg_slave(bus, bus->slave[1]->addr,
+				ASPEED_I2CD_DEV_ADDR2_MASK,
+				ASPEED_I2CD_EN_SLAVE_DEV_ADDR2);
+	if (bus->slave[2])
+		__aspeed_i2c_reg_slave(bus, bus->slave[2]->addr,
+				ASPEED_I2CD_DEV_ADDR3_MASK,
+				ASPEED_I2CD_EN_SLAVE_DEV_ADDR3);
+
+>>>>>>> origin/develop-5.15
 #endif /* CONFIG_I2C_SLAVE */
 
 	/* Set interrupt generation of I2C controller */
@@ -964,7 +1082,24 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 	bus->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(bus->base))
 		return PTR_ERR(bus->base);
-
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	if (of_device_is_compatible(pdev->dev.of_node,
+					"aspeed,ast2600-i2c-bus")) {
+		bus->slave_addr_ind_mask =
+			ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_MASK;
+		bus->slave_addr_ind_offset =
+			ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_OFFESET;
+		bus->max_slaves_enable = 3;
+	} else if (of_device_is_compatible(pdev->dev.of_node,
+					"aspeed,ast2500-i2c-bus")) {
+		bus->slave_addr_ind_mask =
+			ASPEED_2500_I2CD_SLAVE_ADDR_MATCH_INDICATOR_MASK;
+		bus->slave_addr_ind_offset =
+			ASPEED_2500_I2CD_SLAVE_ADDR_MATCH_INDICATOR_OFFESET;
+		bus->max_slaves_enable = 2;
+	}
+	bus->slave_addr_ind = (bus->slave_addr_ind_mask << bus->slave_addr_ind_offset);
+#endif
 	parent_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(parent_clk))
 		return PTR_ERR(parent_clk);

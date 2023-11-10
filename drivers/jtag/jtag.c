@@ -19,7 +19,7 @@ struct jtag {
 	const struct jtag_ops *ops;
 	int id;
 	bool locked;
-	unsigned long priv[0];
+	unsigned long *priv;
 };
 
 static DEFINE_IDA(jtag_ida);
@@ -41,6 +41,7 @@ static long jtag_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	u8 *xfer_data;
 	u32 data_size;
 	u32 value;
+	u32 active;
 	int err;
 
 	if (!arg)
@@ -189,6 +190,15 @@ static long jtag_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		err = jtag->ops->mode_set(jtag, &mode);
 		break;
+	case JTAG_SIOCTRST:
+		if (!jtag->ops->trst_set)
+			return -EOPNOTSUPP;
+
+		if (get_user(active, (__u32 __user *)arg))
+			return -EFAULT;
+
+		err = jtag->ops->trst_set(jtag, active);
+		break;
 
 	default:
 		return -EINVAL;
@@ -245,8 +255,11 @@ struct jtag *jtag_alloc(struct device *host, size_t priv_size,
 	if (!ops->status_set || !ops->status_get || !ops->xfer)
 		return NULL;
 
-	jtag = kzalloc(sizeof(*jtag) + priv_size, GFP_KERNEL);
+	jtag = kzalloc(sizeof(*jtag), GFP_KERNEL);
 	if (!jtag)
+		return NULL;
+	jtag->priv = kzalloc(priv_size, GFP_KERNEL);
+	if (!jtag->priv)
 		return NULL;
 
 	jtag->ops = ops;

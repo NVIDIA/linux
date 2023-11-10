@@ -21,7 +21,8 @@
     "I2C_3P3V_BR_ALERT_L-I",
     "SHDN_OK_L-I",
     "SHDN_REQ_L-O",
-    "", "",
+    "PASSWRD_CLEAR_L-I",
+    "UEFI_SERIAL_DEBUG_EN_L-I",
 
     /*C0-C7*/
     "", "", "", "", "", "", "", "",
@@ -43,7 +44,14 @@
     "IOM0_OVT_WARN_L-I",
 
     /*G0-G7*/
-    "", "", "", "", "", "", "", "",
+    "",
+    "FPGA_RSVD_FFU0-I/O",
+    "SCM_CPLD_JTAG_SEL-O",
+    "PSU1_PRESENT_L-I",
+    "PSU2_PRESENT_L-I",
+    "CHASSIS_SENSOR_TEMP_ALERT_L-I",
+    "",
+    "",
 
     /*H0-H7*/
     "FPGA_RSVD_FFU4-I/O",
@@ -75,10 +83,10 @@
     "L0L1_RST_REQ_OUT_L-I",
     "SYS_RST_OUT_L-I",
     "SYS_RST_IN_L-O",
-    "RSVD_PARTNER0-I/O",
-    "RSVD_PARTNER1-I/O",
-    "RSVD_PARTNER3-I/O",
-    "RSVD_PARTNER4-I/O",
+    "MGMT_ID0-I",
+    "MGMT_ID1-I",
+    "MGMT_ID2-I",
+    "MGMT_ID3-I",
 
     /*O0-O7*/
     "LOCAL_RUN_PWR_EN-O",
@@ -136,7 +144,9 @@
     "SLOT3_PRSNT_L-I",
     "SLOT4_PRSNT_L-I",
     "SLOT5_PRSNT_L-I",
-    "", "", "",
+    "SLOT6_PRSNT_L-I",
+    "SLOT7_PRSNT_L-I",
+    "SLOT8_PRSNT_L-I",
 
     /*U0-U7*/
     "I2C_M20_ALERT_L-I",
@@ -152,7 +162,7 @@
     "AP_EROT_REQ-O",
     "EROT_AP_GNT-I",
     "BMC_READY-O",
-    "FPGA_RSVD_FFU1-I/O",
+    "CPU_BOOT_DONE-I",
     "LOC_PCB_TEMP_ALERT_L-I",
     "I2C_BUS8_MUX_RESET_L-I/O",
     "I2C_BUS7_MUX_RESET_L-I/O",
@@ -175,9 +185,8 @@
     "FPGA_WATCH_DOG_TIMER0_L-I",
     "FPGA_WATCH_DOG_TIMER1_L-I",
     "FPGA_WATCH_DOG_TIMER2_L-I",
-    "", /* Y3 Skipped */
     "BMC_EMMC_RST_L-O",
-    "", "", "",
+    "","", "", "",
 
     /*Z0-Z7*/
     "", "", "", "", "", "", "", "";
@@ -193,8 +202,8 @@
     "ID_LED_N-O",
     "SYS_FAULT_LED_N-O",
     "PWR_LED_N-O",
-    "CHASSIS_CPLD_LATCH_N-O",
-    "CPLD_REFRESH_DONE-I",
+    "CHASSIS_PWR_BRK_L-I",
+    "CPLD_REFRESH_IN_PRGRS_L-I",
 
     /*AB0-AB7*/
     /* Dragon Support */
@@ -221,6 +230,10 @@
     "", "", "", "", "", "", "", "",
 
     /*AE0-AE7*/
-    "", "", "", "", "", "", "", "";
+    "BMC_STBY_CYCLE-O",
+    "CEDAR_2PCORE_ENABLE-O",
+    "UT21_FACTORY_MODE_N-I",
+    "NCSI_MUX_SEL-O",
+    "", "", "", "";
 };
 

@@ -270,6 +270,13 @@ config COMMON_CLK_ASPEED
 	  The G4 and G5 series, including the ast2400 and ast2500, are supported
 	  by this driver.
 
+config CONTROL_AST2600_MAC_OPTIONS
+	bool "Control MAC registers for AST2600"
+	depends on COMMON_CLK_ASPEED
+	help
+	  Select this option if control of AST2600 MAC registers
+	  will be done in the kernel instead of uboot
+
 config COMMON_CLK_S2MPS11
 	tristate "Clock driver for S2MPS1X/S5M8767 MFD"
 	depends on MFD_SEC_CORE || COMPILE_TEST
