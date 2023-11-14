@@ -520,10 +520,7 @@ source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
 source "drivers/misc/uacce/Kconfig"
 source "drivers/misc/pvpanic/Kconfig"
-<<<<<<< HEAD
 source "drivers/misc/mchp_pci1xxxx/Kconfig"
-=======
 source "drivers/misc/quanta_cpld/Kconfig"
 source "drivers/misc/smc_cpld/Kconfig"
->>>>>>> origin/develop-5.15
 endmenu
