@@ -139,6 +139,19 @@
                  gpios = <ASPEED_GPIO(M, 1) GPIO_ACTIVE_HIGH>;
                  output-high;
         };
+
+        bmc_m2b_rst_c7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(C, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
+        bmc_cx7_i2c_k7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(K, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
 };
 
 &gpio1 {
@@ -148,6 +161,12 @@
         /*AC0-AC7*/     "","","","","","","","",
         /*AD0-AD7*/     "","","","","","","","",
         /*AE0-AE7*/     "","","","","","","","";
+
+        usb2_hub_rst_ab6 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(AB, 6) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
 };
 
 /* Primary flash - FMC */
@@ -287,6 +306,10 @@
 	    reg = <0x50>;
     };
 };
+
+&i2c15 {
+       status = "okay";
+    };
 
 // PCIe RC
 &pcie {
