@@ -58,6 +58,14 @@ int pciehp_configure_device(struct controller *ctrl)
 		goto out;
 	}
 
+        if ((bridge->vendor == 0x1a03 && bridge->device == 0x1150)) {
+                u16 reg16;
+                dev_dbg(&bridge->dev, "ASPEED Bridge Gen2 re-training\n");
+                pcie_capability_read_word(bridge, PCI_EXP_LNKCTL, &reg16);
+                reg16 |= PCI_EXP_LNKCTL_RL;
+                pcie_capability_write_word(bridge, PCI_EXP_LNKCTL, reg16);
+        }
+
 	for_each_pci_bridge(dev, parent)
 		pci_hp_add_bridge(dev);
 
