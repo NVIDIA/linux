@@ -1555,7 +1555,7 @@ static int i2c_register_adapter(struct i2c_adapter *adap)
 		dev_warn(&adap->dev,
 			 "Failed to create compatibility class link\n");
 #endif
-
+	mutex_init(&adap->hold_lock);
 	/* create pre-declared device nodes */
 	of_i2c_register_devices(adap);
 	i2c_acpi_install_space_handler(adap);
@@ -1569,7 +1569,6 @@ static int i2c_register_adapter(struct i2c_adapter *adap)
 	bus_for_each_drv(&i2c_bus_type, NULL, adap, __process_new_adapter);
 	mutex_unlock(&core_lock);
 
-	mutex_init(&adap->hold_lock);
 	INIT_DELAYED_WORK(&adap->unhold_work, i2c_adapter_unhold_work);
 
 	return 0;
