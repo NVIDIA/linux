@@ -892,7 +892,7 @@ static int aspeed_i2c_get_slave_id(struct aspeed_i2c_bus *bus,
 {
 	int i;
 
-	for (i = 0; i < ASPEED_I2C_MAX_SLAVE; i++) {
+	for (i = (bus->max_slaves_enable - 1); i >= 0;  i--) {
 		if (bus->slave[i] == slave) {
 			*id = i;
 			return 0;
@@ -909,7 +909,7 @@ static int aspeed_i2c_get_free_slave_id(struct aspeed_i2c_bus *bus,
 {
 	int i;
 
-	for (i = 0; i < ASPEED_I2C_MAX_SLAVE; i++) {
+	for (i = (bus->max_slaves_enable - 1); i >= 0;  i--) {
 		if (!bus->slave[i]) {
 			*id = i;
 			return 0;
