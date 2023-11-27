@@ -331,6 +331,9 @@ struct io_ring_ctx {
 		unsigned		cq_last_tm_flush;
 	} ____cacheline_aligned_in_smp;
 
+    /* deferred free list, protected by ->uring_lock */
+    struct hlist_head        io_buf_list;
+	
 	/* Keep this last, we don't need it for the fast path */
 	struct wait_queue_head		poll_wq;
 	struct io_restriction		restrictions;
