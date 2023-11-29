@@ -133,7 +133,6 @@ static umode_t quanta_cpld_is_visible(const void *data_in,
 
 	switch (type) {
 	case hwmon_fan:
-		int virt = channel >> 1;
 		ret = i2c_smbus_read_byte_data(data->client, FAN_PRST);
 		if (ret > 0 && channel < NR_CHANNEL) {
 			return 0444;
@@ -312,10 +311,9 @@ static int quanta_cpld_probe(struct i2c_client *client)
 	return PTR_ERR_OR_ZERO(hwmon_dev);
 }
 
-static int quanta_cpld_remove(struct i2c_client *client)
+static void quanta_cpld_remove(struct i2c_client *client)
 {
 	device_remove_file(&client->dev, &dev_attr_cpld_version);
-    return 0;
 }
 
 static const struct i2c_device_id quanta_cpld_id[] = {
