@@ -287,7 +287,6 @@ static int smc_cpld_probe(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	struct smc_cpld_data *data;
 	struct device *hwmon_dev;
-	int ret = 0;
 
 	if (!i2c_check_functionality(adapter,I2C_FUNC_I2C)) 
 		return -ENODEV;
@@ -308,10 +307,9 @@ static int smc_cpld_probe(struct i2c_client *client)
 	return PTR_ERR_OR_ZERO(hwmon_dev);
 }
 
-static int smc_cpld_remove(struct i2c_client *client)
+static void smc_cpld_remove(struct i2c_client *client)
 {
 	device_remove_file(&client->dev, &dev_attr_cpld_version);
-    return 0;
 }
 
 static const struct i2c_device_id smc_cpld_id[] = {
