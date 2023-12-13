@@ -25,18 +25,18 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
-	//TODO: chack with Reuven/Ofir again
+	//switch 0/1 reset gpios
 	power-gpios{
-		o5-gpios = <&gpio0 ASPEED_GPIO(O, 5) (GPIO_ACTIVE_LOW|GPIO_PULL_DOWN)>;
-		o7-gpios = <&gpio0 ASPEED_GPIO(O, 7) (GPIO_ACTIVE_LOW|GPIO_PULL_DOWN)>;
+		o5-gpios = <&gpio0 ASPEED_GPIO(O, 5) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+		o7-gpios = <&gpio0 ASPEED_GPIO(O, 7) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
 	};
 
 	iio-hwmon {
 		compatible = "iio-hwmon";
 		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>, <&adc0 3>,
-						<&adc0 4>, <&adc0 5>, <&adc0 6>, <&adc0 7>,
-						<&adc1 0>, <&adc1 1>, <&adc1 2>, <&adc1 3>,
-						<&adc1 4>, <&adc1 5>, <&adc1 6>, <&adc1 7>;
+					<&adc0 4>, <&adc0 5>, <&adc0 6>, <&adc0 7>,
+					<&adc1 0>, <&adc1 1>, <&adc1 2>, <&adc1 3>,
+					<&adc1 4>, <&adc1 5>, <&adc1 6>, <&adc1 7>;
 	};
 
 };
@@ -44,27 +44,27 @@
 &adc0 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_adc0_default
-				&pinctrl_adc1_default
-				&pinctrl_adc2_default
-				&pinctrl_adc3_default
-				&pinctrl_adc4_default
-				&pinctrl_adc5_default
-				&pinctrl_adc6_default
-				&pinctrl_adc7_default>;
+	pinctrl-0 =	<&pinctrl_adc0_default
+			&pinctrl_adc1_default
+			&pinctrl_adc2_default
+			&pinctrl_adc3_default
+			&pinctrl_adc4_default
+			&pinctrl_adc5_default
+			&pinctrl_adc6_default
+			&pinctrl_adc7_default>;
 };
 
 &adc1 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_adc8_default
-				&pinctrl_adc9_default
-				&pinctrl_adc10_default
-				&pinctrl_adc11_default
-				&pinctrl_adc12_default
-				&pinctrl_adc13_default
-				&pinctrl_adc14_default
-				&pinctrl_adc15_default>;
+	pinctrl-0 = 	<&pinctrl_adc8_default
+			&pinctrl_adc9_default
+			&pinctrl_adc10_default
+			&pinctrl_adc11_default
+			&pinctrl_adc12_default
+			&pinctrl_adc13_default
+			&pinctrl_adc14_default
+			&pinctrl_adc15_default>;
 };
 
 
@@ -131,7 +131,7 @@
 			};
 
 			rofs@a00000 {
-				reg = <0xa00000 0x5600000>; // 86MB
+				reg = <0xa00000 0x7400000>; // 116MB
 				label = "rofs";
 			};
 		};
@@ -195,9 +195,16 @@
 	};
 };
 
-
 &rtc {
 	status = "okay";
+};
+
+
+&uart3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
+
 };
 
 // BMC Debug Console
@@ -249,7 +256,8 @@
 	status = "okay";
 };
 
-&mctp {
+//external RTC i2c
+&i2c6 {
 	status = "okay";
 };
 

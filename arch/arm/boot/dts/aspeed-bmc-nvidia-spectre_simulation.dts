@@ -129,7 +129,7 @@
 			};
 
 			rofs@a00000 {
-				reg = <0xa00000 0x5600000>; // 86MB
+				reg = <0xa00000 0x2500000>; // 37MB
 				label = "rofs";
 			};
 		};
@@ -197,6 +197,13 @@
 	status = "okay";
 };
 
+&uart3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
+
+};
+
 &uart5 {
 	// BMC Debug Console
 	status = "okay";
@@ -232,17 +239,6 @@
 	status = "okay";
 };
 
-&mctp {
-	status = "okay";
-};
-
-
-//USB 2.0 (BMC to BF3)
 &ehci0 {
-	status = "okay";
-};
-
-// USB 1.0
-&ehci1 {
 	status = "okay";
 };
