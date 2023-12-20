@@ -259,6 +259,10 @@
 //external RTC i2c
 &i2c6 {
 	status = "okay";
+	rtc@32 {
+		compatible = "epson,rx8130";
+		reg = <0x32>;
+	};
 };
 
 // USB 1.0

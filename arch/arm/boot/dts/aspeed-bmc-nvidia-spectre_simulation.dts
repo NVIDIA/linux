@@ -234,6 +234,15 @@
 	};
 };
 
+//external RTC i2c
+&i2c6 {
+	status = "okay";
+	rtc@32 {
+		compatible = "epson,rx8130";
+		reg = <0x32>;
+	};
+};
+
 //Glacier i2c
 &i2c15 {
 	status = "okay";
