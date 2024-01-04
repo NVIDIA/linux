@@ -2049,7 +2049,6 @@ static const char *lm90_detect_analog(struct i2c_client *client, bool common_add
 		if (man_id2 == 0x00 && chip_id2 == 0x00 &&
 		    (address == 0x4c || address == 0x4d) && !(config1 & 0x3f) &&
 		    convrate <= 0x0a)
->>>>>>> origin/linux_6.1.15_upstream
 			name = "adm1032";
 		break;
 	case 0x51:	/* ADT7461 */
@@ -2538,7 +2537,6 @@ static int lm90_detect(struct i2c_client *client, struct i2c_board_info *info)
 		break;
 	default:
 		break;
->>>>>>> origin/linux_6.1.15_upstream
 	}
 
 	if (!name) {	/* identification failed */
