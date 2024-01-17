@@ -549,19 +549,6 @@ config HW_RANDOM_CN10K
 	 To compile this driver as a module, choose M here.
 	 The module will be called cn10k_rng. If unsure, say Y.
 
-config HW_RANDOM_ASPEED
-	tristate "Aspeed Random Number Generator support"
-	depends on ARCH_ASPEED
-	default HW_RANDOM
-	help
-	  This driver provides kernel-side support for the Random Number
-	  Generator hardware found on Aspeed ast2600 devices.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called atmel-rng.
-
-	  If unsure, say Y.
-
 endif # HW_RANDOM
 
 config UML_RANDOM
