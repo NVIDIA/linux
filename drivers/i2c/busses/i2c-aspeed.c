@@ -968,6 +968,8 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 		en_slave_dev_add = ASPEED_I2CD_EN_SLAVE_DEV_ADDR3;
 	} else {
 		/* never supposed to go here */
+		dev_err(bus->dev, "Invalid slave id: %d\n", id);
+		spin_unlock_irqrestore(&bus->lock, flags);
 		return -ENODEV;
 	}
 
