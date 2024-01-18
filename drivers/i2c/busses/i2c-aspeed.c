@@ -425,7 +425,6 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 
 	if (!slave)
 		return 0;
-
 	command = readl(bus->base + ASPEED_I2C_CMD_REG);
 
 	/* Slave was requested, restart state machine. */
@@ -466,8 +465,8 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	if (bus->slave_state[idx] == ASPEED_I2C_SLAVE_INACTIVE)
 		return irq_handled;
 
-	dev_dbg(bus->dev, "slave irq status 0x%08x, cmd 0x%08x\n",
-		irq_status, command);
+	dev_dbg(bus->dev, "slave[%d] irq status 0x%08x, cmd 0x%08x\n",
+		idx, irq_status, command);
 
 	if (bus->master_state != ASPEED_I2C_MASTER_INACTIVE) {
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
@@ -496,7 +495,7 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
 	if (irq_status & ASPEED_I2CD_INTR_TX_NAK &&
-	    bus->slave_state == ASPEED_I2C_SLAVE_READ_PROCESSED) {
+	    bus->slave_state[idx] == ASPEED_I2C_SLAVE_READ_PROCESSED) {
 		irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
 		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
@@ -505,7 +504,7 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	case ASPEED_I2C_SLAVE_READ_REQUESTED:
 		if (unlikely(irq_status & ASPEED_I2CD_INTR_TX_ACK))
 			dev_err(bus->dev, "Unexpected ACK on read request for slave[%d].\n",
-                                idx);
+				idx);
 		bus->slave_state[idx] = ASPEED_I2C_SLAVE_READ_PROCESSED;
 		i2c_slave_event(slave, I2C_SLAVE_READ_REQUESTED, &value);
 		writel(value, bus->base + ASPEED_I2C_BYTE_BUF_REG);
@@ -514,8 +513,8 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	case ASPEED_I2C_SLAVE_READ_PROCESSED:
 		if (unlikely(!(irq_status & ASPEED_I2CD_INTR_TX_ACK))) {
 			dev_err(bus->dev,
-				"Expected ACK after processed read for slave [%d].\n",
-                                idx);
+				"Expected ACK after processed read for slave[%d].\n",
+				idx);
 			break;
 		}
 		irq_handled |= ASPEED_I2CD_INTR_TX_ACK;
@@ -544,8 +543,8 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 		/* Slave was just started. Waiting for the next event. */;
 		break;
 	default:
-		dev_err(bus->dev, "unknown slave_state: %d\n",
-			bus->slave_state[idx]);
+		dev_err(bus->dev, "unknown slave_state[%d]: %d\n",
+			idx, bus->slave_state[idx]);
 		bus->slave_state[idx] = ASPEED_I2C_SLAVE_INACTIVE;
 		break;
 	}
@@ -816,8 +815,8 @@ static irqreturn_t aspeed_i2c_bus_irq(int irq, void *dev_id)
 	irq_remaining &= ~(irq_handled | bus->slave_addr_ind);
 	if (irq_remaining)
 		dev_err(bus->dev,
-			"irq handled != irq. expected 0x%08x, but was 0x%08x\n",
-			irq_received, irq_handled);
+			"irq handled != irq. expected 0x%08x, but was 0x%08x irq_remaining:0x%08x\n",
+			irq_received, irq_handled, irq_remaining);
 
 	spin_unlock(&bus->lock);
 	return irq_remaining ? IRQ_NONE : IRQ_HANDLED;
@@ -953,8 +952,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 
 	ret = aspeed_i2c_get_free_slave_id(bus, client, &id);
 	if (ret) {
-		dev_err(bus->dev,
-			"Surpassed max number of registered slaves allowed.\n");
+		dev_err(bus->dev, "Surpassed max number of registered slaves allowed.\n");
 		spin_unlock_irqrestore(&bus->lock, flags);
 		return ret;
 	}
@@ -990,10 +988,10 @@ static int aspeed_i2c_unreg_slave(struct i2c_client *client)
 	int id, ret;
 	spin_lock_irqsave(&bus->lock, flags);
 
-        ret = aspeed_i2c_get_slave_id(bus, client, &id);
+	ret = aspeed_i2c_get_slave_id(bus, client, &id);
 	if (ret) {
 		spin_unlock_irqrestore(&bus->lock, flags);
-		return -EINVAL;
+		return ret;
 	}
 
 	WARN_ON(!bus->slave[id]);
