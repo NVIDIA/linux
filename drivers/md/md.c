@@ -9223,10 +9223,46 @@ no_add:
 
 static void md_start_sync(struct work_struct *ws)
 {
-	struct mddev *mddev = container_of(ws, struct mddev, del_work);
+	struct mddev *mddev = container_of(ws, struct mddev, sync_work);
+	int spares = 0;
+	bool suspend = false;
+	char *name;
 
+	if (md_spares_need_change(mddev))
+		suspend = true;
+
+	suspend ? mddev_suspend_and_lock_nointr(mddev) :
+		  mddev_lock_nointr(mddev);
+
+	if (!md_is_rdwr(mddev)) {
+		/*
+		 * On a read-only array we can:
+		 * - remove failed devices
+		 * - add already-in_sync devices if the array itself is in-sync.
+		 * As we only add devices that are already in-sync, we can
+		 * activate the spares immediately.
+		 */
+		remove_and_add_spares(mddev, NULL);
+		goto not_running;
+	}
+
+	if (!md_choose_sync_action(mddev, &spares))
+		goto not_running;
+
+	if (!mddev->pers->sync_request)
+		goto not_running;
+
+	/*
+	 * We are adding a device or devices to an array which has the bitmap
+	 * stored on all devices. So make sure all bitmap pages get written.
+	 */
+	if (spares)
+		md_bitmap_write_all(mddev->bitmap);
+
+	name = test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery) ?
+			"reshape" : "resync";
 	rcu_assign_pointer(mddev->sync_thread,
-			   md_register_thread(md_do_sync, mddev, "resync"));
+			   md_register_thread(md_do_sync, mddev, name));
 	if (!mddev->sync_thread) {
 		pr_warn("%s: could not start resync thread...\n",
 			mdname(mddev));
