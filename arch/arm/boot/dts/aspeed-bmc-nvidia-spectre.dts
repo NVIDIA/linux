@@ -243,17 +243,6 @@
         };
 };
 
-&mac3 {
-	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_rgmii4_default>;
-        fixed-link {
-                speed = <1000>;
-                full-duplex;
-        };
-};
-
 // fru eeprom
 &i2c2 {
 	status = "okay";
