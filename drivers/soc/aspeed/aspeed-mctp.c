@@ -2136,24 +2136,25 @@ static int aspeed_mctp_dma_init(struct aspeed_mctp *priv)
 	struct mctp_channel *tx = &priv->tx;
 	struct mctp_channel *rx = &priv->rx;
 	size_t alloc_size;
-	int ret = -ENOMEM;
+	int ret;
 
 	BUILD_BUG_ON(TX_PACKET_COUNT >= TX_MAX_PACKET_COUNT);
 	BUILD_BUG_ON(RX_PACKET_COUNT >= RX_MAX_PACKET_COUNT);
 
 	ret = of_reserved_mem_device_init(priv->dev);
-	if (ret) {
-		dev_err(priv->dev, "device does not have specific DMA pool: %d\n",
-			ret);
+	if (ret && ret != -ENODEV) {
+		dev_err(priv->dev, "Failed to check reserved DMA pool: %d\n", ret);
 		return ret;
 	}
+
+	dev_info(priv->dev, "%s DMA pool\n", ret ? "Dynamic" : "Reserved");
 
 	alloc_size = PAGE_ALIGN(priv->rx_packet_count * priv->match_data->packet_unit_size);
 	rx->data.vaddr =
 		dma_alloc_coherent(priv->dev, alloc_size, &rx->data.dma_handle, GFP_KERNEL);
 
 	if (!rx->data.vaddr)
-		return ret;
+		return -ENOMEM;
 
 	alloc_size = PAGE_ALIGN(priv->rx_packet_count * priv->match_data->rx_cmd_size);
 	rx->cmd.vaddr = dma_alloc_coherent(priv->dev, alloc_size, &rx->cmd.dma_handle, GFP_KERNEL);
@@ -2192,7 +2193,7 @@ out_rx_cmd:
 	dma_free_coherent(priv->dev, alloc_size, rx->data.vaddr,
 			  rx->data.dma_handle);
 
-	return ret;
+	return -ENOMEM;
 }
 
 static void aspeed_mctp_dma_fini(struct aspeed_mctp *priv)
