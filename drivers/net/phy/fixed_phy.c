@@ -275,6 +275,12 @@ static int __init fixed_mdio_bus_init(void)
 		pr_err("could not add fixed phy.\n");
 		return ret;
 	}
+	ret = __fixed_phy_add(1, &fixed_phy_status);
+	if (ret < 0)
+	{
+		pr_err("could not add fixed phy.\n");
+		return ret;
+	}
 #endif
 
 	return 0;
