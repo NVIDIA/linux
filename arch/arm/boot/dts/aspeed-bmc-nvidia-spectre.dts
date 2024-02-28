@@ -208,10 +208,6 @@
 	};
 };
 
-&rtc {
-	status = "okay";
-};
-
 
 &uart3 {
 	status = "okay";
@@ -264,6 +260,7 @@
 	rtc@32 {
 		compatible = "epson,rx8130";
 		reg = <0x32>;
+		aux-voltage-chargeable = <1>;
 	};
 };
 
