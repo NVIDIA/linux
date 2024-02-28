@@ -1087,11 +1087,12 @@ static int ftgmac100_mii_probe(struct net_device *netdev)
 			    "Unsupported PHY mode %s !\n",
 			    phy_modes(phy_intf));
 	}
-
 #if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
+	static int fixed_phy_cnt = 0;
 	char phy_id[IFNAMSIZ];
-	snprintf(phy_id, sizeof(phy_id), PHY_ID_FMT, "fixed-0", 0);
+	snprintf(phy_id, sizeof(phy_id), PHY_ID_FMT, "fixed-0", fixed_phy_cnt);
 	phydev = phy_connect(netdev, phy_id, &ftgmac100_adjust_link, phy_intf);
+	fixed_phy_cnt++;
 #else
 	phydev = phy_find_first(priv->mii_bus);
 	if (!phydev) {
