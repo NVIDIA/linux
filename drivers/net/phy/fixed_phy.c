@@ -359,6 +359,12 @@ static int __init fixed_mdio_bus_init(void)
 		pr_err("could not add fixed phy.\n");
 		return ret;
 	}
+        ret = fixed_phy_add(PHY_POLL, 1, &fixed_phy_status);
+        if (ret < 0)
+        {                                               
+                pr_err("could not add fixed phy.\n");                   
+                return ret;                                                     
+        }
 #endif
 
 	pdev = platform_device_register_simple("Fixed MDIO bus", 0, NULL, 0);
