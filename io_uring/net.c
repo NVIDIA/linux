@@ -433,10 +433,10 @@ static bool io_recvmsg_multishot_overflow(struct io_async_msghdr *iomsg)
 
 	if (iomsg->namelen < 0)
 		return true;
-	if (check_add_overflow((int)sizeof(struct io_uring_recvmsg_out),
+	if (check_add_overflow(sizeof(struct io_uring_recvmsg_out),
 			       iomsg->namelen, &hdr))
 		return true;
-	if (check_add_overflow(hdr, (int)iomsg->controllen, &hdr))
+	if (check_add_overflow(hdr, iomsg->controllen, &hdr))
 		return true;
 
 	return false;
