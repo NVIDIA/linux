@@ -230,6 +230,7 @@
 	disable-master = <1>;
     ssif-bmc@10 {
         compatible = "ssif-bmc";
+        timeout_ms = <4995>;
         reg = <0x10>;
     };
 };
