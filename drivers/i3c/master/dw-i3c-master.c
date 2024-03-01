@@ -335,11 +335,6 @@ struct dw_i3c_xfer {
 	struct dw_i3c_cmd cmds[] __counted_by(ncmds);
 };
 
-struct dw_i3c_i2c_dev_data {
-	u8 index;
-	struct i3c_generic_ibi_pool *ibi_pool;
-};
-
 static bool dw_i3c_master_supports_ccc_cmd(struct i3c_master_controller *m,
 					   const struct i3c_ccc_cmd *cmd)
 {
