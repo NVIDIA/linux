@@ -189,9 +189,21 @@
 
 &i2c4 {
     status = "okay";
+
+/*
+ * RTC's are loaded in an OR manner.
+ * If the first one fails to load, the other one does (and vice versa).
+ * Some HMC PCBs are mounted with U29 (RX8130CE) and others with U19 (ISL1208IU8Z-T7A).
+ * I2C addr 0x32 = U29, 0x6F = U19 (alternative part).
+ */
     rtc@32 {
         compatible = "epson,rx8130";
         reg = <0x32>;
+    };
+
+    rtc@6F {
+        compatible = "isil,isl1208";
+        reg = <0x6F>;
     };
 };
 
