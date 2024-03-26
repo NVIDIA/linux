@@ -11,13 +11,12 @@ static inline bool page_is_secretmem(struct page *page)
 	struct address_space *mapping;
 
 	/*
-	 * Using page_mapping() is quite slow because of the actual call
-	 * instruction and repeated compound_head(page) inside the
-	 * page_mapping() function.
-	 * We know that secretmem pages are not compound and LRU so we can
+	 * Using folio_mapping() is quite slow because of the actual call
+	 * instruction.
+	 * We know that secretmem pages are not compound, so we can
 	 * save a couple of cycles here.
 	 */
-	if (PageCompound(page) || !PageLRU(page))
+	if (folio_test_large(folio))
 		return false;
 
 	mapping = (struct address_space *)
