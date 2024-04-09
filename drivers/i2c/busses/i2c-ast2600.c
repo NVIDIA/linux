@@ -106,6 +106,9 @@
 /* 0x14 : I2CM Master Interrupt Status Register   : WC */
 #define AST2600_I2CM_ISR			0x14
 
+#define AST2600_I2CM_ISR_MASK  GENMASK(31, 21)
+#define AST2600_I2CM_SW_ISR_MASK  GENMASK(31, 19)
+
 #define AST2600_I2CM_PKT_TIMEOUT			BIT(18)
 #define AST2600_I2CM_PKT_ERROR			BIT(17)
 #define AST2600_I2CM_PKT_DONE			BIT(16)
@@ -173,6 +176,7 @@
 #define AST2600_I2CS_ADDR2_NAK			BIT(21)
 #define AST2600_I2CS_ADDR1_NAK			BIT(20)
 
+#define AST2600_I2CS_ADDR_NAK_MASK		GENMASK(22, 20)
 #define AST2600_I2CS_ADDR_MASK			GENMASK(19, 18)
 #define AST2600_I2CS_PKT_ERROR			BIT(17)
 #define AST2600_I2CS_PKT_DONE			BIT(16)
@@ -420,8 +424,10 @@ static void ast2600_i2c_slave_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u3
 	u32 cmd = 0;
 	u8 value;
 	int i;
+	u32 c_isr = sts;
 
-	sts &= ~(AST2600_I2CS_SLAVE_PENDING | AST2600_I2CS_SADDR_PENDING);
+	sts &= ~(AST2600_I2CS_SLAVE_PENDING | AST2600_I2CS_SADDR_PENDING
+	| AST2600_I2CS_ADDR_NAK_MASK);
 	/* Handle i2c slave timeout condition */
 	if (AST2600_I2CS_INACTIVE_TO & sts) {
 		cmd = SLAVE_TRIGGER_CMD | AST2600_I2CS_RX_DMA_EN;
@@ -430,6 +436,7 @@ static void ast2600_i2c_slave_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u3
 		writel(0, i2c_bus->reg_base + AST2600_I2CS_DMA_LEN_STS);
 		writel(cmd, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
 		writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_ISR);
+		writel(c_isr, i2c_bus->reg_base + AST2600_I2CS_ISR); /* ast2700 a1 */
 		i2c_slave_event(i2c_bus->slave, I2C_SLAVE_STOP, &value);
 		return;
 	}
@@ -544,6 +551,7 @@ static void ast2600_i2c_slave_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u3
 		       i2c_bus->reg_base + AST2600_I2CS_DMA_LEN);
 		cmd = SLAVE_TRIGGER_CMD | AST2600_I2CS_TX_DMA_EN;
 		break;
+	case AST2600_I2CS_TX_NAK | AST2600_I2CS_STOP | AST2600_I2CS_SLAVE_MATCH:
 	case AST2600_I2CS_TX_NAK | AST2600_I2CS_STOP:
 		/* it just tx complete */
 		i2c_slave_event(i2c_bus->slave, I2C_SLAVE_STOP, &value);
@@ -569,7 +577,10 @@ static void ast2600_i2c_slave_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u3
 	}
 	if (sts & AST2600_I2CS_STOP)
 		i2c_bus->ast2700_workaround = 1;
+
 	writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_ISR);
+	dev_dbg(i2c_bus->dev, "sts2 %x, c_sts2 %x\n", sts, c_isr);
+	writel(c_isr, i2c_bus->reg_base + AST2600_I2CS_ISR);
 	readl(i2c_bus->reg_base + AST2600_I2CS_ISR);
 }
 
@@ -838,18 +849,6 @@ static int ast2600_i2c_slave_irq(struct ast2600_i2c_bus *i2c_bus)
 
 	isr &= ~(AST2600_I2CS_ADDR_INDICATE_MASK);
 
-	if (AST2600_I2CS_ADDR1_NAK & isr)
-		isr &= ~AST2600_I2CS_ADDR1_NAK;
-
-	if (AST2600_I2CS_ADDR2_NAK & isr)
-		isr &= ~AST2600_I2CS_ADDR2_NAK;
-
-	if (AST2600_I2CS_ADDR3_NAK & isr)
-		isr &= ~AST2600_I2CS_ADDR3_NAK;
-
-	if (AST2600_I2CS_ADDR_MASK & isr)
-		isr &= ~AST2600_I2CS_ADDR_MASK;
-
 	if (AST2600_I2CS_PKT_DONE & isr) {
 		if (i2c_bus->mode == DMA_MODE)
 			ast2600_i2c_slave_packet_dma_irq(i2c_bus, isr);
@@ -1053,8 +1052,9 @@ static void ast2600_i2c_master_package_irq(struct ast2600_i2c_bus *i2c_bus, u32 
 	int xfer_len;
 	int i;
 
-	sts &= ~AST2600_I2CM_PKT_DONE;
 	writel(AST2600_I2CM_PKT_DONE, i2c_bus->reg_base + AST2600_I2CM_ISR);
+	writel(sts, i2c_bus->reg_base + AST2600_I2CM_ISR);
+	sts &= ~(AST2600_I2CM_PKT_DONE | AST2600_I2CM_SW_ISR_MASK);
 
 	switch (sts) {
 	case AST2600_I2CM_PKT_ERROR:
@@ -1289,6 +1289,9 @@ static int ast2600_i2c_master_irq(struct ast2600_i2c_bus *i2c_bus)
 	u32 sts = readl(i2c_bus->reg_base + AST2600_I2CM_ISR);
 	u32 ier = readl(i2c_bus->reg_base + AST2600_I2CM_IER);
 	u32 ctrl;
+
+	/* mask un-used isr bits */
+	sts &= ~AST2600_I2CM_ISR_MASK;
 
 	if (!i2c_bus->alert_enable)
 		sts &= ~AST2600_I2CM_SMBUS_ALT;
