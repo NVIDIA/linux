@@ -14,7 +14,7 @@
 #include "hci.h"
 #include "cmd.h"
 #include "ibi.h"
-
+#include "vendor_aspeed.h"
 
 /*
  * PIO Access Area
