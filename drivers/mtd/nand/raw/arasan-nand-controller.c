@@ -515,6 +515,7 @@ static int anfc_write_page_hw_ecc(struct nand_chip *chip, const u8 *buf,
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	unsigned int len = mtd->writesize + (oob_required ? mtd->oobsize : 0);
 	dma_addr_t dma_addr;
+	u8 status;
 	int ret;
 	struct anfc_op nfc_op = {
 		.pkt_reg =
@@ -561,10 +562,21 @@ static int anfc_write_page_hw_ecc(struct nand_chip *chip, const u8 *buf,
 	}
 
 	/* Spare data is not protected */
-	if (oob_required)
+	if (oob_required) {
 		ret = nand_write_oob_std(chip, page);
+		if (ret)
+			return ret;
+	}
 
-	return ret;
+	/* Check write status on the chip side */
+	ret = nand_status_op(chip, &status);
+	if (ret)
+		return ret;
+
+	if (status & NAND_STATUS_FAIL)
+		return -EIO;
+
+	return 0;
 }
 
 static int anfc_sel_write_page_hw_ecc(struct nand_chip *chip, const u8 *buf,
@@ -973,21 +985,6 @@ static int anfc_setup_interface(struct nand_chip *chip, int target,
 		nvddr = nand_get_nvddr_timings(conf);
 		if (IS_ERR(nvddr))
 			return PTR_ERR(nvddr);
-
-		/*
-		 * The controller only supports data payload requests which are
-		 * a multiple of 4. In practice, most data accesses are 4-byte
-		 * aligned and this is not an issue. However, rounding up will
-		 * simply be refused by the controller if we reached the end of
-		 * the device *and* we are using the NV-DDR interface(!). In
-		 * this situation, unaligned data requests ending at the device
-		 * boundary will confuse the controller and cannot be performed.
-		 *
-		 * This is something that happens in nand_read_subpage() when
-		 * selecting software ECC support and must be avoided.
-		 */
-		if (chip->ecc.engine_type == NAND_ECC_ENGINE_TYPE_SOFT)
-			return -ENOTSUPP;
 	} else {
 		sdr = nand_get_sdr_timings(conf);
 		if (IS_ERR(sdr))
@@ -1496,7 +1493,7 @@ disable_controller_clk:
 	return ret;
 }
 
-static int anfc_remove(struct platform_device *pdev)
+static void anfc_remove(struct platform_device *pdev)
 {
 	struct arasan_nfc *nfc = platform_get_drvdata(pdev);
 
@@ -1504,8 +1501,6 @@ static int anfc_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(nfc->bus_clk);
 	clk_disable_unprepare(nfc->controller_clk);
-
-	return 0;
 }
 
 static const struct of_device_id anfc_ids[] = {
@@ -1525,7 +1520,7 @@ static struct platform_driver anfc_driver = {
 		.of_match_table = anfc_ids,
 	},
 	.probe = anfc_probe,
-	.remove = anfc_remove,
+	.remove_new = anfc_remove,
 };
 module_platform_driver(anfc_driver);
 

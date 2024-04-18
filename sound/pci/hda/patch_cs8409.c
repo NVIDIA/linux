@@ -759,14 +759,11 @@ static int cs42l42_manual_hs_det(struct sub_codec *cs42l42)
 			 (CS42L42_HSDET_COMP2_LVL_DEFAULT << CS42L42_HSDET_COMP2_LVL_SHIFT));
 
 	return hs_type;
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 static int cs42l42_handle_tip_sense(struct sub_codec *cs42l42, unsigned int reg_ts_status)
 {
-	int status_changed = cs42l42->force_status_change;
-
-	cs42l42->force_status_change = 0;
+	int status_changed = 0;
 
 	/* TIP_SENSE INSERT/REMOVE */
 	switch (reg_ts_status) {
@@ -891,7 +888,7 @@ static void cs42l42_resume(struct sub_codec *cs42l42)
 
 	/* Initialize CS42L42 companion codec */
 	cs8409_i2c_bulk_write(cs42l42, cs42l42->init_seq, cs42l42->init_seq_num);
-	usleep_range(30000, 35000);
+	msleep(CS42L42_INIT_TIMEOUT_MS);
 
 	/* Clear interrupts, by reading interrupt status registers */
 	cs8409_i2c_bulk_read(cs42l42, irq_regs, ARRAY_SIZE(irq_regs));
@@ -903,11 +900,6 @@ static void cs42l42_resume(struct sub_codec *cs42l42)
 		fsv_new = fsv_old & CS42L42_FULL_SCALE_VOL_MASK;
 	if (fsv_new != fsv_old)
 		cs8409_i2c_write(cs42l42, CS42L42_HP_CTL, fsv_new);
-
-	/* we have to explicitly allow unsol event handling even during the
-	 * resume phase so that the jack event is processed properly
-	 */
-	snd_hda_codec_allow_unsol_events(cs42l42->codec);
 
 	/* we have to explicitly allow unsol event handling even during the
 	 * resume phase so that the jack event is processed properly
@@ -950,7 +942,6 @@ static void cs42l42_suspend(struct sub_codec *cs42l42)
 	cs42l42->last_page = 0;
 	cs42l42->hp_jack_in = 0;
 	cs42l42->mic_jack_in = 0;
-	cs42l42->force_status_change = 1;
 
 	/* Put CS42L42 into Reset */
 	spec->gpio_data = snd_hda_codec_read(codec, CS8409_PIN_AFG, 0, AC_VERB_GET_GPIO_DATA, 0);

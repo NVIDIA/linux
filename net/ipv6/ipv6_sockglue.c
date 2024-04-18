@@ -470,13 +470,6 @@ int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 			__ipv6_sock_mc_close(sk);
 			__ipv6_sock_ac_close(sk);
 
-			/*
-			 * Sock is moving from IPv6 to IPv4 (sk_prot), so
-			 * remove it from the refcnt debug socks count in the
-			 * original family...
-			 */
-			sk_refcnt_debug_dec(sk);
-
 			if (sk->sk_protocol == IPPROTO_TCP) {
 				struct inet_connection_sock *icsk = inet_csk(sk);
 
@@ -513,11 +506,6 @@ int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 
 			inet6_cleanup_sock(sk);
 
-			/*
-			 * ... and add it to the refcnt debug socks count
-			 * in the new family. -acme
-			 */
-			sk_refcnt_debug_inc(sk);
 			module_put(THIS_MODULE);
 			retv = 0;
 			break;
@@ -734,6 +722,7 @@ int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 			goto done;
 
 		msg.msg_controllen = optlen;
+		msg.msg_control_is_user = false;
 		msg.msg_control = (void *)(opt+1);
 		ipc6.opt = opt;
 
@@ -1011,10 +1000,8 @@ unlock:
 	return retv;
 
 e_inval:
-	sockopt_release_sock(sk);
-	if (needs_rtnl)
-		rtnl_unlock();
-	return -EINVAL;
+	retv = -EINVAL;
+	goto unlock;
 }
 
 int ipv6_setsockopt(struct sock *sk, int level, int optname, sockptr_t optval,

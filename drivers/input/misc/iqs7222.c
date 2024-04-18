@@ -1381,9 +1381,6 @@ static int iqs7222_ati_trigger(struct iqs7222_private *iqs7222)
 	if (error)
 		return error;
 
-	sys_setup &= ~IQS7222_SYS_SETUP_INTF_MODE_MASK;
-	sys_setup &= ~IQS7222_SYS_SETUP_PWR_MODE_MASK;
-
 	for (i = 0; i < IQS7222_NUM_RETRIES; i++) {
 		/*
 		 * Trigger ATI from streaming and normal-power modes so that
@@ -1561,8 +1558,11 @@ static int iqs7222_dev_init(struct iqs7222_private *iqs7222, int dir)
 			return error;
 	}
 
-	if (dir == READ)
+	if (dir == READ) {
+		iqs7222->sys_setup[0] &= ~IQS7222_SYS_SETUP_INTF_MODE_MASK;
+		iqs7222->sys_setup[0] &= ~IQS7222_SYS_SETUP_PWR_MODE_MASK;
 		return 0;
+	}
 
 	return iqs7222_ati_trigger(iqs7222);
 }
@@ -2593,7 +2593,7 @@ static struct i2c_driver iqs7222_i2c_driver = {
 		.name = "iqs7222",
 		.of_match_table = iqs7222_of_match,
 	},
-	.probe_new = iqs7222_probe,
+	.probe = iqs7222_probe,
 };
 module_i2c_driver(iqs7222_i2c_driver);
 

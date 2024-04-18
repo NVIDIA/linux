@@ -421,13 +421,14 @@ static const struct of_device_id gemini_sata_of_match[] = {
 static struct platform_driver gemini_sata_driver = {
 	.driver = {
 		.name = DRV_NAME,
-		.of_match_table = of_match_ptr(gemini_sata_of_match),
+		.of_match_table = gemini_sata_of_match,
 	},
 	.probe = gemini_sata_probe,
 	.remove = gemini_sata_remove,
 };
 module_platform_driver(gemini_sata_driver);
 
+MODULE_DESCRIPTION("low level driver for Cortina Systems Gemini SATA bridge");
 MODULE_AUTHOR("Linus Walleij <linus.walleij@linaro.org>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" DRV_NAME);

@@ -80,11 +80,11 @@ void gfs2_remove_from_ail(struct gfs2_bufdata *bd)
 	brelse(bd->bd_bh);
 }
 
-static int __gfs2_writepage(struct page *page, struct writeback_control *wbc,
+static int __gfs2_writepage(struct folio *folio, struct writeback_control *wbc,
 		       void *data)
 {
 	struct address_space *mapping = data;
-	int ret = mapping->a_ops->writepage(page, wbc);
+	int ret = mapping->a_ops->writepage(&folio->page, wbc);
 	mapping_set_error(mapping, ret);
 	return ret;
 }
@@ -136,7 +136,7 @@ __acquires(&sdp->sd_ail_lock)
 			continue;
 		gl = bd->bd_gl;
 		list_move(&bd->bd_ail_st_list, &tr->tr_ail1_list);
-		mapping = bh->b_page->mapping;
+		mapping = bh->b_folio->mapping;
 		if (!mapping)
 			continue;
 		spin_unlock(&sdp->sd_ail_lock);
@@ -914,9 +914,8 @@ void gfs2_write_log_header(struct gfs2_sbd *sdp, struct gfs2_jdesc *jd,
 static void log_write_header(struct gfs2_sbd *sdp, u32 flags)
 {
 	blk_opf_t op_flags = REQ_PREFLUSH | REQ_FUA | REQ_META | REQ_SYNC;
-	enum gfs2_freeze_state state = atomic_read(&sdp->sd_freeze_state);
 
-	gfs2_assert_withdraw(sdp, (state != SFS_FROZEN));
+	gfs2_assert_withdraw(sdp, !test_bit(SDF_FROZEN, &sdp->sd_flags));
 
 	if (test_bit(SDF_NOBARRIERS, &sdp->sd_flags)) {
 		gfs2_ordered_wait(sdp);
@@ -1036,7 +1035,7 @@ void gfs2_log_flush(struct gfs2_sbd *sdp, struct gfs2_glock *gl, u32 flags)
 {
 	struct gfs2_trans *tr = NULL;
 	unsigned int reserved_blocks = 0, used_blocks = 0;
-	enum gfs2_freeze_state state = atomic_read(&sdp->sd_freeze_state);
+	bool frozen = test_bit(SDF_FROZEN, &sdp->sd_flags);
 	unsigned int first_log_head;
 	unsigned int reserved_revokes = 0;
 
@@ -1067,7 +1066,7 @@ repeat:
 		if (tr) {
 			sdp->sd_log_tr = NULL;
 			tr->tr_first = first_log_head;
-			if (unlikely (state == SFS_FROZEN)) {
+			if (unlikely(frozen)) {
 				if (gfs2_assert_withdraw_delayed(sdp,
 				       !tr->tr_num_buf_new && !tr->tr_num_databuf_new))
 					goto out_withdraw;
@@ -1092,7 +1091,7 @@ repeat:
 	if (flags & GFS2_LOG_HEAD_FLUSH_SHUTDOWN)
 		clear_bit(SDF_JOURNAL_LIVE, &sdp->sd_flags);
 
-	if (unlikely(state == SFS_FROZEN))
+	if (unlikely(frozen))
 		if (gfs2_assert_withdraw_delayed(sdp, !reserved_revokes))
 			goto out_withdraw;
 
@@ -1136,8 +1135,6 @@ repeat:
 		if (flags & (GFS2_LOG_HEAD_FLUSH_SHUTDOWN |
 			     GFS2_LOG_HEAD_FLUSH_FREEZE))
 			gfs2_log_shutdown(sdp);
-		if (flags & GFS2_LOG_HEAD_FLUSH_FREEZE)
-			atomic_set(&sdp->sd_freeze_state, SFS_FROZEN);
 	}
 
 out_end:
@@ -1285,9 +1282,6 @@ static inline int gfs2_ail_flush_reqd(struct gfs2_sbd *sdp)
 {
 	unsigned int used_blocks = sdp->sd_jdesc->jd_blocks - atomic_read(&sdp->sd_log_blks_free);
 
-	if (test_and_clear_bit(SDF_FORCE_AIL_FLUSH, &sdp->sd_flags))
-		return 1;
-
 	return used_blocks + atomic_read(&sdp->sd_log_blks_needed) >=
 		atomic_read(&sdp->sd_log_thresh2);
 }
@@ -1304,7 +1298,6 @@ int gfs2_logd(void *data)
 {
 	struct gfs2_sbd *sdp = data;
 	unsigned long t = 1;
-	DEFINE_WAIT(wait);
 
 	while (!kthread_should_stop()) {
 
@@ -1329,7 +1322,9 @@ int gfs2_logd(void *data)
 						  GFS2_LFC_LOGD_JFLUSH_REQD);
 		}
 
-		if (gfs2_ail_flush_reqd(sdp)) {
+		if (test_bit(SDF_FORCE_AIL_FLUSH, &sdp->sd_flags) ||
+		    gfs2_ail_flush_reqd(sdp)) {
+			clear_bit(SDF_FORCE_AIL_FLUSH, &sdp->sd_flags);
 			gfs2_ail1_start(sdp);
 			gfs2_ail1_wait(sdp);
 			gfs2_ail1_empty(sdp, 0);
@@ -1341,17 +1336,12 @@ int gfs2_logd(void *data)
 
 		try_to_freeze();
 
-		do {
-			prepare_to_wait(&sdp->sd_logd_waitq, &wait,
-					TASK_INTERRUPTIBLE);
-			if (!gfs2_ail_flush_reqd(sdp) &&
-			    !gfs2_jrnl_flush_reqd(sdp) &&
-			    !kthread_should_stop())
-				t = schedule_timeout(t);
-		} while(t && !gfs2_ail_flush_reqd(sdp) &&
-			!gfs2_jrnl_flush_reqd(sdp) &&
-			!kthread_should_stop());
-		finish_wait(&sdp->sd_logd_waitq, &wait);
+		t = wait_event_interruptible_timeout(sdp->sd_logd_waitq,
+				test_bit(SDF_FORCE_AIL_FLUSH, &sdp->sd_flags) ||
+				gfs2_ail_flush_reqd(sdp) ||
+				gfs2_jrnl_flush_reqd(sdp) ||
+				kthread_should_stop(),
+				t);
 	}
 
 	return 0;

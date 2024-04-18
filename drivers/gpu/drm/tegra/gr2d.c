@@ -317,19 +317,11 @@ disable_clk:
 	return err;
 }
 
-static int gr2d_remove(struct platform_device *pdev)
+static void gr2d_remove(struct platform_device *pdev)
 {
 	struct gr2d *gr2d = platform_get_drvdata(pdev);
-	int err;
 
-	err = host1x_client_unregister(&gr2d->client.base);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to unregister host1x client: %d\n",
-			err);
-		return err;
-	}
-
-	return 0;
+	host1x_client_unregister(&gr2d->client.base);
 }
 
 static int __maybe_unused gr2d_runtime_suspend(struct device *dev)
@@ -425,5 +417,5 @@ struct platform_driver tegra_gr2d_driver = {
 		.pm = &tegra_gr2d_pm,
 	},
 	.probe = gr2d_probe,
-	.remove = gr2d_remove,
+	.remove_new = gr2d_remove,
 };

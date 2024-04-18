@@ -67,7 +67,7 @@ static char *get_dname(struct dentry *dentry)
 	return name;
 }
 
-static int tracefs_syscall_mkdir(struct user_namespace *mnt_userns,
+static int tracefs_syscall_mkdir(struct mnt_idmap *idmap,
 				 struct inode *inode, struct dentry *dentry,
 				 umode_t mode)
 {
@@ -556,6 +556,9 @@ static struct dentry *__create_dir(const char *name, struct dentry *parent,
  */
 struct dentry *tracefs_create_dir(const char *name, struct dentry *parent)
 {
+	if (security_locked_down(LOCKDOWN_TRACEFS))
+		return NULL;
+
 	return __create_dir(name, parent, &simple_dir_inode_operations);
 }
 

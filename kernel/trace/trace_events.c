@@ -194,6 +194,8 @@ static int trace_define_generic_fields(void)
 	__generic_field(int, common_cpu, FILTER_CPU);
 	__generic_field(char *, COMM, FILTER_COMM);
 	__generic_field(char *, comm, FILTER_COMM);
+	__generic_field(char *, stacktrace, FILTER_STACKTRACE);
+	__generic_field(char *, STACKTRACE, FILTER_STACKTRACE);
 
 	return ret;
 }
@@ -609,7 +611,6 @@ static int __ftrace_event_enable_disable(struct trace_event_file *file,
 {
 	struct trace_event_call *call = file->event_call;
 	struct trace_array *tr = file->tr;
-	unsigned long file_flags = file->flags;
 	int ret = 0;
 	int disable;
 
@@ -633,6 +634,8 @@ static int __ftrace_event_enable_disable(struct trace_event_file *file,
 				break;
 			disable = file->flags & EVENT_FILE_FL_SOFT_DISABLED;
 			clear_bit(EVENT_FILE_FL_SOFT_MODE_BIT, &file->flags);
+			/* Disable use of trace_buffered_event */
+			trace_buffered_event_disable();
 		} else
 			disable = !(file->flags & EVENT_FILE_FL_SOFT_MODE);
 
@@ -671,6 +674,8 @@ static int __ftrace_event_enable_disable(struct trace_event_file *file,
 			if (atomic_inc_return(&file->sm_ref) > 1)
 				break;
 			set_bit(EVENT_FILE_FL_SOFT_MODE_BIT, &file->flags);
+			/* Enable use of trace_buffered_event */
+			trace_buffered_event_enable();
 		}
 
 		if (!(file->flags & EVENT_FILE_FL_ENABLED)) {
@@ -708,15 +713,6 @@ static int __ftrace_event_enable_disable(struct trace_event_file *file,
 			set_bit(EVENT_FILE_FL_WAS_ENABLED_BIT, &file->flags);
 		}
 		break;
-	}
-
-	/* Enable or disable use of trace_buffered_event */
-	if ((file_flags & EVENT_FILE_FL_SOFT_DISABLED) !=
-	    (file->flags & EVENT_FILE_FL_SOFT_DISABLED)) {
-		if (file->flags & EVENT_FILE_FL_SOFT_DISABLED)
-			trace_buffered_event_enable();
-		else
-			trace_buffered_event_disable();
 	}
 
 	return ret;
@@ -2107,9 +2103,10 @@ static const struct file_operations ftrace_set_event_notrace_pid_fops = {
 };
 
 static const struct file_operations ftrace_enable_fops = {
-	.open = tracing_open_generic,
+	.open = tracing_open_file_tr,
 	.read = event_enable_read,
 	.write = event_enable_write,
+	.release = tracing_release_file_tr,
 	.llseek = default_llseek,
 };
 
@@ -2126,9 +2123,10 @@ static const struct file_operations ftrace_event_id_fops = {
 };
 
 static const struct file_operations ftrace_event_filter_fops = {
-	.open = tracing_open_generic,
+	.open = tracing_open_file_tr,
 	.read = event_filter_read,
 	.write = event_filter_write,
+	.release = tracing_release_file_tr,
 	.llseek = default_llseek,
 };
 
@@ -2280,8 +2278,6 @@ create_new_subsystem(const char *name)
 	system->name = kstrdup_const(name, GFP_KERNEL);
 	if (!system->name)
 		goto out_free;
-
-	system->filter = NULL;
 
 	system->filter = kzalloc(sizeof(struct event_filter), GFP_KERNEL);
 	if (!system->filter)
@@ -2781,6 +2777,7 @@ void trace_event_eval_update(struct trace_eval_map **map, int len)
 				update_event_fields(call, map[i]);
 			}
 		}
+		cond_resched();
 	}
 	up_write(&trace_event_sem);
 }
@@ -2817,6 +2814,42 @@ trace_create_new_event(struct trace_event_call *call,
 	return file;
 }
 
+#define MAX_BOOT_TRIGGERS 32
+
+static struct boot_triggers {
+	const char		*event;
+	char			*trigger;
+} bootup_triggers[MAX_BOOT_TRIGGERS];
+
+static char bootup_trigger_buf[COMMAND_LINE_SIZE];
+static int nr_boot_triggers;
+
+static __init int setup_trace_triggers(char *str)
+{
+	char *trigger;
+	char *buf;
+	int i;
+
+	strscpy(bootup_trigger_buf, str, COMMAND_LINE_SIZE);
+	ring_buffer_expanded = true;
+	disable_tracing_selftest("running event triggers");
+
+	buf = bootup_trigger_buf;
+	for (i = 0; i < MAX_BOOT_TRIGGERS; i++) {
+		trigger = strsep(&buf, ",");
+		if (!trigger)
+			break;
+		bootup_triggers[i].event = strsep(&trigger, ".");
+		bootup_triggers[i].trigger = trigger;
+		if (!bootup_triggers[i].trigger)
+			break;
+	}
+
+	nr_boot_triggers = i;
+	return 1;
+}
+__setup("trace_trigger=", setup_trace_triggers);
+
 /* Add an event to a trace directory */
 static int
 __trace_add_new_event(struct trace_event_call *call, struct trace_array *tr)
@@ -2833,6 +2866,24 @@ __trace_add_new_event(struct trace_event_call *call, struct trace_array *tr)
 		return event_define_fields(call);
 }
 
+static void trace_early_triggers(struct trace_event_file *file, const char *name)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < nr_boot_triggers; i++) {
+		if (strcmp(name, bootup_triggers[i].event))
+			continue;
+		mutex_lock(&event_mutex);
+		ret = trigger_process_regex(file, bootup_triggers[i].trigger);
+		mutex_unlock(&event_mutex);
+		if (ret)
+			pr_err("Failed to register trigger '%s' on event %s\n",
+			       bootup_triggers[i].trigger,
+			       bootup_triggers[i].event);
+	}
+}
+
 /*
  * Just create a descriptor for early init. A descriptor is required
  * for enabling events at boot. We want to enable events before
@@ -2843,12 +2894,19 @@ __trace_early_add_new_event(struct trace_event_call *call,
 			    struct trace_array *tr)
 {
 	struct trace_event_file *file;
+	int ret;
 
 	file = trace_create_new_event(call, tr);
 	if (!file)
 		return -ENOMEM;
 
-	return event_define_fields(call);
+	ret = event_define_fields(call);
+	if (ret)
+		return ret;
+
+	trace_early_triggers(file, trace_event_name(call));
+
+	return 0;
 }
 
 struct ftrace_module_file_ops;
@@ -3562,7 +3620,7 @@ static char bootup_event_buf[COMMAND_LINE_SIZE] __initdata;
 
 static __init int setup_trace_event(char *str)
 {
-	strlcpy(bootup_event_buf, str, COMMAND_LINE_SIZE);
+	strscpy(bootup_event_buf, str, COMMAND_LINE_SIZE);
 	ring_buffer_expanded = true;
 	disable_tracing_selftest("running event tracing");
 
@@ -3710,10 +3768,9 @@ static __init int event_trace_memsetup(void)
 	return 0;
 }
 
-static __init void
-early_enable_events(struct trace_array *tr, bool disable_first)
+__init void
+early_enable_events(struct trace_array *tr, char *buf, bool disable_first)
 {
-	char *buf = bootup_event_buf;
 	char *token;
 	int ret;
 
@@ -3756,6 +3813,8 @@ static __init int event_trace_enable(void)
 			list_add(&call->list, &ftrace_events);
 	}
 
+	register_trigger_cmds();
+
 	/*
 	 * We need the top trace array to have a working set of trace
 	 * points at early init, before the debug files and directories
@@ -3764,13 +3823,12 @@ static __init int event_trace_enable(void)
 	 */
 	__trace_early_add_events(tr);
 
-	early_enable_events(tr, false);
+	early_enable_events(tr, bootup_event_buf, false);
 
 	trace_printk_start_comm();
 
 	register_event_cmds();
 
-	register_trigger_cmds();
 
 	return 0;
 }
@@ -3793,7 +3851,7 @@ static __init int event_trace_enable_again(void)
 	if (!tr)
 		return -ENODEV;
 
-	early_enable_events(tr, true);
+	early_enable_events(tr, bootup_event_buf, true);
 
 	return 0;
 }

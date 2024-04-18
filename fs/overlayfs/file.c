@@ -19,7 +19,6 @@ struct ovl_aio_req {
 	struct kiocb iocb;
 	refcount_t ref;
 	struct kiocb *orig_iocb;
-	struct fd fd;
 };
 
 static struct kmem_cache *ovl_aio_request_cachep;
@@ -34,15 +33,15 @@ static char ovl_whatisit(struct inode *inode, struct inode *realinode)
 		return 'm';
 }
 
-/* No atime modificaton nor notify on underlying */
-#define OVL_OPEN_FLAGS (O_NOATIME | FMODE_NONOTIFY)
+/* No atime modification on underlying */
+#define OVL_OPEN_FLAGS (O_NOATIME)
 
 static struct file *ovl_open_realfile(const struct file *file,
 				      const struct path *realpath)
 {
 	struct inode *realinode = d_inode(realpath->dentry);
 	struct inode *inode = file_inode(file);
-	struct user_namespace *real_mnt_userns;
+	struct mnt_idmap *real_idmap;
 	struct file *realfile;
 	const struct cred *old_cred;
 	int flags = file->f_flags | OVL_OPEN_FLAGS;
@@ -53,16 +52,16 @@ static struct file *ovl_open_realfile(const struct file *file,
 		acc_mode |= MAY_APPEND;
 
 	old_cred = ovl_override_creds(inode->i_sb);
-	real_mnt_userns = mnt_user_ns(realpath->mnt);
-	err = inode_permission(real_mnt_userns, realinode, MAY_OPEN | acc_mode);
+	real_idmap = mnt_idmap(realpath->mnt);
+	err = inode_permission(real_idmap, realinode, MAY_OPEN | acc_mode);
 	if (err) {
 		realfile = ERR_PTR(err);
 	} else {
-		if (!inode_owner_or_capable(real_mnt_userns, realinode))
+		if (!inode_owner_or_capable(real_idmap, realinode))
 			flags &= ~O_NOATIME;
 
-		realfile = open_with_fake_path(&file->f_path, flags, realinode,
-					       current_cred());
+		realfile = backing_file_open(&file->f_path, flags, realpath,
+					     current_cred());
 	}
 	revert_creds(old_cred);
 
@@ -107,14 +106,23 @@ static int ovl_real_fdget_meta(const struct file *file, struct fd *real,
 {
 	struct dentry *dentry = file_dentry(file);
 	struct path realpath;
+	int err;
 
 	real->flags = 0;
 	real->file = file->private_data;
 
-	if (allow_meta)
+	if (allow_meta) {
 		ovl_path_real(dentry, &realpath);
-	else
+	} else {
+		/* lazy lookup of lowerdata */
+		err = ovl_maybe_lookup_lowerdata(dentry);
+		if (err)
+			return err;
+
 		ovl_path_realdata(dentry, &realpath);
+	}
+	if (!realpath.dentry)
+		return -EIO;
 
 	/* Has it been copied up since we'd opened it? */
 	if (unlikely(file_inode(real->file) != d_inode(realpath.dentry))) {
@@ -150,6 +158,11 @@ static int ovl_open(struct inode *inode, struct file *file)
 	struct path realpath;
 	int err;
 
+	/* lazy lookup of lowerdata */
+	err = ovl_maybe_lookup_lowerdata(dentry);
+	if (err)
+		return err;
+
 	err = ovl_maybe_copy_up(dentry, file->f_flags);
 	if (err)
 		return err;
@@ -158,6 +171,9 @@ static int ovl_open(struct inode *inode, struct file *file)
 	file->f_flags &= ~(O_CREAT | O_EXCL | O_NOCTTY | O_TRUNC);
 
 	ovl_path_realdata(dentry, &realpath);
+	if (!realpath.dentry)
+		return -EIO;
+
 	realfile = ovl_open_realfile(file, &realpath);
 	if (IS_ERR(realfile))
 		return PTR_ERR(realfile);
@@ -260,7 +276,7 @@ static rwf_t ovl_iocb_to_rwf(int ifl)
 static inline void ovl_aio_put(struct ovl_aio_req *aio_req)
 {
 	if (refcount_dec_and_test(&aio_req->ref)) {
-		fdput(aio_req->fd);
+		fput(aio_req->iocb.ki_filp);
 		kmem_cache_free(ovl_aio_request_cachep, aio_req);
 	}
 }
@@ -325,10 +341,9 @@ static ssize_t ovl_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 		if (!aio_req)
 			goto out;
 
-		aio_req->fd = real;
 		real.flags = 0;
 		aio_req->orig_iocb = iocb;
-		kiocb_clone(&aio_req->iocb, iocb, real.file);
+		kiocb_clone(&aio_req->iocb, iocb, get_file(real.file));
 		aio_req->iocb.ki_complete = ovl_aio_rw_complete;
 		refcount_set(&aio_req->ref, 2);
 		ret = vfs_iocb_iter_read(real.file, &aio_req->iocb, iter);
@@ -396,10 +411,9 @@ static ssize_t ovl_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 		/* Pacify lockdep, same trick as done in aio_write() */
 		__sb_writers_release(file_inode(real.file)->i_sb,
 				     SB_FREEZE_WRITE);
-		aio_req->fd = real;
 		real.flags = 0;
 		aio_req->orig_iocb = iocb;
-		kiocb_clone(&aio_req->iocb, iocb, real.file);
+		kiocb_clone(&aio_req->iocb, iocb, get_file(real.file));
 		aio_req->iocb.ki_flags = ifl;
 		aio_req->iocb.ki_complete = ovl_aio_rw_complete;
 		refcount_set(&aio_req->ref, 2);
@@ -416,6 +430,27 @@ out_fdput:
 out_unlock:
 	inode_unlock(inode);
 
+	return ret;
+}
+
+static ssize_t ovl_splice_read(struct file *in, loff_t *ppos,
+			       struct pipe_inode_info *pipe, size_t len,
+			       unsigned int flags)
+{
+	const struct cred *old_cred;
+	struct fd real;
+	ssize_t ret;
+
+	ret = ovl_real_fdget(in, &real);
+	if (ret)
+		return ret;
+
+	old_cred = ovl_override_creds(file_inode(in)->i_sb);
+	ret = vfs_splice_read(real.file, ppos, pipe, len, flags);
+	revert_creds(old_cred);
+	ovl_file_accessed(in);
+
+	fdput(real);
 	return ret;
 }
 
@@ -695,7 +730,7 @@ const struct file_operations ovl_file_operations = {
 	.fallocate	= ovl_fallocate,
 	.fadvise	= ovl_fadvise,
 	.flush		= ovl_flush,
-	.splice_read    = generic_file_splice_read,
+	.splice_read    = ovl_splice_read,
 	.splice_write   = ovl_splice_write,
 
 	.copy_file_range	= ovl_copy_file_range,

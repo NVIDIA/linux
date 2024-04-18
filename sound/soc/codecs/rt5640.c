@@ -53,7 +53,6 @@ static const struct reg_sequence init_list[] = {
 	{RT5640_PR_BASE + 0x3d,	0x3600},
 	{RT5640_PR_BASE + 0x12,	0x0aa8},
 	{RT5640_PR_BASE + 0x14,	0x0aaa},
-	{RT5640_PR_BASE + 0x20,	0x6110},
 	{RT5640_PR_BASE + 0x21,	0xe0e0},
 	{RT5640_PR_BASE + 0x23,	0x1804},
 };
@@ -1838,9 +1837,14 @@ static int rt5640_set_dai_sysclk(struct snd_soc_dai *dai,
 	struct rt5640_priv *rt5640 = snd_soc_component_get_drvdata(component);
 	unsigned int reg_val = 0;
 	unsigned int pll_bit = 0;
+	int ret;
 
 	switch (clk_id) {
 	case RT5640_SCLK_S_MCLK:
+		ret = clk_set_rate(rt5640->mclk, freq);
+		if (ret)
+			return ret;
+
 		reg_val |= RT5640_SCLK_SRC_MCLK;
 		break;
 	case RT5640_SCLK_S_PLL1:
@@ -2400,13 +2404,11 @@ static irqreturn_t rt5640_irq(int irq, void *data)
 	struct rt5640_priv *rt5640 = data;
 	int delay = 0;
 
-	if (rt5640->jd_src == RT5640_JD_SRC_HDA_HEADER) {
-		cancel_delayed_work_sync(&rt5640->jack_work);
+	if (rt5640->jd_src == RT5640_JD_SRC_HDA_HEADER)
 		delay = 100;
-	}
 
 	if (rt5640->jack)
-		queue_delayed_work(system_long_wq, &rt5640->jack_work, delay);
+		mod_delayed_work(system_long_wq, &rt5640->jack_work, delay);
 
 	return IRQ_HANDLED;
 }
@@ -2566,7 +2568,7 @@ static void rt5640_enable_jack_detect(struct snd_soc_component *component,
 			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 			  "rt5640", rt5640);
 	if (ret) {
-		dev_warn(component->dev, "Failed to reguest IRQ %d: %d\n", rt5640->irq, ret);
+		dev_warn(component->dev, "Failed to request IRQ %d: %d\n", rt5640->irq, ret);
 		rt5640_disable_jack_detect(component);
 		return;
 	}
@@ -2620,10 +2622,11 @@ static void rt5640_enable_hda_jack_detect(
 	ret = request_irq(rt5640->irq, rt5640_irq,
 			  IRQF_TRIGGER_RISING | IRQF_ONESHOT, "rt5640", rt5640);
 	if (ret) {
-		dev_warn(component->dev, "Failed to reguest IRQ %d: %d\n", rt5640->irq, ret);
-		rt5640->irq = -ENXIO;
+		dev_warn(component->dev, "Failed to request IRQ %d: %d\n", rt5640->irq, ret);
+		rt5640->jack = NULL;
 		return;
 	}
+	rt5640->irq_requested = true;
 
 	/* sync initial jack state */
 	queue_delayed_work(system_long_wq, &rt5640->jack_work, 0);
@@ -2717,6 +2720,10 @@ static int rt5640_probe(struct snd_soc_component *component)
 		snd_soc_component_update_bits(component, RT5640_IN1_IN2,
 					      RT5640_IN_DF2, RT5640_IN_DF2);
 
+	if (device_property_read_bool(component->dev, "realtek,lout-differential"))
+		snd_soc_component_update_bits(component, RT5640_DUMMY1,
+					      RT5640_EN_LOUT_DF, RT5640_EN_LOUT_DF);
+
 	if (device_property_read_u32(component->dev, "realtek,dmic1-data-pin",
 				     &val) == 0 && val) {
 		dmic1_data_pin = val - 1;
@@ -2792,7 +2799,12 @@ static int rt5640_suspend(struct snd_soc_component *component)
 {
 	struct rt5640_priv *rt5640 = snd_soc_component_get_drvdata(component);
 
-	rt5640_cancel_work(rt5640);
+	if (rt5640->jack) {
+		/* disable jack interrupts during system suspend */
+		disable_irq(rt5640->irq);
+		rt5640_cancel_work(rt5640);
+	}
+
 	snd_soc_component_force_bias_level(component, SND_SOC_BIAS_OFF);
 	rt5640_reset(component);
 	regcache_cache_only(rt5640->regmap, true);
@@ -2842,6 +2854,7 @@ static int rt5640_resume(struct snd_soc_component *component)
 			}
 		}
 
+		enable_irq(rt5640->irq);
 		queue_delayed_work(system_long_wq, &rt5640->jack_work, 0);
 	}
 
@@ -2932,7 +2945,7 @@ static const struct regmap_config rt5640_regmap = {
 	.volatile_reg = rt5640_volatile_register,
 	.readable_reg = rt5640_readable_register,
 
-	.cache_type = REGCACHE_RBTREE,
+	.cache_type = REGCACHE_MAPLE,
 	.reg_defaults = rt5640_reg,
 	.num_reg_defaults = ARRAY_SIZE(rt5640_reg),
 	.ranges = rt5640_ranges,
@@ -3062,7 +3075,7 @@ static struct i2c_driver rt5640_i2c_driver = {
 		.acpi_match_table = ACPI_PTR(rt5640_acpi_match),
 		.of_match_table = of_match_ptr(rt5640_of_match),
 	},
-	.probe_new = rt5640_i2c_probe,
+	.probe = rt5640_i2c_probe,
 	.id_table = rt5640_i2c_id,
 };
 module_i2c_driver(rt5640_i2c_driver);

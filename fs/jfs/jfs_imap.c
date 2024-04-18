@@ -193,6 +193,7 @@ int diUnmount(struct inode *ipimap, int mounterror)
 	 * free in-memory control structure
 	 */
 	kfree(imap);
+	JFS_IP(ipimap)->i_imap = NULL;
 
 	return (0);
 }
@@ -310,8 +311,8 @@ int diRead(struct inode *ip)
 	iagno = INOTOIAG(ip->i_ino);
 
 	/* read the iag */
-	imap = JFS_IP(ipimap)->i_imap;
 	IREAD_LOCK(ipimap, RDWRLOCK_IMAP);
+	imap = JFS_IP(ipimap)->i_imap;
 	rc = diIAGRead(imap, iagno, &mp);
 	IREAD_UNLOCK(ipimap);
 	if (rc) {

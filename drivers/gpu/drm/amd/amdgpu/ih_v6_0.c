@@ -119,7 +119,7 @@ force_update_wptr_for_self_int(struct amdgpu_device *adev,
  * ih_v6_0_toggle_ring_interrupts - toggle the interrupt ring buffer
  *
  * @adev: amdgpu_device pointer
- * @ih: amdgpu_ih_ring pointet
+ * @ih: amdgpu_ih_ring pointer
  * @enable: true - enable the interrupts, false - disable the interrupts
  *
  * Toggle the interrupt ring buffer (IH_V6_0)
@@ -381,6 +381,7 @@ static void ih_v6_0_irq_disable(struct amdgpu_device *adev)
  * ih_v6_0_get_wptr - get the IH ring buffer wptr
  *
  * @adev: amdgpu_device pointer
+ * @ih: amdgpu_ih_ring pointer
  *
  * Get the IH ring buffer wptr from either the register
  * or the writeback memory buffer.  Also check for
@@ -425,6 +426,7 @@ out:
  * ih_v6_0_irq_rearm - rearm IRQ if lost
  *
  * @adev: amdgpu_device pointer
+ * @ih: amdgpu_ih_ring pointer
  *
  */
 static void ih_v6_0_irq_rearm(struct amdgpu_device *adev,
@@ -450,6 +452,7 @@ static void ih_v6_0_irq_rearm(struct amdgpu_device *adev,
  * ih_v6_0_set_rptr - set the IH ring buffer rptr
  *
  * @adev: amdgpu_device pointer
+ * @ih: amdgpu_ih_ring pointer
  *
  * Set the IH ring buffer rptr.
  */
@@ -532,7 +535,7 @@ static int ih_v6_0_sw_init(void *handle)
 	 * use bus address for ih ring by psp bl */
 	use_bus_addr =
 		(adev->firmware.load_type == AMDGPU_FW_LOAD_PSP) ? false : true;
-	r = amdgpu_ih_ring_init(adev, &adev->irq.ih, 256 * 1024, use_bus_addr);
+	r = amdgpu_ih_ring_init(adev, &adev->irq.ih, IH_RING_SIZE, use_bus_addr);
 	if (r)
 		return r;
 
@@ -545,7 +548,7 @@ static int ih_v6_0_sw_init(void *handle)
 	/* initialize ih control register offset */
 	ih_v6_0_init_register_offset(adev);
 
-	r = amdgpu_ih_ring_init(adev, &adev->irq.ih_soft, PAGE_SIZE, true);
+	r = amdgpu_ih_ring_init(adev, &adev->irq.ih_soft, IH_SW_RING_SIZE, true);
 	if (r)
 		return r;
 
