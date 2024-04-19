@@ -198,9 +198,13 @@
 // MAC2 of SoC connected to external PHY
 &mac2 {
 	status = "okay";
-
+	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii3_default>;
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
 };
 
 // Arm IPMB

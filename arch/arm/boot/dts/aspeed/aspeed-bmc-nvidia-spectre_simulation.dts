@@ -229,6 +229,7 @@
 	status = "okay";
 
 	pinctrl-names = "default";
+	phy-mode = "rgmii";
 	pinctrl-0 = <&pinctrl_rgmii3_default>;
         fixed-link {
                 speed = <1000>;
