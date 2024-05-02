@@ -276,6 +276,7 @@ additionalProperties:
         - BMCINT
         - EMMCG1
         - EMMCG4
+        - EMMCG5
         - EMMCG8
         - ESPI
         - ESPIALT
