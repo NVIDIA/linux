@@ -18,11 +18,10 @@
 #include <net/mctp.h>
 #include <net/pkt_sched.h>
 
+#include <linux/usb/func_utils.h>
 #include <linux/usb/mctp-usb.h>
 
 #include <uapi/linux/if_arp.h>
-
-#include "u_f.h"
 
 #define MCTP_USB_PREALLOC	4
 
@@ -43,15 +42,10 @@ struct f_mctp {
 	struct list_head	tx_reqs;
 
 	struct work_struct	prealloc_work;
-
-	unsigned int		tx_batch_delay;
-	struct sk_buff_head	tx_batch;
-	struct delayed_work	tx_batch_work;
 };
 
 struct f_mctp_opts {
 	struct usb_function_instance	function_instance;
-	unsigned int			tx_batch_delay;
 };
 
 static inline struct f_mctp *func_to_mctp(struct usb_function *f)
@@ -72,7 +66,7 @@ static struct usb_interface_descriptor mctp_usbg_intf = {
 
 /* descriptors, full speed only */
 
-static struct usb_endpoint_descriptor fs_mctp_source_desc = {
+static struct usb_endpoint_descriptor hs_mctp_source_desc = {
 	.bLength =		USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_XFER_SIZE),
@@ -81,7 +75,7 @@ static struct usb_endpoint_descriptor fs_mctp_source_desc = {
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
 };
 
-static struct usb_endpoint_descriptor fs_mctp_sink_desc = {
+static struct usb_endpoint_descriptor hs_mctp_sink_desc = {
 	.bLength =		USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_XFER_SIZE),
@@ -90,10 +84,10 @@ static struct usb_endpoint_descriptor fs_mctp_sink_desc = {
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
 };
 
-static struct usb_descriptor_header *fs_mctp_descs[] = {
+static struct usb_descriptor_header *hs_mctp_descs[] = {
 	(struct usb_descriptor_header *) &mctp_usbg_intf,
-	(struct usb_descriptor_header *) &fs_mctp_sink_desc,
-	(struct usb_descriptor_header *) &fs_mctp_source_desc,
+	(struct usb_descriptor_header *) &hs_mctp_sink_desc,
+	(struct usb_descriptor_header *) &hs_mctp_source_desc,
 	NULL,
 };
 
@@ -130,19 +124,19 @@ static int mctp_usbg_bind(struct usb_configuration *c, struct usb_function *f)
 
 	mctp_usbg_strings[0].id = id;
 
-	mctp->in_ep = usb_ep_autoconfig(cdev->gadget, &fs_mctp_source_desc);
+	mctp->in_ep = usb_ep_autoconfig(cdev->gadget, &hs_mctp_source_desc);
 	if (!mctp->in_ep) {
 		ERROR(cdev, "%s in_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
 
-	mctp->out_ep = usb_ep_autoconfig(cdev->gadget, &fs_mctp_sink_desc);
+	mctp->out_ep = usb_ep_autoconfig(cdev->gadget, &hs_mctp_sink_desc);
 	if (!mctp->out_ep) {
 		ERROR(cdev, "%s out_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
 
-	rc = usb_assign_descriptors(f, fs_mctp_descs, NULL, NULL, NULL);
+	rc = usb_assign_descriptors(f, NULL, hs_mctp_descs, NULL, NULL);
 	if (rc) {
 		ERROR(cdev, "assign_descriptors failed %d\n", rc);
 		return rc;
@@ -206,102 +200,6 @@ static void mctp_usbg_prealloc_work(struct work_struct *work)
 	mctp_usbg_prealloc(mctp);
 }
 
-static unsigned int __mctp_usbg_tx_batch_len(struct f_mctp *mctp)
-	__must_hold(&mctp->lock)
-{
-	struct sk_buff_head *batch = &mctp->tx_batch;
-	unsigned int len = 0;
-	struct sk_buff *skb;
-
-	for (skb = __skb_peek(batch); skb; skb = skb_peek_next(skb, batch))
-		len += skb->len;
-
-	return len;
-}
-
-/* skb already has USB headers, may contain multiple packets */
-static int __mctp_usbg_tx(struct f_mctp *mctp, struct sk_buff *skb)
-	__must_hold(&mctp->lock)
-{
-	struct net_device *dev = mctp->dev;
-	struct usb_request *req;
-
-	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
-	if (req)
-		list_del(&req->list);
-	if (list_empty(&req->list))
-		netif_stop_queue(dev);
-
-	if (!req) {
-		netdev_err(dev, "no tx reqs available!\n");
-		return -1;
-	}
-
-	req->context = skb;
-	req->buf = skb->data;
-	req->length = skb->len;
-
-	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
-
-	return 0;
-}
-
-static void __mctp_usbg_batch_tx(struct f_mctp *mctp)
-	__must_hold(&mctp->lock)
-{
-	unsigned int i = 1, batch_len = 0;
-	struct sk_buff *skb, *skb2;
-	bool realloc = false;
-
-	batch_len = __mctp_usbg_tx_batch_len(mctp);
-
-	skb = __skb_dequeue(&mctp->tx_batch);
-	if (!skb)
-		return;
-
-	/* if the first skb can't hold the batch, allocate a new one */
-	if (batch_len - skb->len > skb_tailroom(skb)) {
-		realloc = true;
-		skb2 = skb;
-		skb = netdev_alloc_skb(mctp->dev, batch_len);
-		if (!skb) {
-			netdev_warn_once(mctp->dev, "batch alloc failed\n");
-			__skb_queue_purge(&mctp->tx_batch);
-			return;
-		}
-		__skb_put_data(skb, skb2->data, skb2->len);
-		consume_skb(skb2);
-	}
-
-	while ((skb2 = __skb_dequeue(&mctp->tx_batch)) != NULL) {
-		__skb_put_data(skb, skb2->data, skb2->len);
-		consume_skb(skb2);
-		i++;
-	}
-
-	netdev_dbg(mctp->dev, "batch tx: %d for len %d%s. skb len %d\n",
-		   i, batch_len, realloc ? ", realloced" : "", skb->len);
-
-	__mctp_usbg_tx(mctp, skb);
-}
-
-static void mctp_usbg_batch_tx(struct f_mctp *mctp)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&mctp->lock, flags);
-	__mctp_usbg_batch_tx(mctp);
-	spin_unlock_irqrestore(&mctp->lock, flags);
-}
-
-static void mctp_usbg_batch_tx_work(struct work_struct *work)
-{
-	struct f_mctp *mctp = container_of(work, struct f_mctp,
-					   tx_batch_work.work);
-
-	mctp_usbg_batch_tx(mctp);
-}
-
 static int mctp_usbg_requeue(struct f_mctp *mctp, struct usb_ep *ep,
 			     struct usb_request *req)
 {
@@ -337,7 +235,6 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 				    struct usb_request *req)
 {
 	struct device *dev = &mctp->function.config->cdev->gadget->dev;
-	struct pcpu_dstats *dstats = this_cpu_ptr(mctp->dev->dstats);
 	struct sk_buff *skb = req->context;
 	struct mctp_usb_hdr *hdr;
 	struct mctp_skb_cb *cb;
@@ -351,7 +248,7 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	if (!hdr)
 		goto err;
 
-	id = le16_to_cpu(hdr->id);
+	id = be16_to_cpu(hdr->id);
 	if (id != MCTP_USB_DMTF_ID) {
 		dev_dbg(dev, "%s: invalid id %04x\n", __func__, id);
 		goto err;
@@ -364,7 +261,7 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	}
 
 	/* todo: multi-packet transfers */
-	if (hdr->len < skb->len) {
+	if (hdr->len - sizeof(struct mctp_usb_hdr) < skb->len) {
 		dev_dbg(dev, "%s: short packet (xfer) %d, actual %d\n",
 			__func__, hdr->len, skb->len);
 		goto err;
@@ -374,12 +271,8 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	skb_reset_network_header(skb);
 	cb = __mctp_cb(skb);
 	cb->halen = 0;
+	dev_dstats_rx_add(mctp->dev, skb->len);
 	netif_rx(skb);
-
-	u64_stats_update_begin(&dstats->syncp);
-	u64_stats_inc(&dstats->rx_packets);
-	u64_stats_add(&dstats->rx_bytes, len);
-	u64_stats_update_end(&dstats->syncp);
 
 	return;
 
@@ -438,20 +331,22 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 
 	switch (req->status) {
 	case 0:
+		dev_dstats_tx_add(mctp->dev, skb->len);
 		spin_lock_irqsave(&mctp->lock, flags);
 		if (list_empty(&mctp->tx_reqs))
-			netif_start_queue(mctp->dev);
+			netif_wake_queue(mctp->dev);
 		list_add(&req->list, &mctp->tx_reqs);
 		spin_unlock_irqrestore(&mctp->lock, flags);
 		break;
+	default:
+		WARNING(cdev, "%s: invalid status %d?", __func__, req->status);
+		fallthrough;
 	case -ECONNABORTED:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
+		dev_dstats_tx_dropped(mctp->dev);
 		usb_ep_free_request(ep, req);
 		break;
-	default:
-		WARNING(cdev, "%s: invalid status %d?", __func__, req->status);
-		usb_ep_free_request(ep, req);
 	}
 }
 
@@ -547,53 +442,53 @@ err_disable_out:
 }
 
 static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
-				       struct net_device *dev)
+					struct net_device *dev)
 {
 	struct f_mctp *mctp = netdev_priv(dev);
-	struct pcpu_dstats *dstats = this_cpu_ptr(mctp->dev->dstats);
 	struct mctp_usb_hdr *hdr;
+	struct usb_request *req;
 	unsigned long flags;
 	unsigned int plen;
 
 	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
 		goto drop;
 
+	spin_lock_irqsave(&mctp->lock, flags);
+	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
+
+	if (req) {
+		list_del(&req->list);
+		if (list_empty(&mctp->tx_reqs))
+			netif_stop_queue(dev);
+	}
+
+	spin_unlock_irqrestore(&mctp->lock, flags);
+
+	if (!req) {
+		netdev_err(dev, "no tx reqs available!\n");
+		goto drop;
+	}
+
 	plen = skb->len;
 	hdr = skb_push(skb, sizeof(*hdr));
-	hdr->id = cpu_to_le16(MCTP_USB_DMTF_ID);
+	hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
 	hdr->rsvd = 0;
 	hdr->len = plen + sizeof(*hdr);
 
-	spin_lock_irqsave(&mctp->lock, flags);
-	if (!mctp->tx_batch_delay) {
-		/* direct tx */
-		__mctp_usbg_tx(mctp, skb);
-	} else {
-		unsigned int batch_len;
+	/* todo: just one skb per transfer.. */
+	req->context = skb;
+	req->buf = skb->data;
+	req->length = skb->len;
 
-		batch_len = __mctp_usbg_tx_batch_len(mctp);
-		if (batch_len + skb->len > MCTP_USB_XFER_SIZE)
-			__mctp_usbg_batch_tx(mctp);
+	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
 
-		__skb_queue_head(&mctp->tx_batch, skb);
-
-		schedule_delayed_work(&mctp->tx_batch_work,
-				      msecs_to_jiffies(mctp->tx_batch_delay));
-	}
-	spin_unlock_irqrestore(&mctp->lock, flags);
-
-	u64_stats_update_begin(&dstats->syncp);
-	u64_stats_inc(&dstats->tx_packets);
-	u64_stats_add(&dstats->tx_bytes, plen);
-	u64_stats_update_end(&dstats->syncp);
+	dev_dstats_tx_add(dev, skb->len);
 
 	return NETDEV_TX_OK;
 
 drop:
 	kfree_skb(skb);
-	u64_stats_update_begin(&dstats->syncp);
-	u64_stats_inc(&dstats->tx_drops);
-	u64_stats_update_end(&dstats->syncp);
+	dev_dstats_tx_dropped(dev);
 	return NETDEV_TX_OK;
 }
 
@@ -677,15 +572,12 @@ static struct usb_function
 
 	mctp = netdev_priv(dev);
 	mctp->dev = dev;
-	mctp->tx_batch_delay = opts->tx_batch_delay;
 
 	spin_lock_init(&mctp->lock);
 	INIT_LIST_HEAD(&mctp->rx_reqs);
 	INIT_LIST_HEAD(&mctp->tx_reqs);
 	__skb_queue_head_init(&mctp->skb_free_list);
-	__skb_queue_head_init(&mctp->tx_batch);
 	INIT_WORK(&mctp->prealloc_work, mctp_usbg_prealloc_work);
-	INIT_DELAYED_WORK(&mctp->tx_batch_work, mctp_usbg_batch_tx_work);
 
 	mctp->function.name = "mctp";
 	mctp->function.bind = mctp_usbg_bind;
@@ -723,32 +615,7 @@ static struct configfs_item_operations mctp_usbg_item_ops = {
 	.release = mctp_usbg_attr_release,
 };
 
-static ssize_t mctp_usbg_tx_batch_delay_store(struct config_item *item,
-					      const char *page, size_t count)
-{
-	struct f_mctp_opts *opts = to_f_mctp_opts(item);
-	unsigned int tmp;
-	int rc;
-
-	rc = kstrtouint(page, 0, &tmp);
-	if (!rc)
-		opts->tx_batch_delay = tmp;
-
-	return rc;
-}
-
-static ssize_t mctp_usbg_tx_batch_delay_show(struct config_item *item,
-					     char *page)
-{
-	struct f_mctp_opts *opts = to_f_mctp_opts(item);
-
-	return sprintf(page, "%u\n", opts->tx_batch_delay);
-}
-
-CONFIGFS_ATTR(mctp_usbg_, tx_batch_delay);
-
 static struct configfs_attribute *mctp_usbg_attrs[] = {
-	&mctp_usbg_attr_tx_batch_delay,
 	NULL,
 };
 
