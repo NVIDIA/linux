@@ -288,8 +288,8 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 		xfer->data = NULL;
 		xfer->data_len = 0;
 		xfer->rnw = false;
-		hci->cmd->prep_ccc(hci, xfer, I3C_BROADCAST_ADDR,
-				   ccc->id, true);
+		hci->cmd->prep_ccc(hci, xfer, I3C_BROADCAST_ADDR, ccc->id,
+				   ccc->dbp, ccc->db, true);
 		xfer++;
 	}
 
@@ -298,7 +298,7 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 		xfer[i].data_len = ccc->dests[i].payload.len;
 		xfer[i].rnw = ccc->rnw;
 		ret = hci->cmd->prep_ccc(hci, &xfer[i], ccc->dests[i].addr,
-					 ccc->id, raw);
+					 ccc->id, ccc->dbp, ccc->db, raw);
 		if (ret)
 			goto out;
 		xfer[i].cmd_desc[0] |= CMD_0_ROC;
