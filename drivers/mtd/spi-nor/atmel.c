@@ -172,6 +172,11 @@ static const struct flash_info atmel_nor_parts[] = {
 		.size = SZ_1M,
 		.no_sfdp_flags = SECT_4K,
 	}, {
+		.id = SNOR_ID(0x1f, 0x42, 0x00),
+		.name = "at25xe011",
+		.size = SZ_128K,
+		.no_sfdp_flags = SECT_4K | SPI_NOR_SKIP_SFDP | SPI_NOR_DUAL_READ,
+	}, {
 		.id = SNOR_ID(0x1f, 0x42, 0x16),
 		.name = "at25sl321",
 		.size = SZ_4M,
