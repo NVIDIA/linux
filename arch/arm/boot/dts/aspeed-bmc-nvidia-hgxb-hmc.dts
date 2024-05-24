@@ -7,7 +7,7 @@
 #include <dt-bindings/i2c/i2c.h>
 
 / {
-	model = "AST2600 Umbriel HMC";
+	model = "AST2600 HGXB HMC";
 	compatible = "aspeed,ast2600";
 
 	aliases {
@@ -89,7 +89,7 @@
         compatible = "jedec,spi-nor";
         label = "bmc";
         spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-umbriel-flash-layout-64.dtsi"
+#include "aspeed-bmc-nvidia-hgxb-flash-layout-64.dtsi"
     };
 };
 
