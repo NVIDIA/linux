@@ -29,6 +29,22 @@
 #include <linux/usb/ch9.h>
 #include "hid-ids.h"
 
+/**
+ * enum cp2112_child_acpi_cell_addrs - Child ACPI addresses for CP2112 sub-functions
+ * @CP2112_I2C_ADR: Address for I2C node
+ */
+enum cp2112_child_acpi_cell_addrs {
+	CP2112_I2C_ADR = 0,
+};
+
+/*
+ * CP2112 Fwnode child names.
+ * CP2112 sub-functions can be described by named fwnode children or by ACPI _ADR
+ */
+static const char * const cp2112_cell_names[] = {
+	[CP2112_I2C_ADR]	= "i2c",
+};
+
 #define CP2112_REPORT_MAX_LENGTH		64
 #define CP2112_GPIO_CONFIG_LENGTH		5
 #define CP2112_GPIO_GET_LENGTH			2
@@ -1208,7 +1224,10 @@ static int cp2112_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	struct cp2112_device *dev;
 	u8 buf[3];
 	struct cp2112_smbus_config_report config;
+	struct fwnode_handle *child;
 	struct gpio_irq_chip *girq;
+	const char *name;
+	u32 addr;
 	int ret;
 
 	dev = devm_kzalloc(&hdev->dev, sizeof(*dev), GFP_KERNEL);
@@ -1224,6 +1243,26 @@ static int cp2112_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	if (ret) {
 		hid_err(hdev, "mutex init failed\n");
 		return ret;
+	}
+
+	device_for_each_child_node(&hdev->dev, child) {
+		ret = acpi_get_local_address(ACPI_HANDLE_FWNODE(child), &addr);
+		if (ret) {
+			name = fwnode_get_name(child);
+			if (!name)
+				continue;
+			ret = match_string(cp2112_cell_names,
+					ARRAY_SIZE(cp2112_cell_names), name);
+			if (ret < 0)
+				continue;
+			addr = ret;
+		}
+
+		switch (addr) {
+		case CP2112_I2C_ADR:
+			device_set_node(&dev->adap.dev, child);
+			break;
+		}
 	}
 
 	ret = hid_parse(hdev);
