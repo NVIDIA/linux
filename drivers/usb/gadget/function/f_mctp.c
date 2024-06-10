@@ -43,10 +43,15 @@ struct f_mctp {
 	struct list_head	tx_reqs;
 
 	struct work_struct	prealloc_work;
+
+	unsigned int		tx_batch_delay;
+	struct sk_buff_head	tx_batch;
+	struct delayed_work	tx_batch_work;
 };
 
 struct f_mctp_opts {
 	struct usb_function_instance	function_instance;
+	unsigned int			tx_batch_delay;
 };
 
 static inline struct f_mctp *func_to_mctp(struct usb_function *f)
@@ -199,6 +204,102 @@ static void mctp_usbg_prealloc_work(struct work_struct *work)
 	struct f_mctp *mctp = container_of(work, struct f_mctp, prealloc_work);
 
 	mctp_usbg_prealloc(mctp);
+}
+
+static unsigned int __mctp_usbg_tx_batch_len(struct f_mctp *mctp)
+	__must_hold(&mctp->lock)
+{
+	struct sk_buff_head *batch = &mctp->tx_batch;
+	unsigned int len = 0;
+	struct sk_buff *skb;
+
+	for (skb = __skb_peek(batch); skb; skb = skb_peek_next(skb, batch))
+		len += skb->len;
+
+	return len;
+}
+
+/* skb already has USB headers, may contain multiple packets */
+static int __mctp_usbg_tx(struct f_mctp *mctp, struct sk_buff *skb)
+	__must_hold(&mctp->lock)
+{
+	struct net_device *dev = mctp->dev;
+	struct usb_request *req;
+
+	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
+	if (req)
+		list_del(&req->list);
+	if (list_empty(&req->list))
+		netif_stop_queue(dev);
+
+	if (!req) {
+		netdev_err(dev, "no tx reqs available!\n");
+		return -1;
+	}
+
+	req->context = skb;
+	req->buf = skb->data;
+	req->length = skb->len;
+
+	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
+
+	return 0;
+}
+
+static void __mctp_usbg_batch_tx(struct f_mctp *mctp)
+	__must_hold(&mctp->lock)
+{
+	unsigned int i = 1, batch_len = 0;
+	struct sk_buff *skb, *skb2;
+	bool realloc = false;
+
+	batch_len = __mctp_usbg_tx_batch_len(mctp);
+
+	skb = __skb_dequeue(&mctp->tx_batch);
+	if (!skb)
+		return;
+
+	/* if the first skb can't hold the batch, allocate a new one */
+	if (batch_len - skb->len > skb_tailroom(skb)) {
+		realloc = true;
+		skb2 = skb;
+		skb = netdev_alloc_skb(mctp->dev, batch_len);
+		if (!skb) {
+			netdev_warn_once(mctp->dev, "batch alloc failed\n");
+			__skb_queue_purge(&mctp->tx_batch);
+			return;
+		}
+		__skb_put_data(skb, skb2->data, skb2->len);
+		consume_skb(skb2);
+	}
+
+	while ((skb2 = __skb_dequeue(&mctp->tx_batch)) != NULL) {
+		__skb_put_data(skb, skb2->data, skb2->len);
+		consume_skb(skb2);
+		i++;
+	}
+
+	netdev_dbg(mctp->dev, "batch tx: %d for len %d%s. skb len %d\n",
+		   i, batch_len, realloc ? ", realloced" : "", skb->len);
+
+	__mctp_usbg_tx(mctp, skb);
+}
+
+static void mctp_usbg_batch_tx(struct f_mctp *mctp)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&mctp->lock, flags);
+	__mctp_usbg_batch_tx(mctp);
+	spin_unlock_irqrestore(&mctp->lock, flags);
+}
+
+static void mctp_usbg_batch_tx_work(struct work_struct *work)
+{
+	struct f_mctp *mctp = container_of(work, struct f_mctp,
+					   tx_batch_work.work);
+
+	mctp_usbg_batch_tx(mctp);
 }
 
 static int mctp_usbg_requeue(struct f_mctp *mctp, struct usb_ep *ep,
@@ -451,25 +552,11 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	struct f_mctp *mctp = netdev_priv(dev);
 	struct pcpu_dstats *dstats = this_cpu_ptr(mctp->dev->dstats);
 	struct mctp_usb_hdr *hdr;
-	struct usb_request *req;
 	unsigned long flags;
 	unsigned int plen;
 
 	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
 		goto drop;
-
-	spin_lock_irqsave(&mctp->lock, flags);
-	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
-	if (req)
-		list_del(&req->list);
-	if (list_empty(&req->list))
-		netif_stop_queue(dev);
-	spin_unlock_irqrestore(&mctp->lock, flags);
-
-	if (!req) {
-		netdev_err(dev, "no tx reqs available!\n");
-		goto drop;
-	}
 
 	plen = skb->len;
 	hdr = skb_push(skb, sizeof(*hdr));
@@ -477,12 +564,23 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	hdr->rsvd = 0;
 	hdr->len = plen + sizeof(*hdr);
 
-	/* todo: just one skb per transfer.. */
-	req->context = skb;
-	req->buf = skb->data;
-	req->length = skb->len;
+	spin_lock_irqsave(&mctp->lock, flags);
+	if (!mctp->tx_batch_delay) {
+		/* direct tx */
+		__mctp_usbg_tx(mctp, skb);
+	} else {
+		unsigned int batch_len;
 
-	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
+		batch_len = __mctp_usbg_tx_batch_len(mctp);
+		if (batch_len + skb->len > MCTP_USB_XFER_SIZE)
+			__mctp_usbg_batch_tx(mctp);
+
+		__skb_queue_head(&mctp->tx_batch, skb);
+
+		schedule_delayed_work(&mctp->tx_batch_work,
+				      msecs_to_jiffies(mctp->tx_batch_delay));
+	}
+	spin_unlock_irqrestore(&mctp->lock, flags);
 
 	u64_stats_update_begin(&dstats->syncp);
 	u64_stats_inc(&dstats->tx_packets);
@@ -579,12 +677,15 @@ static struct usb_function
 
 	mctp = netdev_priv(dev);
 	mctp->dev = dev;
+	mctp->tx_batch_delay = opts->tx_batch_delay;
 
 	spin_lock_init(&mctp->lock);
 	INIT_LIST_HEAD(&mctp->rx_reqs);
 	INIT_LIST_HEAD(&mctp->tx_reqs);
 	__skb_queue_head_init(&mctp->skb_free_list);
+	__skb_queue_head_init(&mctp->tx_batch);
 	INIT_WORK(&mctp->prealloc_work, mctp_usbg_prealloc_work);
+	INIT_DELAYED_WORK(&mctp->tx_batch_work, mctp_usbg_batch_tx_work);
 
 	mctp->function.name = "mctp";
 	mctp->function.bind = mctp_usbg_bind;
@@ -622,7 +723,32 @@ static struct configfs_item_operations mctp_usbg_item_ops = {
 	.release = mctp_usbg_attr_release,
 };
 
+static ssize_t mctp_usbg_tx_batch_delay_store(struct config_item *item,
+					      const char *page, size_t count)
+{
+	struct f_mctp_opts *opts = to_f_mctp_opts(item);
+	unsigned int tmp;
+	int rc;
+
+	rc = kstrtouint(page, 0, &tmp);
+	if (!rc)
+		opts->tx_batch_delay = tmp;
+
+	return rc;
+}
+
+static ssize_t mctp_usbg_tx_batch_delay_show(struct config_item *item,
+					     char *page)
+{
+	struct f_mctp_opts *opts = to_f_mctp_opts(item);
+
+	return sprintf(page, "%u\n", opts->tx_batch_delay);
+}
+
+CONFIGFS_ATTR(mctp_usbg_, tx_batch_delay);
+
 static struct configfs_attribute *mctp_usbg_attrs[] = {
+	&mctp_usbg_attr_tx_batch_delay,
 	NULL,
 };
 
