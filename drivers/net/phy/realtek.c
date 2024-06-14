@@ -404,6 +404,22 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 			dev_err(dev, "Failed to reset PHY \n");
 			return ret;
 		}
+
+		/* SGMII ANAR (SGMII Auto-Negotiation Advertising Register) */
+		/*Link status : set to 1 , Duplex Mode : Full Duplex*/
+		ret = phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(3) | BIT(2), BIT(3) | BIT(2));
+		if(ret < 0) {
+			dev_err(dev, "Failed to update the Link & Duplex \n");
+			return ret;
+		}
+
+		/* Speed : 1000Mbps */
+		ret = phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(1) | BIT(0), 0x2);
+		if(ret < 0){
+			dev_err(dev, "Failed to update the Speed \n");
+			return ret;
+		}
+
 	}
 
 	ret = phy_modify_paged_changed(phydev, 0xd08, 0x11, RTL8211F_TX_DELAY,
@@ -591,46 +607,18 @@ static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
 	ret = ret & RTL8211F_MODE_SEL;
 
 	if (ret == RTL8211F_SGMII_RGMII_PM || ret == RTL8211F_SGMII_RGMII_MP) {
+
 		/* Check Link status */
-		ret = phy_read_paged(phydev, 0xdc0, 0x15);
+		ret = phy_read_paged(phydev, 0xdcf, 0x15);
 		if (ret < 0) {
-			dev_err(&phydev->mdio.dev,"failed to read link status \n");
+			dev_err(&phydev->mdio.dev,"failed to read  link status \n");
 			return ret;
 		}
 		/* Link is Up */
-		if (ret &  BIT(15)) {
+		if (ret &  BIT(4)) {
 			phydev->link = 1;
-			phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(3) , BIT(3));
-		}
-		else {
-			phydev->link = 0;
-			phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(3) , 0);
-		}
-
-		/* Duplex */
-		if (ret &  BIT(12)) {
-			phydev->duplex = DUPLEX_FULL;
-			phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(2) , BIT(2));
-		}
-		else {
-			phydev->duplex = DUPLEX_HALF;
-			phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(2) , 0);
-		}
-
-		/* Speed */
-		switch (ret & 0xC00) {
-			case 0x0:
-				phydev->speed = SPEED_10;
-				phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(1)|BIT(0) , 0);
-				break;
-			case 0x400:
-				phydev->speed = SPEED_100;
-				phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(1)|BIT(0) , BIT(0));
-				break;
-			case 0x800:
-				phydev->speed = SPEED_1000;
-				phy_modify_paged_changed(phydev, 0xd08, 0x10, BIT(1)|BIT(0) , BIT(1));
-				break;
+			phydev->speed = 1000;
+			phydev->duplex=DUPLEX_FULL;
 		}
 	} else {
 		ret = genphy_read_status(phydev);
