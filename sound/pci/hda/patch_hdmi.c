@@ -3154,6 +3154,7 @@ static int patch_i915_adlp_hdmi(struct hda_codec *codec)
 	res = patch_i915_tgl_hdmi(codec);
 	if (!res) {
 		spec = codec->spec;
+>>>>>>> origin/linux_6.1.15_upstream
 
 		if (spec->silent_stream_type) {
 			spec->silent_stream_type = SILENT_STREAM_KAE;

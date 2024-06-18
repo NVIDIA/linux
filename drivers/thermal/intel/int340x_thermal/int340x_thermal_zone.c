@@ -35,7 +35,9 @@ static int int340x_thermal_get_zone_temp(struct thermal_zone_device *zone,
 		*temp = deci_kelvin_to_millicelsius(tmp);
 	}
 
-	return 0;
+	mutex_unlock(&d->trip_mutex);
+
+	return ret;
 }
 
 static int int340x_thermal_set_trip_temp(struct thermal_zone_device *zone,
@@ -103,6 +105,8 @@ static int int340x_thermal_read_trips(struct acpi_device *zone_adev,
 		zone_trips[trip_cnt].type = THERMAL_TRIP_ACTIVE;
 		trip_cnt++;
 	}
+
+	mutex_unlock(&int34x_zone->trip_mutex);
 
 	return trip_cnt;
 }
