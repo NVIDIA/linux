@@ -124,6 +124,8 @@ struct fmc_spi_host {
 	struct device *dev;
 	u32					ahb_clk;
 	spinlock_t			lock;
+	// To keep enable pin enabled for the following read operation
+	bool cs_enabled;
 };
 
 struct aspeed_spi_info {
@@ -271,8 +273,6 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	u32 *ctrl_reg;
 	int i = 0;
 	int j = 0;
-    int cs_change = 0;
-    static int cs_enabled = 0;
 
 	dev_dbg(host->dev, "xfer chip_select %d, mode: 0x%x\n", spi->chip_select, spi->mode);
 	host->spi_dev = spi;
@@ -281,13 +281,13 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	ctrl_reg = (u32 *)(host->base + FMC_SPI_CE0_CTRL + \
 						host->spi_dev->chip_select * 4);
 
-
-    if (!cs_enabled) {
-	    /* start user-mode (standard SPI) */
-        writel(readl(ctrl_reg) | SPI_CMD_USER_MODE | SPI_CE_INACTIVE, ctrl_reg);
-        writel(readl(ctrl_reg) & (~SPI_CE_INACTIVE), ctrl_reg);
-		dev_dbg(host->dev,"START: Assert Chip select: 0x%x, cs_enabled: 0x%x\n", readl(ctrl_reg), cs_enabled);
-    }
+	// Skip it if it is enabled already
+	if (!host->cs_enabled) {
+		/* start user-mode (standard SPI) */
+		writel(readl(ctrl_reg) | SPI_CMD_USER_MODE | SPI_CE_INACTIVE, ctrl_reg);
+		writel(readl(ctrl_reg) & (~SPI_CE_INACTIVE), ctrl_reg);
+		dev_dbg(host->dev,"START: Assert Chip select: 0x%x, cs_enabled: 0x%x\n", readl(ctrl_reg), host->cs_enabled);
+	}
 
 	msg->actual_length = 0;
 	msg->status = 0;
@@ -303,7 +303,6 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 		tx_buf = xfer->tx_buf;
 		rx_buf = xfer->rx_buf;
 
-
 		if(tx_buf != 0) {
 			dev_dbg(host->dev, "tx : ");
 			if(xfer->len > 10) {
@@ -318,8 +317,6 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 		}
 		/* Issue need clarify */
 		udelay(1);
-        cs_change = xfer->cs_change;
-		dev_dbg(host->dev,"mdelay: 100, tx_delay: %d, cs_change: %d\n", xfer->delay.value, cs_change);
 		if(rx_buf != 0) {
 			for(i = 0; i < xfer->delay.value; i++)
 				rx_buf[i] = readb((void *)host->buff[host->spi_dev->chip_select]);
@@ -333,21 +330,25 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 			}
 		}
 
+		// Set cs_enabled to true if we need to keep enable pin low for the following read operation
+		if (!xfer->cs_change) {
+			host->cs_enabled = true;
+		} else {
+			host->cs_enabled = false;
+		}
+
 		msg->actual_length += xfer->len;
 		j++;
 
 	}
 
-    if (cs_change) {
-        /* end of user-mode (standard SPI) */
-        writel(readl(ctrl_reg) | SPI_CE_INACTIVE, ctrl_reg);
-        writel(readl(ctrl_reg) & (~(SPI_CMD_USER_MODE | SPI_CE_INACTIVE)), ctrl_reg);
-
-        cs_enabled = 0;
-		dev_dbg(host->dev,"Deassert Chip select: 0x%x, cs_enabled: 0x%x\n", readl(ctrl_reg), cs_enabled);
-    } else {
-        cs_enabled = 1;
-    }
+	// Deassert if we don't need to keep cs pin enabled for the following operation
+	if (!host->cs_enabled) {
+		/* end of user-mode (standard SPI) */
+		writel(readl(ctrl_reg) | SPI_CE_INACTIVE, ctrl_reg);
+		writel(readl(ctrl_reg) & (~(SPI_CMD_USER_MODE | SPI_CE_INACTIVE)), ctrl_reg);
+		dev_dbg(host->dev,"Deassert Chip select: 0x%x, cs_enabled: 0x%x\n", readl(ctrl_reg), host->cs_enabled);
+	}
 
 	msg->status = 0;
 
