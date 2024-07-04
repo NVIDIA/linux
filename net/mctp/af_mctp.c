@@ -450,7 +450,6 @@ static int mctp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 	return -EINVAL;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 #ifdef CONFIG_COMPAT
 static int mctp_compat_ioctl(struct socket *sock, unsigned int cmd,
 			     unsigned long arg)
