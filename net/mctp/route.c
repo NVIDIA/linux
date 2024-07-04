@@ -262,10 +262,6 @@ static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key)
 	refcount_inc(&key->refs);
 	flow->key = key;
 }
-#else
-static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key) {}
-static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev) {}
-#endif
 
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev)
 {
