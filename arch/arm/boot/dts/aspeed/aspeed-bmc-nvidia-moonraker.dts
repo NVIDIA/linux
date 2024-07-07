@@ -207,20 +207,13 @@
 	};
 };
 
-// Arm IPMB
+// Arm IPMB BF to BMC
 &i2c0 {
 	status = "okay";
-	multi-master;
 	// BF to BMC
 	ipmb-0@10 {
 		compatible = "ipmb-dev";
 		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
-		i2c-protocol;
-	};
-	// BMC to BF
-	ipmb-0@20 {
-		compatible = "ipmb-dev";
-		reg = <(0x20 | I2C_OWN_SLAVE_ADDRESS)>;
 		i2c-protocol;
 	};
 };
@@ -243,6 +236,17 @@
 //NIC
 &i2c5 {
 	status = "okay";
+};
+
+// Arm IPMB BMC to BF
+&i2c9 {
+        status = "okay";
+        // BMC to BF
+        ipmb-9@20 {
+                compatible = "ipmb-dev";
+                reg = <(0x20 | I2C_OWN_SLAVE_ADDRESS)>;
+                i2c-protocol;
+        };
 };
 
 //eth switch
