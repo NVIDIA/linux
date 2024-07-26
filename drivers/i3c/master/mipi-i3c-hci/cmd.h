@@ -34,6 +34,11 @@ enum hci_cmd_attr {
 #define RESP_DATA_LENGTH(resp)		FIELD_GET(GENMASK(21,  0), resp)
 
 #define RESP_ERR_FIELD			GENMASK(31, 28)
+
+#define a0_debug_s \
+	"resp status:%lx, xfer type:%lx, tid:%lx, CCC_HDR: %lx, data len: %lx"
+#define a1_debug_s \
+	"resp status:%lx, xfer type:%lx, CCC_INDI:%lx tid:%lx, CCC_HDR: %lx, data legth: %lx"
 /*
  * Target mode Response Descriptor Structure
  */
