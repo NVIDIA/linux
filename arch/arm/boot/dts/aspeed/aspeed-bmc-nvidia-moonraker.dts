@@ -163,8 +163,13 @@
 				label = "images_secondary";
 			};
 
+			extra_partition@40000 {
+				reg = <0x5C40000 0xA00000>;	// 10 MB
+				label = "extra_partition";
+			};
+
 			log@5C40000 {
-				reg = <0x5C40000 0x23C0000>;	// 35.75
+				reg = <0x6640000 0x19C0000>;	// 25.75 MB
 				label = "log";
 			};
 		};
