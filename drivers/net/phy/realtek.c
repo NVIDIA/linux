@@ -92,6 +92,24 @@ static int rtl821x_write_page(struct phy_device *phydev, int page)
 	return __phy_write(phydev, RTL821x_PAGE_SELECT, page);
 }
 
+static void set_600mv_drive_strength(struct phy_device *phydev){
+	int ret;
+	struct device *dev = &phydev->mdio.dev;
+	dev_info(dev, "Writing drive strength indirect \n");
+	rtl821x_write_page(phydev, 0xa43);
+	ret = __phy_write(phydev, 0x1b, 0xdcd0);
+	rtl821x_write_page(phydev, 0xa43);
+	ret = __phy_write(phydev, 0x1c, 0x1096);
+	rtl821x_write_page(phydev, 0xa43);
+	ret = __phy_write(phydev, 0x1b, 0xdcd2);
+	rtl821x_write_page(phydev, 0xa43);
+	ret = __phy_write(phydev, 0x1c, 0xB490);
+	rtl821x_write_page(phydev, 0xa43);
+	ret = __phy_write(phydev, 0x1f, 0x0);
+
+	dev_info(dev, "Done writing drive strength indirect\n");
+}
+
 static int rtl821x_probe(struct phy_device *phydev)
 {
 	struct device *dev = &phydev->mdio.dev;
@@ -123,7 +141,9 @@ static int rtl821x_probe(struct phy_device *phydev)
 	}
 
 	phydev->priv = priv;
-
+#ifdef CONFIG_REALTEK_600MV_DRIVE_STRENGTH
+	set_600mv_drive_strength(phydev);
+#endif
 	return 0;
 }
 
