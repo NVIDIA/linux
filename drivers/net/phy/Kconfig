@@ -499,3 +499,8 @@ config XILINX_GMII2RGMII
 	  Ethernet physical media devices and the Gigabit Ethernet controller.
 
 endif # PHYLIB
+
+config REALTEK_600MV_DRIVE_STRENGTH
+	bool "600Mv Drive strength"
+	help
+		Enables 600Mv Drive strength
