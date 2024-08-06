@@ -509,22 +509,7 @@ err_nomem:
 
 static int fmc_spi_remove(struct platform_device *pdev)
 {
-	struct resource 	*res0;
-	struct fmc_spi_host *host = platform_get_drvdata(pdev);
-
-	dev_dbg(host->dev, "fmc_spi_remove()\n");
-
-	if (!host)
-		return -1;
-
-	res0 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	release_mem_region(res0->start, res0->end - res0->start + 1);
-	iounmap(host->base);
-	iounmap(host->buff);
-
 	platform_set_drvdata(pdev, NULL);
-	spi_unregister_master(host->master);
-	spi_master_put(host->master);
 	return 0;
 }
 
