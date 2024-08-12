@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/iio/adc/ti,ads7142.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: TI ADS7142 dual-channel I2C analog to digital converter
+
+maintainers:
+  - Howard Tang <howardt@nvidia.com>
+
+description: |
+  Datasheet at: https://www.ti.com/lit/ds/symlink/ads7142.pdf
+
+properties:
+  compatible:
+    enum:
+      - ti,ads7142
+
+  reg:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        adc@36 {
+            compatible = "ti,ads7142";
+            reg = <0x36>;
+        };
+    };
+...
