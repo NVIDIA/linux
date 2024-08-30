@@ -529,7 +529,12 @@ static int lm25066_probe(struct i2c_client *client)
 	info->R[PSC_VOLTAGE_OUT] = coeff[PSC_VOLTAGE_OUT].R;
 	info->R[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN].R;
 	info->R[PSC_POWER] = coeff[PSC_POWER].R;
+
+#if IS_ENABLED(CONFIG_LM25066_CURR_LIMIT_HIGH)
+	if (LM25066_DEV_SETUP_CL) {
+#else
 	if (config & LM25066_DEV_SETUP_CL) {
+#endif /*CONFIG_LM25066_CURR_LIMIT_HIGH*/
 		info->m[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN_L].m;
 		info->b[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN_L].b;
 		info->m[PSC_POWER] = coeff[PSC_POWER_L].m;

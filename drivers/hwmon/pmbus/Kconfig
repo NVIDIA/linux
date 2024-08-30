@@ -190,6 +190,13 @@ config SENSORS_LM25066_REGULATOR
 	  If you say yes here you get regulator support for National
 	  Semiconductor LM25066, LM5064, and LM5066.
 
+config LM25066_CURR_LIMIT_HIGH
+	bool "Force High CL config"
+	depends on SENSORS_LM25066
+	help
+	  If you say yes here you force HSC tuning to PSC_CURRENT_IN_L and 
+	  PSC_POWER_L for National Semiconductor LM25066, LM5064, and LM5066.
+
 config SENSORS_LT7182S
 	tristate "Analog Devices LT7182S"
 	help
