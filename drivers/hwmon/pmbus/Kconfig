@@ -246,6 +246,13 @@ config SENSORS_LT3074_REGULATOR
 	  dropout linear regulator. The device supplies up to 3A with a
 	  typical dropout voltage of 45mV.
 
+config LM25066_CURR_LIMIT_HIGH
+	bool "Force High CL config"
+	depends on SENSORS_LM25066
+	help
+	  If you say yes here you force HSC tuning to PSC_CURRENT_IN_L and
+	  PSC_POWER_L for National Semiconductor LM25066, LM5064, and LM5066.
+
 config SENSORS_LT7182S
 	tristate "Analog Devices LT7182S"
 	help
