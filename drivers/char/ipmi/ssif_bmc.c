@@ -713,6 +713,9 @@ static void process_request_part(struct ssif_bmc_ctx *ssif_bmc)
 		ssif_bmc->request.header.len = 0;
 		ssif_bmc->request.header.msg_num = ssif_bmc->msg_count;
 
+		fallthrough;
+	case SSIF_IPMI_MULTIPART_WRITE_MIDDLE:
+	case SSIF_IPMI_MULTIPART_WRITE_END:
 		len = ssif_bmc->request.header.len + part->length;
 		/* Do the bound check here, not allow the request len exceed 254 bytes */
 		if (len > IPMI_SSIF_PAYLOAD_MAX) {
