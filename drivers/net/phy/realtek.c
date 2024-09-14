@@ -35,9 +35,11 @@
 #define RTL8211F_TX_DELAY			BIT(8)
 #define RTL8211F_RX_DELAY			BIT(3)
 
+#ifdef CONFIG_RTL_RGMII_SGMII_3809
 #define RTL8211F_MODE_SEL			(BIT(2) | BIT(1) | BIT(0))
 #define RTL8211F_SGMII_RGMII_PM			0x4
 #define RTL8211F_SGMII_RGMII_MP			0x5
+#endif
 
 #define RTL8211F_ALDPS_PLL_OFF			BIT(1)
 #define RTL8211F_ALDPS_ENABLE			BIT(2)
@@ -407,6 +409,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		return 0;
 	}
 
+#ifdef CONFIG_RTL_RGMII_SGMII_3809
 	/* RTL8211F SGMII to RGMII MODE verification - NVIDIA BMC */
 	ret = phy_read_paged(phydev, 0xd40, 0x10);
 	if(ret < 0) {
@@ -448,6 +451,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		}
 
 	}
+#endif
 
 	ret = phy_modify_paged_changed(phydev, 0xd08, 0x11, RTL8211F_TX_DELAY,
 				       val_txdly);
@@ -641,6 +645,7 @@ static int rtlgen_get_speed(struct phy_device *phydev)
 	return 0;
 }
 
+#ifdef CONFIG_RTL_RGMII_SGMII_3809
 static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
 {
 	int ret;
@@ -678,6 +683,7 @@ static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
 
 	return 0;
 }
+#endif
 
 static int rtlgen_read_status(struct phy_device *phydev)
 {
@@ -1057,7 +1063,11 @@ static struct phy_driver realtek_drvs[] = {
 		.name		= "RTL8211F Gigabit Ethernet",
 		.probe		= rtl821x_probe,
 		.config_init	= &rtl8211f_config_init,
+#ifdef CONFIG_RTL_RGMII_SGMII_3809
 		.read_status	= rtl8211f_rtlgen_read_status,
+#else
+		.read_status	= rtlgen_read_status,
+#endif
 		.config_intr	= &rtl8211f_config_intr,
 		.handle_interrupt = rtl8211f_handle_interrupt,
 		.suspend	= rtl821x_suspend,

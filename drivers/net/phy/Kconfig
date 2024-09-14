@@ -448,3 +448,7 @@ config REALTEK_600MV_DRIVE_STRENGTH
 	help
 		Enables 600Mv Drive strength
 
+config RTL_RGMII_SGMII_3809
+    bool "P3809 RGMII/SGMII bridge"
+    help
+        Enable P3809 RGMII/SGMII bridge with 1GB speed
