@@ -422,7 +422,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	if (ret == RTL8211F_SGMII_RGMII_PM || ret == RTL8211F_SGMII_RGMII_MP) {
 
 		/* Force hardware straps 3'b100, SGMII(PHY Side) to RGMII(MAC Side) for NVIDIA BMC*/
-		ret = phy_modify_paged_changed(phydev, 0xd40, 0x10, RTL8211F_MODE_SEL, RTL8211F_SGMII_RGMII_MP);
+		ret = phy_modify_paged_changed(phydev, 0xd40, 0x10, RTL8211F_MODE_SEL, RTL8211F_SGMII_RGMII_PM);
 		if(ret < 0) {
 			dev_err(dev, "Failed to update the Mode selection \n");
 			return ret;
