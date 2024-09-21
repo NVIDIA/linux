@@ -94,7 +94,7 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	if (!hdr)
 		goto err_drop;
 
-	hdr->id = cpu_to_le16(MCTP_USB_DMTF_ID);
+	hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
 	hdr->rsvd = 0;
 	hdr->len = plen + sizeof(*hdr);
 
@@ -178,15 +178,11 @@ static void mctp_usb_in_complete(struct urb *urb)
 
 	while (skb) {
 		struct sk_buff *skb2 = NULL;
-		struct mctp_usb_hdr *hdr;
+		struct mctp_usb_hdr *hdr = (struct mctp_usb_hdr *)skb->data;
 
-		hdr = skb_pull(skb, sizeof(*hdr));
-		if (!hdr)
-			break;
-
-		if (le16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
+		if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
 			dev_dbg(&mctp_usb->usbdev->dev, "%s: invalid id %04x\n",
-				__func__, le16_to_cpu(hdr->id));
+				__func__, be16_to_cpu(hdr->id));
 			break;
 		}
 
@@ -218,6 +214,9 @@ static void mctp_usb_in_complete(struct urb *urb)
 			}
 			skb_trim(skb, hdr->len);
 		}
+        
+        if (!skb_pull(skb, sizeof(*hdr)))
+			break;
 
 		skb->protocol = htons(ETH_P_MCTP);
 		skb_reset_network_header(skb);

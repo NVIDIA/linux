@@ -13,7 +13,7 @@
 #include <linux/types.h>
 
 struct mctp_usb_hdr {
-	__le16	id;
+	__be16	id;
 	__u8	rsvd;
 	__u8	len;
 } __packed;
