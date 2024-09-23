@@ -113,11 +113,11 @@
         /*E0-E7*/       "","","","bmc_gpio_e3","","","","",
         /*F0-F7*/       "","","","","","","","",
         /*G0-G7*/       "","bmc_gpiog1","bmc_gpiog2","bmc_gpiog3","","","","",
-        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","shifter_enable_gpio","",
+        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
         /*I0-I7*/       "","","","","","","global_wp","",
         /*J0-J7*/       "carrier_pwr_on","","","pwr_irq","ephy_irq","ephy_rst","soc_temp_alert","shifter_enable_uart",
-        /*K0-K7*/       "","aurix_int","","","","","bmc_rst_btn_n","",
-        /*L0-L7*/       "","","","","","","","",
+        /*K0-K7*/       "","aurix_int","","","","","bmc_rst_btn_n","bmc_cx7_i2csw",
+        /*L0-L7*/       "","shifter_enable_gpio","","","","","","",
         /*M0-M7*/       "","","","hpm_stby_en","","","","",
         /*N0-N7*/       "","","","","","","","",
         /*O0-O7*/       "","","","","","","","",
@@ -139,15 +139,34 @@
                  gpios = <ASPEED_GPIO(M, 1) GPIO_ACTIVE_HIGH>;
                  output-high;
         };
+       
+        bmc_cx7_i2c_k7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(K, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
 };
 
 &gpio1 {
         gpio-line-names =
-        /*AA0-AA7*/     "","","","","","","","",
-        /*AB0-AB7*/     "","","","","","","","",
-        /*AC0-AC7*/     "","","","","","","","",
-        /*AD0-AD7*/     "","","","","","","","",
-        /*AE0-AE7*/     "","","","","","","","";
+        /*A0-A7*/     "","","","","","","","",
+        /*B0-B7*/     "","","","","","","","",
+        /*C0-C7*/     "","","","","","","bmc_m2b_disable","",
+        /*D0-D7*/     "","","","","","","","",
+        /*E0-E7*/     "","","","","","","","";
+
+        bmc_m2b_rst_c7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(C, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
+        usb2_hub_rst_b6 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(B, 6) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
 };
 
 /* Primary flash - FMC */
@@ -287,6 +306,10 @@
 	    reg = <0x50>;
     };
 };
+
+&i2c15 {
+       status = "okay";
+    };
 
 // PCIe RC
 &pcie {
