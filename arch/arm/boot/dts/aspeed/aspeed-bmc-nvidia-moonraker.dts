@@ -241,6 +241,7 @@
 // Arm IPMB BMC to BF
 &i2c9 {
         status = "okay";
+	multi-master;
         // BMC to BF
         ipmb-9@20 {
                 compatible = "ipmb-dev";
