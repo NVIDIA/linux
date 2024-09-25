@@ -166,6 +166,10 @@
 #define GET_PCI_DEV_NUM(x)	((x) & PCI_DEV_NUM_MASK)
 #define GET_PCI_BUS_NUM(x)	(((x) & PCI_BUS_NUM_MASK) >> PCI_BUS_NUM_SHIFT)
 
+/* PCI binding header definitions */
+#define PCI_HEADER_LEN_HI_MASK GENMASK(1, 0)
+#define PCI_HEADER_LEN_HI_SHIFT 8
+
 /* MCTP header definitions */
 #define MCTP_HDR_SRC_EID_OFFSET		14
 #define MCTP_HDR_TAG_OFFSET		15
@@ -255,6 +259,20 @@ struct mctp_channel {
 	bool stopped;
 };
 
+/* MCTP statistic data */
+struct mctp_stats {
+	unsigned long packets_tx;
+	unsigned long packets_rx;
+	unsigned long bytes_tx;
+	unsigned long bytes_rx;
+	unsigned long errors_tx;
+	unsigned long errors_rx;
+	unsigned long dropped_tx;
+	unsigned long dropped_rx;
+	unsigned long overrun_tx;
+	unsigned long overrun_rx;
+};
+
 struct aspeed_mctp {
 	struct device *dev;
 	struct miscdevice mctp_miscdev;
@@ -309,6 +327,7 @@ struct aspeed_mctp {
 	u32 rx_ring_count;
 	/* Tx pointer ring size */
 	u32 tx_ring_count;
+	struct mctp_stats stats;
 };
 
 struct mctp_client {
@@ -629,6 +648,7 @@ static void aspeed_mctp_dispatch_packet(struct aspeed_mctp *priv,
 					struct mctp_pcie_packet *packet)
 {
 	struct mctp_client *client;
+	struct pcie_transport_hdr *pcie_hdr;
 	int ret;
 
 	spin_lock(&priv->clients_lock);
@@ -650,14 +670,28 @@ static void aspeed_mctp_dispatch_packet(struct aspeed_mctp *priv,
 			 * This can happen if client process does not
 			 * consume packets fast enough
 			 */
-			dev_dbg(priv->dev, "Failed to store packet in client RX queue\n");
+			dev_err(priv->dev,
+				"Failed to store packet in client RX queue\n");
+			if (ret == -ENOSPC) {
+				priv->stats.overrun_rx++;
+			}
+			priv->stats.dropped_rx++;
 			aspeed_mctp_packet_free(packet);
 		} else {
+			priv->stats.packets_rx++;
+			pcie_hdr = (struct pcie_transport_hdr *)(&(
+				packet->data.hdr));
+			priv->stats.bytes_rx += (((pcie_hdr->mbz_attr_len_hi &
+						   PCI_HEADER_LEN_HI_MASK)
+						  << PCI_HEADER_LEN_HI_SHIFT) |
+						 (pcie_hdr->len_lo)) *
+						sizeof(u64);
 			wake_up_all(&client->wait_queue);
 		}
 		aspeed_mctp_client_put(client);
 	} else {
-		dev_dbg(priv->dev, "Failed to dispatch RX packet\n");
+		dev_err(priv->dev, "Failed to dispatch RX packet\n");
+		priv->stats.dropped_rx++;
 		aspeed_mctp_packet_free(packet);
 	}
 }
@@ -691,6 +725,8 @@ static void aspeed_mctp_tx_tasklet(unsigned long data)
 				break;
 
 			aspeed_mctp_emit_tx_cmd(tx, packet);
+			priv->stats.packets_tx++;
+			priv->stats.bytes_tx += packet->size;
 			aspeed_mctp_packet_free(packet);
 			trigger = true;
 		}
@@ -1136,6 +1172,8 @@ int aspeed_mctp_send_packet(struct mctp_client *client,
 
 	packet_data_sz_dw = packet->size / sizeof(u32) - sizeof(packet->data.hdr) / sizeof(u32);
 	if (packet_data_sz_dw != pci_data_len_dw) {
+		dev_err(priv->dev, "Invalid packet length in Tx\n");
+		priv->stats.errors_tx++;
 		return -EINVAL;
 	}
 
@@ -1149,8 +1187,16 @@ int aspeed_mctp_send_packet(struct mctp_client *client,
 		hdr[MCTP_HDR_SRC_EID_OFFSET] = priv->eid;
 
 	ret = ptr_ring_produce_bh(&client->tx_queue, packet);
-	if (!ret)
+	if (!ret) {
 		tasklet_hi_schedule(&priv->tx.tasklet);
+	} else {
+		dev_err(priv->dev, "Failed to push packet to Tx queue\n");
+		if (ret == -ENOSPC) {
+			/* We run out of the space in tx queue */
+			priv->stats.overrun_tx++;
+		}
+		priv->stats.dropped_tx++;
+	}
 
 	return ret;
 }
@@ -1215,11 +1261,16 @@ static ssize_t aspeed_mctp_read(struct file *file, char __user *buf,
 
 	tasklet_hi_schedule(&priv->rx.tasklet);
 	rx_packet = ptr_ring_consume_bh(&client->rx_queue);
-	if (!rx_packet)
+	if (!rx_packet) {
+		dev_err(priv->dev, "Failed to consume packet in Rx queue\n");
+		/* Packets in rx_queue should be avaiable */
+		priv->stats.errors_rx++;
 		return -EAGAIN;
+	}
 
 	if (copy_to_user(buf, &rx_packet->data, count)) {
 		dev_err(priv->dev, "copy to user failed\n");
+		priv->stats.dropped_rx++;
 		count = -EFAULT;
 	}
 
@@ -1262,6 +1313,8 @@ static ssize_t aspeed_mctp_write(struct file *file, const char __user *buf,
 
 	tx_packet = aspeed_mctp_packet_alloc(GFP_KERNEL);
 	if (!tx_packet) {
+		/* no enough memory to allocate packet */
+		priv->stats.errors_tx++;
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -1269,6 +1322,7 @@ static ssize_t aspeed_mctp_write(struct file *file, const char __user *buf,
 	if (copy_from_user(&tx_packet->data, buf, count)) {
 		dev_err(priv->dev, "copy from user failed\n");
 		ret = -EFAULT;
+		priv->stats.dropped_tx++;
 		goto out_packet;
 	}
 
@@ -2252,6 +2306,44 @@ static int aspeed_mctp_irq_init(struct aspeed_mctp *priv)
 	return 0;
 }
 
+#define MCTP_ATTR(_field)                                                      \
+	static ssize_t _field##_show(struct device *dev,                       \
+				     struct device_attribute *attr, char *buf) \
+	{                                                                      \
+		struct aspeed_mctp *drv = dev_get_drvdata(dev);                \
+                                                                               \
+		return sprintf(buf, "%ld\n", drv->stats._field);               \
+	}                                                                      \
+	static DEVICE_ATTR_RO(_field)
+
+MCTP_ATTR(bytes_tx);
+MCTP_ATTR(bytes_rx);
+MCTP_ATTR(packets_tx);
+MCTP_ATTR(packets_rx);
+MCTP_ATTR(errors_tx);
+MCTP_ATTR(errors_rx);
+MCTP_ATTR(dropped_tx);
+MCTP_ATTR(dropped_rx);
+MCTP_ATTR(overrun_tx);
+MCTP_ATTR(overrun_rx);
+
+static struct attribute *mctp_stats_attributes[] = { &dev_attr_bytes_rx.attr,
+						     &dev_attr_bytes_tx.attr,
+						     &dev_attr_packets_rx.attr,
+						     &dev_attr_packets_tx.attr,
+						     &dev_attr_errors_rx.attr,
+						     &dev_attr_errors_tx.attr,
+						     &dev_attr_dropped_rx.attr,
+						     &dev_attr_dropped_tx.attr,
+						     &dev_attr_overrun_rx.attr,
+						     &dev_attr_overrun_tx.attr,
+						     NULL };
+
+static const struct attribute_group mctp_stats_attr_group = {
+	.name = "statistics",
+	.attrs = mctp_stats_attributes,
+};
+
 static void aspeed_mctp_hw_reset(struct aspeed_mctp *priv)
 {
 	u32 reg;
@@ -2329,10 +2421,16 @@ static int aspeed_mctp_probe(struct platform_device *pdev)
 		goto out_drv;
 	}
 
+	ret = sysfs_create_group(&pdev->dev.kobj, &mctp_stats_attr_group);
+	if (ret) {
+		dev_err(priv->dev, "Failed to create sysfs\n");
+		goto out_drv;
+	}
+
 	ret = aspeed_mctp_dma_init(priv);
 	if (ret) {
 		dev_err(priv->dev, "Failed to init DMA\n");
-		goto out_drv;
+		goto out_sysfs;
 	}
 
 	aspeed_mctp_hw_reset(priv);
@@ -2384,6 +2482,8 @@ static int aspeed_mctp_probe(struct platform_device *pdev)
 
 out_dma:
 	aspeed_mctp_dma_fini(priv);
+out_sysfs:
+	sysfs_remove_group(&priv->dev->kobj, &mctp_stats_attr_group);
 out_drv:
 	aspeed_mctp_drv_fini(priv);
 out:
@@ -2403,6 +2503,8 @@ static int aspeed_mctp_remove(struct platform_device *pdev)
 	usleep_range(MCTP_CTRL_SETUP_TIME_MIN_US, MCTP_CTRL_SETUP_TIME_MAX_US);
 
 	platform_device_unregister(priv->peci_mctp);
+
+	sysfs_remove_group(&priv->dev->kobj, &mctp_stats_attr_group);
 
 	misc_deregister(&priv->mctp_miscdev);
 
