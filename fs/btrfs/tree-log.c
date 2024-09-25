@@ -1320,15 +1320,6 @@ again:
 						 inode, &name);
 			kfree(name.name);
 			iput(dir);
-			/*
-			 * Whenever we need to check if a name exists or not, we
-			 * check the subvolume tree. So after an unlink we must
-			 * run delayed items, so that future checks for a name
-			 * during log replay see that the name does not exists
-			 * anymore.
-			 */
-			if (!ret)
-				ret = btrfs_run_delayed_items(trans);
 			if (ret)
 				goto out;
 			goto again;
@@ -5596,10 +5587,8 @@ static int add_conflicting_inode(struct btrfs_trans_handle *trans,
 	 * LOG_INODE_EXISTS mode) and slow down other fsyncs or transaction
 	 * commits.
 	 */
-	if (ctx->num_conflict_inodes >= MAX_CONFLICT_INODES) {
-		btrfs_set_log_full_commit(trans);
+	if (ctx->num_conflict_inodes >= MAX_CONFLICT_INODES)
 		return BTRFS_LOG_FORCE_COMMIT;
-	}
 
 	inode = btrfs_iget(root->fs_info->sb, ino, root);
 	/*
@@ -6449,18 +6438,6 @@ static int btrfs_log_inode(struct btrfs_trans_handle *trans,
 		goto out_unlock;
 	ctx->logged_before = (ret == 1);
 	ret = 0;
-
-	/*
-	 * For symlinks, we must always log their content, which is stored in an
-	 * inline extent, otherwise we could end up with an empty symlink after
-	 * log replay, which is invalid on linux (symlink(2) returns -ENOENT if
-	 * one attempts to create an empty symlink).
-	 * We don't need to worry about flushing delalloc, because when we create
-	 * the inline extent when the symlink is created (we never have delalloc
-	 * for symlinks).
-	 */
-	if (S_ISLNK(inode->vfs_inode.i_mode))
-		inode_only = LOG_INODE_ALL;
 
 	/*
 	 * This is for cases where logging a directory could result in losing a

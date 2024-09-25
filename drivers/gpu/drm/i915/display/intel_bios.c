@@ -2379,39 +2379,6 @@ static u8 dvo_port_type(u8 dvo_port)
 	}
 }
 
-static u8 dvo_port_type(u8 dvo_port)
-{
-	switch (dvo_port) {
-	case DVO_PORT_HDMIA:
-	case DVO_PORT_HDMIB:
-	case DVO_PORT_HDMIC:
-	case DVO_PORT_HDMID:
-	case DVO_PORT_HDMIE:
-	case DVO_PORT_HDMIF:
-	case DVO_PORT_HDMIG:
-	case DVO_PORT_HDMIH:
-	case DVO_PORT_HDMII:
-		return DVO_PORT_HDMIA;
-	case DVO_PORT_DPA:
-	case DVO_PORT_DPB:
-	case DVO_PORT_DPC:
-	case DVO_PORT_DPD:
-	case DVO_PORT_DPE:
-	case DVO_PORT_DPF:
-	case DVO_PORT_DPG:
-	case DVO_PORT_DPH:
-	case DVO_PORT_DPI:
-		return DVO_PORT_DPA;
-	case DVO_PORT_MIPIA:
-	case DVO_PORT_MIPIB:
-	case DVO_PORT_MIPIC:
-	case DVO_PORT_MIPID:
-		return DVO_PORT_MIPIA;
-	default:
-		return dvo_port;
-	}
-}
-
 static enum port __dvo_port_to_port(int n_ports, int n_dvo,
 				    const int port_mapping[][3], u8 dvo_port)
 {

@@ -155,47 +155,6 @@ allOf:
             - const: pcie_bus
             - const: pcie_aux
 
-allOf:
-  - $ref: /schemas/pci/snps,dw-pcie.yaml#
-  - if:
-      properties:
-        compatible:
-          contains:
-            const: fsl,imx6sx-pcie
-    then:
-      properties:
-        clock-names:
-          items:
-            - {}
-            - {}
-            - {}
-            - const: pcie_inbound_axi
-  - if:
-      properties:
-        compatible:
-          contains:
-            const: fsl,imx8mq-pcie
-    then:
-      properties:
-        clock-names:
-          items:
-            - {}
-            - {}
-            - {}
-            - const: pcie_aux
-  - if:
-      properties:
-        compatible:
-          not:
-            contains:
-              enum:
-                - fsl,imx6sx-pcie
-                - fsl,imx8mq-pcie
-    then:
-      properties:
-        clock-names:
-          maxItems: 3
-
 unevaluatedProperties: false
 
 examples:

@@ -23,7 +23,7 @@ struct node;
 #ifndef CONFIG_ARCH_HAS_HUGEPD
 typedef struct { unsigned long pd; } hugepd_t;
 #define is_hugepd(hugepd) (0)
-#define __hugepd(x) ((hugepd_t){ (x) })
+#define __hugepd(x) ((hugepd_t) { (x) })
 #endif
 
 #ifdef CONFIG_HUGETLB_PAGE
@@ -42,13 +42,13 @@ typedef struct { unsigned long pd; } hugepd_t;
 struct hugepage_subpool {
 	spinlock_t lock;
 	long count;
-	long max_hpages; /* Maximum huge pages or -1 if no maximum. */
-	long used_hpages; /* Used count against maximum, includes */
-	/* both allocated and reserved pages. */
+	long max_hpages;	/* Maximum huge pages or -1 if no maximum. */
+	long used_hpages;	/* Used count against maximum, includes */
+				/* both allocated and reserved pages. */
 	struct hstate *hstate;
-	long min_hpages; /* Minimum huge pages or -1 if no minimum. */
-	long rsv_hpages; /* Pages reserved against global pool to */
-	/* satisfy minimum size. */
+	long min_hpages;	/* Minimum huge pages or -1 if no minimum. */
+	long rsv_hpages;	/* Pages reserved against global pool to */
+				/* satisfy minimum size. */
 };
 
 struct resv_map {
@@ -116,11 +116,11 @@ void resv_map_release(struct kref *ref);
 
 extern spinlock_t hugetlb_lock;
 extern int hugetlb_max_hstate __read_mostly;
-#define for_each_hstate(h)                                                     \
+#define for_each_hstate(h) \
 	for ((h) = hstates; (h) < &hstates[hugetlb_max_hstate]; (h)++)
 
 struct hugepage_subpool *hugepage_new_subpool(struct hstate *h, long max_hpages,
-					      long min_hpages);
+						long min_hpages);
 void hugepage_put_subpool(struct hugepage_subpool *spool);
 
 void hugetlb_dup_vma_private(struct vm_area_struct *vma);
@@ -148,7 +148,7 @@ int hugetlb_report_node_meminfo(char *buf, int len, int nid);
 void hugetlb_show_meminfo_node(int nid);
 unsigned long hugetlb_total_pages(void);
 vm_fault_t hugetlb_fault(struct mm_struct *mm, struct vm_area_struct *vma,
-			 unsigned long address, unsigned int flags);
+			unsigned long address, unsigned int flags);
 #ifdef CONFIG_USERFAULTFD
 int hugetlb_mfill_atomic_pte(pte_t *dst_pte,
 			     struct vm_area_struct *dst_vma,
@@ -158,7 +158,8 @@ int hugetlb_mfill_atomic_pte(pte_t *dst_pte,
 			     struct folio **foliop);
 #endif /* CONFIG_USERFAULTFD */
 bool hugetlb_reserve_pages(struct inode *inode, long from, long to,
-			   struct vm_area_struct *vma, vm_flags_t vm_flags);
+						struct vm_area_struct *vma,
+						vm_flags_t vm_flags);
 long hugetlb_unreserve_pages(struct inode *inode, long start, long end,
 						long freed);
 bool isolate_hugetlb(struct folio *folio, struct list_head *list);
@@ -278,8 +279,8 @@ static inline unsigned long hugetlb_total_pages(void)
 	return 0;
 }
 
-static inline struct address_space *
-hugetlb_page_mapping_lock_write(struct page *hpage)
+static inline struct address_space *hugetlb_page_mapping_lock_write(
+							struct page *hpage)
 {
 	return NULL;
 }
@@ -291,9 +292,9 @@ static inline int huge_pmd_unshare(struct mm_struct *mm,
 	return 0;
 }
 
-static inline void
-adjust_range_if_pmd_sharing_possible(struct vm_area_struct *vma,
-				     unsigned long *start, unsigned long *end)
+static inline void adjust_range_if_pmd_sharing_possible(
+				struct vm_area_struct *vma,
+				unsigned long *start, unsigned long *end)
 {
 }
 
@@ -386,15 +387,14 @@ static inline int pud_huge(pud_t pud)
 }
 
 static inline int is_hugepage_only_range(struct mm_struct *mm,
-					 unsigned long addr, unsigned long len)
+					unsigned long addr, unsigned long len)
 {
 	return 0;
 }
 
 static inline void hugetlb_free_pgd_range(struct mmu_gather *tlb,
-					  unsigned long addr, unsigned long end,
-					  unsigned long floor,
-					  unsigned long ceiling)
+				unsigned long addr, unsigned long end,
+				unsigned long floor, unsigned long ceiling)
 {
 	BUG();
 }
@@ -413,7 +413,7 @@ static inline int hugetlb_mfill_atomic_pte(pte_t *dst_pte,
 #endif /* CONFIG_USERFAULTFD */
 
 static inline pte_t *huge_pte_offset(struct mm_struct *mm, unsigned long addr,
-				     unsigned long sz)
+					unsigned long sz)
 {
 	return NULL;
 }
@@ -460,17 +460,14 @@ static inline void __unmap_hugepage_range_final(struct mmu_gather *tlb,
 }
 
 static inline vm_fault_t hugetlb_fault(struct mm_struct *mm,
-				       struct vm_area_struct *vma,
-				       unsigned long address,
-				       unsigned int flags)
+			struct vm_area_struct *vma, unsigned long address,
+			unsigned int flags)
 {
 	BUG();
 	return 0;
 }
 
-static inline void hugetlb_unshare_all_pmds(struct vm_area_struct *vma)
-{
-}
+static inline void hugetlb_unshare_all_pmds(struct vm_area_struct *vma) { }
 
 #endif /* !CONFIG_HUGETLB_PAGE */
 /*
@@ -478,10 +475,10 @@ static inline void hugetlb_unshare_all_pmds(struct vm_area_struct *vma)
  * hugepages at pgd level, they need to define this.
  */
 #ifndef pgd_huge
-#define pgd_huge(x) 0
+#define pgd_huge(x)	0
 #endif
 #ifndef p4d_huge
-#define p4d_huge(x) 0
+#define p4d_huge(x)	0
 #endif
 
 #ifndef pgd_write
@@ -499,23 +496,23 @@ enum {
 	 * The file will be used as an shm file so shmfs accounting rules
 	 * apply
 	 */
-	HUGETLB_SHMFS_INODE = 1,
+	HUGETLB_SHMFS_INODE     = 1,
 	/*
 	 * The file is being created on the internal vfs mount and shmfs
 	 * accounting rules do not apply
 	 */
-	HUGETLB_ANONHUGE_INODE = 2,
+	HUGETLB_ANONHUGE_INODE  = 2,
 };
 
 #ifdef CONFIG_HUGETLBFS
 struct hugetlbfs_sb_info {
-	long max_inodes; /* inodes allowed */
-	long free_inodes; /* inodes free */
-	spinlock_t stat_lock;
+	long	max_inodes;   /* inodes allowed */
+	long	free_inodes;  /* inodes free */
+	spinlock_t	stat_lock;
 	struct hstate *hstate;
 	struct hugepage_subpool *spool;
-	kuid_t uid;
-	kgid_t gid;
+	kuid_t	uid;
+	kgid_t	gid;
 	umode_t mode;
 };
 
@@ -554,7 +551,7 @@ static inline struct hstate *hstate_inode(struct inode *i)
 }
 #else /* !CONFIG_HUGETLBFS */
 
-#define is_file_hugepages(file) false
+#define is_file_hugepages(file)			false
 static inline struct file *
 hugetlb_file_setup(const char *name, size_t size, vm_flags_t acctflag,
 		int creat_flags, int page_size_log)
@@ -673,10 +670,10 @@ static inline void ClearHPage##uname(struct page *page)		\
 	{ }
 #endif
 
-#define HPAGEFLAG(uname, flname)                                               \
-	TESTHPAGEFLAG(uname, flname)                                           \
-	SETHPAGEFLAG(uname, flname)                                            \
-	CLEARHPAGEFLAG(uname, flname)
+#define HPAGEFLAG(uname, flname)				\
+	TESTHPAGEFLAG(uname, flname)				\
+	SETHPAGEFLAG(uname, flname)				\
+	CLEARHPAGEFLAG(uname, flname)				\
 
 /*
  * Create functions associated with hugetlb page flags
@@ -829,7 +826,7 @@ static inline unsigned int blocks_per_huge_page(struct hstate *h)
 
 #ifndef is_hugepage_only_range
 static inline int is_hugepage_only_range(struct mm_struct *mm,
-					 unsigned long addr, unsigned long len)
+					unsigned long addr, unsigned long len)
 {
 	return 0;
 }
@@ -837,9 +834,7 @@ static inline int is_hugepage_only_range(struct mm_struct *mm,
 #endif
 
 #ifndef arch_clear_hugepage_flags
-static inline void arch_clear_hugepage_flags(struct page *page)
-{
-}
+static inline void arch_clear_hugepage_flags(struct page *page) { }
 #define arch_clear_hugepage_flags arch_clear_hugepage_flags
 #endif
 
@@ -889,8 +884,8 @@ static inline void folio_clear_hugetlb_hwpoison(struct folio *folio)
 static inline bool arch_hugetlb_migration_supported(struct hstate *h)
 {
 	if ((huge_page_shift(h) == PMD_SHIFT) ||
-	    (huge_page_shift(h) == PUD_SHIFT) ||
-	    (huge_page_shift(h) == PGDIR_SHIFT))
+		(huge_page_shift(h) == PUD_SHIFT) ||
+			(huge_page_shift(h) == PGDIR_SHIFT))
 		return true;
 	else
 		return false;
@@ -958,7 +953,7 @@ static inline spinlock_t *huge_pte_lockptr(struct hstate *h,
 					   struct mm_struct *mm, pte_t *pte)
 {
 	if (huge_page_size(h) == PMD_SIZE)
-		return pmd_lockptr(mm, (pmd_t *)pte);
+		return pmd_lockptr(mm, (pmd_t *) pte);
 	VM_BUG_ON(huge_page_size(h) == PAGE_SIZE);
 	return &mm->page_table_lock;
 }
@@ -1206,8 +1201,8 @@ static inline void hugetlb_unregister_node(struct node *node)
 }
 #endif	/* CONFIG_HUGETLB_PAGE */
 
-static inline spinlock_t *huge_pte_lock(struct hstate *h, struct mm_struct *mm,
-					pte_t *pte)
+static inline spinlock_t *huge_pte_lock(struct hstate *h,
+					struct mm_struct *mm, pte_t *pte)
 {
 	spinlock_t *ptl;
 
@@ -1243,7 +1238,7 @@ bool want_pmd_share(struct vm_area_struct *vma, unsigned long addr);
  * ARCHes with special requirements for evicting HUGETLB backing TLB entries can
  * implement this.
  */
-#define flush_hugetlb_tlb_range(vma, addr, end) flush_tlb_range(vma, addr, end)
+#define flush_hugetlb_tlb_range(vma, addr, end)	flush_tlb_range(vma, addr, end)
 #endif
 
 static inline bool __vma_shareable_lock(struct vm_area_struct *vma)

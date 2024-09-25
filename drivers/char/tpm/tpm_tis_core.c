@@ -75,7 +75,7 @@ static int wait_for_tpm_stat(struct tpm_chip *chip, u8 mask,
 
 	/* check current status */
 	status = chip->ops->status(chip);
-	if ((status & mask) == expected)
+	if ((status & mask) == mask)
 		return 0;
 
 	sts_mask = mask & (TPM_STS_VALID | TPM_STS_DATA_AVAIL |
@@ -221,12 +221,8 @@ again:
 	} else {
 		/* wait for burstcount */
 		do {
-			if (check_locality(chip, l)) {
-				if (tpm_tis_wait_for_stat(chip, TPM_STS_GO, 0, chip->timeout_c,
-							  &priv->int_queue, false) < 0)
-					return -ETIME;
+			if (check_locality(chip, l))
 				return l;
-			}
 			tpm_msleep(TPM_TIMEOUT);
 		} while (time_before(jiffies, stop));
 	}
@@ -321,11 +317,10 @@ static int recv_data(struct tpm_chip *chip, u8 *buf, size_t count)
 	int size = 0, burstcnt, rc;
 
 	while (size < count) {
-		rc = tpm_tis_wait_for_stat(chip,
-					   TPM_STS_DATA_AVAIL | TPM_STS_VALID,
-					   TPM_STS_DATA_AVAIL | TPM_STS_VALID,
-					   chip->timeout_c, &priv->read_queue,
-					   true);
+		rc = wait_for_tpm_stat(chip,
+				 TPM_STS_DATA_AVAIL | TPM_STS_VALID,
+				 chip->timeout_c,
+				 &priv->read_queue, true);
 		if (rc < 0)
 			return rc;
 		burstcnt = get_burstcount(chip);
@@ -384,9 +379,8 @@ static int tpm_tis_recv(struct tpm_chip *chip, u8 *buf, size_t count)
 		goto out;
 	}
 
-	if (tpm_tis_wait_for_stat(chip, TPM_STS_VALID, TPM_STS_VALID,
-				  chip->timeout_c, &priv->int_queue,
-				  false) < 0) {
+	if (wait_for_tpm_stat(chip, TPM_STS_VALID, chip->timeout_c,
+				&priv->int_queue, false) < 0) {
 		size = -ETIME;
 		goto out;
 	}
@@ -424,10 +418,9 @@ static int tpm_tis_send_data(struct tpm_chip *chip, const u8 *buf, size_t len)
 	status = tpm_tis_status(chip);
 	if ((status & TPM_STS_COMMAND_READY) == 0) {
 		tpm_tis_ready(chip);
-		if (tpm_tis_wait_for_stat(chip, TPM_STS_COMMAND_READY,
-					  TPM_STS_COMMAND_READY,
-					  chip->timeout_b, &priv->int_queue,
-					  false) < 0) {
+		if (wait_for_tpm_stat
+		    (chip, TPM_STS_COMMAND_READY, chip->timeout_b,
+		     &priv->int_queue, false) < 0) {
 			rc = -ETIME;
 			goto out_err;
 		}
@@ -447,10 +440,15 @@ static int tpm_tis_send_data(struct tpm_chip *chip, const u8 *buf, size_t len)
 			goto out_err;
 
 		count += burstcnt;
-		if (tpm_tis_wait_for_stat(chip, TPM_STS_VALID | TPM_STS_DATA_EXPECT,
-					  TPM_STS_VALID | TPM_STS_DATA_EXPECT, chip->timeout_a,
-					  &priv->int_queue, false) < 0) {
+
+		if (wait_for_tpm_stat(chip, TPM_STS_VALID, chip->timeout_c,
+					&priv->int_queue, false) < 0) {
 			rc = -ETIME;
+			goto out_err;
+		}
+		status = tpm_tis_status(chip);
+		if (!itpm && (status & TPM_STS_DATA_EXPECT) == 0) {
+			rc = -EIO;
 			goto out_err;
 		}
 	}
@@ -459,10 +457,15 @@ static int tpm_tis_send_data(struct tpm_chip *chip, const u8 *buf, size_t len)
 	rc = tpm_tis_write8(priv, TPM_DATA_FIFO(priv->locality), buf[count]);
 	if (rc < 0)
 		goto out_err;
-	if (tpm_tis_wait_for_stat(chip, TPM_STS_VALID | TPM_STS_DATA_EXPECT,
-				  TPM_STS_VALID, chip->timeout_a,
-				  &priv->int_queue, false) < 0) {
+
+	if (wait_for_tpm_stat(chip, TPM_STS_VALID, chip->timeout_c,
+				&priv->int_queue, false) < 0) {
 		rc = -ETIME;
+		goto out_err;
+	}
+	status = tpm_tis_status(chip);
+	if (!itpm && (status & TPM_STS_DATA_EXPECT) != 0) {
+		rc = -EIO;
 		goto out_err;
 	}
 
@@ -536,10 +539,9 @@ static int tpm_tis_send_main(struct tpm_chip *chip, const u8 *buf, size_t len)
 		ordinal = be32_to_cpu(*((__be32 *) (buf + 6)));
 
 		dur = tpm_calc_ordinal_duration(chip, ordinal);
-		if (tpm_tis_wait_for_stat(chip,
-					  TPM_STS_DATA_AVAIL | TPM_STS_VALID,
-					  TPM_STS_DATA_AVAIL | TPM_STS_VALID,
-					  dur, &priv->read_queue, false) < 0) {
+		if (wait_for_tpm_stat
+		    (chip, TPM_STS_DATA_AVAIL | TPM_STS_VALID, dur,
+		     &priv->read_queue, false) < 0) {
 			rc = -ETIME;
 			goto out_err;
 		}

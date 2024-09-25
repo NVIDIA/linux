@@ -694,7 +694,6 @@ void amdgpu_gfx_off_ctrl(struct amdgpu_device *adev, bool enable)
 		    !adev->gfx.gfx_off_state) {
 			schedule_delayed_work(&adev->gfx.gfx_off_delay_work,
 					      delay);
-			}
 		}
 	} else {
 		if (adev->gfx.gfx_off_req_count == 0) {

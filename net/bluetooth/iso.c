@@ -327,8 +327,8 @@ static int iso_connect_bis(struct sock *sk)
 		goto unlock;
 	}
 
-	hci_dev_unlock(hdev);
-	hci_dev_put(hdev);
+	/* Update source addr of the socket */
+	bacpy(&iso_pi(sk)->src, &hcon->src);
 
 	if (hcon->state == BT_CONNECTED) {
 		iso_sock_clear_timer(sk);
@@ -417,8 +417,8 @@ static int iso_connect_cis(struct sock *sk)
 		goto unlock;
 	}
 
-	hci_dev_unlock(hdev);
-	hci_dev_put(hdev);
+	/* Update source addr of the socket */
+	bacpy(&iso_pi(sk)->src, &hcon->src);
 
 	if (hcon->state == BT_CONNECTED) {
 		iso_sock_clear_timer(sk);
@@ -1174,7 +1174,6 @@ static int iso_sock_recvmsg(struct socket *sock, struct msghdr *msg,
 		lock_sock(sk);
 		switch (sk->sk_state) {
 		case BT_CONNECT2:
-			lock_sock(sk);
 			iso_conn_defer_accept(pi->conn->hcon);
 			sk->sk_state = BT_CONFIG;
 			release_sock(sk);

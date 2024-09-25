@@ -71,7 +71,6 @@ unwind_init_from_task(struct unwind_state *state,
 	state->fp = thread_saved_fp(task);
 	state->pc = thread_saved_pc(task);
 }
-NOKPROBE_SYMBOL(start_backtrace);
 
 static __always_inline int
 unwind_recover_return_address(struct unwind_state *state)

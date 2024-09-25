@@ -704,13 +704,6 @@ static struct cache_entry *cache_refresh_path(const unsigned int xid,
 		up_read(&htable_rw_lock);
 		return ce;
 	}
-	/*
-	 * Unlock shared access as we don't want to hold any locks while getting
-	 * a new referral.  The @ses used for performing the I/O could be
-	 * reconnecting and it acquires @htable_rw_lock to look up the dfs cache
-	 * in order to failover -- if necessary.
-	 */
-	up_read(&htable_rw_lock);
 
 	/*
 	 * Unlock shared access as we don't want to hold any locks while getting

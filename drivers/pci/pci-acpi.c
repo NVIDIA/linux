@@ -978,8 +978,6 @@ bool acpi_pci_bridge_d3(struct pci_dev *dev)
 	struct pci_dev *rpdev;
 	struct acpi_device *adev, *rpadev;
 	const union acpi_object *obj;
-        struct acpi_device *adev;
-        struct pci_dev *rpdev;
 
 	if (acpi_pci_disabled || !dev->is_hotplug_bridge)
 		return false;
@@ -1002,13 +1000,6 @@ bool acpi_pci_bridge_d3(struct pci_dev *dev)
 		if (acpi_device_power_manageable(adev))
 			return true;
 	}
-
-        /*
-         * The ACPI firmware will provide the device-specific properties through
-         * _DSD configuration object. Look for the 'HotPlugSupportInD3' property
-         * for the root port and if it is set we know the hierarchy behind it
-         * supports D3 just fine.
-         */
 
 	rpdev = pcie_find_root_port(dev);
 	if (!rpdev)

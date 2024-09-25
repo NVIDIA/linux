@@ -2253,7 +2253,6 @@ static int flush_mdlog_and_wait_inode_unsafe_requests(struct inode *inode)
 	struct ceph_mds_client *mdsc = ceph_sb_to_client(inode->i_sb)->mdsc;
 	struct ceph_inode_info *ci = ceph_inode(inode);
 	struct ceph_mds_request *req1 = NULL, *req2 = NULL;
-	unsigned int max_sessions;
 	int ret, err = 0;
 
 	spin_lock(&ci->i_unsafe_lock);
@@ -2270,15 +2269,6 @@ static int flush_mdlog_and_wait_inode_unsafe_requests(struct inode *inode)
 		ceph_mdsc_get_request(req2);
 	}
 	spin_unlock(&ci->i_unsafe_lock);
-
-	/*
-	 * The mdsc->max_sessions is unlikely to be changed
-	 * mostly, here we will retry it by reallocating the
-	 * sessions array memory to get rid of the mdsc->mutex
-	 * lock.
-	 */
-retry:
-	max_sessions = mdsc->max_sessions;
 
 	/*
 	 * Trigger to flush the journal logs in all the relevant MDSes

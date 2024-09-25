@@ -538,17 +538,6 @@ static const struct dmi_system_id lg_laptop[] = {
 	{ }
 };
 
-static const struct dmi_system_id schenker_gm_rg[] = {
-	{
-		.ident = "XMG CORE 15 (M22)",
-		.matches = {
-			DMI_MATCH(DMI_SYS_VENDOR, "SchenkerTechnologiesGmbH"),
-			DMI_MATCH(DMI_BOARD_NAME, "GMxRGxx"),
-		},
-	},
-	{ }
-};
-
 struct irq_override_cmp {
 	const struct dmi_system_id *system;
 	unsigned char irq;

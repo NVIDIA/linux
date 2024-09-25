@@ -1428,9 +1428,6 @@ static void __init cpu_set_bug_bits(struct cpuinfo_x86 *c)
 	    boot_cpu_has(X86_FEATURE_AVX))
 		setup_force_cpu_bug(X86_BUG_GDS);
 
-	if (cpu_matches(cpu_vuln_blacklist, SMT_RSB))
-		setup_force_cpu_bug(X86_BUG_SMT_RSB);
-
 	if (cpu_matches(cpu_vuln_whitelist, NO_MELTDOWN))
 		return;
 

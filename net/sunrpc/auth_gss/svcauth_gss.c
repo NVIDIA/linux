@@ -1093,7 +1093,6 @@ static int gss_read_proxy_verf(struct svc_rqst *rqstp,
 	for (i = 0; i < pages; i++) {
 		in_token->pages[i] = alloc_page(GFP_KERNEL);
 		if (!in_token->pages[i]) {
-			kfree(in_handle->data);
 			gss_free_in_token_pages(in_token);
 			goto out_denied_free;
 		}

@@ -1300,14 +1300,6 @@ static bool idxd_wq_attr_max_batch_size_invisible(struct attribute *attr,
 	       idxd->data->type == IDXD_TYPE_IAX;
 }
 
-static bool idxd_wq_attr_max_batch_size_invisible(struct attribute *attr,
-						  struct idxd_device *idxd)
-{
-	/* Intel IAA does not support batch processing, make it invisible */
-	return attr == &dev_attr_wq_max_batch_size.attr &&
-	       idxd->data->type == IDXD_TYPE_IAX;
-}
-
 static umode_t idxd_wq_attr_visible(struct kobject *kobj,
 				    struct attribute *attr, int n)
 {
@@ -1325,9 +1317,6 @@ static umode_t idxd_wq_attr_visible(struct kobject *kobj,
 		return 0;
 
 	if (idxd_wq_attr_invisible(ats_disable, wq_ats_support, attr, idxd))
-		return 0;
-
-	if (idxd_wq_attr_max_batch_size_invisible(attr, idxd))
 		return 0;
 
 	return attr->mode;

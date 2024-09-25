@@ -5049,9 +5049,6 @@ __splice_balance_callbacks(struct rq *rq, bool split)
 	if (likely(!head))
 		return NULL;
 
-	if (likely(!head))
-		return NULL;
-
 	lockdep_assert_rq_held(rq);
 	/*
 	 * Must not take balance_push_callback off the list when

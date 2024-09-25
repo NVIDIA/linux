@@ -828,9 +828,6 @@ struct net_device *gether_setup_name_default(const char *netname)
 	INIT_LIST_HEAD(&dev->tx_reqs);
 	INIT_LIST_HEAD(&dev->rx_reqs);
 
-	/* by default we always have a random MAC address */
-	net->addr_assign_type = NET_ADDR_RANDOM;
-
 	skb_queue_head_init(&dev->rx_frames);
 
 	/* network device setup */

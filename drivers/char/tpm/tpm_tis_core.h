@@ -121,7 +121,6 @@ enum tpm_tis_io_mode {
 	TPM_TIS_PHYS_8,
 	TPM_TIS_PHYS_16,
 	TPM_TIS_PHYS_32,
->>>>>>> origin/linux_6.1.15_upstream
 };
 
 struct tpm_tis_phy_ops {

@@ -4002,14 +4002,8 @@ static int svm_vcpu_pre_run(struct kvm_vcpu *vcpu)
 
 static fastpath_t svm_exit_handlers_fastpath(struct kvm_vcpu *vcpu)
 {
-	struct vmcb_control_area *control = &to_svm(vcpu)->vmcb->control;
-
-	/*
-	 * Note, the next RIP must be provided as SRCU isn't held, i.e. KVM
-	 * can't read guest memory (dereference memslots) to decode the WRMSR.
-	 */
-	if (control->exit_code == SVM_EXIT_MSR && control->exit_info_1 &&
-	    nrips && control->next_rip)
+	if (to_svm(vcpu)->vmcb->control.exit_code == SVM_EXIT_MSR &&
+	    to_svm(vcpu)->vmcb->control.exit_info_1)
 		return handle_fastpath_set_msr_irqoff(vcpu);
 
 	return EXIT_FASTPATH_NONE;
@@ -4639,10 +4633,6 @@ static bool svm_can_emulate_instruction(struct kvm_vcpu *vcpu, int emul_type,
 	WARN_ON_ONCE(emul_type & (EMULTYPE_TRAP_UD |
 				  EMULTYPE_TRAP_UD_FORCED |
 				  EMULTYPE_VMWARE_GP));
-
-	/* Emulation is always possible when KVM has access to all guest state. */
-	if (!sev_guest(vcpu->kvm))
-		return true;
 
 	/*
 	 * Emulation is impossible for SEV-ES guests as KVM doesn't have access

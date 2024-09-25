@@ -890,6 +890,7 @@ static int __init spidev_init(void)
 		class_destroy(spidev_class);
 		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 	}
+
 	return status;
 }
 module_init(spidev_init);

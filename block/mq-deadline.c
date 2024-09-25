@@ -339,39 +339,6 @@ static struct request *deadline_skip_seq_writes(struct deadline_data *dd,
 }
 
 /*
- * Check if rq has a sequential request preceding it.
- */
-static bool deadline_is_seq_write(struct deadline_data *dd, struct request *rq)
-{
-	struct request *prev = deadline_earlier_request(rq);
-
-	if (!prev)
-		return false;
-
-	return blk_rq_pos(prev) + blk_rq_sectors(prev) == blk_rq_pos(rq);
-}
-
-/*
- * Skip all write requests that are sequential from @rq, even if we cross
- * a zone boundary.
- */
-static struct request *deadline_skip_seq_writes(struct deadline_data *dd,
-						struct request *rq)
-{
-	sector_t pos = blk_rq_pos(rq);
-	sector_t skipped_sectors = 0;
-
-	while (rq) {
-		if (blk_rq_pos(rq) != pos + skipped_sectors)
-			break;
-		skipped_sectors += blk_rq_sectors(rq);
-		rq = deadline_latter_request(rq);
-	}
-
-	return rq;
-}
-
-/*
  * For the specified data direction, return the next request to
  * dispatch using arrival ordered lists.
  */

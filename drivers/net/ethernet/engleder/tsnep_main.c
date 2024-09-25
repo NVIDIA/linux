@@ -711,9 +711,6 @@ static void tsnep_xdp_xmit_frame_ring_zc(struct xdp_desc *xdpd,
 					 struct tsnep_tx *tx)
 {
 	int length;
-	int count;
-
-	nq = netdev_get_tx_queue(tx->adapter->netdev, tx->queue_index);
 
 	length = tsnep_xdp_tx_map_zc(xdpd, tx);
 

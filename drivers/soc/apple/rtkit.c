@@ -962,8 +962,6 @@ EXPORT_SYMBOL_GPL(apple_rtkit_wake);
 
 void apple_rtkit_free(struct apple_rtkit *rtk)
 {
-	struct apple_rtkit *rtk = data;
-
 	mbox_free_channel(rtk->mbox_chan);
 	destroy_workqueue(rtk->wq);
 

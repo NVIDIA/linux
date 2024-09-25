@@ -684,7 +684,6 @@ static void mptcp_pm_nl_add_addr_received(struct mptcp_sock *msk)
 	unsigned int add_addr_accept_max;
 	struct mptcp_addr_info remote;
 	unsigned int subflows_max;
-	bool reset_port = false;
 	int i, nr;
 
 	add_addr_accept_max = mptcp_pm_get_add_addr_accept_max(msk);
@@ -704,12 +703,6 @@ static void mptcp_pm_nl_add_addr_received(struct mptcp_sock *msk)
 	/* pick id 0 port, if none is provided the remote address */
 	if (!remote.port)
 		remote.port = sk->sk_dport;
-
-	/* pick id 0 port, if none is provided the remote address */
-	if (!remote.port) {
-		reset_port = true;
-		remote.port = sk->sk_dport;
-	}
 
 	/* connect to the specified remote address, using whatever
 	 * local address the routing configuration will pick.

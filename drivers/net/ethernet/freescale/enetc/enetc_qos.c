@@ -82,9 +82,6 @@ static int enetc_setup_taprio(struct enetc_ndev_priv *priv,
 				       &dma, (void *)&gcl_data);
 	if (!tmp)
 		return -ENOMEM;
-	}
-	dma_align = ALIGN(dma, ENETC_QOS_ALIGN);
-	gcl_data = (struct tgs_gcl_data *)PTR_ALIGN(tmp, ENETC_QOS_ALIGN);
 
 	gce = (struct gce *)(gcl_data + 1);
 
@@ -666,7 +663,7 @@ static int enetc_streamcounter_hw_get(struct enetc_ndev_priv *priv,
 {
 	struct enetc_cbd cbd = { .cmd = 2 };
 	struct sfi_counter_data *data_buf;
-	dma_addr_t dma, dma_align;
+	dma_addr_t dma;
 	u16 data_size;
 	void *tmp;
 	int err;
@@ -748,7 +745,7 @@ static int enetc_streamgate_hw_set(struct enetc_ndev_priv *priv,
 	struct sgcl_conf *sgcl_config;
 	struct sgcl_data *sgcl_data;
 	struct sgce *sgce;
-	dma_addr_t dma, dma_align;
+	dma_addr_t dma;
 	u16 data_size;
 	int err, i;
 	void *tmp;

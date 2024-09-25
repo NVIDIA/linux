@@ -3518,29 +3518,6 @@ void kvm_service_local_tlb_flush_requests(struct kvm_vcpu *vcpu)
 }
 EXPORT_SYMBOL_GPL(kvm_service_local_tlb_flush_requests);
 
-
-static inline void kvm_vcpu_flush_tlb_current(struct kvm_vcpu *vcpu)
-{
-	++vcpu->stat.tlb_flush;
-	static_call(kvm_x86_tlb_flush_current)(vcpu);
-}
-
-/*
- * Service "local" TLB flush requests, which are specific to the current MMU
- * context.  In addition to the generic event handling in vcpu_enter_guest(),
- * TLB flushes that are targeted at an MMU context also need to be serviced
- * prior before nested VM-Enter/VM-Exit.
- */
-void kvm_service_local_tlb_flush_requests(struct kvm_vcpu *vcpu)
-{
-	if (kvm_check_request(KVM_REQ_TLB_FLUSH_CURRENT, vcpu))
-		kvm_vcpu_flush_tlb_current(vcpu);
-
-	if (kvm_check_request(KVM_REQ_TLB_FLUSH_GUEST, vcpu))
-		kvm_vcpu_flush_tlb_guest(vcpu);
-}
-EXPORT_SYMBOL_GPL(kvm_service_local_tlb_flush_requests);
-
 static void record_steal_time(struct kvm_vcpu *vcpu)
 {
 	struct gfn_to_hva_cache *ghc = &vcpu->arch.st.cache;

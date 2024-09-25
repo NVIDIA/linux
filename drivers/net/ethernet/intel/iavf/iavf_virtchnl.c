@@ -1898,22 +1898,6 @@ static void iavf_netdev_features_vlan_strip_set(struct net_device *netdev,
 }
 
 /**
- * iavf_netdev_features_vlan_strip_set - update vlan strip status
- * @netdev: ptr to netdev being adjusted
- * @enable: enable or disable vlan strip
- *
- * Helper function to change vlan strip status in netdev->features.
- */
-static void iavf_netdev_features_vlan_strip_set(struct net_device *netdev,
-						const bool enable)
-{
-	if (enable)
-		netdev->features |= NETIF_F_HW_VLAN_CTAG_RX;
-	else
-		netdev->features &= ~NETIF_F_HW_VLAN_CTAG_RX;
-}
-
-/**
  * iavf_virtchnl_completion
  * @adapter: adapter structure
  * @v_opcode: opcode sent by PF
@@ -2462,6 +2446,7 @@ void iavf_virtchnl_completion(struct iavf_adapter *adapter,
 		spin_unlock_bh(&adapter->adv_rss_lock);
 		}
 		break;
+	case VIRTCHNL_OP_ADD_VLAN_V2: {
 		struct iavf_vlan_filter *f;
 
 		spin_lock_bh(&adapter->mac_vlan_list_lock);

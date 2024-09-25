@@ -3587,12 +3587,6 @@ static int backtrack_insn(struct bpf_verifier_env *env, int idx, int subseq_idx,
 			 */
 			if (insn->src_reg == BPF_PSEUDO_KFUNC_CALL && insn->imm == 0)
 				return -ENOTSUPP;
-			/* kfunc with imm==0 is invalid and fixup_kfunc_call will
-			 * catch this error later. Make backtracking conservative
-			 * with ENOTSUPP.
-			 */
-			if (insn->src_reg == BPF_PSEUDO_KFUNC_CALL && insn->imm == 0)
-				return -ENOTSUPP;
 			/* regular helper call sets R0 */
 			bt_clear_reg(bt, BPF_REG_0);
 			if (bt_reg_mask(bt) & BPF_REGMASK_ARGS) {
@@ -11903,13 +11897,10 @@ static int adjust_ptr_min_max_vals(struct bpf_verifier_env *env,
 	case PTR_TO_SOCK_COMMON:
 	case PTR_TO_TCP_SOCK:
 	case PTR_TO_XDP_SOCK:
-reject:
 		verbose(env, "R%d pointer arithmetic on %s prohibited\n",
 			dst, reg_type_str(env, ptr_reg->type));
 		return -EACCES;
 	default:
-		if (type_may_be_null(ptr_reg->type))
-			goto reject;
 		break;
 	}
 

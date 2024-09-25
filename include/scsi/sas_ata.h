@@ -123,11 +123,6 @@ static inline int sas_ata_add_dev(struct domain_device *parent, struct ex_phy *p
 	sas_ata_disabled_notice();
 	return -ENODEV;
 }
-
-static inline int smp_ata_check_ready_type(struct ata_link *link)
-{
-	return 0;
-}
 #endif
 
 #endif /* _SAS_ATA_H_ */

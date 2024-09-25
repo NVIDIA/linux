@@ -473,12 +473,6 @@ static inline bool is_jcc32(struct insn *insn)
 	return insn->opcode.bytes[0] == 0x0f && (insn->opcode.bytes[1] & 0xf0) == 0x80;
 }
 
-static inline bool is_jcc32(struct insn *insn)
-{
-	/* Jcc.d32 second opcode byte is in the range: 0x80-0x8f */
-	return insn->opcode.bytes[0] == 0x0f && (insn->opcode.bytes[1] & 0xf0) == 0x80;
-}
-
 #if defined(CONFIG_RETPOLINE) && defined(CONFIG_OBJTOOL)
 
 /*

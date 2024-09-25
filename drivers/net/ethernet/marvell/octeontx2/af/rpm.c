@@ -659,14 +659,6 @@ int  rpm_lmac_get_pfc_frm_cfg(void *rpmd, int lmac_id, u8 *tx_pause, u8 *rx_paus
 		*tx_pause = !(cfg & RPMX_MTI_MAC100X_COMMAND_CONFIG_TX_P_DISABLE);
 	}
 
-	cfg = rpm_read(rpm, lmac_id, RPMX_MTI_PCS100X_CONTROL1);
-
-	if (enable)
-		cfg |= RPMX_MTI_PCS_LBK;
-	else
-		cfg &= ~RPMX_MTI_PCS_LBK;
-	rpm_write(rpm, lmac_id, RPMX_MTI_PCS100X_CONTROL1, cfg);
-
 	return 0;
 }
 

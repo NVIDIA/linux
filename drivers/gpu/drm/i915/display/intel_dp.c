@@ -64,7 +64,6 @@
 #include "intel_dp_mst.h"
 #include "intel_dpio_phy.h"
 #include "intel_dpll.h"
-#include "intel_drrs.h"
 #include "intel_fifo_underrun.h"
 #include "intel_hdcp.h"
 #include "intel_hdmi.h"
@@ -2164,7 +2163,6 @@ intel_dp_drrs_compute_config(struct intel_connector *connector,
 
 static bool intel_dp_has_audio(struct intel_encoder *encoder,
 			       const struct drm_connector_state *conn_state)
->>>>>>> origin/linux_6.1.15_upstream
 {
 	struct drm_i915_private *i915 = to_i915(encoder->base.dev);
 	struct intel_dp *intel_dp = enc_to_intel_dp(encoder);

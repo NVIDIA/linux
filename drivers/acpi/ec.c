@@ -1202,7 +1202,6 @@ static int acpi_ec_submit_query(struct acpi_ec *ec)
 	 */
 	ec_dbg_evt("Query(0x%02x) scheduled", value);
 
-
 	spin_lock_irq(&ec->lock);
 
 	ec->queries_in_progress++;

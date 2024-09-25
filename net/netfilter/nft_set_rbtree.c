@@ -666,7 +666,6 @@ static void nft_rbtree_gc(struct work_struct *work)
 
 		if (!rbe_end)
 			continue;
-		}
 
 		nft_set_elem_dead(&rbe_end->ext);
 

@@ -1188,10 +1188,6 @@ static int isotp_release(struct socket *sock)
 	so->tx.state = ISOTP_SHUTDOWN;
 	so->rx.state = ISOTP_IDLE;
 
-	/* force state machines to be idle also when a signal occurred */
-	so->tx.state = ISOTP_IDLE;
-	so->rx.state = ISOTP_IDLE;
-
 	spin_lock(&isotp_notifier_lock);
 	while (isotp_busy_notifier == so) {
 		spin_unlock(&isotp_notifier_lock);

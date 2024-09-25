@@ -103,13 +103,8 @@
 
 &mac1 {
 	status = "okay";
-	phy-mode = "rgmii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii2_default>;
-	fixed-link {
-		speed = <1000>;
-		full-duplex;
-	};
 };
 
 &ehci1 {

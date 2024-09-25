@@ -7737,7 +7737,6 @@ static void pqi_ctrl_update_feature_flags(struct pqi_ctrl_info *ctrl_info,
 	case PQI_FIRMWARE_FEATURE_MULTI_LUN_DEVICE_SUPPORT:
 		ctrl_info->multi_lun_device_supported = firmware_feature->enabled;
 		break;
-		pqi_save_fw_triage_setting(ctrl_info, firmware_feature->enabled);
 	}
 
 	pqi_firmware_feature_status(ctrl_info, firmware_feature);

@@ -5500,26 +5500,6 @@ static void ufshcd_clear_polled(struct ufs_hba *hba,
 	}
 }
 
-/* Any value that is not an existing queue number is fine for this constant. */
-enum {
-	UFSHCD_POLL_FROM_INTERRUPT_CONTEXT = -1
-};
-
-static void ufshcd_clear_polled(struct ufs_hba *hba,
-				unsigned long *completed_reqs)
-{
-	int tag;
-
-	for_each_set_bit(tag, completed_reqs, hba->nutrs) {
-		struct scsi_cmnd *cmd = hba->lrb[tag].cmd;
-
-		if (!cmd)
-			continue;
-		if (scsi_cmd_to_rq(cmd)->cmd_flags & REQ_POLLED)
-			__clear_bit(tag, completed_reqs);
-	}
-}
-
 /*
  * Returns > 0 if one or more commands have been completed or 0 if no
  * requests have been completed.

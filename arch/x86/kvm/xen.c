@@ -550,7 +550,6 @@ void kvm_xen_inject_pending_events(struct kvm_vcpu *v)
 		kvm_xen_inject_vcpu_vector(v);
 
 	mark_page_dirty_in_slot(v->kvm, gpc->memslot, gpc->gpa >> PAGE_SHIFT);
->>>>>>> origin/linux_6.1.15_upstream
 }
 
 int __kvm_xen_has_interrupt(struct kvm_vcpu *v)

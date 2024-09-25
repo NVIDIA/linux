@@ -1941,8 +1941,7 @@ static int copy_params(struct dm_ioctl __user *user, struct dm_ioctl *param_kern
 			   minimum_data_size - sizeof(param_kernel->version)))
 		return -EFAULT;
 
-	if (unlikely(param_kernel->data_size < minimum_data_size) ||
-	    unlikely(param_kernel->data_size > DM_MAX_TARGETS * DM_MAX_TARGET_PARAMS)) {
+	if (param_kernel->data_size < minimum_data_size) {
 		DMERR("Invalid data size in the ioctl structure: %u",
 		      param_kernel->data_size);
 		return -EINVAL;

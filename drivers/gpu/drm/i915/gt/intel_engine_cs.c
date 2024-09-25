@@ -503,13 +503,11 @@ static int intel_engine_setup(struct intel_gt *gt, enum intel_engine_id id,
 	     engine->class == RENDER_CLASS)
 		engine->flags |= I915_ENGINE_FIRST_RENDER_COMPUTE;
 
-	CLAMP_PROP(heartbeat_interval_ms);
-	CLAMP_PROP(max_busywait_duration_ns);
-	CLAMP_PROP(preempt_timeout_ms);
-	CLAMP_PROP(stop_timeout_ms);
-	CLAMP_PROP(timeslice_duration_ms);
-
-#undef CLAMP_PROP
+	/* features common between engines sharing EUs */
+	if (engine->class == RENDER_CLASS || engine->class == COMPUTE_CLASS) {
+		engine->flags |= I915_ENGINE_HAS_RCS_REG_STATE;
+		engine->flags |= I915_ENGINE_HAS_EU_PRIORITY;
+	}
 
 	engine->props.heartbeat_interval_ms =
 		CONFIG_DRM_I915_HEARTBEAT_INTERVAL;
