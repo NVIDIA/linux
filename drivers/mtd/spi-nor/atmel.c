@@ -207,8 +207,7 @@ static const struct flash_info atmel_nor_parts[] = {
 	{ "at45db081d", INFO(0x1f2500, 0, 64 * 1024, 16)
 		NO_SFDP_FLAGS(SECT_4K) },
 	{ "at25xe011", INFO(0x1f4200, 0, 32 * 1024, 4)
-		NO_SFDP_FLAGS(SPI_NOR_SKIP_SFDP | SPI_NOR_DUAL_READ |
-					  SECT_4K)
+		NO_SFDP_FLAGS(SPI_NOR_SKIP_SFDP |  SECT_4K)
 	},
 };
 
