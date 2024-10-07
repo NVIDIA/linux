@@ -210,6 +210,7 @@
 // Arm IPMB BF to BMC
 &i2c0 {
 	status = "okay";
+	multi-master;
 	// BF to BMC
 	ipmb-0@10 {
 		compatible = "ipmb-dev";
@@ -236,6 +237,7 @@
 //NIC
 &i2c5 {
 	status = "okay";
+	multi-master;
 };
 
 // Arm IPMB BMC to BF
