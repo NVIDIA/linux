@@ -14,6 +14,12 @@
 
 #define ARA_ADDRESS 0xC
 
+#ifdef CONFIG_I2C_ASPEED
+#define I2C_SLAVE_ADDR_REG ASPEED_I2C_DEV_ADDR_REG
+#else
+#define I2C_SLAVE_ADDR_REG 0x40
+#endif
+
 /*
  * disable_ast2600_ara:
  * input:
@@ -30,21 +36,34 @@ static void disable_ast2600_ara(struct i2c_client *client)
 		return;
 
 	bus = i2c_get_adapdata(client->adapter);
-	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+
+	/*
+	 * trick: for i2c-ast2600 driver the correct struct should be
+	 * 'struct ast2600_i2c_bus' instead of 'struct aspeed_i2c_bus'.
+	 * However the first three members in both structs are the same:
+	 *
+	 *     struct i2c_adapter		adap;
+	 *     struct device			*dev;
+	 *     void __iomem			*reg_base;
+	 *
+	 * Here we only use bus->base so it's harmless to still refer as
+	 * 'struct aspeed_i2c_bus'.
+	 */
+	addr_reg_val = readl(bus->base + I2C_SLAVE_ADDR_REG);
 	if ((addr_reg_val & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val &= 0xFFFFFF7F;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 	if (((addr_reg_val >> 8) & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val &= 0xFFFF7FFF;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 	if (((addr_reg_val >> 16) & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val &= 0xFF7FFFFF;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 }
 
@@ -64,21 +83,21 @@ void enable_ast2600_ara(struct i2c_client *client)
 		return;
 
 	bus = i2c_get_adapdata(client->adapter);
-	addr_reg_val = readl(bus->base + ASPEED_I2C_DEV_ADDR_REG);
+	addr_reg_val = readl(bus->base + I2C_SLAVE_ADDR_REG);
 	if ((addr_reg_val & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val |= 0x80;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 	else if (((addr_reg_val >> 8) & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val |= 0x8000;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 	else if (((addr_reg_val >> 16) & 0x7F) == ARA_ADDRESS)
 	{
 		addr_reg_val |= 0x800000;
-		writel(addr_reg_val, bus->base + ASPEED_I2C_DEV_ADDR_REG);
+		writel(addr_reg_val, bus->base + I2C_SLAVE_ADDR_REG);
 	}
 }
 EXPORT_SYMBOL(enable_ast2600_ara);
