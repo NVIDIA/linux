@@ -1687,15 +1687,21 @@ MODULE_DEVICE_TABLE(of, ast2600_i2c_bus_of_table);
 static void ast2600_i2c_init(struct ast2600_i2c_bus *i2c_bus)
 {
 	struct platform_device *pdev = to_platform_device(i2c_bus->dev);
-	u32 fun_ctrl = AST2600_I2CC_BUS_AUTO_RELEASE | AST2600_I2CC_MASTER_EN | AST2600_I2CC_4T_DEBOUNCE;
+
+	u32 fun_ctrl = AST2600_I2CC_BUS_AUTO_RELEASE | AST2600_I2CC_4T_DEBOUNCE;
 
 	/* I2C Reset */
 	writel(0, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 
-	i2c_bus->multi_master = device_property_read_bool(&pdev->dev, "multi-master");
-	if (!i2c_bus->multi_master)
-		fun_ctrl |= AST2600_I2CC_MULTI_MASTER_DIS;
+	if (!device_property_read_bool(&pdev->dev, "disable-master")) {
+		fun_ctrl |= AST2600_I2CC_MASTER_EN;
 
+		i2c_bus->multi_master = device_property_read_bool(&pdev->dev, "multi-master");
+		if (!i2c_bus->multi_master)
+			fun_ctrl |= AST2600_I2CC_MULTI_MASTER_DIS;
+	} else {
+		dev_info(&pdev->dev, "master function disabled\n");
+	}
 	/* Enable Master Mode */
 	writel(fun_ctrl, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 	/* disable slave address */
