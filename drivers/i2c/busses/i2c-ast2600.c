@@ -192,6 +192,8 @@
 #define AST2600_I2CS_TX_NAK				BIT(1)
 #define AST2600_I2CS_TX_ACK				BIT(0)
 
+#define I2C_ACTIVE_SLVADDR_MASK			(AST2600_I2CS_ADDR_INDICATE_MASK | AST2600_I2CS_ADDR_MASK)
+
 /* 0x28 : I2CS Slave CMD/Status Register   */
 #define AST2600_I2CS_CMD_STS		0x28
 #define AST2600_I2CS_ACTIVE_ALL			GENMASK(18, 17)
@@ -1022,11 +1024,11 @@ static int ast2600_i2c_do_start(struct ast2600_i2c_bus *i2c_bus)
 			}
 			if (xfer_len) {
 				cmd |= AST2600_I2CM_TX_BUFF_EN | AST2600_I2CM_TX_CMD;
-				if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+				if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 					return -ENOMEM;
 				writel(AST2600_I2CC_SET_TX_BUF_LEN(xfer_len),
 				       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
-				if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+				if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 					return -ENOMEM;
 				for (i = 0; i < xfer_len; i++) {
 					wbuf[i % 4] = msg->buf[i];
@@ -1036,7 +1038,7 @@ static int ast2600_i2c_do_start(struct ast2600_i2c_bus *i2c_bus)
 				if (--i % 4 != 3)
 					writel(*(u32 *)wbuf, i2c_bus->buf_base + i - (i % 4));
 			}
-			if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+			if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 				return -ENOMEM;
 		} else {
 			/* byte mode */
@@ -1408,8 +1410,9 @@ static int ast2600_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 			return -EBUSY;
 		/* disable slave isr */
 		writel(0, i2c_bus->reg_base + AST2600_I2CS_IER);
-		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) || i2c_bus->slave_operate[0] ||
-			i2c_bus->slave_operate[1] || i2c_bus->slave_operate[2]) {
+		if ((readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
+			|| i2c_bus->slave_operate[0] || i2c_bus->slave_operate[1] ||
+			i2c_bus->slave_operate[2]) {
 			writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_IER);
 			return -EBUSY;
 		}
