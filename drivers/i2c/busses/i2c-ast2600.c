@@ -325,6 +325,13 @@ struct ast2600_i2c_bus {
 	dma_addr_t			slave_dma_addr;
 	struct i2c_client		*slave[AST2600_I2C_MAX_SLAVE];
 #endif
+	/* Manual tCK* and HDDAT setting for the ICC04 register
+	 * ICC04[11:10]: Hold Time of Master/Slave Data
+	 * ICC04[15:12]: tCKLow
+	 * ICC04[19:16]: tCKHigh
+	 * ICC04[23:20]: tCkHighMin
+	 */
+	u32 tck_thddat;
 };
 
 static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
@@ -356,9 +363,14 @@ static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 	}
 	baseclk_idx = min(baseclk_idx, 15);
 	divisor = min(divisor, 32);
-	scl_low = min(divisor * 9 / 16 - 1, 15);
-	scl_high = (divisor - scl_low - 2) & GENMASK(3, 0);
-	data = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
+	if (i2c_bus->tck_thddat == 0) {
+		scl_low = min(divisor * 9 / 16 - 1, 15);
+		scl_high = (divisor - scl_low - 2) & GENMASK(3, 0);
+		data = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
+	} else {
+		data = i2c_bus->tck_thddat | baseclk_idx;
+	}
+
 	if (i2c_bus->timeout) {
 #ifdef CONFIG_MACH_ASPEED_G7
 		writel(MSIC_I2C_SET_TIMEOUT(i2c_bus->timeout, i2c_bus->timeout),
@@ -1809,6 +1821,14 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	ret = device_property_read_u32(dev, "i2c-scl-clk-low-timeout-us", &i2c_bus->timeout);
 	if (!ret)
 		i2c_bus->timeout /= 1024;
+
+	/*
+	 * i2c timeout counter: use base clk4 1Mhz,
+	 * per unit: 1/(1000/1024) = 1024us
+	 */
+	ret = device_property_read_u32(dev, "i2c-tck-thddat-config", &i2c_bus->tck_thddat);
+	if (!ret)
+		dev_info(&pdev->dev, "Manual tCLK* & tHDDAT settings: %#08x", i2c_bus->tck_thddat);
 
 	init_completion(&i2c_bus->cmd_complete);
 
