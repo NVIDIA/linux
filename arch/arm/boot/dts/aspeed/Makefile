@@ -74,7 +74,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb \
 	aspeed-bmc-nvidia-skinnyJoe-P4498.dtb \
 	aspeed-bmc-nvidia-mgx-p3712.dtb \
-	aspeed-bmc-nvidia-mgx-3809.dtb  \
+	aspeed-bmc-nvidia-igx-3809.dtb  \
 	aspeed-bmc-nvidia-legoc2.dtb \
 	aspeed-bmc-nvidia-legocg1.dtb
 	
