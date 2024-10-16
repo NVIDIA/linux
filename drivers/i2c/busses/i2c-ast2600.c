@@ -397,7 +397,6 @@ static u8 ast2600_i2c_recover_bus(struct ast2600_i2c_bus *i2c_bus)
 
 	dev_dbg(i2c_bus->dev, "%d-bus recovery bus [%x]\n", i2c_bus->adap.nr, state);
 
-	spin_lock_irqsave(&i2c_bus->lock, flags);
 	ctrl = readl(i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 
 	/* Disable master/slave mode */
@@ -416,9 +415,7 @@ static u8 ast2600_i2c_recover_bus(struct ast2600_i2c_bus *i2c_bus)
 	state = readl(i2c_bus->reg_base + AST2600_I2CC_STS_AND_BUFF);
 	if (!(state & AST2600_I2CC_SDA_LINE_STS) && (state & AST2600_I2CC_SCL_LINE_STS)) {
 		writel(AST2600_I2CM_RECOVER_CMD_EN, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
-		spin_unlock_irqrestore(&i2c_bus->lock, flags);
 		r = wait_for_completion_timeout(&i2c_bus->cmd_complete, i2c_bus->adap.timeout);
-		spin_lock_irqsave(&i2c_bus->lock, flags);
 		if (r == 0) {
 			dev_dbg(i2c_bus->dev, "recovery timed out\n");
 			ret = -ETIMEDOUT;
@@ -439,7 +436,6 @@ static u8 ast2600_i2c_recover_bus(struct ast2600_i2c_bus *i2c_bus)
 
 	/* restore original master/slave setting */
 	writel(ctrl, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
-	spin_unlock_irqrestore(&i2c_bus->lock, flags);
 	return ret;
 }
 
@@ -1431,14 +1427,12 @@ static int ast2600_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 	}
 #endif
 
-	spin_lock_irqsave(&i2c_bus->lock, flags);
 	i2c_bus->cmd_err = 0;
 	i2c_bus->msgs = msgs;
 	i2c_bus->msgs_index = 0;
 	i2c_bus->msgs_count = num;
 	reinit_completion(&i2c_bus->cmd_complete);
 	ret = ast2600_i2c_do_start(i2c_bus);
-	spin_unlock_irqrestore(&i2c_bus->lock, flags);
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	/* avoid race condication slave is wait and master wait 1st slave operate */
 	if (i2c_bus->mode == BUFF_MODE)
@@ -1500,14 +1494,12 @@ master_out:
 	if (i2c_bus->mode == DMA_MODE) {
 		/* still have master_safe_buf need to be released */
 		if (i2c_bus->master_safe_buf) {
-			spin_lock_irqsave(&i2c_bus->lock, flags);
 			struct i2c_msg *msg = &i2c_bus->msgs[i2c_bus->msgs_index];
 
 			dma_unmap_single(i2c_bus->dev, i2c_bus->master_dma_addr, msg->len,
 					 DMA_TO_DEVICE);
 			i2c_put_dma_safe_msg_buf(i2c_bus->master_safe_buf, msg, true);
 			i2c_bus->master_safe_buf = NULL;
-			spin_unlock_irqrestore(&i2c_bus->lock, flags);
 		}
 	}
 
@@ -1585,14 +1577,12 @@ static int ast2600_i2c_reg_slave(struct i2c_client *client)
 	u32 cmd = SLAVE_TRIGGER_CMD;
 	unsigned long flags;
 	int id, ret;
-	spin_lock_irqsave(&i2c_bus->lock, flags);
 
 	dev_dbg(i2c_bus->dev, "slave addr %x\n", client->addr);
 
 	ret = ast2600_i2c_get_free_slave_id(i2c_bus, client, &id);
 	if (ret) {
 		dev_err(i2c_bus->dev, "Surpassed max number of registered slaves allowed.\n");
-		spin_unlock_irqrestore(&i2c_bus->lock, flags);
 		return ret;
 	}
 
@@ -1629,7 +1619,6 @@ static int ast2600_i2c_reg_slave(struct i2c_client *client)
 	i2c_bus->slave_operate[id] = 0;
 	__ast2600_i2c_reg_slave(i2c_bus, client->addr, id);
 
-	spin_unlock_irqrestore(&i2c_bus->lock, flags);
 	return 0;
 }
 
@@ -1901,14 +1890,10 @@ static int ast2600_i2c_remove(struct platform_device *pdev)
 	struct ast2600_i2c_bus *i2c_bus = platform_get_drvdata(pdev);
 	unsigned long flags;
 
-	spin_lock_irqsave(&i2c_bus->lock, flags);
-
 	/* Disable everything. */
 	writel(0, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 	writel(0, i2c_bus->reg_base + AST2600_I2CM_IER);
 
-	spin_unlock_irqrestore(&i2c_bus->lock, flags);
-	
 	return 0;
 }
 
