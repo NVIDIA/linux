@@ -6,7 +6,7 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-       model = "AST2600 MGX/IGX - p3809";
+       model = "AST2600 IGX - p3809";
        compatible = "aspeed,ast2600";
 
        aliases {
@@ -177,14 +177,14 @@
                m25p,fast-read;
                label = "bmc";
                spi-max-frequency = <50000000>;
-	       #include "aspeed-bmc-nvidia-mgx-flash-layout-64.dtsi"
+	       #include "aspeed-bmc-nvidia-igx-flash-layout-64.dtsi"
        };
 };
 
 &fmcraw {
          status = "okay";
          spidev@0 {
-                  compatible = "hgx,glacier";
+                  compatible = "igx,glacier";
                   status = "okay";
          };
 };
