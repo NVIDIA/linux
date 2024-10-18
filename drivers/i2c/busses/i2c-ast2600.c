@@ -45,12 +45,13 @@
  * 0x3e : 97.65Khz	: 3.125Mhz					  : 5.12us
  * 0x40 : 97.75Khz	: 3.03Mhz					  : 5.28us
  * 0x41 : 99.5Khz	: 2.98Mhz					  : 5.36us (default)
+ * 0x42 : 98.0Khz	: 2.94Mhz					  : 5.44us
  * I2CG10[15:8] base clk2 for Fast-mode (400Khz) min tBuf 1.3us
  * 0x12 : 400Khz	: 10Mhz						  : 1.6us
  * I2CG10[7:0] base clk1 for Fast-mode Plus (1Mhz) min tBuf 0.5us
  * 0x08 : 1Mhz		: 20Mhz						  : 0.8us
  */
-#define I2CCG_DIV_CTRL 0xC6411208
+#define I2CCG_DIV_CTRL 0xC6421208
 
 /* 0x00 : I2CC Master/Slave Function Control Register  */
 #define AST2600_I2CC_FUN_CTRL		0x00
