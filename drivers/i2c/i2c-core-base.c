@@ -1503,10 +1503,16 @@ int i2c_handle_smbus_host_notify(struct i2c_adapter *adap, unsigned short addr)
 }
 EXPORT_SYMBOL_GPL(i2c_handle_smbus_host_notify);
 
-static void i2c_adapter_hold(struct i2c_adapter *adapter, unsigned long timeout)
+static int i2c_adapter_hold(struct i2c_adapter *adapter, unsigned long timeout)
 {
-	mutex_lock(&adapter->hold_lock);
+	int ret;
+	ret = mutex_trylock(&adapter->hold_lock);
+	if (ret == 0) {
+		return 0;
+	}
+
 	schedule_delayed_work(&adapter->unhold_work, timeout);
+	return 1;
 }
 
 static void i2c_adapter_unhold(struct i2c_adapter *adapter)
@@ -1521,6 +1527,7 @@ static void i2c_adapter_unhold_work(struct work_struct *work)
 	struct i2c_adapter *adapter = container_of(dwork, struct i2c_adapter,
 						   unhold_work);
 
+	printk("[%d]i2c adapter lock timeout", adapter->nr);
 	mutex_unlock(&adapter->hold_lock);
 }
 
@@ -2271,7 +2278,9 @@ int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 					  (u16 *)msgs[num - 1].buf);
 		if (hold_msg == I2C_HOLD_MSG_SET) {
 			timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
-			i2c_adapter_hold(adap, timeout);
+			if (i2c_adapter_hold(adap, timeout) == 0) {
+				return -EIO;
+			}
 
 			if (--num == 0)
 				return 0;
@@ -2279,7 +2288,9 @@ int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 			i2c_adapter_unhold(adap);
 			return 0;
 		} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-			mutex_lock(&adap->hold_lock);
+			if (mutex_trylock(&adap->hold_lock) == 0) {
+				return -EIO;
+			}
 		}
 	}
 
