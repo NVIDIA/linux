@@ -73,7 +73,7 @@
 #include <net/mpls.h>
 #include <net/mptcp.h>
 #include <net/mctp.h>
-#include <net/page_pool.h>
+#include <net/page_pool/helpers.h>
 #include <net/dropreason.h>
 
 #include <linux/uaccess.h>
@@ -885,11 +885,56 @@ static void skb_clone_fraglist(struct sk_buff *skb)
 		skb_get(list);
 }
 
+#if IS_ENABLED(CONFIG_PAGE_POOL)
+bool napi_pp_put_page(struct page *page, bool napi_safe)
+{
+	bool allow_direct = false;
+	struct page_pool *pp;
+
+	page = compound_head(page);
+
+	/* page->pp_magic is OR'ed with PP_SIGNATURE after the allocation
+	 * in order to preserve any existing bits, such as bit 0 for the
+	 * head page of compound page and bit 1 for pfmemalloc page, so
+	 * mask those bits for freeing side when doing below checking,
+	 * and page_is_pfmemalloc() is checked in __page_pool_put_page()
+	 * to avoid recycling the pfmemalloc page.
+	 */
+	if (unlikely((page->pp_magic & ~0x3UL) != PP_SIGNATURE))
+		return false;
+
+	pp = page->pp;
+
+	/* Allow direct recycle if we have reasons to believe that we are
+	 * in the same context as the consumer would run, so there's
+	 * no possible race.
+	 * __page_pool_put_page() makes sure we're not in hardirq context
+	 * and interrupts are enabled prior to accessing the cache.
+	 */
+	if (napi_safe || in_softirq()) {
+		const struct napi_struct *napi = READ_ONCE(pp->p.napi);
+
+		allow_direct = napi &&
+			READ_ONCE(napi->list_owner) == smp_processor_id();
+	}
+
+	/* Driver set this to memory recycling info. Reset it on recycle.
+	 * This will *not* work for NIC using a split-page memory model.
+	 * The page will be returned to the pool here regardless of the
+	 * 'flipped' fragment being in use or not.
+	 */
+	page_pool_put_full_page(pp, page, allow_direct);
+
+	return true;
+}
+EXPORT_SYMBOL(napi_pp_put_page);
+#endif
+
 static bool skb_pp_recycle(struct sk_buff *skb, void *data, bool napi_safe)
 {
 	if (!IS_ENABLED(CONFIG_PAGE_POOL) || !skb->pp_recycle)
 		return false;
-	return page_pool_return_skb_page(virt_to_page(data), napi_safe);
+	return napi_pp_put_page(virt_to_page(data), napi_safe);
 }
 
 static void skb_kfree_head(void *head, unsigned int end_offset)
@@ -1926,11 +1971,17 @@ static inline int skb_alloc_rx_flag(const struct sk_buff *skb)
 
 struct sk_buff *skb_copy(const struct sk_buff *skb, gfp_t gfp_mask)
 {
-	int headerlen = skb_headroom(skb);
-	unsigned int size = skb_end_offset(skb) + skb->data_len;
-	struct sk_buff *n = __alloc_skb(size, gfp_mask,
-					skb_alloc_rx_flag(skb), NUMA_NO_NODE);
+	struct sk_buff *n;
+	unsigned int size;
+	int headerlen;
 
+	if (WARN_ON_ONCE(skb_shinfo(skb)->gso_type & SKB_GSO_FRAGLIST))
+		return NULL;
+
+	headerlen = skb_headroom(skb);
+	size = skb_end_offset(skb) + skb->data_len;
+	n = __alloc_skb(size, gfp_mask,
+			skb_alloc_rx_flag(skb), NUMA_NO_NODE);
 	if (!n)
 		return NULL;
 
@@ -2258,12 +2309,17 @@ struct sk_buff *skb_copy_expand(const struct sk_buff *skb,
 	/*
 	 *	Allocate the copy buffer
 	 */
-	struct sk_buff *n = __alloc_skb(newheadroom + skb->len + newtailroom,
-					gfp_mask, skb_alloc_rx_flag(skb),
-					NUMA_NO_NODE);
-	int oldheadroom = skb_headroom(skb);
 	int head_copy_len, head_copy_off;
+	struct sk_buff *n;
+	int oldheadroom;
 
+	if (WARN_ON_ONCE(skb_shinfo(skb)->gso_type & SKB_GSO_FRAGLIST))
+		return NULL;
+
+	oldheadroom = skb_headroom(skb);
+	n = __alloc_skb(newheadroom + skb->len + newtailroom,
+			gfp_mask, skb_alloc_rx_flag(skb),
+			NUMA_NO_NODE);
 	if (!n)
 		return NULL;
 
@@ -3662,20 +3718,23 @@ struct sk_buff *skb_dequeue_tail(struct sk_buff_head *list)
 EXPORT_SYMBOL(skb_dequeue_tail);
 
 /**
- *	skb_queue_purge - empty a list
+ *	skb_queue_purge_reason - empty a list
  *	@list: list to empty
+ *	@reason: drop reason
  *
  *	Delete all buffers on an &sk_buff list. Each buffer is removed from
  *	the list and one reference dropped. This function takes the list
  *	lock and is atomic with respect to other list locking functions.
  */
-void skb_queue_purge(struct sk_buff_head *list)
+void skb_queue_purge_reason(struct sk_buff_head *list,
+			    enum skb_drop_reason reason)
 {
 	struct sk_buff *skb;
+
 	while ((skb = skb_dequeue(list)) != NULL)
-		kfree_skb(skb);
+		kfree_skb_reason(skb, reason);
 }
-EXPORT_SYMBOL(skb_queue_purge);
+EXPORT_SYMBOL(skb_queue_purge_reason);
 
 /**
  *	skb_rbtree_purge - empty a skb rbtree
@@ -3702,6 +3761,27 @@ unsigned int skb_rbtree_purge(struct rb_root *root)
 	}
 	return sum;
 }
+
+void skb_errqueue_purge(struct sk_buff_head *list)
+{
+	struct sk_buff *skb, *next;
+	struct sk_buff_head kill;
+	unsigned long flags;
+
+	__skb_queue_head_init(&kill);
+
+	spin_lock_irqsave(&list->lock, flags);
+	skb_queue_walk_safe(list, skb, next) {
+		if (SKB_EXT_ERR(skb)->ee.ee_origin == SO_EE_ORIGIN_ZEROCOPY ||
+		    SKB_EXT_ERR(skb)->ee.ee_origin == SO_EE_ORIGIN_TIMESTAMPING)
+			continue;
+		__skb_unlink(skb, list);
+		__skb_queue_tail(&kill, skb);
+	}
+	spin_unlock_irqrestore(&list->lock, flags);
+	__skb_queue_purge(&kill);
+}
+EXPORT_SYMBOL(skb_errqueue_purge);
 
 /**
  *	skb_queue_head - queue a buffer at the list head
@@ -4185,6 +4265,7 @@ static void skb_ts_finish(struct ts_config *conf, struct ts_state *state)
 unsigned int skb_find_text(struct sk_buff *skb, unsigned int from,
 			   unsigned int to, struct ts_config *config)
 {
+	unsigned int patlen = config->ops->get_pattern_len(config);
 	struct ts_state state;
 	unsigned int ret;
 
@@ -4196,7 +4277,7 @@ unsigned int skb_find_text(struct sk_buff *skb, unsigned int from,
 	skb_prepare_seq_read(skb, from, to, TS_SKB_CB(&state));
 
 	ret = textsearch_find(config, &state);
-	return (ret <= to - from ? ret : UINT_MAX);
+	return (ret + patlen <= to - from ? ret : UINT_MAX);
 }
 EXPORT_SYMBOL(skb_find_text);
 
@@ -4729,29 +4810,21 @@ static const u8 skb_ext_type_len[] = {
 
 static __always_inline unsigned int skb_ext_total_length(void)
 {
-	return SKB_EXT_CHUNKSIZEOF(struct skb_ext) +
-#if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
-		skb_ext_type_len[SKB_EXT_BRIDGE_NF] +
-#endif
-#ifdef CONFIG_XFRM
-		skb_ext_type_len[SKB_EXT_SEC_PATH] +
-#endif
-#if IS_ENABLED(CONFIG_NET_TC_SKB_EXT)
-		skb_ext_type_len[TC_SKB_EXT] +
-#endif
-#if IS_ENABLED(CONFIG_MPTCP)
-		skb_ext_type_len[SKB_EXT_MPTCP] +
-#endif
-#if IS_ENABLED(CONFIG_MCTP_FLOWS)
-		skb_ext_type_len[SKB_EXT_MCTP] +
-#endif
-		0;
+	unsigned int l = SKB_EXT_CHUNKSIZEOF(struct skb_ext);
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(skb_ext_type_len); i++)
+		l += skb_ext_type_len[i];
+
+	return l;
 }
 
 static void skb_extensions_init(void)
 {
 	BUILD_BUG_ON(SKB_EXT_NUM >= 8);
+#if !IS_ENABLED(CONFIG_KCOV_INSTRUMENT_ALL)
 	BUILD_BUG_ON(skb_ext_total_length() > 255);
+#endif
 
 	skbuff_ext_cache = kmem_cache_create("skbuff_ext_cache",
 					     SKB_EXT_ALIGN_VALUE * skb_ext_total_length(),
@@ -4763,12 +4836,23 @@ static void skb_extensions_init(void)
 static void skb_extensions_init(void) {}
 #endif
 
+/* The SKB kmem_cache slab is critical for network performance.  Never
+ * merge/alias the slab with similar sized objects.  This avoids fragmentation
+ * that hurts performance of kmem_cache_{alloc,free}_bulk APIs.
+ */
+#ifndef CONFIG_SLUB_TINY
+#define FLAG_SKB_NO_MERGE	SLAB_NO_MERGE
+#else /* CONFIG_SLUB_TINY - simple loop in kmem_cache_alloc_bulk */
+#define FLAG_SKB_NO_MERGE	0
+#endif
+
 void __init skb_init(void)
 {
 	skbuff_cache = kmem_cache_create_usercopy("skbuff_head_cache",
 					      sizeof(struct sk_buff),
 					      0,
-					      SLAB_HWCACHE_ALIGN|SLAB_PANIC,
+					      SLAB_HWCACHE_ALIGN|SLAB_PANIC|
+						FLAG_SKB_NO_MERGE,
 					      offsetof(struct sk_buff, cb),
 					      sizeof_field(struct sk_buff, cb),
 					      NULL);
@@ -6219,7 +6303,7 @@ EXPORT_SYMBOL_GPL(skb_mpls_dec_ttl);
  *
  * @header_len: size of linear part
  * @data_len: needed length in frags
- * @max_page_order: max page order desired.
+ * @order: max page order desired.
  * @errcode: pointer to error code if any
  * @gfp_mask: allocation mask
  *
@@ -6227,21 +6311,17 @@ EXPORT_SYMBOL_GPL(skb_mpls_dec_ttl);
  */
 struct sk_buff *alloc_skb_with_frags(unsigned long header_len,
 				     unsigned long data_len,
-				     int max_page_order,
+				     int order,
 				     int *errcode,
 				     gfp_t gfp_mask)
 {
-	int npages = (data_len + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
 	unsigned long chunk;
 	struct sk_buff *skb;
 	struct page *page;
-	int i;
+	int nr_frags = 0;
 
 	*errcode = -EMSGSIZE;
-	/* Note this test could be relaxed, if we succeed to allocate
-	 * high order pages...
-	 */
-	if (npages > MAX_SKB_FRAGS)
+	if (unlikely(data_len > MAX_SKB_FRAGS * (PAGE_SIZE << order)))
 		return NULL;
 
 	*errcode = -ENOBUFS;
@@ -6249,34 +6329,32 @@ struct sk_buff *alloc_skb_with_frags(unsigned long header_len,
 	if (!skb)
 		return NULL;
 
-	skb->truesize += npages << PAGE_SHIFT;
-
-	for (i = 0; npages > 0; i++) {
-		int order = max_page_order;
-
-		while (order) {
-			if (npages >= 1 << order) {
-				page = alloc_pages((gfp_mask & ~__GFP_DIRECT_RECLAIM) |
-						   __GFP_COMP |
-						   __GFP_NOWARN,
-						   order);
-				if (page)
-					goto fill_page;
-				/* Do not retry other high order allocations */
-				order = 1;
-				max_page_order = 0;
-			}
-			order--;
-		}
-		page = alloc_page(gfp_mask);
-		if (!page)
+	while (data_len) {
+		if (nr_frags == MAX_SKB_FRAGS - 1)
 			goto failure;
-fill_page:
+		while (order && PAGE_ALIGN(data_len) < (PAGE_SIZE << order))
+			order--;
+
+		if (order) {
+			page = alloc_pages((gfp_mask & ~__GFP_DIRECT_RECLAIM) |
+					   __GFP_COMP |
+					   __GFP_NOWARN,
+					   order);
+			if (!page) {
+				order--;
+				continue;
+			}
+		} else {
+			page = alloc_page(gfp_mask);
+			if (!page)
+				goto failure;
+		}
 		chunk = min_t(unsigned long, data_len,
 			      PAGE_SIZE << order);
-		skb_fill_page_desc(skb, i, page, 0, chunk);
+		skb_fill_page_desc(skb, nr_frags, page, 0, chunk);
+		nr_frags++;
+		skb->truesize += (PAGE_SIZE << order);
 		data_len -= chunk;
-		npages -= 1 << order;
 	}
 	return skb;
 
@@ -6591,6 +6669,14 @@ static struct skb_ext *skb_ext_maybe_cow(struct skb_ext *old,
 
 		for (i = 0; i < sp->len; i++)
 			xfrm_state_hold(sp->xvec[i]);
+	}
+#endif
+#ifdef CONFIG_MCTP_FLOWS
+	if (old_active & (1 << SKB_EXT_MCTP)) {
+		struct mctp_flow *flow = skb_ext_get_ptr(old, SKB_EXT_MCTP);
+
+		if (flow->key)
+			refcount_inc(&flow->key->refs);
 	}
 #endif
 	__skb_ext_put(old);

@@ -161,7 +161,7 @@ static int ti_sci_debugfs_create(struct platform_device *pdev,
 {
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-	char debug_name[50] = "ti_sci_debug@";
+	char debug_name[50];
 
 	/* Debug region is optional */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
@@ -178,10 +178,10 @@ static int ti_sci_debugfs_create(struct platform_device *pdev,
 	/* Setup NULL termination */
 	info->debug_buffer[info->debug_region_size] = 0;
 
-	info->d = debugfs_create_file(strncat(debug_name, dev_name(dev),
-					      sizeof(debug_name) -
-					      sizeof("ti_sci_debug@")),
-				      0444, NULL, info, &ti_sci_debug_fops);
+	snprintf(debug_name, sizeof(debug_name), "ti_sci_debug@%s",
+		 dev_name(dev));
+	info->d = debugfs_create_file(debug_name, 0444, NULL, info,
+				      &ti_sci_debug_fops);
 	if (IS_ERR(info->d))
 		return PTR_ERR(info->d);
 
@@ -190,19 +190,6 @@ static int ti_sci_debugfs_create(struct platform_device *pdev,
 	return 0;
 }
 
-/**
- * ti_sci_debugfs_destroy() - clean up log debug file
- * @pdev:	platform device pointer
- * @info:	Pointer to SCI entity information
- */
-static void ti_sci_debugfs_destroy(struct platform_device *pdev,
-				   struct ti_sci_info *info)
-{
-	if (IS_ERR(info->debug_region))
-		return;
-
-	debugfs_remove(info->d);
-}
 #else /* CONFIG_DEBUG_FS */
 static inline int ti_sci_debugfs_create(struct platform_device *dev,
 					struct ti_sci_info *info)
@@ -1976,8 +1963,6 @@ static int ti_sci_free_irq(const struct ti_sci_handle *handle, u32 valid_params,
  * @src_index:		IRQ source index within the source device
  * @dst_id:		Device ID of the IRQ destination
  * @dst_host_irq:	IRQ number of the destination device
- * @vint_irq:		Boolean specifying if this interrupt belongs to
- *			Interrupt Aggregator.
  *
  * Return: 0 if all went fine, else return appropriate error.
  */
@@ -2024,8 +2009,6 @@ static int ti_sci_cmd_set_event_map(const struct ti_sci_handle *handle,
  * @src_index:		IRQ source index within the source device
  * @dst_id:		Device ID of the IRQ destination
  * @dst_host_irq:	IRQ number of the destination device
- * @vint_irq:		Boolean specifying if this interrupt belongs to
- *			Interrupt Aggregator.
  *
  * Return: 0 if all went fine, else return appropriate error.
  */
@@ -2618,6 +2601,7 @@ fail:
  *				    configuration flags
  * @handle:		Pointer to TI SCI handle
  * @proc_id:		Processor ID this request is for
+ * @bootvector:		Processor Boot vector (start address)
  * @config_flags_set:	Configuration flags to be set
  * @config_flags_clear:	Configuration flags to be cleared.
  *
@@ -2734,9 +2718,13 @@ fail:
 }
 
 /**
- * ti_sci_cmd_get_boot_status() - Command to get the processor boot status
+ * ti_sci_cmd_proc_get_status() - Command to get the processor boot status
  * @handle:	Pointer to TI SCI handle
  * @proc_id:	Processor ID this request is for
+ * @bv:		Processor Boot vector (start address)
+ * @cfg_flags:	Processor specific configuration flags
+ * @ctrl_flags:	Processor specific control flags
+ * @sts_flags:	Processor specific status flags
  *
  * Return: 0 if all went well, else returns appropriate error value.
  */
@@ -3254,7 +3242,7 @@ EXPORT_SYMBOL_GPL(devm_ti_sci_get_of_resource);
  * @handle:	TISCI handle
  * @dev:	Device pointer to which the resource is assigned
  * @dev_id:	TISCI device id to which the resource is assigned
- * @suub_type:	TISCI resource subytpe representing the resource.
+ * @sub_type:	TISCI resource subytpe representing the resource.
  *
  * Return: Pointer to ti_sci_resource if all went well else appropriate
  *	   error pointer.
@@ -3448,43 +3436,12 @@ out:
 	return ret;
 }
 
-static int ti_sci_remove(struct platform_device *pdev)
-{
-	struct ti_sci_info *info;
-	struct device *dev = &pdev->dev;
-	int ret = 0;
-
-	of_platform_depopulate(dev);
-
-	info = platform_get_drvdata(pdev);
-
-	if (info->nb.notifier_call)
-		unregister_restart_handler(&info->nb);
-
-	mutex_lock(&ti_sci_list_mutex);
-	if (info->users)
-		ret = -EBUSY;
-	else
-		list_del(&info->node);
-	mutex_unlock(&ti_sci_list_mutex);
-
-	if (!ret) {
-		ti_sci_debugfs_destroy(pdev, info);
-
-		/* Safe to free channels since no more users */
-		mbox_free_channel(info->chan_tx);
-		mbox_free_channel(info->chan_rx);
-	}
-
-	return ret;
-}
-
 static struct platform_driver ti_sci_driver = {
 	.probe = ti_sci_probe,
-	.remove = ti_sci_remove,
 	.driver = {
 		   .name = "ti-sci",
 		   .of_match_table = of_match_ptr(ti_sci_of_match),
+		   .suppress_bind_attrs = true,
 	},
 };
 module_platform_driver(ti_sci_driver);

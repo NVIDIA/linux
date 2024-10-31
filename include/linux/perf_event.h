@@ -288,10 +288,9 @@ struct perf_event_pmu_context;
 #define PERF_PMU_CAP_EXTENDED_REGS		0x0008
 #define PERF_PMU_CAP_EXCLUSIVE			0x0010
 #define PERF_PMU_CAP_ITRACE			0x0020
-#define PERF_PMU_CAP_HETEROGENEOUS_CPUS		0x0040
-#define PERF_PMU_CAP_NO_EXCLUDE			0x0080
-#define PERF_PMU_CAP_AUX_OUTPUT			0x0100
-#define PERF_PMU_CAP_EXTENDED_HW_TYPE		0x0200
+#define PERF_PMU_CAP_NO_EXCLUDE			0x0040
+#define PERF_PMU_CAP_AUX_OUTPUT			0x0080
+#define PERF_PMU_CAP_EXTENDED_HW_TYPE		0x0100
 
 struct perf_output_handle;
 
@@ -445,7 +444,8 @@ struct pmu {
 
 	/*
 	 * Will return the value for perf_event_mmap_page::index for this event,
-	 * if no implementation is provided it will default to: event->hw.idx + 1.
+	 * if no implementation is provided it will default to 0 (see
+	 * perf_event_idx_default).
 	 */
 	int (*event_idx)		(struct perf_event *event); /*optional */
 
@@ -786,6 +786,7 @@ struct perf_event {
 	struct irq_work			pending_irq;
 	struct callback_head		pending_task;
 	unsigned int			pending_work;
+	struct rcuwait			pending_work_wait;
 
 	atomic_t			event_limit;
 
@@ -843,11 +844,11 @@ struct perf_event {
 };
 
 /*
- *           ,-----------------------[1:n]----------------------.
- *           V                                                  V
- * perf_event_context <-[1:n]-> perf_event_pmu_context <--- perf_event
- *           ^                      ^     |                     |
- *           `--------[1:n]---------'     `-[n:1]-> pmu <-[1:n]-'
+ *           ,-----------------------[1:n]------------------------.
+ *           V                                                    V
+ * perf_event_context <-[1:n]-> perf_event_pmu_context <-[1:n]- perf_event
+ *                                        |                       |
+ *                                        `--[n:1]-> pmu <-[1:n]--'
  *
  *
  * struct perf_event_pmu_context  lifetime is refcount based and RCU freed
@@ -865,6 +866,9 @@ struct perf_event {
  * ctx->mutex pinning the configuration. Since we hold a reference on
  * group_leader (through the filedesc) it can't go away, therefore it's
  * associated pmu_ctx must exist and cannot change due to ctx->mutex.
+ *
+ * perf_event holds a refcount on perf_event_context
+ * perf_event holds a refcount on perf_event_pmu_context
  */
 struct perf_event_pmu_context {
 	struct pmu			*pmu;
@@ -879,6 +883,7 @@ struct perf_event_pmu_context {
 	unsigned int			embedded : 1;
 
 	unsigned int			nr_events;
+	unsigned int			nr_cgroups;
 
 	atomic_t			refcount; /* event <-> epc */
 	struct rcu_head			rcu_head;
@@ -1195,7 +1200,8 @@ struct perf_sample_data {
 		    PERF_MEM_S(LVL, NA)   |\
 		    PERF_MEM_S(SNOOP, NA) |\
 		    PERF_MEM_S(LOCK, NA)  |\
-		    PERF_MEM_S(TLB, NA))
+		    PERF_MEM_S(TLB, NA)   |\
+		    PERF_MEM_S(LVLNUM, NA))
 
 static inline void perf_sample_data_init(struct perf_sample_data *data,
 					 u64 addr, u64 period)
@@ -1593,13 +1599,7 @@ static inline int perf_is_paranoid(void)
 	return sysctl_perf_event_paranoid > -1;
 }
 
-static inline int perf_allow_kernel(struct perf_event_attr *attr)
-{
-	if (sysctl_perf_event_paranoid > 1 && !perfmon_capable())
-		return -EACCES;
-
-	return security_perf_event_open(attr, PERF_SECURITY_KERNEL);
-}
+int perf_allow_kernel(struct perf_event_attr *attr);
 
 static inline int perf_allow_cpu(struct perf_event_attr *attr)
 {
@@ -1876,10 +1876,6 @@ int perf_event_exit_cpu(unsigned int cpu);
 extern void arch_perf_update_userpage(struct perf_event *event,
 				      struct perf_event_mmap_page *userpg,
 				      u64 now);
-
-#ifdef CONFIG_MMU
-extern __weak u64 arch_perf_get_page_size(struct mm_struct *mm, unsigned long addr);
-#endif
 
 /*
  * Snapshot branch stack on software events.

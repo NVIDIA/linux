@@ -67,8 +67,8 @@ void dmam_free_coherent(struct device *dev, size_t size, void *vaddr,
 {
 	struct dma_devres match_data = { size, vaddr, dma_handle };
 
-	dma_free_coherent(dev, size, vaddr, dma_handle);
 	WARN_ON(devres_destroy(dev, dmam_release, dmam_match, &match_data));
+	dma_free_coherent(dev, size, vaddr, dma_handle);
 }
 EXPORT_SYMBOL(dmam_free_coherent);
 
@@ -759,12 +759,6 @@ bool dma_pci_p2pdma_supported(struct device *dev)
 	return ops->flags & DMA_F_PCI_P2PDMA_SUPPORTED;
 }
 EXPORT_SYMBOL_GPL(dma_pci_p2pdma_supported);
-
-#ifdef CONFIG_ARCH_HAS_DMA_SET_MASK
-void arch_dma_set_mask(struct device *dev, u64 mask);
-#else
-#define arch_dma_set_mask(dev, mask)	do { } while (0)
-#endif
 
 int dma_set_mask(struct device *dev, u64 mask)
 {

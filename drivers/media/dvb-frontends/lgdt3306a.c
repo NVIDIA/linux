@@ -12,7 +12,7 @@
 #include <asm/div64.h>
 #include <linux/kernel.h>
 #include <linux/dvb/frontend.h>
-#include <media/dvb_math.h>
+#include <linux/int_log.h>
 #include "lgdt3306a.h"
 #include <linux/i2c-mux.h>
 
@@ -2175,6 +2175,11 @@ static int lgdt3306a_probe(struct i2c_client *client)
 	struct lgdt3306a_state *state;
 	struct dvb_frontend *fe;
 	int ret;
+
+	if (!client->dev.platform_data) {
+		dev_err(&client->dev, "platform data is mandatory\n");
+		return -EINVAL;
+	}
 
 	config = kmemdup(client->dev.platform_data,
 			 sizeof(struct lgdt3306a_config), GFP_KERNEL);

@@ -5,13 +5,14 @@
 // Copyright 2007, 2008 Wolfson Microelectronics PLC.
 // Copyright 2008 SlimLogic Ltd.
 
-#include <linux/kernel.h>
-#include <linux/err.h>
+#include <linux/bitops.h>
 #include <linux/delay.h>
+#include <linux/err.h>
+#include <linux/export.h>
+#include <linux/kernel.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
-#include <linux/module.h>
 
 #include "internal.h"
 
@@ -104,13 +105,14 @@ static int regulator_range_selector_to_index(struct regulator_dev *rdev,
 {
 	int i;
 
-	if (!rdev->desc->linear_range_selectors)
+	if (!rdev->desc->linear_range_selectors_bitfield)
 		return -EINVAL;
 
 	rval &= rdev->desc->vsel_range_mask;
+	rval >>= ffs(rdev->desc->vsel_range_mask) - 1;
 
 	for (i = 0; i < rdev->desc->n_linear_ranges; i++) {
-		if (rdev->desc->linear_range_selectors[i] == rval)
+		if (rdev->desc->linear_range_selectors_bitfield[i] == rval)
 			return i;
 	}
 	return -EINVAL;
@@ -159,6 +161,32 @@ int regulator_get_voltage_sel_pickable_regmap(struct regulator_dev *rdev)
 }
 EXPORT_SYMBOL_GPL(regulator_get_voltage_sel_pickable_regmap);
 
+static int write_separate_vsel_and_range(struct regulator_dev *rdev,
+					 unsigned int sel, unsigned int range)
+{
+	bool range_updated;
+	int ret;
+
+	ret = regmap_update_bits_base(rdev->regmap, rdev->desc->vsel_range_reg,
+				      rdev->desc->vsel_range_mask,
+				      range, &range_updated, false, false);
+	if (ret)
+		return ret;
+
+	/*
+	 * Some PMICs treat the vsel_reg same as apply-bit. Force it to be
+	 * written if the range changed, even if the old selector was same as
+	 * the new one
+	 */
+	if (rdev->desc->range_applied_by_vsel && range_updated)
+		return regmap_write_bits(rdev->regmap,
+					rdev->desc->vsel_reg,
+					rdev->desc->vsel_mask, sel);
+
+	return regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
+				  rdev->desc->vsel_mask, sel);
+}
+
 /**
  * regulator_set_voltage_sel_pickable_regmap - pickable range set_voltage_sel
  *
@@ -194,23 +222,15 @@ int regulator_set_voltage_sel_pickable_regmap(struct regulator_dev *rdev,
 	sel <<= ffs(rdev->desc->vsel_mask) - 1;
 	sel += rdev->desc->linear_ranges[i].min_sel;
 
-	range = rdev->desc->linear_range_selectors[i];
+	range = rdev->desc->linear_range_selectors_bitfield[i];
+	range <<= ffs(rdev->desc->vsel_range_mask) - 1;
 
-	if (rdev->desc->vsel_reg == rdev->desc->vsel_range_reg) {
-		ret = regmap_update_bits(rdev->regmap,
-					 rdev->desc->vsel_reg,
+	if (rdev->desc->vsel_reg == rdev->desc->vsel_range_reg)
+		ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
 					 rdev->desc->vsel_range_mask |
 					 rdev->desc->vsel_mask, sel | range);
-	} else {
-		ret = regmap_update_bits(rdev->regmap,
-					 rdev->desc->vsel_range_reg,
-					 rdev->desc->vsel_range_mask, range);
-		if (ret)
-			return ret;
-
-		ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg,
-				  rdev->desc->vsel_mask, sel);
-	}
+	else
+		ret = write_separate_vsel_and_range(rdev, sel, range);
 
 	if (ret)
 		return ret;

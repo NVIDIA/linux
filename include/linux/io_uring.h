@@ -80,6 +80,7 @@ static inline void io_uring_free(struct task_struct *tsk)
 	if (tsk->io_uring)
 		__io_uring_free(tsk);
 }
+int io_uring_cmd_sock(struct io_uring_cmd *cmd, unsigned int issue_flags);
 bool io_is_uring_fops(struct file *file);
 #else
 static inline int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
@@ -111,6 +112,11 @@ static inline void io_uring_free(struct task_struct *tsk)
 static inline const char *io_uring_get_opcode(u8 opcode)
 {
 	return "";
+}
+static inline int io_uring_cmd_sock(struct io_uring_cmd *cmd,
+				    unsigned int issue_flags)
+{
+	return -EOPNOTSUPP;
 }
 static inline bool io_is_uring_fops(struct file *file)
 {

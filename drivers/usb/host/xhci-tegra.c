@@ -14,7 +14,7 @@
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/phy/phy.h>
 #include <linux/phy/tegra/xusb.h>
@@ -1912,6 +1912,15 @@ put_padctl:
 	return err;
 }
 
+static void tegra_xusb_disable(struct tegra_xusb *tegra)
+{
+	tegra_xusb_powergate_partitions(tegra);
+	tegra_xusb_powerdomain_remove(tegra->dev, tegra);
+	tegra_xusb_phy_disable(tegra);
+	tegra_xusb_clk_disable(tegra);
+	regulator_bulk_disable(tegra->soc->num_supplies, tegra->supplies);
+}
+
 static void tegra_xusb_remove(struct platform_device *pdev)
 {
 	struct tegra_xusb *tegra = platform_get_drvdata(pdev);
@@ -1934,14 +1943,18 @@ static void tegra_xusb_remove(struct platform_device *pdev)
 
 	pm_runtime_put(&pdev->dev);
 
-	tegra_xusb_powergate_partitions(tegra);
-
-	tegra_xusb_powerdomain_remove(&pdev->dev, tegra);
-
-	tegra_xusb_phy_disable(tegra);
-	tegra_xusb_clk_disable(tegra);
-	regulator_bulk_disable(tegra->soc->num_supplies, tegra->supplies);
+	tegra_xusb_disable(tegra);
 	tegra_xusb_padctl_put(tegra->padctl);
+}
+
+static void tegra_xusb_shutdown(struct platform_device *pdev)
+{
+	struct tegra_xusb *tegra = platform_get_drvdata(pdev);
+
+	pm_runtime_get_sync(&pdev->dev);
+	disable_irq(tegra->xhci_irq);
+	xhci_shutdown(tegra->hcd);
+	tegra_xusb_disable(tegra);
 }
 
 static bool xhci_hub_ports_suspended(struct xhci_hub *hub)
@@ -2170,7 +2183,7 @@ static int tegra_xusb_enter_elpg(struct tegra_xusb *tegra, bool runtime)
 		goto out;
 	}
 
-	for (i = 0; i < tegra->num_usb_phys; i++) {
+	for (i = 0; i < xhci->usb2_rhub.num_ports; i++) {
 		if (!xhci->usb2_rhub.ports[i])
 			continue;
 		portsc = readl(xhci->usb2_rhub.ports[i]->addr);
@@ -2652,6 +2665,7 @@ MODULE_DEVICE_TABLE(of, tegra_xusb_of_match);
 static struct platform_driver tegra_xusb_driver = {
 	.probe = tegra_xusb_probe,
 	.remove_new = tegra_xusb_remove,
+	.shutdown = tegra_xusb_shutdown,
 	.driver = {
 		.name = "tegra-xusb",
 		.pm = &tegra_xusb_pm_ops,

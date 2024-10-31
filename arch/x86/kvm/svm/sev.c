@@ -23,6 +23,7 @@
 #include <asm/pkru.h>
 #include <asm/trapnr.h>
 #include <asm/fpu/xcr.h>
+#include <asm/debugreg.h>
 
 #include "mmu.h"
 #include "x86.h"
@@ -54,9 +55,14 @@ module_param_named(sev, sev_enabled, bool, 0444);
 /* enable/disable SEV-ES support */
 static bool sev_es_enabled = true;
 module_param_named(sev_es, sev_es_enabled, bool, 0444);
+
+/* enable/disable SEV-ES DebugSwap support */
+static bool sev_es_debug_swap_enabled = false;
+module_param_named(debug_swap, sev_es_debug_swap_enabled, bool, 0444);
 #else
 #define sev_enabled false
 #define sev_es_enabled false
+#define sev_es_debug_swap_enabled false
 #endif /* CONFIG_KVM_AMD_SEV */
 
 static u8 sev_enc_bit;
@@ -78,9 +84,10 @@ struct enc_region {
 };
 
 /* Called with the sev_bitmap_lock held, or on shutdown  */
-static int sev_flush_asids(int min_asid, int max_asid)
+static int sev_flush_asids(unsigned int min_asid, unsigned int max_asid)
 {
-	int ret, asid, error = 0;
+	int ret, error = 0;
+	unsigned int asid;
 
 	/* Check if there are any ASIDs to reclaim before performing a flush */
 	asid = find_next_bit(sev_reclaim_asid_bitmap, nr_asids, min_asid);
@@ -110,7 +117,7 @@ static inline bool is_mirroring_enc_context(struct kvm *kvm)
 }
 
 /* Must be called with the sev_bitmap_lock held */
-static bool __sev_recycle_asids(int min_asid, int max_asid)
+static bool __sev_recycle_asids(unsigned int min_asid, unsigned int max_asid)
 {
 	if (sev_flush_asids(min_asid, max_asid))
 		return false;
@@ -137,8 +144,20 @@ static void sev_misc_cg_uncharge(struct kvm_sev_info *sev)
 
 static int sev_asid_new(struct kvm_sev_info *sev)
 {
-	int asid, min_asid, max_asid, ret;
+	/*
+	 * SEV-enabled guests must use asid from min_sev_asid to max_sev_asid.
+	 * SEV-ES-enabled guest can use from 1 to min_sev_asid - 1.
+	 * Note: min ASID can end up larger than the max if basic SEV support is
+	 * effectively disabled by disallowing use of ASIDs for SEV guests.
+	 */
+	unsigned int min_asid = sev->es_active ? 1 : min_sev_asid;
+	unsigned int max_asid = sev->es_active ? min_sev_asid - 1 : max_sev_asid;
+	unsigned int asid;
 	bool retry = true;
+	int ret;
+
+	if (min_asid > max_asid)
+		return -ENOTTY;
 
 	WARN_ON(sev->misc_cg);
 	sev->misc_cg = get_current_misc_cg();
@@ -151,12 +170,6 @@ static int sev_asid_new(struct kvm_sev_info *sev)
 
 	mutex_lock(&sev_bitmap_lock);
 
-	/*
-	 * SEV-enabled guests must use asid from min_sev_asid to max_sev_asid.
-	 * SEV-ES-enabled guest can use from 1 to min_sev_asid - 1.
-	 */
-	min_asid = sev->es_active ? 1 : min_sev_asid;
-	max_asid = sev->es_active ? min_sev_asid - 1 : max_sev_asid;
 again:
 	asid = find_next_zero_bit(sev_asid_bitmap, max_asid + 1, min_asid);
 	if (asid > max_asid) {
@@ -181,7 +194,7 @@ e_uncharge:
 	return ret;
 }
 
-static int sev_get_asid(struct kvm *kvm)
+static unsigned int sev_get_asid(struct kvm *kvm)
 {
 	struct kvm_sev_info *sev = &to_kvm_svm(kvm)->sev_info;
 
@@ -278,8 +291,8 @@ e_no_asid:
 
 static int sev_bind_asid(struct kvm *kvm, unsigned int handle, int *error)
 {
+	unsigned int asid = sev_get_asid(kvm);
 	struct sev_data_activate activate;
-	int asid = sev_get_asid(kvm);
 	int ret;
 
 	/* activate ASID on the given handle */
@@ -606,6 +619,12 @@ static int sev_es_sync_vmsa(struct vcpu_svm *svm)
 	save->xss  = svm->vcpu.arch.ia32_xss;
 	save->dr6  = svm->vcpu.arch.dr6;
 
+	if (sev_es_debug_swap_enabled) {
+		save->sev_features |= SVM_SEV_FEAT_DEBUG_SWAP;
+		pr_warn_once("Enabling DebugSwap with KVM_SEV_ES_INIT. "
+			     "This will not work starting with Linux 6.10\n");
+	}
+
 	pr_debug("Virtual Machine Save Area (VMSA):\n");
 	print_hex_dump_debug("", DUMP_PREFIX_NONE, 16, 1, save, sizeof(*save), false);
 
@@ -618,6 +637,11 @@ static int __sev_launch_update_vmsa(struct kvm *kvm, struct kvm_vcpu *vcpu,
 	struct sev_data_launch_update_vmsa vmsa;
 	struct vcpu_svm *svm = to_svm(vcpu);
 	int ret;
+
+	if (vcpu->guest_debug) {
+		pr_warn_once("KVM_SET_GUEST_DEBUG for SEV-ES guest is not supported");
+		return -EINVAL;
+	}
 
 	/* Perform some pre-encryption checks against the VMSA */
 	ret = sev_es_sync_vmsa(svm);
@@ -640,6 +664,14 @@ static int __sev_launch_update_vmsa(struct kvm *kvm, struct kvm_vcpu *vcpu,
 	  return ret;
 
 	vcpu->arch.guest_state_protected = true;
+
+	/*
+	 * SEV-ES guest mandates LBR Virtualization to be _always_ ON. Enable it
+	 * only after setting guest_state_protected because KVM_SET_MSRS allows
+	 * dynamic toggling of LBRV (for performance reason) on write access to
+	 * MSR_IA32_DEBUGCTLMSR when guest_state_protected is not set.
+	 */
+	svm_enable_lbrv(vcpu);
 	return 0;
 }
 
@@ -1961,19 +1993,21 @@ int sev_mem_enc_register_region(struct kvm *kvm,
 		goto e_free;
 	}
 
+	/*
+	 * The guest may change the memory encryption attribute from C=0 -> C=1
+	 * or vice versa for this memory range. Lets make sure caches are
+	 * flushed to ensure that guest data gets written into memory with
+	 * correct C-bit.  Note, this must be done before dropping kvm->lock,
+	 * as region and its array of pages can be freed by a different task
+	 * once kvm->lock is released.
+	 */
+	sev_clflush_pages(region->pages, region->npages);
+
 	region->uaddr = range->addr;
 	region->size = range->size;
 
 	list_add_tail(&region->list, &sev->regions_list);
 	mutex_unlock(&kvm->lock);
-
-	/*
-	 * The guest may change the memory encryption attribute from C=0 -> C=1
-	 * or vice versa for this memory range. Lets make sure caches are
-	 * flushed to ensure that guest data gets written into memory with
-	 * correct C-bit.
-	 */
-	sev_clflush_pages(region->pages, region->npages);
 
 	return ret;
 
@@ -2171,7 +2205,7 @@ void __init sev_hardware_setup(void)
 	bool sev_es_supported = false;
 	bool sev_supported = false;
 
-	if (!sev_enabled || !npt_enabled)
+	if (!sev_enabled || !npt_enabled || !nrips)
 		goto out;
 
 	/*
@@ -2215,8 +2249,10 @@ void __init sev_hardware_setup(void)
 		goto out;
 	}
 
-	sev_asid_count = max_sev_asid - min_sev_asid + 1;
-	WARN_ON_ONCE(misc_cg_set_capacity(MISC_CG_RES_SEV, sev_asid_count));
+	if (min_sev_asid <= max_sev_asid) {
+		sev_asid_count = max_sev_asid - min_sev_asid + 1;
+		WARN_ON_ONCE(misc_cg_set_capacity(MISC_CG_RES_SEV, sev_asid_count));
+	}
 	sev_supported = true;
 
 	/* SEV-ES support requested? */
@@ -2236,6 +2272,12 @@ void __init sev_hardware_setup(void)
 	if (!boot_cpu_has(X86_FEATURE_SEV_ES))
 		goto out;
 
+	if (!lbrv) {
+		WARN_ONCE(!boot_cpu_has(X86_FEATURE_LBRV),
+			  "LBRV must be present for SEV-ES support");
+		goto out;
+	}
+
 	/* Has the system been allocated ASIDs for SEV-ES? */
 	if (min_sev_asid == 1)
 		goto out;
@@ -2247,7 +2289,9 @@ void __init sev_hardware_setup(void)
 out:
 	if (boot_cpu_has(X86_FEATURE_SEV))
 		pr_info("SEV %s (ASIDs %u - %u)\n",
-			sev_supported ? "enabled" : "disabled",
+			sev_supported ? min_sev_asid <= max_sev_asid ? "enabled" :
+								       "unusable" :
+								       "disabled",
 			min_sev_asid, max_sev_asid);
 	if (boot_cpu_has(X86_FEATURE_SEV_ES))
 		pr_info("SEV-ES %s (ASIDs %u - %u)\n",
@@ -2256,6 +2300,9 @@ out:
 
 	sev_enabled = sev_supported;
 	sev_es_enabled = sev_es_supported;
+	if (!sev_es_enabled || !cpu_feature_enabled(X86_FEATURE_DEBUG_SWAP) ||
+	    !cpu_feature_enabled(X86_FEATURE_NO_NESTED_DATA_BP))
+		sev_es_debug_swap_enabled = false;
 #endif
 }
 
@@ -2292,7 +2339,7 @@ int sev_cpu_init(struct svm_cpu_data *sd)
  */
 static void sev_flush_encrypted_page(struct kvm_vcpu *vcpu, void *va)
 {
-	int asid = to_kvm_svm(vcpu->kvm)->sev_info.asid;
+	unsigned int asid = sev_get_asid(vcpu->kvm);
 
 	/*
 	 * Note!  The address must be a kernel address, as regular page walk
@@ -2610,7 +2657,7 @@ void sev_es_unmap_ghcb(struct vcpu_svm *svm)
 void pre_sev_run(struct vcpu_svm *svm, int cpu)
 {
 	struct svm_cpu_data *sd = per_cpu_ptr(&svm_data, cpu);
-	int asid = sev_get_asid(svm->vcpu.kvm);
+	unsigned int asid = sev_get_asid(svm->vcpu.kvm);
 
 	/* Assign the asid allocated with this SEV guest */
 	svm->asid = asid;
@@ -2955,6 +3002,25 @@ static void sev_es_vcpu_after_set_cpuid(struct vcpu_svm *svm)
 
 		set_msr_interception(vcpu, svm->msrpm, MSR_TSC_AUX, v_tsc_aux, v_tsc_aux);
 	}
+
+	/*
+	 * For SEV-ES, accesses to MSR_IA32_XSS should not be intercepted if
+	 * the host/guest supports its use.
+	 *
+	 * guest_can_use() checks a number of requirements on the host/guest to
+	 * ensure that MSR_IA32_XSS is available, but it might report true even
+	 * if X86_FEATURE_XSAVES isn't configured in the guest to ensure host
+	 * MSR_IA32_XSS is always properly restored. For SEV-ES, it is better
+	 * to further check that the guest CPUID actually supports
+	 * X86_FEATURE_XSAVES so that accesses to MSR_IA32_XSS by misbehaved
+	 * guests will still get intercepted and caught in the normal
+	 * kvm_emulate_rdmsr()/kvm_emulated_wrmsr() paths.
+	 */
+	if (guest_can_use(vcpu, X86_FEATURE_XSAVES) &&
+	    guest_cpuid_has(vcpu, X86_FEATURE_XSAVES))
+		set_msr_interception(vcpu, svm->msrpm, MSR_IA32_XSS, 1, 1);
+	else
+		set_msr_interception(vcpu, svm->msrpm, MSR_IA32_XSS, 0, 0);
 }
 
 void sev_vcpu_after_set_cpuid(struct vcpu_svm *svm)
@@ -2973,10 +3039,10 @@ void sev_vcpu_after_set_cpuid(struct vcpu_svm *svm)
 
 static void sev_es_init_vmcb(struct vcpu_svm *svm)
 {
+	struct vmcb *vmcb = svm->vmcb01.ptr;
 	struct kvm_vcpu *vcpu = &svm->vcpu;
 
 	svm->vmcb->control.nested_ctl |= SVM_NESTED_CTL_SEV_ES_ENABLE;
-	svm->vmcb->control.virt_ext |= LBR_CTL_ENABLE_MASK;
 
 	/*
 	 * An SEV-ES guest requires a VMSA area that is a separate from the
@@ -3004,8 +3070,23 @@ static void sev_es_init_vmcb(struct vcpu_svm *svm)
 	svm_set_intercept(svm, TRAP_CR4_WRITE);
 	svm_set_intercept(svm, TRAP_CR8_WRITE);
 
-	/* No support for enable_vmware_backdoor */
-	clr_exception_intercept(svm, GP_VECTOR);
+	vmcb->control.intercepts[INTERCEPT_DR] = 0;
+	if (!sev_es_debug_swap_enabled) {
+		vmcb_set_intercept(&vmcb->control, INTERCEPT_DR7_READ);
+		vmcb_set_intercept(&vmcb->control, INTERCEPT_DR7_WRITE);
+		recalc_intercepts(svm);
+	} else {
+		/*
+		 * Disable #DB intercept iff DebugSwap is enabled.  KVM doesn't
+		 * allow debugging SEV-ES guests, and enables DebugSwap iff
+		 * NO_NESTED_DATA_BP is supported, so there's no reason to
+		 * intercept #DB when DebugSwap is enabled.  For simplicity
+		 * with respect to guest debug, intercept #DB for other VMs
+		 * even if NO_NESTED_DATA_BP is supported, i.e. even if the
+		 * guest can't DoS the CPU with infinite #DB vectoring.
+		 */
+		clr_exception_intercept(svm, DB_VECTOR);
+	}
 
 	/* Can't intercept XSETBV, HV can't modify XCR0 directly */
 	svm_clr_intercept(svm, INTERCEPT_XSETBV);
@@ -3013,16 +3094,18 @@ static void sev_es_init_vmcb(struct vcpu_svm *svm)
 	/* Clear intercepts on selected MSRs */
 	set_msr_interception(vcpu, svm->msrpm, MSR_EFER, 1, 1);
 	set_msr_interception(vcpu, svm->msrpm, MSR_IA32_CR_PAT, 1, 1);
-	set_msr_interception(vcpu, svm->msrpm, MSR_IA32_LASTBRANCHFROMIP, 1, 1);
-	set_msr_interception(vcpu, svm->msrpm, MSR_IA32_LASTBRANCHTOIP, 1, 1);
-	set_msr_interception(vcpu, svm->msrpm, MSR_IA32_LASTINTFROMIP, 1, 1);
-	set_msr_interception(vcpu, svm->msrpm, MSR_IA32_LASTINTTOIP, 1, 1);
 }
 
 void sev_init_vmcb(struct vcpu_svm *svm)
 {
 	svm->vmcb->control.nested_ctl |= SVM_NESTED_CTL_SEV_ENABLE;
 	clr_exception_intercept(svm, UD_VECTOR);
+
+	/*
+	 * Don't intercept #GP for SEV guests, e.g. for the VMware backdoor, as
+	 * KVM can't decrypt guest memory to decode the faulting instruction.
+	 */
+	clr_exception_intercept(svm, GP_VECTOR);
 
 	if (sev_es_guest(svm->vcpu.kvm))
 		sev_es_init_vmcb(svm);
@@ -3042,20 +3125,41 @@ void sev_es_vcpu_reset(struct vcpu_svm *svm)
 void sev_es_prepare_switch_to_guest(struct sev_es_save_area *hostsa)
 {
 	/*
-	 * As an SEV-ES guest, hardware will restore the host state on VMEXIT,
-	 * of which one step is to perform a VMLOAD.  KVM performs the
-	 * corresponding VMSAVE in svm_prepare_guest_switch for both
-	 * traditional and SEV-ES guests.
+	 * All host state for SEV-ES guests is categorized into three swap types
+	 * based on how it is handled by hardware during a world switch:
+	 *
+	 * A: VMRUN:   Host state saved in host save area
+	 *    VMEXIT:  Host state loaded from host save area
+	 *
+	 * B: VMRUN:   Host state _NOT_ saved in host save area
+	 *    VMEXIT:  Host state loaded from host save area
+	 *
+	 * C: VMRUN:   Host state _NOT_ saved in host save area
+	 *    VMEXIT:  Host state initialized to default(reset) values
+	 *
+	 * Manually save type-B state, i.e. state that is loaded by VMEXIT but
+	 * isn't saved by VMRUN, that isn't already saved by VMSAVE (performed
+	 * by common SVM code).
 	 */
-
-	/* XCR0 is restored on VMEXIT, save the current host value */
 	hostsa->xcr0 = xgetbv(XCR_XFEATURE_ENABLED_MASK);
-
-	/* PKRU is restored on VMEXIT, save the current host value */
 	hostsa->pkru = read_pkru();
-
-	/* MSR_IA32_XSS is restored on VMEXIT, save the currnet host value */
 	hostsa->xss = host_xss;
+
+	/*
+	 * If DebugSwap is enabled, debug registers are loaded but NOT saved by
+	 * the CPU (Type-B). If DebugSwap is disabled/unsupported, the CPU both
+	 * saves and loads debug registers (Type-A).
+	 */
+	if (sev_es_debug_swap_enabled) {
+		hostsa->dr0 = native_get_debugreg(0);
+		hostsa->dr1 = native_get_debugreg(1);
+		hostsa->dr2 = native_get_debugreg(2);
+		hostsa->dr3 = native_get_debugreg(3);
+		hostsa->dr0_addr_mask = amd_get_dr_addr_mask(0);
+		hostsa->dr1_addr_mask = amd_get_dr_addr_mask(1);
+		hostsa->dr2_addr_mask = amd_get_dr_addr_mask(2);
+		hostsa->dr3_addr_mask = amd_get_dr_addr_mask(3);
+	}
 }
 
 void sev_vcpu_deliver_sipi_vector(struct kvm_vcpu *vcpu, u8 vector)

@@ -187,24 +187,13 @@ static int inet_autobind(struct sock *sk)
 	return 0;
 }
 
-/*
- *	Move a socket into listening state.
- */
-int inet_listen(struct socket *sock, int backlog)
+int __inet_listen_sk(struct sock *sk, int backlog)
 {
-	struct sock *sk = sock->sk;
-	unsigned char old_state;
+	unsigned char old_state = sk->sk_state;
 	int err, tcp_fastopen;
 
-	lock_sock(sk);
-
-	err = -EINVAL;
-	if (sock->state != SS_UNCONNECTED || sock->type != SOCK_STREAM)
-		goto out;
-
-	old_state = sk->sk_state;
 	if (!((1 << old_state) & (TCPF_CLOSE | TCPF_LISTEN)))
-		goto out;
+		return -EINVAL;
 
 	WRITE_ONCE(sk->sk_max_ack_backlog, backlog);
 	/* Really, if the socket is already in listen state
@@ -227,10 +216,27 @@ int inet_listen(struct socket *sock, int backlog)
 
 		err = inet_csk_listen_start(sk);
 		if (err)
-			goto out;
+			return err;
+
 		tcp_call_bpf(sk, BPF_SOCK_OPS_TCP_LISTEN_CB, 0, NULL);
 	}
-	err = 0;
+	return 0;
+}
+
+/*
+ *	Move a socket into listening state.
+ */
+int inet_listen(struct socket *sock, int backlog)
+{
+	struct sock *sk = sock->sk;
+	int err = -EINVAL;
+
+	lock_sock(sk);
+
+	if (sock->state != SS_UNCONNECTED || sock->type != SOCK_STREAM)
+		goto out;
+
+	err = __inet_listen_sk(sk, backlog);
 
 out:
 	release_sock(sk);
@@ -328,14 +334,14 @@ lookup_protocol:
 		inet_init_csk_locks(sk);
 
 	inet = inet_sk(sk);
-	inet->is_icsk = (INET_PROTOSW_ICSK & answer_flags) != 0;
+	inet_assign_bit(IS_ICSK, sk, INET_PROTOSW_ICSK & answer_flags);
 
-	inet->nodefrag = 0;
+	inet_clear_bit(NODEFRAG, sk);
 
 	if (SOCK_RAW == sock->type) {
 		inet->inet_num = protocol;
 		if (IPPROTO_RAW == protocol)
-			inet->hdrincl = 1;
+			inet_set_bit(HDRINCL, sk);
 	}
 
 	if (READ_ONCE(net->ipv4.sysctl_ip_no_pmtu_disc))
@@ -353,9 +359,9 @@ lookup_protocol:
 	sk->sk_txrehash = READ_ONCE(net->core.sysctl_txrehash);
 
 	inet->uc_ttl	= -1;
-	inet->mc_loop	= 1;
+	inet_set_bit(MC_LOOP, sk);
 	inet->mc_ttl	= 1;
-	inet->mc_all	= 1;
+	inet_set_bit(MC_ALL, sk);
 	inet->mc_index	= 0;
 	inet->mc_list	= NULL;
 	inet->rcv_tos	= 0;
@@ -434,9 +440,8 @@ int inet_release(struct socket *sock)
 }
 EXPORT_SYMBOL(inet_release);
 
-int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+int inet_bind_sk(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
-	struct sock *sk = sock->sk;
 	u32 flags = BIND_WITH_LOCK;
 	int err;
 
@@ -450,12 +455,17 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	/* BPF prog is run before any checks are done so that if the prog
 	 * changes context in a wrong way it will be caught.
 	 */
-	err = BPF_CGROUP_RUN_PROG_INET_BIND_LOCK(sk, uaddr,
+	err = BPF_CGROUP_RUN_PROG_INET_BIND_LOCK(sk, uaddr, &addr_len,
 						 CGROUP_INET4_BIND, &flags);
 	if (err)
 		return err;
 
 	return __inet_bind(sk, uaddr, addr_len, flags);
+}
+
+int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+{
+	return inet_bind_sk(sock->sk, uaddr, addr_len);
 }
 EXPORT_SYMBOL(inet_bind);
 
@@ -522,7 +532,7 @@ int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 		inet->inet_saddr = 0;  /* Use device */
 
 	/* Make sure we are allowed to bind here. */
-	if (snum || !(inet->bind_address_no_port ||
+	if (snum || !(inet_test_bit(BIND_ADDRESS_NO_PORT, sk) ||
 		      (flags & BIND_FORCE_ADDRESS_NO_PORT))) {
 		err = sk->sk_prot->get_port(sk, snum);
 		if (err) {
@@ -648,7 +658,7 @@ int __inet_stream_connect(struct socket *sock, struct sockaddr *uaddr,
 		err = -EISCONN;
 		goto out;
 	case SS_CONNECTING:
-		if (inet_sk(sk)->defer_connect)
+		if (inet_test_bit(DEFER_CONNECT, sk))
 			err = is_sendmsg ? -EINPROGRESS : -EISCONN;
 		else
 			err = -EALREADY;
@@ -671,7 +681,7 @@ int __inet_stream_connect(struct socket *sock, struct sockaddr *uaddr,
 
 		sock->state = SS_CONNECTING;
 
-		if (!err && inet_sk(sk)->defer_connect)
+		if (!err && inet_test_bit(DEFER_CONNECT, sk))
 			goto out;
 
 		/* Just entered SS_CONNECTING state; the only
@@ -747,7 +757,9 @@ void __inet_accept(struct socket *sock, struct socket *newsock, struct sock *new
 	sock_rps_record_flow(newsk);
 	WARN_ON(!((1 << newsk->sk_state) &
 		  (TCPF_ESTABLISHED | TCPF_SYN_RECV |
-		  TCPF_CLOSE_WAIT | TCPF_CLOSE)));
+		   TCPF_FIN_WAIT1 | TCPF_FIN_WAIT2 |
+		   TCPF_CLOSING | TCPF_CLOSE_WAIT |
+		   TCPF_CLOSE)));
 
 	if (test_bit(SOCK_SUPPORT_ZC, &sock->flags))
 		set_bit(SOCK_SUPPORT_ZC, &newsock->flags);
@@ -787,6 +799,7 @@ int inet_getname(struct socket *sock, struct sockaddr *uaddr,
 	struct sock *sk		= sock->sk;
 	struct inet_sock *inet	= inet_sk(sk);
 	DECLARE_SOCKADDR(struct sockaddr_in *, sin, uaddr);
+	int sin_addr_len = sizeof(*sin);
 
 	sin->sin_family = AF_INET;
 	lock_sock(sk);
@@ -799,7 +812,7 @@ int inet_getname(struct socket *sock, struct sockaddr *uaddr,
 		}
 		sin->sin_port = inet->inet_dport;
 		sin->sin_addr.s_addr = inet->inet_daddr;
-		BPF_CGROUP_RUN_SA_PROG(sk, (struct sockaddr *)sin,
+		BPF_CGROUP_RUN_SA_PROG(sk, (struct sockaddr *)sin, &sin_addr_len,
 				       CGROUP_INET4_GETPEERNAME);
 	} else {
 		__be32 addr = inet->inet_rcv_saddr;
@@ -807,12 +820,12 @@ int inet_getname(struct socket *sock, struct sockaddr *uaddr,
 			addr = inet->inet_saddr;
 		sin->sin_port = inet->inet_sport;
 		sin->sin_addr.s_addr = addr;
-		BPF_CGROUP_RUN_SA_PROG(sk, (struct sockaddr *)sin,
+		BPF_CGROUP_RUN_SA_PROG(sk, (struct sockaddr *)sin, &sin_addr_len,
 				       CGROUP_INET4_GETSOCKNAME);
 	}
 	release_sock(sk);
 	memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
-	return sizeof(*sin);
+	return sin_addr_len;
 }
 EXPORT_SYMBOL(inet_getname);
 
@@ -1560,6 +1573,7 @@ struct sk_buff *inet_gro_receive(struct list_head *head, struct sk_buff *skb)
 	/* The above will be needed by the transport layer if there is one
 	 * immediately following this IP hdr.
 	 */
+	NAPI_GRO_CB(skb)->inner_network_offset = off;
 
 	/* Note : No need to call skb_gro_postpull_rcsum() here,
 	 * as we already checked checksum over ipv4 header was 0
@@ -1627,6 +1641,7 @@ int inet_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 #endif
 	return -EINVAL;
 }
+EXPORT_SYMBOL(inet_recv_error);
 
 int inet_gro_complete(struct sk_buff *skb, int nhoff)
 {

@@ -92,6 +92,7 @@ struct rpc_clnt {
 	};
 	const struct cred	*cl_cred;
 	unsigned int		cl_max_connect; /* max number of transports not to the same IP */
+	struct super_block *pipefs_sb;
 };
 
 /*
@@ -138,6 +139,7 @@ struct rpc_create_args {
 	const char		*servername;
 	const char		*nodename;
 	const struct rpc_program *program;
+	struct rpc_stat		*stats;
 	u32			prognumber;	/* overrides program->number */
 	u32			version;
 	rpc_authflavor_t	authflavor;
@@ -148,6 +150,8 @@ struct rpc_create_args {
 	const struct cred	*cred;
 	unsigned int		max_connect;
 	struct xprtsec_parms	xprtsec;
+	unsigned long		connect_timeout;
+	unsigned long		reconnect_timeout;
 };
 
 struct rpc_add_xprt_test {

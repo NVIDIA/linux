@@ -366,7 +366,6 @@ static int zcdn_create(const char *name)
 {
 	dev_t devt;
 	int i, rc = 0;
-	char nodename[ZCDN_MAX_NAME];
 	struct zcdn_device *zcdndev;
 
 	if (mutex_lock_interruptible(&ap_perms_mutex))
@@ -407,14 +406,11 @@ static int zcdn_create(const char *name)
 	zcdndev->device.devt = devt;
 	zcdndev->device.groups = zcdn_dev_attr_groups;
 	if (name[0])
-		strncpy(nodename, name, sizeof(nodename));
+		rc = dev_set_name(&zcdndev->device, "%s", name);
 	else
-		snprintf(nodename, sizeof(nodename),
-			 ZCRYPT_NAME "_%d", (int)MINOR(devt));
-	nodename[sizeof(nodename) - 1] = '\0';
-	if (dev_set_name(&zcdndev->device, nodename)) {
+		rc = dev_set_name(&zcdndev->device, ZCRYPT_NAME "_%d", (int)MINOR(devt));
+	if (rc) {
 		kfree(zcdndev);
-		rc = -EINVAL;
 		goto unlockout;
 	}
 	rc = device_register(&zcdndev->device);
@@ -583,6 +579,7 @@ static inline struct zcrypt_queue *zcrypt_pick_queue(struct zcrypt_card *zc,
 {
 	if (!zq || !try_module_get(zq->queue->ap_dev.device.driver->owner))
 		return NULL;
+	zcrypt_card_get(zc);
 	zcrypt_queue_get(zq);
 	get_device(&zq->queue->ap_dev.device);
 	atomic_add(weight, &zc->load);
@@ -602,6 +599,7 @@ static inline void zcrypt_drop_queue(struct zcrypt_card *zc,
 	atomic_sub(weight, &zq->load);
 	put_device(&zq->queue->ap_dev.device);
 	zcrypt_queue_put(zq);
+	zcrypt_card_put(zc);
 	module_put(mod);
 }
 

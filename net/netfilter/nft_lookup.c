@@ -90,7 +90,8 @@ static const struct nla_policy nft_lookup_policy[NFTA_LOOKUP_MAX + 1] = {
 	[NFTA_LOOKUP_SET_ID]	= { .type = NLA_U32 },
 	[NFTA_LOOKUP_SREG]	= { .type = NLA_U32 },
 	[NFTA_LOOKUP_DREG]	= { .type = NLA_U32 },
-	[NFTA_LOOKUP_FLAGS]	= { .type = NLA_U32 },
+	[NFTA_LOOKUP_FLAGS]	=
+		NLA_POLICY_MASK(NLA_BE32, NFT_LOOKUP_F_INV),
 };
 
 static int nft_lookup_init(const struct nft_ctx *ctx,
@@ -120,9 +121,6 @@ static int nft_lookup_init(const struct nft_ctx *ctx,
 	if (tb[NFTA_LOOKUP_FLAGS]) {
 		flags = ntohl(nla_get_be32(tb[NFTA_LOOKUP_FLAGS]));
 
-		if (flags & ~NFT_LOOKUP_F_INV)
-			return -EINVAL;
-
 		if (flags & NFT_LOOKUP_F_INV)
 			priv->invert = true;
 	}
@@ -134,7 +132,8 @@ static int nft_lookup_init(const struct nft_ctx *ctx,
 			return -EINVAL;
 
 		err = nft_parse_register_store(ctx, tb[NFTA_LOOKUP_DREG],
-					       &priv->dreg, NULL, set->dtype,
+					       &priv->dreg, NULL,
+					       nft_set_datatype(set),
 					       set->dlen);
 		if (err < 0)
 			return err;
@@ -218,6 +217,7 @@ static int nft_lookup_validate(const struct nft_ctx *ctx,
 		return 0;
 
 	iter.genmask	= nft_genmask_next(ctx->net);
+	iter.type	= NFT_ITER_UPDATE;
 	iter.skip	= 0;
 	iter.count	= 0;
 	iter.err	= 0;

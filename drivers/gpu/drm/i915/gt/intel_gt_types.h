@@ -83,6 +83,9 @@ enum intel_submission_method {
 struct gt_defaults {
 	u32 min_freq;
 	u32 max_freq;
+
+	u8 rps_up_threshold;
+	u8 rps_down_threshold;
 };
 
 enum intel_gt_type {
@@ -206,6 +209,14 @@ struct intel_gt {
 					    [MAX_ENGINE_INSTANCE + 1];
 	enum intel_submission_method submission_method;
 
+	struct {
+		/*
+		 * Mask of the non fused CCS slices
+		 * to be used for the load balancing
+		 */
+		intel_engine_mask_t cslices;
+	} ccs;
+
 	/*
 	 * Default address space (either GGTT or ppGTT depending on arch).
 	 *
@@ -307,5 +318,7 @@ enum intel_gt_scratch_field {
 	/* 8 bytes */
 	INTEL_GT_SCRATCH_FIELD_COHERENTL3_WA = 256,
 };
+
+#define intel_gt_support_legacy_fencing(gt) ((gt)->ggtt->num_fences > 0)
 
 #endif /* __INTEL_GT_TYPES_H__ */

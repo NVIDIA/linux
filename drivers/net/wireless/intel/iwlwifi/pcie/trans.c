@@ -1082,7 +1082,7 @@ bool iwl_pcie_check_hw_rf_kill(struct iwl_trans *trans)
 	report = test_bit(STATUS_RFKILL_OPMODE, &trans->status);
 
 	if (prev != report)
-		iwl_trans_pcie_rf_kill(trans, report);
+		iwl_trans_pcie_rf_kill(trans, report, false);
 
 	return hw_rfkill;
 }
@@ -1236,7 +1236,7 @@ static void iwl_pcie_init_msix(struct iwl_trans_pcie *trans_pcie)
 	trans_pcie->hw_mask = trans_pcie->hw_init_mask;
 }
 
-static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans)
+static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool from_irq)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -1263,6 +1263,8 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans)
 	if (test_and_clear_bit(STATUS_DEVICE_ENABLED, &trans->status)) {
 		IWL_DEBUG_INFO(trans,
 			       "DEVICE_ENABLED bit was set and is now cleared\n");
+		if (!from_irq)
+			iwl_pcie_synchronize_irqs(trans);
 		iwl_pcie_rx_napi_sync(trans);
 		iwl_pcie_tx_stop(trans);
 		iwl_pcie_rx_stop(trans);
@@ -1452,7 +1454,7 @@ void iwl_trans_pcie_handle_stop_rfkill(struct iwl_trans *trans,
 		clear_bit(STATUS_RFKILL_OPMODE, &trans->status);
 	}
 	if (hw_rfkill != was_in_rfkill)
-		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
+		iwl_trans_pcie_rf_kill(trans, hw_rfkill, false);
 }
 
 static void iwl_trans_pcie_stop_device(struct iwl_trans *trans)
@@ -1467,12 +1469,12 @@ static void iwl_trans_pcie_stop_device(struct iwl_trans *trans)
 	mutex_lock(&trans_pcie->mutex);
 	trans_pcie->opmode_down = true;
 	was_in_rfkill = test_bit(STATUS_RFKILL_OPMODE, &trans->status);
-	_iwl_trans_pcie_stop_device(trans);
+	_iwl_trans_pcie_stop_device(trans, false);
 	iwl_trans_pcie_handle_stop_rfkill(trans, was_in_rfkill);
 	mutex_unlock(&trans_pcie->mutex);
 }
 
-void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state)
+void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state, bool from_irq)
 {
 	struct iwl_trans_pcie __maybe_unused *trans_pcie =
 		IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -1485,7 +1487,7 @@ void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state)
 		if (trans->trans_cfg->gen2)
 			_iwl_trans_pcie_gen2_stop_device(trans);
 		else
-			_iwl_trans_pcie_stop_device(trans);
+			_iwl_trans_pcie_stop_device(trans, from_irq);
 	}
 }
 
@@ -2018,6 +2020,30 @@ void iwl_trans_pcie_free_pnvm_dram_regions(struct iwl_dram_regions *dram_regions
 	memset(desc_dram, 0, sizeof(*desc_dram));
 }
 
+static void iwl_pcie_free_invalid_tx_cmd(struct iwl_trans *trans)
+{
+	iwl_pcie_free_dma_ptr(trans, &trans->invalid_tx_cmd);
+}
+
+static int iwl_pcie_alloc_invalid_tx_cmd(struct iwl_trans *trans)
+{
+	struct iwl_cmd_header_wide bad_cmd = {
+		.cmd = INVALID_WR_PTR_CMD,
+		.group_id = DEBUG_GROUP,
+		.sequence = cpu_to_le16(0xffff),
+		.length = cpu_to_le16(0),
+		.version = 0,
+	};
+	int ret;
+
+	ret = iwl_pcie_alloc_dma_ptr(trans, &trans->invalid_tx_cmd,
+				     sizeof(bad_cmd));
+	if (ret)
+		return ret;
+	memcpy(trans->invalid_tx_cmd.addr, &bad_cmd, sizeof(bad_cmd));
+	return 0;
+}
+
 void iwl_trans_pcie_free(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -2047,6 +2073,8 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	} else {
 		iwl_pcie_free_ict(trans);
 	}
+
+	iwl_pcie_free_invalid_tx_cmd(trans);
 
 	iwl_pcie_free_fw_monitor(trans);
 
@@ -2686,11 +2714,9 @@ static ssize_t iwl_dbgfs_rx_queue_read(struct file *file,
 		pos += scnprintf(buf + pos, bufsz - pos, "\tfree_count: %u\n",
 				 rxq->free_count);
 		if (rxq->rb_stts) {
-			u32 r =	__le16_to_cpu(iwl_get_closed_rb_stts(trans,
-								     rxq));
+			u32 r =	iwl_get_closed_rb_stts(trans, rxq);
 			pos += scnprintf(buf + pos, bufsz - pos,
-					 "\tclosed_rb_num: %u\n",
-					 r & 0x0FFF);
+					 "\tclosed_rb_num: %u\n", r);
 		} else {
 			pos += scnprintf(buf + pos, bufsz - pos,
 					 "\tclosed_rb_num: Not Allocated\n");
@@ -2842,7 +2868,7 @@ static ssize_t iwl_dbgfs_rfkill_write(struct file *file,
 	IWL_WARN(trans, "changing debug rfkill %d->%d\n",
 		 trans_pcie->debug_rfkill, new_value);
 	trans_pcie->debug_rfkill = new_value;
-	iwl_pcie_handle_rfkill_irq(trans);
+	iwl_pcie_handle_rfkill_irq(trans, false);
 
 	return count;
 }
@@ -3061,9 +3087,9 @@ static u32 iwl_trans_pcie_dump_rbs(struct iwl_trans *trans,
 	struct iwl_rxq *rxq = &trans_pcie->rxq[0];
 	u32 i, r, j, rb_len = 0;
 
-	spin_lock(&rxq->lock);
+	spin_lock_bh(&rxq->lock);
 
-	r = le16_to_cpu(iwl_get_closed_rb_stts(trans, rxq)) & 0x0FFF;
+	r = iwl_get_closed_rb_stts(trans, rxq);
 
 	for (i = rxq->read, j = 0;
 	     i != r && j < allocated_rb_nums;
@@ -3085,7 +3111,7 @@ static u32 iwl_trans_pcie_dump_rbs(struct iwl_trans *trans,
 		*data = iwl_fw_error_next_data(*data);
 	}
 
-	spin_unlock(&rxq->lock);
+	spin_unlock_bh(&rxq->lock);
 
 	return rb_len;
 }
@@ -3359,9 +3385,7 @@ iwl_trans_pcie_dump_data(struct iwl_trans *trans,
 		/* Dump RBs is supported only for pre-9000 devices (1 queue) */
 		struct iwl_rxq *rxq = &trans_pcie->rxq[0];
 		/* RBs */
-		num_rbs =
-			le16_to_cpu(iwl_get_closed_rb_stts(trans, rxq))
-			& 0x0FFF;
+		num_rbs = iwl_get_closed_rb_stts(trans, rxq);
 		num_rbs = (num_rbs - rxq->read) & RX_QUEUE_MASK;
 		len += num_rbs * (sizeof(*data) +
 				  sizeof(struct iwl_fw_error_dump_rb) +
@@ -3617,8 +3641,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 				       PCIE_LINK_STATE_CLKPM);
 	}
 
-	trans_pcie->def_rx_queue = 0;
-
 	pci_set_master(pdev);
 
 	addr_size = trans->txqs.tfd.addr_size;
@@ -3686,6 +3708,9 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 
 	init_waitqueue_head(&trans_pcie->sx_waitq);
 
+	ret = iwl_pcie_alloc_invalid_tx_cmd(trans);
+	if (ret)
+		goto out_no_pci;
 
 	if (trans_pcie->msix_enabled) {
 		ret = iwl_pcie_init_msix_handler(pdev, trans_pcie);

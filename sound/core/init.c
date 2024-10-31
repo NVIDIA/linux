@@ -111,28 +111,36 @@ static int get_slot_from_bitmask(int mask, int (*check)(struct module *, int),
 	return mask; /* unchanged */
 }
 
-/* the default release callback set in snd_device_initialize() below;
- * this is just NOP for now, as almost all jobs are already done in
- * dev_free callback of snd_device chain instead.
- */
-static void default_release(struct device *dev)
+/* the default release callback set in snd_device_alloc() */
+static void default_release_alloc(struct device *dev)
 {
+	kfree(dev);
 }
 
 /**
- * snd_device_initialize - Initialize struct device for sound devices
- * @dev: device to initialize
+ * snd_device_alloc - Allocate and initialize struct device for sound devices
+ * @dev_p: pointer to store the allocated device
  * @card: card to assign, optional
+ *
+ * For releasing the allocated device, call put_device().
  */
-void snd_device_initialize(struct device *dev, struct snd_card *card)
+int snd_device_alloc(struct device **dev_p, struct snd_card *card)
 {
+	struct device *dev;
+
+	*dev_p = NULL;
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
 	device_initialize(dev);
 	if (card)
 		dev->parent = &card->card_dev;
 	dev->class = &sound_class;
-	dev->release = default_release;
+	dev->release = default_release_alloc;
+	*dev_p = dev;
+	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_device_initialize);
+EXPORT_SYMBOL_GPL(snd_device_alloc);
 
 static int snd_card_init(struct snd_card *card, struct device *parent,
 			 int idx, const char *xid, struct module *module,
@@ -270,9 +278,6 @@ static int snd_card_init(struct snd_card *card, struct device *parent,
 			 size_t extra_size)
 {
 	int err;
-#ifdef CONFIG_SND_DEBUG
-	char name[8];
-#endif
 
 	if (extra_size > 0)
 		card->private_data = (char *)card + sizeof(struct snd_card);
@@ -307,8 +312,8 @@ static int snd_card_init(struct snd_card *card, struct device *parent,
 	card->number = idx;
 #ifdef MODULE
 	WARN_ON(!module);
-	card->module = module;
 #endif
+	card->module = module;
 	INIT_LIST_HEAD(&card->devices);
 	init_rwsem(&card->controls_rwsem);
 	rwlock_init(&card->ctl_files_rwlock);
@@ -356,8 +361,8 @@ static int snd_card_init(struct snd_card *card, struct device *parent,
 	}
 
 #ifdef CONFIG_SND_DEBUG
-	sprintf(name, "card%d", idx);
-	card->debugfs_root = debugfs_create_dir(name, sound_debugfs_root);
+	card->debugfs_root = debugfs_create_dir(dev_name(&card->card_dev),
+						sound_debugfs_root);
 #endif
 	return 0;
 
@@ -518,6 +523,14 @@ void snd_card_disconnect(struct snd_card *card)
 	}
 	spin_unlock(&card->files_lock);	
 
+#ifdef CONFIG_PM
+	/* wake up sleepers here before other callbacks for avoiding potential
+	 * deadlocks with other locks (e.g. in kctls);
+	 * then this notifies the shutdown and sleepers would abort immediately
+	 */
+	wake_up_all(&card->power_sleep);
+#endif
+
 	/* notify all connected devices about disconnection */
 	/* at this point, they cannot respond to any calls except release() */
 
@@ -533,6 +546,11 @@ void snd_card_disconnect(struct snd_card *card)
 		synchronize_irq(card->sync_irq);
 
 	snd_info_card_disconnect(card);
+#ifdef CONFIG_SND_DEBUG
+	debugfs_remove(card->debugfs_root);
+	card->debugfs_root = NULL;
+#endif
+
 	if (card->registered) {
 		device_del(&card->card_dev);
 		card->registered = false;
@@ -545,7 +563,6 @@ void snd_card_disconnect(struct snd_card *card)
 	mutex_unlock(&snd_card_mutex);
 
 #ifdef CONFIG_PM
-	wake_up(&card->power_sleep);
 	snd_power_sync_ref(card);
 #endif
 }
@@ -586,10 +603,6 @@ static int snd_card_do_free(struct snd_card *card)
 		dev_warn(card->dev, "unable to free card info\n");
 		/* Not fatal error */
 	}
-#ifdef CONFIG_SND_DEBUG
-	debugfs_remove(card->debugfs_root);
-	card->debugfs_root = NULL;
-#endif
 	if (card->release_completion)
 		complete(card->release_completion);
 	if (!card->managed)
@@ -653,13 +666,19 @@ void snd_card_free(struct snd_card *card)
 }
 EXPORT_SYMBOL(snd_card_free);
 
+/* check, if the character is in the valid ASCII range */
+static inline bool safe_ascii_char(char c)
+{
+	return isascii(c) && isalnum(c);
+}
+
 /* retrieve the last word of shortname or longname */
 static const char *retrieve_id_from_card_name(const char *name)
 {
 	const char *spos = name;
 
 	while (*name) {
-		if (isspace(*name) && isalnum(name[1]))
+		if (isspace(*name) && safe_ascii_char(name[1]))
 			spos = name + 1;
 		name++;
 	}
@@ -686,12 +705,12 @@ static void copy_valid_id_string(struct snd_card *card, const char *src,
 {
 	char *id = card->id;
 
-	while (*nid && !isalnum(*nid))
+	while (*nid && !safe_ascii_char(*nid))
 		nid++;
 	if (isdigit(*nid))
 		*id++ = isalpha(*src) ? *src : 'D';
 	while (*nid && (size_t)(id - card->id) < sizeof(card->id) - 1) {
-		if (isalnum(*nid))
+		if (safe_ascii_char(*nid))
 			*id++ = *nid;
 		nid++;
 	}
@@ -787,7 +806,7 @@ static ssize_t id_store(struct device *dev, struct device_attribute *attr,
 
 	for (idx = 0; idx < copy; idx++) {
 		c = buf[idx];
-		if (!isalnum(c) && c != '_' && c != '-')
+		if (!safe_ascii_char(c) && c != '_' && c != '-')
 			return -EINVAL;
 	}
 	memcpy(buf1, buf, copy);

@@ -91,7 +91,7 @@ static bool mtl_dsp_check_sdw_irq(struct snd_sof_dev *sdev)
 	return false;
 }
 
-static int mtl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
+int mtl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 {
 	struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
 	struct sof_ipc4_msg *msg_data = msg->msg_data;
@@ -230,7 +230,7 @@ int mtl_enable_interrupts(struct snd_sof_dev *sdev, bool enable)
 }
 
 /* pre fw run operations */
-static int mtl_dsp_pre_fw_run(struct snd_sof_dev *sdev)
+int mtl_dsp_pre_fw_run(struct snd_sof_dev *sdev)
 {
 	struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
 	u32 dsphfpwrsts;
@@ -279,7 +279,7 @@ static int mtl_dsp_pre_fw_run(struct snd_sof_dev *sdev)
 	return ret;
 }
 
-static int mtl_dsp_post_fw_run(struct snd_sof_dev *sdev)
+int mtl_dsp_post_fw_run(struct snd_sof_dev *sdev)
 {
 	int ret;
 
@@ -301,7 +301,7 @@ static int mtl_dsp_post_fw_run(struct snd_sof_dev *sdev)
 	return 0;
 }
 
-static void mtl_dsp_dump(struct snd_sof_dev *sdev, u32 flags)
+void mtl_dsp_dump(struct snd_sof_dev *sdev, u32 flags)
 {
 	char *level = (flags & SOF_DBG_DUMP_OPTIONAL) ? KERN_DEBUG : KERN_ERR;
 	u32 romdbgsts;
@@ -436,8 +436,9 @@ int mtl_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag, bool imr_boot)
 {
 	struct sof_intel_hda_dev *hda = sdev->pdata->hw_pdata;
 	const struct sof_intel_dsp_desc *chip = hda->desc;
-	unsigned int status;
-	u32 ipc_hdr;
+	unsigned int status, target_status;
+	u32 ipc_hdr, flags;
+	char *dump_msg;
 	int ret;
 
 	/* step 1: purge FW request */
@@ -481,21 +482,59 @@ int mtl_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag, bool imr_boot)
 
 	mtl_enable_ipc_interrupts(sdev);
 
-	/*
-	 * ACE workaround: don't wait for ROM INIT.
-	 * The platform cannot catch ROM_INIT_DONE because of a very short
-	 * timing window. Follow the recommendations and skip this part.
-	 */
+	if (chip->rom_status_reg == MTL_DSP_ROM_STS) {
+		/*
+		 * Workaround: when the ROM status register is pointing to
+		 * the SRAM window (MTL_DSP_ROM_STS) the platform cannot catch
+		 * ROM_INIT_DONE because of a very short timing window.
+		 * Follow the recommendations and skip target state waiting.
+		 */
+		return 0;
+	}
 
-	return 0;
+	/*
+	 * step 7:
+	 * - Cold/Full boot: wait for ROM init to proceed to download the firmware
+	 * - IMR boot: wait for ROM firmware entered (firmware booted up from IMR)
+	 */
+	if (imr_boot)
+		target_status = FSR_STATE_FW_ENTERED;
+	else
+		target_status = FSR_STATE_INIT_DONE;
+
+	ret = snd_sof_dsp_read_poll_timeout(sdev, HDA_DSP_BAR,
+					chip->rom_status_reg, status,
+					(FSR_TO_STATE_CODE(status) == target_status),
+					HDA_DSP_REG_POLL_INTERVAL_US,
+					chip->rom_init_timeout *
+					USEC_PER_MSEC);
+
+	if (!ret)
+		return 0;
+
+	if (hda->boot_iteration == HDA_FW_BOOT_ATTEMPTS)
+		dev_err(sdev->dev,
+			"%s: timeout with rom_status_reg (%#x) read\n",
+			__func__, chip->rom_status_reg);
 
 err:
-	snd_sof_dsp_dbg_dump(sdev, "MTL DSP init fail", 0);
+	flags = SOF_DBG_DUMP_PCI | SOF_DBG_DUMP_MBOX | SOF_DBG_DUMP_OPTIONAL;
+
+	/* after max boot attempts make sure that the dump is printed */
+	if (hda->boot_iteration == HDA_FW_BOOT_ATTEMPTS)
+		flags &= ~SOF_DBG_DUMP_OPTIONAL;
+
+	dump_msg = kasprintf(GFP_KERNEL, "Boot iteration failed: %d/%d",
+			     hda->boot_iteration, HDA_FW_BOOT_ATTEMPTS);
+	snd_sof_dsp_dbg_dump(sdev, dump_msg, flags);
+	mtl_enable_interrupts(sdev, false);
 	mtl_dsp_core_power_down(sdev, SOF_DSP_PRIMARY_CORE);
+
+	kfree(dump_msg);
 	return ret;
 }
 
-static irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
+irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
 {
 	struct sof_ipc4_msg notification_data = {{ 0 }};
 	struct snd_sof_dev *sdev = context;
@@ -578,17 +617,17 @@ static irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
 	return IRQ_HANDLED;
 }
 
-static int mtl_dsp_ipc_get_mailbox_offset(struct snd_sof_dev *sdev)
+int mtl_dsp_ipc_get_mailbox_offset(struct snd_sof_dev *sdev)
 {
 	return MTL_DSP_MBOX_UPLINK_OFFSET;
 }
 
-static int mtl_dsp_ipc_get_window_offset(struct snd_sof_dev *sdev, u32 id)
+int mtl_dsp_ipc_get_window_offset(struct snd_sof_dev *sdev, u32 id)
 {
 	return MTL_SRAM_WINDOW_OFFSET(id);
 }
 
-static void mtl_ipc_dump(struct snd_sof_dev *sdev)
+void mtl_ipc_dump(struct snd_sof_dev *sdev)
 {
 	u32 hipcidr, hipcidd, hipcida, hipctdr, hipctdd, hipctda, hipcctl;
 
@@ -612,9 +651,9 @@ static int mtl_dsp_disable_interrupts(struct snd_sof_dev *sdev)
 	return mtl_enable_interrupts(sdev, false);
 }
 
-static u64 mtl_dsp_get_stream_hda_link_position(struct snd_sof_dev *sdev,
-						struct snd_soc_component *component,
-						struct snd_pcm_substream *substream)
+u64 mtl_dsp_get_stream_hda_link_position(struct snd_sof_dev *sdev,
+					 struct snd_soc_component *component,
+					 struct snd_pcm_substream *substream)
 {
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	u32 llp_l, llp_u;
@@ -725,7 +764,7 @@ const struct sof_intel_dsp_desc mtl_chip_info = {
 	.ipc_ack = MTL_DSP_REG_HFIPCXIDA,
 	.ipc_ack_mask = MTL_DSP_REG_HFIPCXIDA_DONE,
 	.ipc_ctl = MTL_DSP_REG_HFIPCXCTL,
-	.rom_status_reg = MTL_DSP_ROM_STS,
+	.rom_status_reg = MTL_DSP_REG_HFFLGPXQWY,
 	.rom_init_timeout	= 300,
 	.ssp_count = MTL_SSP_COUNT,
 	.ssp_base_offset = CNL_SSP_BASE_OFFSET,
@@ -735,6 +774,7 @@ const struct sof_intel_dsp_desc mtl_chip_info = {
 	.read_sdw_lcount =  hda_sdw_check_lcount_common,
 	.enable_sdw_irq = mtl_enable_sdw_irq,
 	.check_sdw_irq = mtl_dsp_check_sdw_irq,
+	.check_sdw_wakeen_irq = hda_sdw_check_wakeen_irq_common,
 	.check_ipc_irq = mtl_dsp_check_ipc_irq,
 	.cl_init = mtl_dsp_cl_init,
 	.power_down_dsp = mtl_power_down_dsp,
@@ -742,3 +782,31 @@ const struct sof_intel_dsp_desc mtl_chip_info = {
 	.hw_ip_version = SOF_INTEL_ACE_1_0,
 };
 EXPORT_SYMBOL_NS(mtl_chip_info, SND_SOC_SOF_INTEL_HDA_COMMON);
+
+const struct sof_intel_dsp_desc arl_s_chip_info = {
+	.cores_num = 2,
+	.init_core_mask = BIT(0),
+	.host_managed_cores_mask = BIT(0),
+	.ipc_req = MTL_DSP_REG_HFIPCXIDR,
+	.ipc_req_mask = MTL_DSP_REG_HFIPCXIDR_BUSY,
+	.ipc_ack = MTL_DSP_REG_HFIPCXIDA,
+	.ipc_ack_mask = MTL_DSP_REG_HFIPCXIDA_DONE,
+	.ipc_ctl = MTL_DSP_REG_HFIPCXCTL,
+	.rom_status_reg = MTL_DSP_REG_HFFLGPXQWY,
+	.rom_init_timeout	= 300,
+	.ssp_count = MTL_SSP_COUNT,
+	.ssp_base_offset = CNL_SSP_BASE_OFFSET,
+	.sdw_shim_base = SDW_SHIM_BASE_ACE,
+	.sdw_alh_base = SDW_ALH_BASE_ACE,
+	.d0i3_offset = MTL_HDA_VS_D0I3C,
+	.read_sdw_lcount =  hda_sdw_check_lcount_common,
+	.enable_sdw_irq = mtl_enable_sdw_irq,
+	.check_sdw_irq = mtl_dsp_check_sdw_irq,
+	.check_sdw_wakeen_irq = hda_sdw_check_wakeen_irq_common,
+	.check_ipc_irq = mtl_dsp_check_ipc_irq,
+	.cl_init = mtl_dsp_cl_init,
+	.power_down_dsp = mtl_power_down_dsp,
+	.disable_interrupts = mtl_dsp_disable_interrupts,
+	.hw_ip_version = SOF_INTEL_ACE_1_0,
+};
+EXPORT_SYMBOL_NS(arl_s_chip_info, SND_SOC_SOF_INTEL_HDA_COMMON);

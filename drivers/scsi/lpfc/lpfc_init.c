@@ -2123,7 +2123,7 @@ lpfc_handle_eratt_s4(struct lpfc_hba *phba)
 			en_rn_msg = false;
 		} else if (reg_err1 == SLIPORT_ERR1_REG_ERR_CODE_2 &&
 			 reg_err2 == SLIPORT_ERR2_REG_FORCED_DUMP)
-			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
+			lpfc_printf_log(phba, KERN_ERR, LOG_SLI,
 					"3144 Port Down: Debug Dump\n");
 		else if (reg_err1 == SLIPORT_ERR1_REG_ERR_CODE_2 &&
 			 reg_err2 == SLIPORT_ERR2_REG_FUNC_PROVISON)
@@ -7698,6 +7698,9 @@ lpfc_setup_driver_resource_phase1(struct lpfc_hba *phba)
 				"NVME" : " "),
 			(phba->nvmet_support ? "NVMET" : " "));
 
+	/* ras_fwlog state */
+	spin_lock_init(&phba->ras_fwlog_lock);
+
 	/* Initialize the IO buffer list used by driver for SLI3 SCSI */
 	spin_lock_init(&phba->scsi_buf_list_get_lock);
 	INIT_LIST_HEAD(&phba->lpfc_scsi_buf_list_get);
@@ -12512,10 +12515,7 @@ lpfc_cpu_affinity_check(struct lpfc_hba *phba, int vectors)
 				    (new_cpup->eq != LPFC_VECTOR_MAP_EMPTY) &&
 				    (new_cpup->phys_id == cpup->phys_id))
 					goto found_same;
-				new_cpu = cpumask_next(
-					new_cpu, cpu_present_mask);
-				if (new_cpu >= nr_cpu_ids)
-					new_cpu = first_cpu;
+				new_cpu = lpfc_next_present_cpu(new_cpu);
 			}
 			/* At this point, we leave the CPU as unassigned */
 			continue;
@@ -12527,9 +12527,7 @@ found_same:
 			 * chance of having multiple unassigned CPU entries
 			 * selecting the same IRQ.
 			 */
-			start_cpu = cpumask_next(new_cpu, cpu_present_mask);
-			if (start_cpu >= nr_cpu_ids)
-				start_cpu = first_cpu;
+			start_cpu = lpfc_next_present_cpu(new_cpu);
 
 			lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
 					"3337 Set Affinity: CPU %d "
@@ -12562,10 +12560,7 @@ found_same:
 				if (!(new_cpup->flag & LPFC_CPU_MAP_UNASSIGN) &&
 				    (new_cpup->eq != LPFC_VECTOR_MAP_EMPTY))
 					goto found_any;
-				new_cpu = cpumask_next(
-					new_cpu, cpu_present_mask);
-				if (new_cpu >= nr_cpu_ids)
-					new_cpu = first_cpu;
+				new_cpu = lpfc_next_present_cpu(new_cpu);
 			}
 			/* We should never leave an entry unassigned */
 			lpfc_printf_log(phba, KERN_ERR, LOG_INIT,
@@ -12581,9 +12576,7 @@ found_any:
 			 * chance of having multiple unassigned CPU entries
 			 * selecting the same IRQ.
 			 */
-			start_cpu = cpumask_next(new_cpu, cpu_present_mask);
-			if (start_cpu >= nr_cpu_ids)
-				start_cpu = first_cpu;
+			start_cpu = lpfc_next_present_cpu(new_cpu);
 
 			lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
 					"3338 Set Affinity: CPU %d "
@@ -12654,9 +12647,7 @@ found_any:
 			    new_cpup->core_id == cpup->core_id) {
 				goto found_hdwq;
 			}
-			new_cpu = cpumask_next(new_cpu, cpu_present_mask);
-			if (new_cpu >= nr_cpu_ids)
-				new_cpu = first_cpu;
+			new_cpu = lpfc_next_present_cpu(new_cpu);
 		}
 
 		/* If we can't match both phys_id and core_id,
@@ -12668,10 +12659,7 @@ found_any:
 			if (new_cpup->hdwq != LPFC_VECTOR_MAP_EMPTY &&
 			    new_cpup->phys_id == cpup->phys_id)
 				goto found_hdwq;
-
-			new_cpu = cpumask_next(new_cpu, cpu_present_mask);
-			if (new_cpu >= nr_cpu_ids)
-				new_cpu = first_cpu;
+			new_cpu = lpfc_next_present_cpu(new_cpu);
 		}
 
 		/* Otherwise just round robin on cfg_hdw_queue */
@@ -12680,9 +12668,7 @@ found_any:
 		goto logit;
  found_hdwq:
 		/* We found an available entry, copy the IRQ info */
-		start_cpu = cpumask_next(new_cpu, cpu_present_mask);
-		if (start_cpu >= nr_cpu_ids)
-			start_cpu = first_cpu;
+		start_cpu = lpfc_next_present_cpu(new_cpu);
 		cpup->hdwq = new_cpup->hdwq;
  logit:
 		lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
@@ -13068,7 +13054,7 @@ lpfc_sli4_enable_msix(struct lpfc_hba *phba)
 		rc = request_threaded_irq(eqhdl->irq,
 					  &lpfc_sli4_hba_intr_handler,
 					  &lpfc_sli4_hba_intr_handler_th,
-					  IRQF_ONESHOT, name, eqhdl);
+					  0, name, eqhdl);
 		if (rc) {
 			lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
 					"0486 MSI-X fast-path (%d) "
@@ -14742,7 +14728,7 @@ out:
 int
 lpfc_sli4_request_firmware_update(struct lpfc_hba *phba, uint8_t fw_upgrade)
 {
-	uint8_t file_name[ELX_MODEL_NAME_SIZE];
+	char file_name[ELX_FW_NAME_SIZE] = {0};
 	int ret;
 	const struct firmware *fw;
 
@@ -14751,7 +14737,7 @@ lpfc_sli4_request_firmware_update(struct lpfc_hba *phba, uint8_t fw_upgrade)
 	    LPFC_SLI_INTF_IF_TYPE_2)
 		return -EPERM;
 
-	snprintf(file_name, ELX_MODEL_NAME_SIZE, "%s.grp", phba->ModelName);
+	scnprintf(file_name, sizeof(file_name), "%s.grp", phba->ModelName);
 
 	if (fw_upgrade == INT_FW_UPGRADE) {
 		ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_UEVENT,

@@ -319,6 +319,10 @@ static int smc_nl_fill_smcr_lgr_v2(struct smc_link_group *lgr,
 		goto errattr;
 	if (nla_put_u8(skb, SMC_NLA_LGR_R_V2_DIRECT, !lgr->uses_gateway))
 		goto errv2attr;
+	if (nla_put_u8(skb, SMC_NLA_LGR_R_V2_MAX_CONNS, lgr->max_conns))
+		goto errv2attr;
+	if (nla_put_u8(skb, SMC_NLA_LGR_R_V2_MAX_LINKS, lgr->max_links))
+		goto errv2attr;
 
 	nla_nest_end(skb, v2_attrs);
 	return 0;
@@ -895,9 +899,13 @@ static int smc_lgr_create(struct smc_sock *smc, struct smc_init_info *ini)
 			lgr->uses_gateway = ini->smcrv2.uses_gateway;
 			memcpy(lgr->nexthop_mac, ini->smcrv2.nexthop_mac,
 			       ETH_ALEN);
+			lgr->max_conns = ini->max_conns;
+			lgr->max_links = ini->max_links;
 		} else {
 			ibdev = ini->ib_dev;
 			ibport = ini->ib_port;
+			lgr->max_conns = SMC_CONN_PER_LGR_MAX;
+			lgr->max_links = SMC_LINKS_ADD_LNK_MAX;
 		}
 		memcpy(lgr->pnet_id, ibdev->pnetid[ibport - 1],
 		       SMC_MAX_PNETID_LEN);
@@ -1665,6 +1673,9 @@ void smcr_port_add(struct smc_ib_device *smcibdev, u8 ibport)
 		    !rdma_dev_access_netns(smcibdev->ibdev, lgr->net))
 			continue;
 
+		if (lgr->type == SMC_LGR_SINGLE && lgr->max_links <= 1)
+			continue;
+
 		/* trigger local add link processing */
 		link = smc_llc_usable_link(lgr);
 		if (link)
@@ -1890,7 +1901,7 @@ int smc_conn_create(struct smc_sock *smc, struct smc_init_info *ini)
 		    (ini->smcd_version == SMC_V2 ||
 		     lgr->vlan_id == ini->vlan_id) &&
 		    (role == SMC_CLNT || ini->is_smcd ||
-		    (lgr->conns_num < SMC_RMBS_PER_LGR_MAX &&
+		    (lgr->conns_num < lgr->max_conns &&
 		      !bitmap_full(lgr->rtokens_used_mask, SMC_RMBS_PER_LGR_MAX)))) {
 			/* link group found */
 			ini->first_contact_local = 0;
@@ -1963,7 +1974,6 @@ out:
  */
 static u8 smc_compress_bufsize(int size, bool is_smcd, bool is_rmb)
 {
-	const unsigned int max_scat = SG_MAX_SINGLE_ALLOC * PAGE_SIZE;
 	u8 compressed;
 
 	if (size <= SMC_BUF_MIN_SIZE)
@@ -1973,9 +1983,11 @@ static u8 smc_compress_bufsize(int size, bool is_smcd, bool is_rmb)
 	compressed = min_t(u8, ilog2(size) + 1,
 			   is_smcd ? SMCD_DMBE_SIZES : SMCR_RMBE_SIZES);
 
+#ifdef CONFIG_ARCH_NO_SG_CHAIN
 	if (!is_smcd && is_rmb)
 		/* RMBs are backed by & limited to max size of scatterlists */
-		compressed = min_t(u8, compressed, ilog2(max_scat >> 14));
+		compressed = min_t(u8, compressed, ilog2((SG_MAX_SINGLE_ALLOC * PAGE_SIZE) >> 14));
+#endif
 
 	return compressed;
 }

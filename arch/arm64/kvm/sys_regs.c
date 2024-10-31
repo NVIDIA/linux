@@ -32,6 +32,7 @@
 #include <trace/events/kvm.h>
 
 #include "sys_regs.h"
+#include "vgic/vgic.h"
 
 #include "trace.h"
 
@@ -300,6 +301,11 @@ static bool access_gic_sgi(struct kvm_vcpu *vcpu,
 			   const struct sys_reg_desc *r)
 {
 	bool g1;
+
+	if (!kvm_has_gicv3(vcpu->kvm)) {
+		kvm_inject_undefined(vcpu);
+		return false;
+	}
 
 	if (!p->is_write)
 		return read_from_write_only(vcpu, p, r);
@@ -2122,8 +2128,8 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 	{ SYS_DESC(SYS_PMMIR_EL1), trap_raz_wi },
 
 	{ SYS_DESC(SYS_MAIR_EL1), access_vm_reg, reset_unknown, MAIR_EL1 },
-	{ SYS_DESC(SYS_PIRE0_EL1), access_vm_reg, reset_unknown, PIRE0_EL1 },
-	{ SYS_DESC(SYS_PIR_EL1), access_vm_reg, reset_unknown, PIR_EL1 },
+	{ SYS_DESC(SYS_PIRE0_EL1), NULL, reset_unknown, PIRE0_EL1 },
+	{ SYS_DESC(SYS_PIR_EL1), NULL, reset_unknown, PIR_EL1 },
 	{ SYS_DESC(SYS_AMAIR_EL1), access_vm_reg, reset_amair_el1, AMAIR_EL1 },
 
 	{ SYS_DESC(SYS_LORSA_EL1), trap_loregion },
@@ -2150,6 +2156,8 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 
 	{ SYS_DESC(SYS_CONTEXTIDR_EL1), access_vm_reg, reset_val, CONTEXTIDR_EL1, 0 },
 	{ SYS_DESC(SYS_TPIDR_EL1), NULL, reset_unknown, TPIDR_EL1 },
+
+	{ SYS_DESC(SYS_ACCDATA_EL1), undef_access },
 
 	{ SYS_DESC(SYS_SCXTNUM_EL1), undef_access },
 
@@ -2365,7 +2373,12 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 	EL2_REG(MDCR_EL2, access_rw, reset_val, 0),
 	EL2_REG(CPTR_EL2, access_rw, reset_val, CPTR_NVHE_EL2_RES1),
 	EL2_REG(HSTR_EL2, access_rw, reset_val, 0),
+	EL2_REG(HFGRTR_EL2, access_rw, reset_val, 0),
+	EL2_REG(HFGWTR_EL2, access_rw, reset_val, 0),
+	EL2_REG(HFGITR_EL2, access_rw, reset_val, 0),
 	EL2_REG(HACR_EL2, access_rw, reset_val, 0),
+
+	EL2_REG(HCRX_EL2, access_rw, reset_val, 0),
 
 	EL2_REG(TTBR0_EL2, access_rw, reset_val, 0),
 	EL2_REG(TTBR1_EL2, access_rw, reset_val, 0),
@@ -2374,6 +2387,8 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 	EL2_REG(VTCR_EL2, access_rw, reset_val, 0),
 
 	{ SYS_DESC(SYS_DACR32_EL2), NULL, reset_unknown, DACR32_EL2 },
+	EL2_REG(HDFGRTR_EL2, access_rw, reset_val, 0),
+	EL2_REG(HDFGWTR_EL2, access_rw, reset_val, 0),
 	EL2_REG(SPSR_EL2, access_rw, reset_val, 0),
 	EL2_REG(ELR_EL2, access_rw, reset_val, 0),
 	{ SYS_DESC(SYS_SP_EL1), access_sp_el1},
@@ -3170,6 +3185,9 @@ int kvm_handle_sys_reg(struct kvm_vcpu *vcpu)
 
 	trace_kvm_handle_sys_reg(esr);
 
+	if (__check_nv_sr_forward(vcpu))
+		return 1;
+
 	params = esr_sys64_to_params(esr);
 	params.regval = vcpu_get_reg(vcpu, Rt);
 
@@ -3586,6 +3604,9 @@ int __init kvm_sys_reg_table_init(void)
 	first_idreg = find_reg(&params, sys_reg_descs, ARRAY_SIZE(sys_reg_descs));
 	if (!first_idreg)
 		return -EINVAL;
+
+	if (kvm_get_mode() == KVM_MODE_NV)
+		return populate_nv_trap_config();
 
 	return 0;
 }

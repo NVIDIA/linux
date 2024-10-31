@@ -106,6 +106,25 @@ static int mana_gd_query_max_resources(struct pci_dev *pdev)
 	return 0;
 }
 
+static int mana_gd_query_hwc_timeout(struct pci_dev *pdev, u32 *timeout_val)
+{
+	struct gdma_context *gc = pci_get_drvdata(pdev);
+	struct gdma_query_hwc_timeout_resp resp = {};
+	struct gdma_query_hwc_timeout_req req = {};
+	int err;
+
+	mana_gd_init_req_hdr(&req.hdr, GDMA_QUERY_HWC_TIMEOUT,
+			     sizeof(req), sizeof(resp));
+	req.timeout_ms = *timeout_val;
+	err = mana_gd_send_request(gc, sizeof(req), &req, sizeof(resp), &resp);
+	if (err || resp.hdr.status)
+		return err ? err : -EPROTO;
+
+	*timeout_val = resp.timeout_ms;
+
+	return 0;
+}
+
 static int mana_gd_detect_devices(struct pci_dev *pdev)
 {
 	struct gdma_context *gc = pci_get_drvdata(pdev);
@@ -160,7 +179,7 @@ int mana_gd_alloc_memory(struct gdma_context *gc, unsigned int length,
 	dma_addr_t dma_handle;
 	void *buf;
 
-	if (length < PAGE_SIZE || !is_power_of_2(length))
+	if (length < MANA_PAGE_SIZE || !is_power_of_2(length))
 		return -EINVAL;
 
 	gmi->dev = gc->dev;
@@ -300,8 +319,11 @@ static void mana_gd_ring_doorbell(struct gdma_context *gc, u32 db_index,
 
 void mana_gd_wq_ring_doorbell(struct gdma_context *gc, struct gdma_queue *queue)
 {
+	/* Hardware Spec specifies that software client should set 0 for
+	 * wqe_cnt for Receive Queues. This value is not used in Send Queues.
+	 */
 	mana_gd_ring_doorbell(gc, queue->gdma_dev->doorbell, queue->type,
-			      queue->id, queue->head * GDMA_WQE_BU_SIZE, 1);
+			      queue->id, queue->head * GDMA_WQE_BU_SIZE, 0);
 }
 
 void mana_gd_ring_cq(struct gdma_queue *cq, u8 arm_bit)
@@ -698,7 +720,7 @@ EXPORT_SYMBOL_NS(mana_gd_destroy_dma_region, NET_MANA);
 static int mana_gd_create_dma_region(struct gdma_dev *gd,
 				     struct gdma_mem_info *gmi)
 {
-	unsigned int num_page = gmi->length / PAGE_SIZE;
+	unsigned int num_page = gmi->length / MANA_PAGE_SIZE;
 	struct gdma_create_dma_region_req *req = NULL;
 	struct gdma_create_dma_region_resp resp = {};
 	struct gdma_context *gc = gd->gdma_context;
@@ -708,10 +730,10 @@ static int mana_gd_create_dma_region(struct gdma_dev *gd,
 	int err;
 	int i;
 
-	if (length < PAGE_SIZE || !is_power_of_2(length))
+	if (length < MANA_PAGE_SIZE || !is_power_of_2(length))
 		return -EINVAL;
 
-	if (offset_in_page(gmi->virt_addr) != 0)
+	if (!MANA_PAGE_ALIGNED(gmi->virt_addr))
 		return -EINVAL;
 
 	hwc = gc->hwc.driver_data;
@@ -732,7 +754,7 @@ static int mana_gd_create_dma_region(struct gdma_dev *gd,
 	req->page_addr_list_len = num_page;
 
 	for (i = 0; i < num_page; i++)
-		req->page_addr_list[i] = gmi->dma_handle +  i * PAGE_SIZE;
+		req->page_addr_list[i] = gmi->dma_handle +  i * MANA_PAGE_SIZE;
 
 	err = mana_gd_send_request(gc, req_msg_size, req, sizeof(resp), &resp);
 	if (err)
@@ -879,8 +901,10 @@ int mana_gd_verify_vf_version(struct pci_dev *pdev)
 	struct gdma_context *gc = pci_get_drvdata(pdev);
 	struct gdma_verify_ver_resp resp = {};
 	struct gdma_verify_ver_req req = {};
+	struct hw_channel_context *hwc;
 	int err;
 
+	hwc = gc->hwc.driver_data;
 	mana_gd_init_req_hdr(&req.hdr, GDMA_VERIFY_VF_DRIVER_VERSION,
 			     sizeof(req), sizeof(resp));
 
@@ -907,7 +931,14 @@ int mana_gd_verify_vf_version(struct pci_dev *pdev)
 			err, resp.hdr.status);
 		return err ? err : -EPROTO;
 	}
-
+	if (resp.pf_cap_flags1 & GDMA_DRV_CAP_FLAG_1_HWC_TIMEOUT_RECONFIG) {
+		err = mana_gd_query_hwc_timeout(pdev, &hwc->hwc_timeout);
+		if (err) {
+			dev_err(gc->dev, "Failed to set the hwc timeout %d\n", err);
+			return err;
+		}
+		dev_dbg(gc->dev, "set the hwc timeout to %u\n", hwc->hwc_timeout);
+	}
 	return 0;
 }
 

@@ -5,9 +5,10 @@
 #include <linux/if_vlan.h>
 #include <linux/iopoll.h>
 #include <linux/ip.h>
-#include <linux/of_platform.h>
+#include <linux/of.h>
 #include <linux/of_net.h>
 #include <linux/phy/phy.h>
+#include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <net/addrconf.h>
 
@@ -449,39 +450,46 @@ static int lan966x_port_get_parent_id(struct net_device *dev,
 	return 0;
 }
 
-static int lan966x_port_ioctl(struct net_device *dev, struct ifreq *ifr,
-			      int cmd)
+static int lan966x_port_hwtstamp_get(struct net_device *dev,
+				     struct kernel_hwtstamp_config *cfg)
+{
+	struct lan966x_port *port = netdev_priv(dev);
+
+	if (!port->lan966x->ptp)
+		return -EOPNOTSUPP;
+
+	lan966x_ptp_hwtstamp_get(port, cfg);
+
+	return 0;
+}
+
+static int lan966x_port_hwtstamp_set(struct net_device *dev,
+				     struct kernel_hwtstamp_config *cfg,
+				     struct netlink_ext_ack *extack)
 {
 	struct lan966x_port *port = netdev_priv(dev);
 	int err;
 
-	if (cmd == SIOCSHWTSTAMP) {
-		err = lan966x_ptp_setup_traps(port, ifr);
-		if (err)
-			return err;
-	}
+	if (cfg->source != HWTSTAMP_SOURCE_NETDEV &&
+	    cfg->source != HWTSTAMP_SOURCE_PHYLIB)
+		return -EOPNOTSUPP;
 
-	if (!phy_has_hwtstamp(dev->phydev) && port->lan966x->ptp) {
-		switch (cmd) {
-		case SIOCSHWTSTAMP:
-			err = lan966x_ptp_hwtstamp_set(port, ifr);
-			if (err)
-				lan966x_ptp_del_traps(port);
+	if (cfg->source == HWTSTAMP_SOURCE_NETDEV && !port->lan966x->ptp)
+		return -EOPNOTSUPP;
 
+	err = lan966x_ptp_setup_traps(port, cfg);
+	if (err)
+		return err;
+
+	if (cfg->source == HWTSTAMP_SOURCE_NETDEV) {
+		err = lan966x_ptp_hwtstamp_set(port, cfg, extack);
+		if (err) {
+			lan966x_ptp_del_traps(port);
 			return err;
-		case SIOCGHWTSTAMP:
-			return lan966x_ptp_hwtstamp_get(port, ifr);
 		}
 	}
 
-	if (!dev->phydev)
-		return -ENODEV;
-
-	err = phy_mii_ioctl(dev->phydev, ifr, cmd);
-	if (err && cmd == SIOCSHWTSTAMP)
-		lan966x_ptp_del_traps(port);
-
-	return err;
+	return 0;
 }
 
 static const struct net_device_ops lan966x_port_netdev_ops = {
@@ -494,10 +502,12 @@ static const struct net_device_ops lan966x_port_netdev_ops = {
 	.ndo_get_stats64		= lan966x_stats_get,
 	.ndo_set_mac_address		= lan966x_port_set_mac_address,
 	.ndo_get_port_parent_id		= lan966x_port_get_parent_id,
-	.ndo_eth_ioctl			= lan966x_port_ioctl,
+	.ndo_eth_ioctl			= phy_do_ioctl,
 	.ndo_setup_tc			= lan966x_tc_setup,
 	.ndo_bpf			= lan966x_xdp,
 	.ndo_xdp_xmit			= lan966x_xdp_xmit,
+	.ndo_hwtstamp_get		= lan966x_port_hwtstamp_get,
+	.ndo_hwtstamp_set		= lan966x_port_hwtstamp_set,
 };
 
 bool lan966x_netdevice_check(const struct net_device *dev)
@@ -807,6 +817,7 @@ static int lan966x_probe_port(struct lan966x *lan966x, u32 p,
 			 NETIF_F_HW_VLAN_STAG_TX |
 			 NETIF_F_HW_TC;
 	dev->hw_features |= NETIF_F_HW_TC;
+	dev->priv_flags |= IFF_SEE_ALL_HWTSTAMP_REQUESTS;
 	dev->needed_headroom = IFH_LEN_BYTES;
 
 	eth_hw_addr_gen(dev, lan966x->base_mac, p + 1);
@@ -1077,8 +1088,6 @@ static int lan966x_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lan966x);
 	lan966x->dev = &pdev->dev;
 
-	lan966x->debugfs_root = debugfs_create_dir("lan966x", NULL);
-
 	if (!device_get_mac_address(&pdev->dev, mac_addr)) {
 		ether_addr_copy(lan966x->base_mac, mac_addr);
 	} else {
@@ -1108,8 +1117,8 @@ static int lan966x_probe(struct platform_device *pdev)
 
 	/* set irq */
 	lan966x->xtr_irq = platform_get_irq_byname(pdev, "xtr");
-	if (lan966x->xtr_irq <= 0)
-		return -EINVAL;
+	if (lan966x->xtr_irq < 0)
+		return lan966x->xtr_irq;
 
 	err = devm_request_threaded_irq(&pdev->dev, lan966x->xtr_irq, NULL,
 					lan966x_xtr_irq_handler, IRQF_ONESHOT,
@@ -1168,6 +1177,8 @@ static int lan966x_probe(struct platform_device *pdev)
 	if (!ports)
 		return dev_err_probe(&pdev->dev, -ENODEV,
 				     "no ethernet-ports child found\n");
+
+	lan966x->debugfs_root = debugfs_create_dir("lan966x", NULL);
 
 	/* init switch */
 	lan966x_init(lan966x);
@@ -1246,6 +1257,8 @@ cleanup_ports:
 	cancel_delayed_work_sync(&lan966x->stats_work);
 	destroy_workqueue(lan966x->stats_queue);
 	mutex_destroy(&lan966x->stats_lock);
+
+	debugfs_remove_recursive(lan966x->debugfs_root);
 
 	return err;
 }

@@ -47,6 +47,7 @@ static inline void update_page_count(int level, long count)
  * tables contain all the necessary information.
  */
 #define update_mmu_cache(vma, address, ptep)     do { } while (0)
+#define update_mmu_cache_range(vmf, vma, addr, ptep, nr) do { } while (0)
 #define update_mmu_cache_pmd(vma, address, ptep) do { } while (0)
 
 /*
@@ -88,8 +89,6 @@ extern unsigned long __bootdata_preserved(VMALLOC_END);
 #define VMALLOC_DEFAULT_SIZE	((512UL << 30) - MODULES_LEN)
 extern struct page *__bootdata_preserved(vmemmap);
 extern unsigned long __bootdata_preserved(vmemmap_size);
-
-#define VMEM_MAX_PHYS ((unsigned long) vmemmap)
 
 extern unsigned long __bootdata_preserved(MODULES_VADDR);
 extern unsigned long __bootdata_preserved(MODULES_END);
@@ -566,10 +565,20 @@ static inline pud_t set_pud_bit(pud_t pud, pgprot_t prot)
 }
 
 /*
- * In the case that a guest uses storage keys
- * faults should no longer be backed by zero pages
+ * As soon as the guest uses storage keys or enables PV, we deduplicate all
+ * mapped shared zeropages and prevent new shared zeropages from getting
+ * mapped.
  */
-#define mm_forbids_zeropage mm_has_pgste
+#define mm_forbids_zeropage mm_forbids_zeropage
+static inline int mm_forbids_zeropage(struct mm_struct *mm)
+{
+#ifdef CONFIG_PGSTE
+	if (!mm->context.allow_cow_sharing)
+		return 1;
+#endif
+	return 0;
+}
+
 static inline int mm_uses_skeys(struct mm_struct *mm)
 {
 #ifdef CONFIG_PGSTE
@@ -730,7 +739,7 @@ static inline int pud_bad(pud_t pud)
 {
 	unsigned long type = pud_val(pud) & _REGION_ENTRY_TYPE_MASK;
 
-	if (type > _REGION_ENTRY_TYPE_R3 || pud_large(pud))
+	if (type > _REGION_ENTRY_TYPE_R3 || pud_leaf(pud))
 		return 1;
 	if (type < _REGION_ENTRY_TYPE_R3)
 		return 0;
@@ -1002,7 +1011,7 @@ static inline pte_t pte_wrprotect(pte_t pte)
 	return set_pte_bit(pte, __pgprot(_PAGE_PROTECT));
 }
 
-static inline pte_t pte_mkwrite(pte_t pte)
+static inline pte_t pte_mkwrite_novma(pte_t pte)
 {
 	pte = set_pte_bit(pte, __pgprot(_PAGE_WRITE));
 	if (pte_val(pte) & _PAGE_DIRTY)
@@ -1316,20 +1325,34 @@ pgprot_t pgprot_writecombine(pgprot_t prot);
 pgprot_t pgprot_writethrough(pgprot_t prot);
 
 /*
- * Certain architectures need to do special things when PTEs
- * within a page table are directly modified.  Thus, the following
- * hook is made available.
+ * Set multiple PTEs to consecutive pages with a single call.  All PTEs
+ * are within the same folio, PMD and VMA.
  */
-static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
-			      pte_t *ptep, pte_t entry)
+static inline void set_ptes(struct mm_struct *mm, unsigned long addr,
+			      pte_t *ptep, pte_t entry, unsigned int nr)
 {
 	if (pte_present(entry))
 		entry = clear_pte_bit(entry, __pgprot(_PAGE_UNUSED));
-	if (mm_has_pgste(mm))
-		ptep_set_pte_at(mm, addr, ptep, entry);
-	else
-		set_pte(ptep, entry);
+	if (mm_has_pgste(mm)) {
+		for (;;) {
+			ptep_set_pte_at(mm, addr, ptep, entry);
+			if (--nr == 0)
+				break;
+			ptep++;
+			entry = __pte(pte_val(entry) + PAGE_SIZE);
+			addr += PAGE_SIZE;
+		}
+	} else {
+		for (;;) {
+			set_pte(ptep, entry);
+			if (--nr == 0)
+				break;
+			ptep++;
+			entry = __pte(pte_val(entry) + PAGE_SIZE);
+		}
+	}
 }
+#define set_ptes set_ptes
 
 /*
  * Conversion functions: convert a page and protection to a page entry,
@@ -1383,7 +1406,7 @@ static inline unsigned long pud_deref(pud_t pud)
 	unsigned long origin_mask;
 
 	origin_mask = _REGION_ENTRY_ORIGIN;
-	if (pud_large(pud))
+	if (pud_leaf(pud))
 		origin_mask = _REGION3_ENTRY_ORIGIN_LARGE;
 	return (unsigned long)__va(pud_val(pud) & origin_mask);
 }
@@ -1485,7 +1508,7 @@ static inline pmd_t pmd_wrprotect(pmd_t pmd)
 	return set_pmd_bit(pmd, __pgprot(_SEGMENT_ENTRY_PROTECT));
 }
 
-static inline pmd_t pmd_mkwrite(pmd_t pmd)
+static inline pmd_t pmd_mkwrite_novma(pmd_t pmd)
 {
 	pmd = set_pmd_bit(pmd, __pgprot(_SEGMENT_ENTRY_WRITE));
 	if (pmd_val(pmd) & _SEGMENT_ENTRY_DIRTY)
@@ -1751,8 +1774,10 @@ static inline pmd_t pmdp_huge_clear_flush(struct vm_area_struct *vma,
 static inline pmd_t pmdp_invalidate(struct vm_area_struct *vma,
 				   unsigned long addr, pmd_t *pmdp)
 {
-	pmd_t pmd = __pmd(pmd_val(*pmdp) | _SEGMENT_ENTRY_INVALID);
+	pmd_t pmd;
 
+	VM_WARN_ON_ONCE(!pmd_present(*pmdp));
+	pmd = __pmd(pmd_val(*pmdp) | _SEGMENT_ENTRY_INVALID);
 	return pmdp_xchg_direct(vma->vm_mm, addr, pmdp, pmd);
 }
 

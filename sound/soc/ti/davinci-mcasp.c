@@ -1474,10 +1474,11 @@ static int davinci_mcasp_hw_rule_min_periodsize(
 {
 	struct snd_interval *period_size = hw_param_interval(params,
 						SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
+	u8 numevt = *((u8 *)rule->private);
 	struct snd_interval frames;
 
 	snd_interval_any(&frames);
-	frames.min = 64;
+	frames.min = numevt;
 	frames.integer = 1;
 
 	return snd_interval_refine(period_size, &frames);
@@ -1492,6 +1493,7 @@ static int davinci_mcasp_startup(struct snd_pcm_substream *substream,
 	u32 max_channels = 0;
 	int i, dir, ret;
 	int tdm_slots = mcasp->tdm_slots;
+	u8 *numevt;
 
 	/* Do not allow more then one stream per direction */
 	if (mcasp->substreams[substream->stream])
@@ -1591,9 +1593,12 @@ static int davinci_mcasp_startup(struct snd_pcm_substream *substream,
 			return ret;
 	}
 
+	numevt = (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ?
+			 &mcasp->txnumevt :
+			 &mcasp->rxnumevt;
 	snd_pcm_hw_rule_add(substream->runtime, 0,
 			    SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-			    davinci_mcasp_hw_rule_min_periodsize, NULL,
+			    davinci_mcasp_hw_rule_min_periodsize, numevt,
 			    SNDRV_PCM_HW_PARAM_PERIOD_SIZE, -1);
 
 	return 0;
@@ -1615,18 +1620,6 @@ static void davinci_mcasp_shutdown(struct snd_pcm_substream *substream,
 		mcasp->max_format_width = 0;
 	}
 }
-
-static const struct snd_soc_dai_ops davinci_mcasp_dai_ops = {
-	.startup	= davinci_mcasp_startup,
-	.shutdown	= davinci_mcasp_shutdown,
-	.trigger	= davinci_mcasp_trigger,
-	.delay		= davinci_mcasp_delay,
-	.hw_params	= davinci_mcasp_hw_params,
-	.set_fmt	= davinci_mcasp_set_dai_fmt,
-	.set_clkdiv	= davinci_mcasp_set_clkdiv,
-	.set_sysclk	= davinci_mcasp_set_sysclk,
-	.set_tdm_slot	= davinci_mcasp_set_tdm_slot,
-};
 
 static int davinci_mcasp_iec958_info(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_info *uinfo)
@@ -1716,6 +1709,19 @@ static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)
 	return 0;
 }
 
+static const struct snd_soc_dai_ops davinci_mcasp_dai_ops = {
+	.probe		= davinci_mcasp_dai_probe,
+	.startup	= davinci_mcasp_startup,
+	.shutdown	= davinci_mcasp_shutdown,
+	.trigger	= davinci_mcasp_trigger,
+	.delay		= davinci_mcasp_delay,
+	.hw_params	= davinci_mcasp_hw_params,
+	.set_fmt	= davinci_mcasp_set_dai_fmt,
+	.set_clkdiv	= davinci_mcasp_set_clkdiv,
+	.set_sysclk	= davinci_mcasp_set_sysclk,
+	.set_tdm_slot	= davinci_mcasp_set_tdm_slot,
+};
+
 #define DAVINCI_MCASP_RATES	SNDRV_PCM_RATE_8000_192000
 
 #define DAVINCI_MCASP_PCM_FMTS (SNDRV_PCM_FMTBIT_S8 | \
@@ -1732,7 +1738,6 @@ static int davinci_mcasp_dai_probe(struct snd_soc_dai *dai)
 static struct snd_soc_dai_driver davinci_mcasp_dai[] = {
 	{
 		.name		= "davinci-mcasp.0",
-		.probe		= davinci_mcasp_dai_probe,
 		.playback	= {
 			.stream_name = "IIS Playback",
 			.channels_min	= 1,
@@ -1753,7 +1758,6 @@ static struct snd_soc_dai_driver davinci_mcasp_dai[] = {
 	},
 	{
 		.name		= "davinci-mcasp.1",
-		.probe		= davinci_mcasp_dai_probe,
 		.playback 	= {
 			.stream_name = "DIT Playback",
 			.channels_min	= 1,
@@ -2419,12 +2423,6 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 
 	mcasp_reparent_fck(pdev);
 
-	ret = devm_snd_soc_register_component(&pdev->dev, &davinci_mcasp_component,
-					      &davinci_mcasp_dai[mcasp->op_mode], 1);
-
-	if (ret != 0)
-		goto err;
-
 	ret = davinci_mcasp_get_dma_type(mcasp);
 	switch (ret) {
 	case PCM_EDMA:
@@ -2450,6 +2448,12 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "register PCM failed: %d\n", ret);
 		goto err;
 	}
+
+	ret = devm_snd_soc_register_component(&pdev->dev, &davinci_mcasp_component,
+					      &davinci_mcasp_dai[mcasp->op_mode], 1);
+
+	if (ret != 0)
+		goto err;
 
 no_audio:
 	ret = davinci_mcasp_init_gpiochip(mcasp);

@@ -182,11 +182,8 @@ void link_resume(struct dc_link *link)
 static bool is_master_pipe_for_link(const struct dc_link *link,
 		const struct pipe_ctx *pipe)
 {
-	return (pipe->stream &&
-			pipe->stream->link &&
-			pipe->stream->link == link &&
-			pipe->top_pipe == NULL &&
-			pipe->prev_odm_pipe == NULL);
+	return resource_is_pipe_type(pipe, OTG_MASTER) &&
+			pipe->stream->link == link;
 }
 
 /*
@@ -876,10 +873,14 @@ bool link_set_dsc_pps_packet(struct pipe_ctx *pipe_ctx, bool enable, bool immedi
 {
 	struct display_stream_compressor *dsc = pipe_ctx->stream_res.dsc;
 	struct dc_stream_state *stream = pipe_ctx->stream;
-	DC_LOGGER_INIT(dsc->ctx->logger);
 
-	if (!pipe_ctx->stream->timing.flags.DSC || !dsc)
+	if (!pipe_ctx->stream->timing.flags.DSC)
 		return false;
+
+	if (!dsc)
+		return false;
+
+	DC_LOGGER_INIT(dsc->ctx->logger);
 
 	if (enable) {
 		struct dsc_config dsc_cfg;
@@ -1058,18 +1059,21 @@ static struct fixed31_32 get_pbn_from_bw_in_kbps(uint64_t kbps)
 	uint32_t denominator = 1;
 
 	/*
-	 * margin 5300ppm + 300ppm ~ 0.6% as per spec, factor is 1.006
+	 * The 1.006 factor (margin 5300ppm + 300ppm ~ 0.6% as per spec) is not
+	 * required when determining PBN/time slot utilization on the link between
+	 * us and the branch, since that overhead is already accounted for in
+	 * the get_pbn_per_slot function.
+	 *
 	 * The unit of 54/64Mbytes/sec is an arbitrary unit chosen based on
 	 * common multiplier to render an integer PBN for all link rate/lane
 	 * counts combinations
 	 * calculate
-	 * peak_kbps *= (1006/1000)
 	 * peak_kbps *= (64/54)
-	 * peak_kbps *= 8    convert to bytes
+	 * peak_kbps /= (8 * 1000) convert to bytes
 	 */
 
-	numerator = 64 * PEAK_FACTOR_X1000;
-	denominator = 54 * 8 * 1000 * 1000;
+	numerator = 64;
+	denominator = 54 * 8 * 1000;
 	kbps *= numerator;
 	peak_kbps = dc_fixpt_from_fraction(kbps, denominator);
 
@@ -1079,8 +1083,14 @@ static struct fixed31_32 get_pbn_from_bw_in_kbps(uint64_t kbps)
 static struct fixed31_32 get_pbn_from_timing(struct pipe_ctx *pipe_ctx)
 {
 	uint64_t kbps;
+	enum dc_link_encoding_format link_encoding;
 
-	kbps = dc_bandwidth_in_kbps_from_timing(&pipe_ctx->stream->timing);
+	if (dp_is_128b_132b_signal(pipe_ctx))
+		link_encoding = DC_LINK_ENCODING_DP_128b_132b;
+	else
+		link_encoding = DC_LINK_ENCODING_DP_8b_10b;
+
+	kbps = dc_bandwidth_in_kbps_from_timing(&pipe_ctx->stream->timing, link_encoding);
 	return get_pbn_from_bw_in_kbps(kbps);
 }
 
@@ -1538,7 +1548,8 @@ struct fixed31_32 link_calculate_sst_avg_time_slots_per_mtp(
 			dc_fixpt_div_int(link_bw_effective, MAX_MTP_SLOT_COUNT);
 	struct fixed31_32 timing_bw =
 			dc_fixpt_from_int(
-					dc_bandwidth_in_kbps_from_timing(&stream->timing));
+					dc_bandwidth_in_kbps_from_timing(&stream->timing,
+							dc_link_get_highest_encoding_format(link)));
 	struct fixed31_32 avg_time_slots_per_mtp =
 			dc_fixpt_div(timing_bw, timeslot_bw_effective);
 
@@ -1926,7 +1937,7 @@ static void disable_link_dp(struct dc_link *link,
 	dp_disable_link_phy(link, link_res, signal);
 
 	if (link->connector_signal == SIGNAL_TYPE_EDP) {
-		if (!link->dc->config.edp_no_power_sequencing)
+		if (!link->skip_implict_edp_power_control)
 			link->dc->hwss.edp_power_control(link, false);
 	}
 
@@ -1971,6 +1982,7 @@ static void enable_link_hdmi(struct pipe_ctx *pipe_ctx)
 	bool is_vga_mode = (stream->timing.h_addressable == 640)
 			&& (stream->timing.v_addressable == 480);
 	struct dc *dc = pipe_ctx->stream->ctx->dc;
+	const struct link_hwss *link_hwss = get_link_hwss(link, &pipe_ctx->link_res);
 
 	if (stream->phy_pix_clk == 0)
 		stream->phy_pix_clk = stream->timing.pix_clk_100hz / 10;
@@ -2009,6 +2021,12 @@ static void enable_link_hdmi(struct pipe_ctx *pipe_ctx)
 	display_color_depth = stream->timing.display_color_depth;
 	if (stream->timing.pixel_encoding == PIXEL_ENCODING_YCBCR422)
 		display_color_depth = COLOR_DEPTH_888;
+
+	/* We need to enable stream encoder for TMDS first to apply 1/4 TMDS
+	 * character clock in case that beyond 340MHz.
+	 */
+	if (dc_is_hdmi_tmds_signal(pipe_ctx->stream->signal))
+		link_hwss->setup_stream_encoder(pipe_ctx);
 
 	dc->hwss.enable_tmds_link_output(
 			link,
@@ -2053,17 +2071,11 @@ static enum dc_status enable_link_dp(struct dc_state *state,
 		}
 	}
 
-	/*
-	 * If the link is DP-over-USB4 do the following:
-	 * - Train with fallback when enabling DPIA link. Conventional links are
+	/* Train with fallback when enabling DPIA link. Conventional links are
 	 * trained with fallback during sink detection.
-	 * - Allocate only what the stream needs for bw in Gbps. Inform the CM
-	 * in case stream needs more or less bw from what has been allocated
-	 * earlier at plug time.
 	 */
-	if (link->ep_type == DISPLAY_ENDPOINT_USB4_DPIA) {
+	if (link->ep_type == DISPLAY_ENDPOINT_USB4_DPIA)
 		do_fallback = true;
-	}
 
 	/*
 	 * Temporary w/a to get DP2.0 link rates to work with SST.
@@ -2129,7 +2141,7 @@ static enum dc_status enable_link_dp(struct dc_state *state,
 	if (link->dpcd_sink_ext_caps.bits.oled == 1 ||
 		link->dpcd_sink_ext_caps.bits.sdr_aux_backlight_control == 1 ||
 		link->dpcd_sink_ext_caps.bits.hdr_aux_backlight_control == 1) {
-		set_default_brightness_aux(link); // TODO: use cached if known
+		set_default_brightness_aux(link);
 		if (link->dpcd_sink_ext_caps.bits.oled == 1)
 			msleep(bl_oled_enable_delay);
 		edp_backlight_enable_aux(link, true);
@@ -2207,7 +2219,7 @@ static enum dc_status enable_link(
 	 * link settings. Need to call disable first before enabling at
 	 * new link settings.
 	 */
-	if (link->link_status.link_active && !stream->skip_edp_power_down)
+	if (link->link_status.link_active)
 		disable_link(link, &pipe_ctx->link_res, pipe_ctx->stream->signal);
 
 	switch (pipe_ctx->stream->signal) {
@@ -2245,6 +2257,32 @@ static enum dc_status enable_link(
 	return status;
 }
 
+static bool allocate_usb4_bandwidth_for_stream(struct dc_stream_state *stream, int bw)
+{
+	return true;
+}
+
+static bool allocate_usb4_bandwidth(struct dc_stream_state *stream)
+{
+	bool ret;
+
+	int bw = dc_bandwidth_in_kbps_from_timing(&stream->timing,
+			dc_link_get_highest_encoding_format(stream->sink->link));
+
+	ret = allocate_usb4_bandwidth_for_stream(stream, bw);
+
+	return ret;
+}
+
+static bool deallocate_usb4_bandwidth(struct dc_stream_state *stream)
+{
+	bool ret;
+
+	ret = allocate_usb4_bandwidth_for_stream(stream, 0);
+
+	return ret;
+}
+
 void link_set_dpms_off(struct pipe_ctx *pipe_ctx)
 {
 	struct dc  *dc = pipe_ctx->stream->ctx->dc;
@@ -2280,6 +2318,9 @@ void link_set_dpms_off(struct pipe_ctx *pipe_ctx)
 
 	update_psp_stream_config(pipe_ctx, true);
 	dc->hwss.blank_stream(pipe_ctx);
+
+	if (pipe_ctx->stream->link->ep_type == DISPLAY_ENDPOINT_USB4_DPIA)
+		deallocate_usb4_bandwidth(pipe_ctx->stream);
 
 	if (pipe_ctx->stream->signal == SIGNAL_TYPE_DISPLAY_PORT_MST)
 		deallocate_mst_payload(pipe_ctx);
@@ -2326,9 +2367,7 @@ void link_set_dpms_off(struct pipe_ctx *pipe_ctx)
 		dc->hwss.disable_stream(pipe_ctx);
 	} else {
 		dc->hwss.disable_stream(pipe_ctx);
-		if (!pipe_ctx->stream->skip_edp_power_down) {
-			disable_link(pipe_ctx->stream->link, &pipe_ctx->link_res, pipe_ctx->stream->signal);
-		}
+		disable_link(pipe_ctx->stream->link, &pipe_ctx->link_res, pipe_ctx->stream->signal);
 	}
 
 	if (pipe_ctx->stream->timing.flags.DSC) {
@@ -2503,6 +2542,9 @@ void link_set_dpms_on(
 			link_set_dsc_pps_packet(pipe_ctx, true, true);
 		}
 	}
+
+	if (pipe_ctx->stream->link->ep_type == DISPLAY_ENDPOINT_USB4_DPIA)
+		allocate_usb4_bandwidth(pipe_ctx->stream);
 
 	if (pipe_ctx->stream->signal == SIGNAL_TYPE_DISPLAY_PORT_MST)
 		allocate_mst_payload(pipe_ctx);

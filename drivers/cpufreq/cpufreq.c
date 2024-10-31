@@ -86,6 +86,7 @@ static void cpufreq_governor_limits(struct cpufreq_policy *policy);
 static int cpufreq_set_policy(struct cpufreq_policy *policy,
 			      struct cpufreq_governor *new_gov,
 			      unsigned int new_pol);
+static bool cpufreq_boost_supported(void);
 
 /*
  * Two notifier lists: the "policy" list is involved in the
@@ -623,6 +624,42 @@ static ssize_t store_boost(struct kobject *kobj, struct kobj_attribute *attr,
 }
 define_one_global_rw(boost);
 
+static ssize_t show_local_boost(struct cpufreq_policy *policy, char *buf)
+{
+	return sysfs_emit(buf, "%d\n", policy->boost_enabled);
+}
+
+static ssize_t store_local_boost(struct cpufreq_policy *policy,
+				 const char *buf, size_t count)
+{
+	int ret, enable;
+
+	ret = kstrtoint(buf, 10, &enable);
+	if (ret || enable < 0 || enable > 1)
+		return -EINVAL;
+
+	if (!cpufreq_driver->boost_enabled)
+		return -EINVAL;
+
+	if (policy->boost_enabled == enable)
+		return count;
+
+	policy->boost_enabled = enable;
+
+	cpus_read_lock();
+	ret = cpufreq_driver->set_boost(policy, enable);
+	cpus_read_unlock();
+
+	if (ret) {
+		policy->boost_enabled = !policy->boost_enabled;
+		return ret;
+	}
+
+	return count;
+}
+
+static struct freq_attr local_boost = __ATTR(boost, 0644, show_local_boost, store_local_boost);
+
 static struct cpufreq_governor *find_governor(const char *str_governor)
 {
 	struct cpufreq_governor *t;
@@ -1057,6 +1094,12 @@ static int cpufreq_add_dev_interface(struct cpufreq_policy *policy)
 			return ret;
 	}
 
+	if (cpufreq_boost_supported()) {
+		ret = sysfs_create_file(&policy->kobj, &local_boost.attr);
+		if (ret)
+			return ret;
+	}
+
 	return 0;
 }
 
@@ -1236,16 +1279,16 @@ static struct cpufreq_policy *cpufreq_policy_alloc(unsigned int cpu)
 	ret = freq_qos_add_notifier(&policy->constraints, FREQ_QOS_MIN,
 				    &policy->nb_min);
 	if (ret) {
-		dev_err(dev, "Failed to register MIN QoS notifier: %d (%*pbl)\n",
-			ret, cpumask_pr_args(policy->cpus));
+		dev_err(dev, "Failed to register MIN QoS notifier: %d (CPU%u)\n",
+			ret, cpu);
 		goto err_kobj_remove;
 	}
 
 	ret = freq_qos_add_notifier(&policy->constraints, FREQ_QOS_MAX,
 				    &policy->nb_max);
 	if (ret) {
-		dev_err(dev, "Failed to register MAX QoS notifier: %d (%*pbl)\n",
-			ret, cpumask_pr_args(policy->cpus));
+		dev_err(dev, "Failed to register MAX QoS notifier: %d (CPU%u)\n",
+			ret, cpu);
 		goto err_min_qos_notifier;
 	}
 
@@ -1377,6 +1420,10 @@ static int cpufreq_online(unsigned int cpu)
 				 __LINE__);
 			goto out_free_policy;
 		}
+
+		/* Let the per-policy boost flag mirror the cpufreq_driver boost during init */
+		if (cpufreq_boost_enabled() && policy_has_boost_freq(policy))
+			policy->boost_enabled = true;
 
 		/*
 		 * The initialization has succeeded and the policy is online.
@@ -1530,7 +1577,8 @@ static int cpufreq_online(unsigned int cpu)
 	if (cpufreq_driver->ready)
 		cpufreq_driver->ready(policy);
 
-	if (cpufreq_thermal_control_enabled(cpufreq_driver))
+	/* Register cpufreq cooling only for a new policy */
+	if (new_policy && cpufreq_thermal_control_enabled(cpufreq_driver))
 		policy->cdev = of_cpufreq_cooling_register(policy);
 
 	pr_debug("initialization complete\n");
@@ -1614,11 +1662,6 @@ static void __cpufreq_offline(unsigned int cpu, struct cpufreq_policy *policy)
 	else
 		policy->last_policy = policy->policy;
 
-	if (cpufreq_thermal_control_enabled(cpufreq_driver)) {
-		cpufreq_cooling_unregister(policy->cdev);
-		policy->cdev = NULL;
-	}
-
 	if (has_target())
 		cpufreq_exit_governor(policy);
 
@@ -1628,10 +1671,13 @@ static void __cpufreq_offline(unsigned int cpu, struct cpufreq_policy *policy)
 	 */
 	if (cpufreq_driver->offline) {
 		cpufreq_driver->offline(policy);
-	} else if (cpufreq_driver->exit) {
-		cpufreq_driver->exit(policy);
-		policy->freq_table = NULL;
+		return;
 	}
+
+	if (cpufreq_driver->exit)
+		cpufreq_driver->exit(policy);
+
+	policy->freq_table = NULL;
 }
 
 static int cpufreq_offline(unsigned int cpu)
@@ -1679,8 +1725,17 @@ static void cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif)
 		return;
 	}
 
+	/*
+	 * Unregister cpufreq cooling once all the CPUs of the policy are
+	 * removed.
+	 */
+	if (cpufreq_thermal_control_enabled(cpufreq_driver)) {
+		cpufreq_cooling_unregister(policy->cdev);
+		policy->cdev = NULL;
+	}
+
 	/* We did light-weight exit earlier, do full tear down now */
-	if (cpufreq_driver->offline)
+	if (cpufreq_driver->offline && cpufreq_driver->exit)
 		cpufreq_driver->exit(policy);
 
 	up_write(&policy->rwsem);
@@ -1945,16 +2000,16 @@ void cpufreq_resume(void)
 
 	for_each_active_policy(policy) {
 		if (cpufreq_driver->resume && cpufreq_driver->resume(policy)) {
-			pr_err("%s: Failed to resume driver: %p\n", __func__,
-				policy);
+			pr_err("%s: Failed to resume driver: %s\n", __func__,
+				cpufreq_driver->name);
 		} else if (has_target()) {
 			down_write(&policy->rwsem);
 			ret = cpufreq_start_governor(policy);
 			up_write(&policy->rwsem);
 
 			if (ret)
-				pr_err("%s: Failed to start governor for policy: %p\n",
-				       __func__, policy);
+				pr_err("%s: Failed to start governor for CPU%u's policy\n",
+				       __func__, policy->cpu);
 		}
 	}
 }
@@ -2715,9 +2770,12 @@ int cpufreq_boost_trigger_state(int state)
 
 	cpus_read_lock();
 	for_each_active_policy(policy) {
+		policy->boost_enabled = state;
 		ret = cpufreq_driver->set_boost(policy, state);
-		if (ret)
+		if (ret) {
+			policy->boost_enabled = !policy->boost_enabled;
 			goto err_reset_state;
+		}
 	}
 	cpus_read_unlock();
 

@@ -172,6 +172,8 @@ static inline struct tcp_request_sock *tcp_rsk(const struct request_sock *req)
 	return (struct tcp_request_sock *)req;
 }
 
+#define TCP_RMEM_TO_WIN_SCALE 8
+
 struct tcp_sock {
 	/* inet_connection_sock has to be the first member of tcp_sock */
 	struct inet_connection_sock	inet_conn;
@@ -238,7 +240,7 @@ struct tcp_sock {
 
 	u32	window_clamp;	/* Maximal window to advertise		*/
 	u32	rcv_ssthresh;	/* Current window clamp			*/
-
+	u8	scaling_ratio;	/* see tcp_win_from_space() */
 	/* Information of the most recently (s)acked skb */
 	struct tcp_rack {
 		u64 mstamp; /* (Re)sent time of the skb */
@@ -375,6 +377,14 @@ struct tcp_sock {
 				 * Total data bytes retransmitted
 				 */
 	u32	total_retrans;	/* Total retransmits for entire connection */
+	u32	rto_stamp;	/* Start time (ms) of last CA_Loss recovery */
+	u16	total_rto;	/* Total number of RTO timeouts, including
+				 * SYN/SYN-ACK and recurring timeouts.
+				 */
+	u16	total_rto_recoveries;	/* Total number of RTO recoveries,
+					 * including any unfinished recovery.
+					 */
+	u32	total_rto_time;	/* ms spent in (completed) RTO recoveries. */
 
 	u32	urg_seq;	/* Seq of received urgent pointer */
 	unsigned int		keepalive_time;	  /* time before keep alive takes place */
@@ -562,6 +572,6 @@ void __tcp_sock_set_nodelay(struct sock *sk, bool on);
 void tcp_sock_set_nodelay(struct sock *sk);
 void tcp_sock_set_quickack(struct sock *sk, int val);
 int tcp_sock_set_syncnt(struct sock *sk, int val);
-void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
+int tcp_sock_set_user_timeout(struct sock *sk, int val);
 
 #endif	/* _LINUX_TCP_H */

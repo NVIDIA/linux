@@ -107,6 +107,7 @@
 #include <linux/interrupt.h>
 #include <linux/poll.h>
 #include <linux/tcp.h>
+#include <linux/udp.h>
 #include <linux/init.h>
 #include <linux/highmem.h>
 #include <linux/user_namespace.h>
@@ -282,6 +283,7 @@ __u32 sysctl_rmem_max __read_mostly = SK_RMEM_MAX;
 EXPORT_SYMBOL(sysctl_rmem_max);
 __u32 sysctl_wmem_default __read_mostly = SK_WMEM_MAX;
 __u32 sysctl_rmem_default __read_mostly = SK_RMEM_MAX;
+int sysctl_mem_pcpu_rsv __read_mostly = SK_MEMORY_PCPU_RESERVE;
 
 /* Maximal space eaten by iovec or ancillary data plus some space */
 int sysctl_optmem_max __read_mostly = sizeof(unsigned long)*(2*UIO_MAXIOV+512);
@@ -484,7 +486,7 @@ int __sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	unsigned long flags;
 	struct sk_buff_head *list = &sk->sk_receive_queue;
 
-	if (atomic_read(&sk->sk_rmem_alloc) >= sk->sk_rcvbuf) {
+	if (atomic_read(&sk->sk_rmem_alloc) >= READ_ONCE(sk->sk_rcvbuf)) {
 		atomic_inc(&sk->sk_drops);
 		trace_sock_rcvqueue_full(sk, skb);
 		return -ENOMEM;
@@ -554,7 +556,7 @@ int __sk_receive_skb(struct sock *sk, struct sk_buff *skb,
 
 	skb->dev = NULL;
 
-	if (sk_rcvqueues_full(sk, sk->sk_rcvbuf)) {
+	if (sk_rcvqueues_full(sk, READ_ONCE(sk->sk_rcvbuf))) {
 		atomic_inc(&sk->sk_drops);
 		goto discard_and_relse;
 	}
@@ -600,7 +602,7 @@ struct dst_entry *__sk_dst_check(struct sock *sk, u32 cookie)
 	    INDIRECT_CALL_INET(dst->ops->check, ip6_dst_check, ipv4_dst_check,
 			       dst, cookie) == NULL) {
 		sk_tx_queue_clear(sk);
-		sk->sk_dst_pending_confirm = 0;
+		WRITE_ONCE(sk->sk_dst_pending_confirm, 0);
 		RCU_INIT_POINTER(sk->sk_dst_cache, NULL);
 		dst_release(dst);
 		return NULL;
@@ -768,7 +770,7 @@ bool sk_mc_loop(struct sock *sk)
 	/* IPV6_ADDRFORM can change sk->sk_family under us. */
 	switch (READ_ONCE(sk->sk_family)) {
 	case AF_INET:
-		return inet_sk(sk)->mc_loop;
+		return inet_test_bit(MC_LOOP, sk);
 #if IS_ENABLED(CONFIG_IPV6)
 	case AF_INET6:
 		return inet6_sk(sk)->mc_loop;
@@ -1248,17 +1250,11 @@ set_sndbuf:
 		break;
 
 	case SO_PASSCRED:
-		if (valbool)
-			set_bit(SOCK_PASSCRED, &sock->flags);
-		else
-			clear_bit(SOCK_PASSCRED, &sock->flags);
+		assign_bit(SOCK_PASSCRED, &sock->flags, valbool);
 		break;
 
 	case SO_PASSPIDFD:
-		if (valbool)
-			set_bit(SOCK_PASSPIDFD, &sock->flags);
-		else
-			clear_bit(SOCK_PASSPIDFD, &sock->flags);
+		assign_bit(SOCK_PASSPIDFD, &sock->flags, valbool);
 		break;
 
 	case SO_TIMESTAMP_OLD:
@@ -1284,14 +1280,19 @@ set_sndbuf:
 		break;
 
 	case SO_RCVLOWAT:
+		{
+		int (*set_rcvlowat)(struct sock *sk, int val) = NULL;
+
 		if (val < 0)
 			val = INT_MAX;
-		if (sock && sock->ops->set_rcvlowat)
-			ret = sock->ops->set_rcvlowat(sk, val);
+		if (sock)
+			set_rcvlowat = READ_ONCE(sock->ops)->set_rcvlowat;
+		if (set_rcvlowat)
+			ret = set_rcvlowat(sk, val);
 		else
 			WRITE_ONCE(sk->sk_rcvlowat, val ? : 1);
 		break;
-
+		}
 	case SO_RCVTIMEO_OLD:
 	case SO_RCVTIMEO_NEW:
 		ret = sock_set_timeout(&sk->sk_rcvtimeo, optval,
@@ -1362,10 +1363,7 @@ set_sndbuf:
 		break;
 
 	case SO_PASSSEC:
-		if (valbool)
-			set_bit(SOCK_PASSSEC, &sock->flags);
-		else
-			clear_bit(SOCK_PASSSEC, &sock->flags);
+		assign_bit(SOCK_PASSSEC, &sock->flags, valbool);
 		break;
 	case SO_MARK:
 		if (!sockopt_ns_capable(sock_net(sk)->user_ns, CAP_NET_RAW) &&
@@ -1389,11 +1387,16 @@ set_sndbuf:
 		break;
 
 	case SO_PEEK_OFF:
-		if (sock->ops->set_peek_off)
-			ret = sock->ops->set_peek_off(sk, val);
+		{
+		int (*set_peek_off)(struct sock *sk, int val);
+
+		set_peek_off = READ_ONCE(sock->ops)->set_peek_off;
+		if (set_peek_off)
+			ret = set_peek_off(sk, val);
 		else
 			ret = -EOPNOTSUPP;
 		break;
+		}
 
 	case SO_NOFCS:
 		sock_valbool_flag(sk, SOCK_NOFCS, valbool);
@@ -1717,9 +1720,16 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 		break;
 
 	case SO_TIMESTAMPING_OLD:
+	case SO_TIMESTAMPING_NEW:
 		lv = sizeof(v.timestamping);
-		v.timestamping.flags = READ_ONCE(sk->sk_tsflags);
-		v.timestamping.bind_phc = READ_ONCE(sk->sk_bind_phc);
+		/* For the later-added case SO_TIMESTAMPING_NEW: Be strict about only
+		 * returning the flags when they were set through the same option.
+		 * Don't change the beviour for the old case SO_TIMESTAMPING_OLD.
+		 */
+		if (optname == SO_TIMESTAMPING_OLD || sock_flag(sk, SOCK_TSTAMP_NEW)) {
+			v.timestamping.flags = READ_ONCE(sk->sk_tsflags);
+			v.timestamping.bind_phc = READ_ONCE(sk->sk_bind_phc);
+		}
 		break;
 
 	case SO_RCVTIMEO_OLD:
@@ -1826,7 +1836,7 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 	{
 		struct sockaddr_storage address;
 
-		lv = sock->ops->getname(sock, (struct sockaddr *)&address, 2);
+		lv = READ_ONCE(sock->ops)->getname(sock, (struct sockaddr *)&address, 2);
 		if (lv < 0)
 			return -ENOTCONN;
 		if (lv < len)
@@ -1868,7 +1878,7 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
 		break;
 
 	case SO_PEEK_OFF:
-		if (!sock->ops->set_peek_off)
+		if (!READ_ONCE(sock->ops)->set_peek_off)
 			return -EOPNOTSUPP;
 
 		v.val = READ_ONCE(sk->sk_peek_off);
@@ -2007,14 +2017,6 @@ lenout:
 	if (copy_to_sockptr(optlen, &len, sizeof(int)))
 		return -EFAULT;
 	return 0;
-}
-
-int sock_getsockopt(struct socket *sock, int level, int optname,
-		    char __user *optval, int __user *optlen)
-{
-	return sk_getsockopt(sock->sk, level, optname,
-			     USER_SOCKPTR(optval),
-			     USER_SOCKPTR(optlen));
 }
 
 /*
@@ -2820,6 +2822,7 @@ int __sock_cmsg_send(struct sock *sk, struct cmsghdr *cmsg,
 		sockc->mark = *(u32 *)CMSG_DATA(cmsg);
 		break;
 	case SO_TIMESTAMPING_OLD:
+	case SO_TIMESTAMPING_NEW:
 		if (cmsg->cmsg_len != CMSG_LEN(sizeof(u32)))
 			return -EINVAL;
 
@@ -3714,6 +3717,9 @@ void sk_common_release(struct sock *sk)
 
 	sk->sk_prot->unhash(sk);
 
+	if (sk->sk_socket)
+		sk->sk_socket->sk = NULL;
+
 	/*
 	 * In this point socket cannot receive new packets, but it is possible
 	 * that some packets are in flight because some CPU runs receiver and
@@ -4127,8 +4133,14 @@ bool sk_busy_loop_end(void *p, unsigned long start_time)
 {
 	struct sock *sk = p;
 
-	return !skb_queue_empty_lockless(&sk->sk_receive_queue) ||
-	       sk_busy_loop_timeout(sk, start_time);
+	if (!skb_queue_empty_lockless(&sk->sk_receive_queue))
+		return true;
+
+	if (sk_is_udp(sk) &&
+	    !skb_queue_empty_lockless(&udp_sk(sk)->reader_queue))
+		return true;
+
+	return sk_busy_loop_timeout(sk, start_time);
 }
 EXPORT_SYMBOL(sk_busy_loop_end);
 #endif /* CONFIG_NET_RX_BUSY_POLL */

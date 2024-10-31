@@ -8,7 +8,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/of.h>
-#include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/iopoll.h>
 #include <linux/serial_core.h>
 #include <linux/slab.h>
@@ -552,10 +552,18 @@ static void ma35d1serial_console_putchar(struct uart_port *port, unsigned char c
  */
 static void ma35d1serial_console_write(struct console *co, const char *s, u32 count)
 {
-	struct uart_ma35d1_port *up = &ma35d1serial_ports[co->index];
+	struct uart_ma35d1_port *up;
 	unsigned long flags;
 	int locked = 1;
 	u32 ier;
+
+	if ((co->index < 0) || (co->index >= MA35_UART_NR)) {
+		pr_warn("Failed to write on ononsole port %x, out of range\n",
+			co->index);
+		return;
+	}
+
+	up = &ma35d1serial_ports[co->index];
 
 	if (up->port.sysrq)
 		locked = 0;
@@ -680,12 +688,13 @@ static int ma35d1serial_probe(struct platform_device *pdev)
 	struct uart_ma35d1_port *up;
 	int ret = 0;
 
-	if (pdev->dev.of_node) {
-		ret = of_alias_get_id(pdev->dev.of_node, "serial");
-		if (ret < 0) {
-			dev_err(&pdev->dev, "failed to get alias/pdev id, errno %d\n", ret);
-			return ret;
-		}
+	if (!pdev->dev.of_node)
+		return -ENODEV;
+
+	ret = of_alias_get_id(pdev->dev.of_node, "serial");
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to get alias/pdev id, errno %d\n", ret);
+		return ret;
 	}
 	up = &ma35d1serial_ports[ret];
 	up->port.line = ret;
@@ -788,7 +797,6 @@ static struct platform_driver ma35d1serial_driver = {
 	.resume     = ma35d1serial_resume,
 	.driver     = {
 		.name   = "ma35d1-uart",
-		.owner  = THIS_MODULE,
 		.of_match_table = of_match_ptr(ma35d1_serial_of_match),
 	},
 };

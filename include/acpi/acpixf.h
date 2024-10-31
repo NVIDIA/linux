@@ -12,7 +12,7 @@
 
 /* Current ACPICA subsystem version in YYYYMMDD format */
 
-#define ACPI_CA_VERSION                 0x20230331
+#define ACPI_CA_VERSION                 0x20230628
 
 #include <acpi/acconfig.h>
 #include <acpi/actypes.h>
@@ -660,6 +660,7 @@ ACPI_EXTERNAL_RETURN_STATUS(acpi_status
 			     void *context))
 ACPI_EXTERNAL_RETURN_STATUS(acpi_status
 			    acpi_execute_reg_methods(acpi_handle device,
+						     u32 nax_depth,
 						     acpi_adr_space_type
 						     space_id))
 ACPI_EXTERNAL_RETURN_STATUS(acpi_status
@@ -969,8 +970,6 @@ ACPI_EXTERNAL_RETURN_STATUS(acpi_status
 					       acpi_object_handler handler,
 					       void **data,
 					       void (*callback)(void *)))
-
-void acpi_run_debugger(char *batch_buffer);
 
 void acpi_set_debugger_thread_id(acpi_thread_id thread_id);
 

@@ -7,8 +7,9 @@
 #include <linux/device.h>
 #include <linux/interconnect.h>
 #include <linux/interconnect-provider.h>
+#include <linux/mod_devicetable.h>
 #include <linux/module.h>
-#include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <dt-bindings/interconnect/qcom,qdu1000-rpmh.h>
 
 #include "bcm-voter.h"
@@ -768,6 +769,7 @@ static struct qcom_icc_node xs_sys_tcu_cfg = {
 
 static struct qcom_icc_bcm bcm_acv = {
 	.name = "ACV",
+	.enable_mask = BIT(3),
 	.num_nodes = 1,
 	.nodes = { &ebi },
 };

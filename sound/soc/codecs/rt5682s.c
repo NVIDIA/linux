@@ -15,8 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/acpi.h>
-#include <linux/gpio.h>
-#include <linux/of_gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/mutex.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -2829,7 +2828,9 @@ static int rt5682s_register_dai_clks(struct snd_soc_component *component)
 		}
 
 		if (dev->of_node) {
-			devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, dai_clk_hw);
+			ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, dai_clk_hw);
+			if (ret)
+				return ret;
 		} else {
 			ret = devm_clk_hw_register_clkdev(dev, dai_clk_hw,
 							  init.name, dev_name(dev));
@@ -2972,9 +2973,6 @@ static int rt5682s_parse_dt(struct rt5682s_priv *rt5682s, struct device *dev)
 		&rt5682s->pdata.dmic_delay);
 	device_property_read_u32(dev, "realtek,amic-delay-ms",
 		&rt5682s->pdata.amic_delay);
-
-	rt5682s->pdata.ldo1_en = of_get_named_gpio(dev->of_node,
-		"realtek,ldo1-en-gpios", 0);
 
 	if (device_property_read_string_array(dev, "clock-output-names",
 					      rt5682s->pdata.dai_clk_names,
@@ -3172,10 +3170,12 @@ static int rt5682s_i2c_probe(struct i2c_client *i2c)
 		return ret;
 	}
 
-	if (gpio_is_valid(rt5682s->pdata.ldo1_en)) {
-		if (devm_gpio_request_one(&i2c->dev, rt5682s->pdata.ldo1_en,
-					  GPIOF_OUT_INIT_HIGH, "rt5682s"))
-			dev_err(&i2c->dev, "Fail gpio_request gpio_ldo\n");
+	rt5682s->ldo1_en = devm_gpiod_get_optional(&i2c->dev,
+						   "realtek,ldo1-en",
+						   GPIOD_OUT_HIGH);
+	if (IS_ERR(rt5682s->ldo1_en)) {
+		dev_err(&i2c->dev, "Fail gpio request ldo1_en\n");
+		return PTR_ERR(rt5682s->ldo1_en);
 	}
 
 	/* Sleep for 50 ms minimum */

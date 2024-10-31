@@ -32,15 +32,13 @@ xchk_prepare_iscrub(
 {
 	int			error;
 
-	sc->ilock_flags = XFS_IOLOCK_EXCL;
-	xfs_ilock(sc->ip, sc->ilock_flags);
+	xchk_ilock(sc, XFS_IOLOCK_EXCL);
 
 	error = xchk_trans_alloc(sc, 0);
 	if (error)
 		return error;
 
-	sc->ilock_flags |= XFS_ILOCK_EXCL;
-	xfs_ilock(sc->ip, XFS_ILOCK_EXCL);
+	xchk_ilock(sc, XFS_ILOCK_EXCL);
 	return 0;
 }
 
@@ -83,7 +81,10 @@ xchk_setup_inode(
 
 	/* We want to scan the opened inode, so lock it and exit. */
 	if (sc->sm->sm_ino == 0 || sc->sm->sm_ino == ip_in->i_ino) {
-		sc->ip = ip_in;
+		error = xchk_install_live_inode(sc, ip_in);
+		if (error)
+			return error;
+
 		return xchk_prepare_iscrub(sc);
 	}
 
@@ -93,8 +94,8 @@ xchk_setup_inode(
 	if (!xfs_verify_ino(sc->mp, sc->sm->sm_ino))
 		return -ENOENT;
 
-	/* Try a regular untrusted iget. */
-	error = xchk_iget(sc, sc->sm->sm_ino, &ip);
+	/* Try a safe untrusted iget. */
+	error = xchk_iget_safe(sc, sc->sm->sm_ino, &ip);
 	if (!error)
 		return xchk_install_handle_iscrub(sc, ip);
 	if (error == -ENOENT)
@@ -334,6 +335,10 @@ xchk_inode_flags2(
 
 	/* no bigtime iflag without the bigtime feature */
 	if (xfs_dinode_has_bigtime(dip) && !xfs_has_bigtime(mp))
+		goto bad;
+
+	/* no large extent counts without the filesystem feature */
+	if ((flags2 & XFS_DIFLAG2_NREXT64) && !xfs_has_large_extent_counts(mp))
 		goto bad;
 
 	return;

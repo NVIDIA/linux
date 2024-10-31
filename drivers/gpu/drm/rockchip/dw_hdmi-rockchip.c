@@ -435,6 +435,8 @@ static void dw_hdmi_rk3328_setup_hpd(struct dw_hdmi *dw_hdmi, void *data)
 		HIWORD_UPDATE(RK3328_HDMI_SDAIN_MSK | RK3328_HDMI_SCLIN_MSK,
 			      RK3328_HDMI_SDAIN_MSK | RK3328_HDMI_SCLIN_MSK |
 			      RK3328_HDMI_HPD_IOE));
+
+	dw_hdmi_rk3328_read_hpd(dw_hdmi, data);
 }
 
 static const struct dw_hdmi_phy_ops rk3228_hdmi_phy_ops = {
@@ -684,11 +686,9 @@ static int dw_hdmi_rockchip_probe(struct platform_device *pdev)
 	return component_add(&pdev->dev, &dw_hdmi_rockchip_ops);
 }
 
-static int dw_hdmi_rockchip_remove(struct platform_device *pdev)
+static void dw_hdmi_rockchip_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &dw_hdmi_rockchip_ops);
-
-	return 0;
 }
 
 static int __maybe_unused dw_hdmi_rockchip_resume(struct device *dev)
@@ -706,7 +706,7 @@ static const struct dev_pm_ops dw_hdmi_rockchip_pm = {
 
 struct platform_driver dw_hdmi_rockchip_pltfm_driver = {
 	.probe  = dw_hdmi_rockchip_probe,
-	.remove = dw_hdmi_rockchip_remove,
+	.remove_new = dw_hdmi_rockchip_remove,
 	.driver = {
 		.name = "dwhdmi-rockchip",
 		.pm = &dw_hdmi_rockchip_pm,

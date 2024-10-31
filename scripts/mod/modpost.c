@@ -22,8 +22,8 @@
 #include <errno.h>
 #include "modpost.h"
 #include "../../include/linux/license.h"
-#include "../../include/linux/module_symbol.h"
 
+static bool module_enabled;
 /* Are we using CONFIG_MODVERSIONS? */
 static bool modversions;
 /* Is CONFIG_MODULE_SRCVERSION_ALL set? */
@@ -576,11 +576,14 @@ static int parse_elf(struct elf_info *info, const char *filename)
 			*p = TO_NATIVE(*p);
 	}
 
+	symsearch_init(info);
+
 	return 1;
 }
 
 static void parse_elf_finish(struct elf_info *info)
 {
+	symsearch_finish(info);
 	release_file(info->hdr, info->size);
 }
 
@@ -761,6 +764,7 @@ static const char *const section_white_list[] =
 	".fmt_slot*",			/* EZchip */
 	".gnu.lto*",
 	".discard.*",
+	".llvm.call-graph-profile",	/* call graph */
 	NULL
 };
 
@@ -796,7 +800,7 @@ static void check_section(const char *modname, struct elf_info *elf,
 #define ALL_INIT_TEXT_SECTIONS \
 	".init.text", ".meminit.text"
 #define ALL_EXIT_TEXT_SECTIONS \
-	".exit.text", ".memexit.text"
+	".exit.text"
 
 #define ALL_PCI_INIT_SECTIONS	\
 	".pci_fixup_early", ".pci_fixup_header", ".pci_fixup_final", \
@@ -804,14 +808,14 @@ static void check_section(const char *modname, struct elf_info *elf,
 	".pci_fixup_resume_early", ".pci_fixup_suspend"
 
 #define ALL_XXXINIT_SECTIONS MEM_INIT_SECTIONS
-#define ALL_XXXEXIT_SECTIONS MEM_EXIT_SECTIONS
 
 #define ALL_INIT_SECTIONS INIT_SECTIONS, ALL_XXXINIT_SECTIONS
-#define ALL_EXIT_SECTIONS EXIT_SECTIONS, ALL_XXXEXIT_SECTIONS
+#define ALL_EXIT_SECTIONS EXIT_SECTIONS
 
 #define DATA_SECTIONS ".data", ".data.rel"
 #define TEXT_SECTIONS ".text", ".text.*", ".sched.text", \
-		".kprobes.text", ".cpuidle.text", ".noinstr.text"
+		".kprobes.text", ".cpuidle.text", ".noinstr.text", \
+		".ltext", ".ltext.*"
 #define OTHER_TEXT_SECTIONS ".ref.text", ".head.text", ".spinlock.text", \
 		".fixup", ".entry.text", ".exception.text", \
 		".coldtext", ".softirqentry.text"
@@ -820,7 +824,6 @@ static void check_section(const char *modname, struct elf_info *elf,
 #define MEM_INIT_SECTIONS  ".meminit.*"
 
 #define EXIT_SECTIONS      ".exit.*"
-#define MEM_EXIT_SECTIONS  ".memexit.*"
 
 #define ALL_TEXT_SECTIONS  ALL_INIT_TEXT_SECTIONS, ALL_EXIT_TEXT_SECTIONS, \
 		TEXT_SECTIONS, OTHER_TEXT_SECTIONS
@@ -830,7 +833,6 @@ enum mismatch {
 	DATA_TO_ANY_INIT,
 	TEXTDATA_TO_ANY_EXIT,
 	XXXINIT_TO_SOME_INIT,
-	XXXEXIT_TO_SOME_EXIT,
 	ANY_INIT_TO_ANY_EXIT,
 	ANY_EXIT_TO_ANY_INIT,
 	EXTABLE_TO_NON_TEXT,
@@ -880,12 +882,6 @@ static const struct sectioncheck sectioncheck[] = {
 	.fromsec = { ALL_XXXINIT_SECTIONS, NULL },
 	.bad_tosec = { INIT_SECTIONS, NULL },
 	.mismatch = XXXINIT_TO_SOME_INIT,
-},
-/* Do not reference exit code/data from memexit code/data */
-{
-	.fromsec = { ALL_XXXEXIT_SECTIONS, NULL },
-	.bad_tosec = { EXIT_SECTIONS, NULL },
-	.mismatch = XXXEXIT_TO_SOME_EXIT,
 },
 /* Do not use exit code/data from init code */
 {
@@ -1013,9 +1009,20 @@ static int secref_whitelist(const char *fromsec, const char *fromsym,
 				    "*_console")))
 		return 0;
 
-	/* symbols in data sections that may refer to meminit/exit sections */
+	/* symbols in data sections that may refer to meminit sections */
 	if (match(fromsec, PATTERNS(DATA_SECTIONS)) &&
-	    match(tosec, PATTERNS(ALL_XXXINIT_SECTIONS, ALL_EXIT_SECTIONS)) &&
+	    match(tosec, PATTERNS(ALL_XXXINIT_SECTIONS)) &&
+	    match(fromsym, PATTERNS("*driver")))
+		return 0;
+
+	/*
+	 * symbols in data sections must not refer to .exit.*, but there are
+	 * quite a few offenders, so hide these unless for W=1 builds until
+	 * these are fixed.
+	 */
+	if (!extra_warn &&
+	    match(fromsec, PATTERNS(DATA_SECTIONS)) &&
+	    match(tosec, PATTERNS(EXIT_SECTIONS)) &&
 	    match(fromsym, PATTERNS("*driver")))
 		return 0;
 
@@ -1037,75 +1044,16 @@ static int secref_whitelist(const char *fromsec, const char *fromsym,
 	return 1;
 }
 
-/*
- * If there's no name there, ignore it; likewise, ignore it if it's
- * one of the magic symbols emitted used by current tools.
- *
- * Otherwise if find_symbols_between() returns those symbols, they'll
- * fail the whitelist tests and cause lots of false alarms ... fixable
- * only by merging __exit and __init sections into __text, bloating
- * the kernel (which is especially evil on embedded platforms).
- */
-static inline int is_valid_name(struct elf_info *elf, Elf_Sym *sym)
-{
-	const char *name = elf->strtab + sym->st_name;
-
-	if (!name || !strlen(name))
-		return 0;
-	return !is_mapping_symbol(name);
-}
-
-/* Look up the nearest symbol based on the section and the address */
-static Elf_Sym *find_nearest_sym(struct elf_info *elf, Elf_Addr addr,
-				 unsigned int secndx, bool allow_negative,
-				 Elf_Addr min_distance)
-{
-	Elf_Sym *sym;
-	Elf_Sym *near = NULL;
-	Elf_Addr sym_addr, distance;
-	bool is_arm = (elf->hdr->e_machine == EM_ARM);
-
-	for (sym = elf->symtab_start; sym < elf->symtab_stop; sym++) {
-		if (get_secindex(elf, sym) != secndx)
-			continue;
-		if (!is_valid_name(elf, sym))
-			continue;
-
-		sym_addr = sym->st_value;
-
-		/*
-		 * For ARM Thumb instruction, the bit 0 of st_value is set
-		 * if the symbol is STT_FUNC type. Mask it to get the address.
-		 */
-		if (is_arm && ELF_ST_TYPE(sym->st_info) == STT_FUNC)
-			 sym_addr &= ~1;
-
-		if (addr >= sym_addr)
-			distance = addr - sym_addr;
-		else if (allow_negative)
-			distance = sym_addr - addr;
-		else
-			continue;
-
-		if (distance <= min_distance) {
-			min_distance = distance;
-			near = sym;
-		}
-
-		if (min_distance == 0)
-			break;
-	}
-	return near;
-}
-
 static Elf_Sym *find_fromsym(struct elf_info *elf, Elf_Addr addr,
 			     unsigned int secndx)
 {
-	return find_nearest_sym(elf, addr, secndx, false, ~0);
+	return symsearch_find_nearest(elf, addr, secndx, false, ~0);
 }
 
 static Elf_Sym *find_tosym(struct elf_info *elf, Elf_Addr addr, Elf_Sym *sym)
 {
+	Elf_Sym *new_sym;
+
 	/* If the supplied symbol has a valid name, return it */
 	if (is_valid_name(elf, sym))
 		return sym;
@@ -1114,7 +1062,9 @@ static Elf_Sym *find_tosym(struct elf_info *elf, Elf_Addr addr, Elf_Sym *sym)
 	 * Strive to find a better symbol name, but the resulting name may not
 	 * match the symbol referenced in the original code.
 	 */
-	return find_nearest_sym(elf, addr, get_secindex(elf, sym), true, 20);
+	new_sym = symsearch_find_nearest(elf, addr, get_secindex(elf, sym),
+					 true, 20);
+	return new_sym ? new_sym : sym;
 }
 
 static bool is_executable_section(struct elf_info *elf, unsigned int secndx)
@@ -1148,7 +1098,9 @@ static void default_mismatch_handler(const char *modname, struct elf_info *elf,
 	sec_mismatch_count++;
 
 	warn("%s: section mismatch in reference: %s+0x%x (section: %s) -> %s (section: %s)\n",
-	     modname, fromsym, (unsigned int)(faddr - from->st_value), fromsec, tosym, tosec);
+	     modname, fromsym,
+	     (unsigned int)(faddr - (from ? from->st_value : 0)),
+	     fromsec, tosym, tosec);
 
 	if (mismatch->mismatch == EXTABLE_TO_NON_TEXT) {
 		if (match(tosec, mismatch->bad_tosec))
@@ -1251,7 +1203,7 @@ static void check_section_mismatch(struct module *mod, struct elf_info *elf,
 	const char *tosec = sec_name(elf, get_secindex(elf, sym));
 	const struct sectioncheck *mismatch;
 
-	if (elf->export_symbol_secndx == fsecndx) {
+	if (module_enabled && elf->export_symbol_secndx == fsecndx) {
 		check_export_symbol(mod, elf, faddr, tosec, sym);
 		return;
 	}
@@ -1265,21 +1217,16 @@ static void check_section_mismatch(struct module *mod, struct elf_info *elf,
 				 tosec, taddr);
 }
 
-static int addend_386_rel(uint32_t *location, Elf_Rela *r)
+static Elf_Addr addend_386_rel(uint32_t *location, unsigned int r_type)
 {
-	unsigned int r_typ = ELF_R_TYPE(r->r_info);
-
-	switch (r_typ) {
+	switch (r_type) {
 	case R_386_32:
-		r->r_addend = TO_NATIVE(*location);
-		break;
+		return TO_NATIVE(*location);
 	case R_386_PC32:
-		r->r_addend = TO_NATIVE(*location) + 4;
-		break;
-	default:
-		r->r_addend = (Elf_Addr)(-1);
+		return TO_NATIVE(*location) + 4;
 	}
-	return 0;
+
+	return (Elf_Addr)(-1);
 }
 
 #ifndef R_ARM_CALL
@@ -1323,32 +1270,28 @@ static int32_t sign_extend32(int32_t value, int index)
 	return (int32_t)(value << shift) >> shift;
 }
 
-static int addend_arm_rel(void *loc, Elf_Sym *sym, Elf_Rela *r)
+static Elf_Addr addend_arm_rel(void *loc, Elf_Sym *sym, unsigned int r_type)
 {
-	unsigned int r_typ = ELF_R_TYPE(r->r_info);
 	uint32_t inst, upper, lower, sign, j1, j2;
 	int32_t offset;
 
-	switch (r_typ) {
+	switch (r_type) {
 	case R_ARM_ABS32:
 	case R_ARM_REL32:
 		inst = TO_NATIVE(*(uint32_t *)loc);
-		r->r_addend = inst + sym->st_value;
-		break;
+		return inst + sym->st_value;
 	case R_ARM_MOVW_ABS_NC:
 	case R_ARM_MOVT_ABS:
 		inst = TO_NATIVE(*(uint32_t *)loc);
 		offset = sign_extend32(((inst & 0xf0000) >> 4) | (inst & 0xfff),
 				       15);
-		r->r_addend = offset + sym->st_value;
-		break;
+		return offset + sym->st_value;
 	case R_ARM_PC24:
 	case R_ARM_CALL:
 	case R_ARM_JUMP24:
 		inst = TO_NATIVE(*(uint32_t *)loc);
 		offset = sign_extend32((inst & 0x00ffffff) << 2, 25);
-		r->r_addend = offset + sym->st_value + 8;
-		break;
+		return offset + sym->st_value + 8;
 	case R_ARM_THM_MOVW_ABS_NC:
 	case R_ARM_THM_MOVT_ABS:
 		upper = TO_NATIVE(*(uint16_t *)loc);
@@ -1358,8 +1301,7 @@ static int addend_arm_rel(void *loc, Elf_Sym *sym, Elf_Rela *r)
 				       ((lower & 0x7000) >> 4) |
 				       (lower & 0x00ff),
 				       15);
-		r->r_addend = offset + sym->st_value;
-		break;
+		return offset + sym->st_value;
 	case R_ARM_THM_JUMP19:
 		/*
 		 * Encoding T3:
@@ -1380,8 +1322,7 @@ static int addend_arm_rel(void *loc, Elf_Sym *sym, Elf_Rela *r)
 				       ((upper & 0x03f) << 12) |
 				       ((lower & 0x07ff) << 1),
 				       20);
-		r->r_addend = offset + sym->st_value + 4;
-		break;
+		return offset + sym->st_value + 4;
 	case R_ARM_THM_CALL:
 	case R_ARM_THM_JUMP24:
 		/*
@@ -1407,34 +1348,26 @@ static int addend_arm_rel(void *loc, Elf_Sym *sym, Elf_Rela *r)
 				       ((upper & 0x03ff) << 12) |
 				       ((lower & 0x07ff) << 1),
 				       24);
-		r->r_addend = offset + sym->st_value + 4;
-		break;
-	default:
-		r->r_addend = (Elf_Addr)(-1);
+		return offset + sym->st_value + 4;
 	}
-	return 0;
+
+	return (Elf_Addr)(-1);
 }
 
-static int addend_mips_rel(uint32_t *location, Elf_Rela *r)
+static Elf_Addr addend_mips_rel(uint32_t *location, unsigned int r_type)
 {
-	unsigned int r_typ = ELF_R_TYPE(r->r_info);
 	uint32_t inst;
 
 	inst = TO_NATIVE(*location);
-	switch (r_typ) {
+	switch (r_type) {
 	case R_MIPS_LO16:
-		r->r_addend = inst & 0xffff;
-		break;
+		return inst & 0xffff;
 	case R_MIPS_26:
-		r->r_addend = (inst & 0x03ffffff) << 2;
-		break;
+		return (inst & 0x03ffffff) << 2;
 	case R_MIPS_32:
-		r->r_addend = inst;
-		break;
-	default:
-		r->r_addend = (Elf_Addr)(-1);
+		return inst;
 	}
-	return 0;
+	return (Elf_Addr)(-1);
 }
 
 #ifndef EM_RISCV
@@ -1453,12 +1386,45 @@ static int addend_mips_rel(uint32_t *location, Elf_Rela *r)
 #define R_LARCH_SUB32		55
 #endif
 
+static void get_rel_type_and_sym(struct elf_info *elf, uint64_t r_info,
+				 unsigned int *r_type, unsigned int *r_sym)
+{
+	typedef struct {
+		Elf64_Word    r_sym;	/* Symbol index */
+		unsigned char r_ssym;	/* Special symbol for 2nd relocation */
+		unsigned char r_type3;	/* 3rd relocation type */
+		unsigned char r_type2;	/* 2nd relocation type */
+		unsigned char r_type;	/* 1st relocation type */
+	} Elf64_Mips_R_Info;
+
+	bool is_64bit = (elf->hdr->e_ident[EI_CLASS] == ELFCLASS64);
+
+	if (elf->hdr->e_machine == EM_MIPS && is_64bit) {
+		Elf64_Mips_R_Info *mips64_r_info = (void *)&r_info;
+
+		*r_type = mips64_r_info->r_type;
+		*r_sym = TO_NATIVE(mips64_r_info->r_sym);
+		return;
+	}
+
+	if (is_64bit) {
+		Elf64_Xword r_info64 = r_info;
+
+		r_info = TO_NATIVE(r_info64);
+	} else {
+		Elf32_Word r_info32 = r_info;
+
+		r_info = TO_NATIVE(r_info32);
+	}
+
+	*r_type = ELF_R_TYPE(r_info);
+	*r_sym = ELF_R_SYM(r_info);
+}
+
 static void section_rela(struct module *mod, struct elf_info *elf,
 			 Elf_Shdr *sechdr)
 {
 	Elf_Rela *rela;
-	Elf_Rela r;
-	unsigned int r_sym;
 	unsigned int fsecndx = sechdr->sh_info;
 	const char *fromsec = sec_name(elf, fsecndx);
 	Elf_Rela *start = (void *)elf->hdr + sechdr->sh_offset;
@@ -1469,38 +1435,31 @@ static void section_rela(struct module *mod, struct elf_info *elf,
 		return;
 
 	for (rela = start; rela < stop; rela++) {
-		r.r_offset = TO_NATIVE(rela->r_offset);
-#if KERNEL_ELFCLASS == ELFCLASS64
-		if (elf->hdr->e_machine == EM_MIPS) {
-			unsigned int r_typ;
-			r_sym = ELF64_MIPS_R_SYM(rela->r_info);
-			r_sym = TO_NATIVE(r_sym);
-			r_typ = ELF64_MIPS_R_TYPE(rela->r_info);
-			r.r_info = ELF64_R_INFO(r_sym, r_typ);
-		} else {
-			r.r_info = TO_NATIVE(rela->r_info);
-			r_sym = ELF_R_SYM(r.r_info);
-		}
-#else
-		r.r_info = TO_NATIVE(rela->r_info);
-		r_sym = ELF_R_SYM(r.r_info);
-#endif
-		r.r_addend = TO_NATIVE(rela->r_addend);
+		Elf_Sym *tsym;
+		Elf_Addr taddr, r_offset;
+		unsigned int r_type, r_sym;
+
+		r_offset = TO_NATIVE(rela->r_offset);
+		get_rel_type_and_sym(elf, rela->r_info, &r_type, &r_sym);
+
+		tsym = elf->symtab_start + r_sym;
+		taddr = tsym->st_value + TO_NATIVE(rela->r_addend);
+
 		switch (elf->hdr->e_machine) {
 		case EM_RISCV:
 			if (!strcmp("__ex_table", fromsec) &&
-			    ELF_R_TYPE(r.r_info) == R_RISCV_SUB32)
+			    r_type == R_RISCV_SUB32)
 				continue;
 			break;
 		case EM_LOONGARCH:
 			if (!strcmp("__ex_table", fromsec) &&
-			    ELF_R_TYPE(r.r_info) == R_LARCH_SUB32)
+			    r_type == R_LARCH_SUB32)
 				continue;
 			break;
 		}
 
-		check_section_mismatch(mod, elf, elf->symtab_start + r_sym,
-				       fsecndx, fromsec, r.r_offset, r.r_addend);
+		check_section_mismatch(mod, elf, tsym,
+				       fsecndx, fromsec, r_offset, taddr);
 	}
 }
 
@@ -1508,8 +1467,6 @@ static void section_rel(struct module *mod, struct elf_info *elf,
 			Elf_Shdr *sechdr)
 {
 	Elf_Rel *rel;
-	Elf_Rela r;
-	unsigned int r_sym;
 	unsigned int fsecndx = sechdr->sh_info;
 	const char *fromsec = sec_name(elf, fsecndx);
 	Elf_Rel *start = (void *)elf->hdr + sechdr->sh_offset;
@@ -1521,45 +1478,32 @@ static void section_rel(struct module *mod, struct elf_info *elf,
 
 	for (rel = start; rel < stop; rel++) {
 		Elf_Sym *tsym;
+		Elf_Addr taddr = 0, r_offset;
+		unsigned int r_type, r_sym;
 		void *loc;
 
-		r.r_offset = TO_NATIVE(rel->r_offset);
-#if KERNEL_ELFCLASS == ELFCLASS64
-		if (elf->hdr->e_machine == EM_MIPS) {
-			unsigned int r_typ;
-			r_sym = ELF64_MIPS_R_SYM(rel->r_info);
-			r_sym = TO_NATIVE(r_sym);
-			r_typ = ELF64_MIPS_R_TYPE(rel->r_info);
-			r.r_info = ELF64_R_INFO(r_sym, r_typ);
-		} else {
-			r.r_info = TO_NATIVE(rel->r_info);
-			r_sym = ELF_R_SYM(r.r_info);
-		}
-#else
-		r.r_info = TO_NATIVE(rel->r_info);
-		r_sym = ELF_R_SYM(r.r_info);
-#endif
-		r.r_addend = 0;
+		r_offset = TO_NATIVE(rel->r_offset);
+		get_rel_type_and_sym(elf, rel->r_info, &r_type, &r_sym);
 
-		loc = sym_get_data_by_offset(elf, fsecndx, r.r_offset);
+		loc = sym_get_data_by_offset(elf, fsecndx, r_offset);
 		tsym = elf->symtab_start + r_sym;
 
 		switch (elf->hdr->e_machine) {
 		case EM_386:
-			addend_386_rel(loc, &r);
+			taddr = addend_386_rel(loc, r_type);
 			break;
 		case EM_ARM:
-			addend_arm_rel(loc, tsym, &r);
+			taddr = addend_arm_rel(loc, tsym, r_type);
 			break;
 		case EM_MIPS:
-			addend_mips_rel(loc, &r);
+			taddr = addend_mips_rel(loc, r_type);
 			break;
 		default:
 			fatal("Please add code to calculate addend for this architecture\n");
 		}
 
 		check_section_mismatch(mod, elf, tsym,
-				       fsecndx, fromsec, r.r_offset, r.r_addend);
+				       fsecndx, fromsec, r_offset, taddr);
 	}
 }
 
@@ -1740,10 +1684,11 @@ static void read_symbols(const char *modname)
 			namespace = get_next_modinfo(&info, "import_ns",
 						     namespace);
 		}
+
+		if (extra_warn && !get_modinfo(&info, "description"))
+			warn("missing MODULE_DESCRIPTION() in %s\n", modname);
 	}
 
-	if (extra_warn && !get_modinfo(&info, "description"))
-		warn("missing MODULE_DESCRIPTION() in %s\n", modname);
 	for (sym = info.symtab_start; sym < info.symtab_stop; sym++) {
 		symname = remove_dot(info.strtab + sym->st_name);
 
@@ -2281,7 +2226,7 @@ int main(int argc, char **argv)
 	LIST_HEAD(dump_lists);
 	struct dump_list *dl, *dl2;
 
-	while ((opt = getopt(argc, argv, "ei:mnT:to:au:WwENd:")) != -1) {
+	while ((opt = getopt(argc, argv, "ei:MmnT:to:au:WwENd:")) != -1) {
 		switch (opt) {
 		case 'e':
 			external_module = true;
@@ -2290,6 +2235,9 @@ int main(int argc, char **argv)
 			dl = NOFAIL(malloc(sizeof(*dl)));
 			dl->file = optarg;
 			list_add_tail(&dl->list, &dump_lists);
+			break;
+		case 'M':
+			module_enabled = true;
 			break;
 		case 'm':
 			modversions = true;

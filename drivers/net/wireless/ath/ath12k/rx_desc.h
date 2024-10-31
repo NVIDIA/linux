@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause-Clear */
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef ATH12K_RX_DESC_H
 #define ATH12K_RX_DESC_H
@@ -221,7 +221,7 @@ struct rx_mpdu_start_qcn9274 {
  *		PPE routing even if RXOLE CCE or flow search indicate 'Use_PPE'
  *		This is set by SW for peers which are being handled by a
  *		host SW/accelerator subsystem that also handles packet
- *		uffer management for WiFi-to-PPE routing.
+ *		buffer management for WiFi-to-PPE routing.
  *
  *		This is cleared by SW for peers which are being handled
  *		by a different subsystem, completely disabling WiFi-to-PPE

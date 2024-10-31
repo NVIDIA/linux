@@ -222,7 +222,7 @@ int erofs_map_dev(struct super_block *sb, struct erofs_map_dev *map)
 			up_read(&devs->rwsem);
 			return 0;
 		}
-		map->m_bdev = dif->bdev;
+		map->m_bdev = dif->bdev_handle ? dif->bdev_handle->bdev : NULL;
 		map->m_daxdev = dif->dax_dev;
 		map->m_dax_part_off = dif->dax_part_off;
 		map->m_fscache = dif->fscache;
@@ -240,7 +240,8 @@ int erofs_map_dev(struct super_block *sb, struct erofs_map_dev *map)
 			if (map->m_pa >= startoff &&
 			    map->m_pa < startoff + length) {
 				map->m_pa -= startoff;
-				map->m_bdev = dif->bdev;
+				map->m_bdev = dif->bdev_handle ?
+					      dif->bdev_handle->bdev : NULL;
 				map->m_daxdev = dif->dax_dev;
 				map->m_dax_part_off = dif->dax_part_off;
 				map->m_fscache = dif->fscache;
@@ -413,14 +414,14 @@ const struct address_space_operations erofs_raw_access_aops = {
 
 #ifdef CONFIG_FS_DAX
 static vm_fault_t erofs_dax_huge_fault(struct vm_fault *vmf,
-		enum page_entry_size pe_size)
+		unsigned int order)
 {
-	return dax_iomap_fault(vmf, pe_size, NULL, NULL, &erofs_iomap_ops);
+	return dax_iomap_fault(vmf, order, NULL, NULL, &erofs_iomap_ops);
 }
 
 static vm_fault_t erofs_dax_fault(struct vm_fault *vmf)
 {
-	return erofs_dax_huge_fault(vmf, PE_SIZE_PTE);
+	return erofs_dax_huge_fault(vmf, 0);
 }
 
 static const struct vm_operations_struct erofs_dax_vm_ops = {
@@ -448,5 +449,6 @@ const struct file_operations erofs_file_fops = {
 	.llseek		= generic_file_llseek,
 	.read_iter	= erofs_file_read_iter,
 	.mmap		= erofs_file_mmap,
+	.get_unmapped_area = thp_get_unmapped_area,
 	.splice_read	= filemap_splice_read,
 };

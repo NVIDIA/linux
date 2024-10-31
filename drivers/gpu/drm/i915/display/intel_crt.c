@@ -348,7 +348,12 @@ intel_crt_mode_valid(struct drm_connector *connector,
 	struct drm_device *dev = connector->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
 	int max_dotclk = dev_priv->max_dotclk_freq;
+	enum drm_mode_status status;
 	int max_clock;
+
+	status = intel_cpu_transcoder_mode_valid(dev_priv, mode);
+	if (status != MODE_OK)
+		return status;
 
 	if (mode->flags & DRM_MODE_FLAG_DBLSCAN)
 		return MODE_NO_DBLESCAN;
@@ -450,6 +455,8 @@ static int hsw_crt_compute_config(struct intel_encoder *encoder,
 
 	/* FDI must always be 2.7 GHz */
 	pipe_config->port_clock = 135000 * 2;
+
+	pipe_config->enhanced_framing = true;
 
 	adjusted_mode->crtc_clock = lpt_iclkip(pipe_config);
 
@@ -1064,6 +1071,8 @@ void intel_crt_init(struct drm_i915_private *dev_priv)
 	}
 
 	if (HAS_DDI(dev_priv)) {
+		assert_port_valid(dev_priv, PORT_E);
+
 		crt->base.port = PORT_E;
 		crt->base.get_config = hsw_crt_get_config;
 		crt->base.get_hw_state = intel_ddi_get_hw_state;

@@ -839,6 +839,8 @@ bool is_psr_su_specific_panel(struct dc_link *link)
 				((dpcd_caps->sink_dev_id_str[1] == 0x08 && dpcd_caps->sink_dev_id_str[0] == 0x08) ||
 				(dpcd_caps->sink_dev_id_str[1] == 0x08 && dpcd_caps->sink_dev_id_str[0] == 0x07)))
 				isPSRSUSupported = false;
+			else if (dpcd_caps->sink_dev_id_str[1] == 0x08 && dpcd_caps->sink_dev_id_str[0] == 0x03)
+				isPSRSUSupported = false;
 			else if (dpcd_caps->psr_info.force_psrsu_cap == 0x1)
 				isPSRSUSupported = true;
 		}
@@ -924,6 +926,11 @@ void mod_power_calc_psr_configs(struct psr_config *psr_config,
 	psr_config->psr_frame_capture_indication_req = link->psr_settings.psr_frame_capture_indication_req;
 	psr_config->psr_exit_link_training_required =
 		!link->dpcd_caps.psr_info.psr_dpcd_caps.bits.LINK_TRAINING_ON_EXIT_NOT_REQUIRED;
+}
+
+void init_replay_config(struct dc_link *link, struct replay_config *pr_config)
+{
+	link->replay_settings.config = *pr_config;
 }
 
 bool mod_power_only_edp(const struct dc_state *context, const struct dc_stream_state *stream)

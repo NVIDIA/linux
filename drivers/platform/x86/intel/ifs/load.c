@@ -3,7 +3,7 @@
 
 #include <linux/firmware.h>
 #include <asm/cpu.h>
-#include <asm/microcode_intel.h>
+#include <asm/microcode.h>
 
 #include "ifs.h"
 
@@ -56,12 +56,13 @@ struct metadata_header {
 
 static struct metadata_header *find_meta_data(void *ucode, unsigned int meta_type)
 {
+	struct microcode_header_intel *hdr = &((struct microcode_intel *)ucode)->hdr;
 	struct metadata_header *meta_header;
 	unsigned long data_size, total_meta;
 	unsigned long meta_size = 0;
 
-	data_size = get_datasize(ucode);
-	total_meta = ((struct microcode_intel *)ucode)->hdr.metasize;
+	data_size = intel_microcode_get_datasize(hdr);
+	total_meta = hdr->metasize;
 	if (!total_meta)
 		return NULL;
 
@@ -259,6 +260,7 @@ int ifs_load_firmware(struct device *dev)
 {
 	const struct ifs_test_caps *test = ifs_get_test_caps(dev);
 	struct ifs_data *ifsd = ifs_get_data(dev);
+	unsigned int expected_size;
 	const struct firmware *fw;
 	char scan_path[64];
 	int ret = -EINVAL;
@@ -271,6 +273,14 @@ int ifs_load_firmware(struct device *dev)
 	if (ret) {
 		dev_err(dev, "ifs file %s load failed\n", scan_path);
 		goto done;
+	}
+
+	expected_size = ((struct microcode_header_intel *)fw->data)->totalsize;
+	if (fw->size != expected_size) {
+		dev_err(dev, "File size mismatch (expected %u, actual %zu). Corrupted IFS image.\n",
+			expected_size, fw->size);
+		ret = -EINVAL;
+		goto release;
 	}
 
 	ret = image_sanity_check(dev, (struct microcode_header_intel *)fw->data);

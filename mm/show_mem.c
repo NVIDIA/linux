@@ -186,7 +186,7 @@ static bool node_has_managed_zones(pg_data_t *pgdat, int max_zone_idx)
  * SHOW_MEM_FILTER_NODES: suppress nodes that are not allowed by current's
  *   cpuset.
  */
-void __show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_idx)
+static void show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_idx)
 {
 	unsigned long free_pcp = 0;
 	int cpu, nid;
@@ -251,9 +251,9 @@ void __show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_i
 			" writeback:%lukB"
 			" shmem:%lukB"
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-			" shmem_thp: %lukB"
-			" shmem_pmdmapped: %lukB"
-			" anon_thp: %lukB"
+			" shmem_thp:%lukB"
+			" shmem_pmdmapped:%lukB"
+			" anon_thp:%lukB"
 #endif
 			" writeback_tmp:%lukB"
 			" kernel_stack:%lukB"
@@ -355,8 +355,8 @@ void __show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_i
 
 	for_each_populated_zone(zone) {
 		unsigned int order;
-		unsigned long nr[MAX_ORDER + 1], flags, total = 0;
-		unsigned char types[MAX_ORDER + 1];
+		unsigned long nr[NR_PAGE_ORDERS], flags, total = 0;
+		unsigned char types[NR_PAGE_ORDERS];
 
 		if (zone_idx(zone) > max_zone_idx)
 			continue;
@@ -366,7 +366,7 @@ void __show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_i
 		printk(KERN_CONT "%s: ", zone->name);
 
 		spin_lock_irqsave(&zone->lock, flags);
-		for (order = 0; order <= MAX_ORDER; order++) {
+		for (order = 0; order < NR_PAGE_ORDERS; order++) {
 			struct free_area *area = &zone->free_area[order];
 			int type;
 
@@ -380,7 +380,7 @@ void __show_free_areas(unsigned int filter, nodemask_t *nodemask, int max_zone_i
 			}
 		}
 		spin_unlock_irqrestore(&zone->lock, flags);
-		for (order = 0; order <= MAX_ORDER; order++) {
+		for (order = 0; order < NR_PAGE_ORDERS; order++) {
 			printk(KERN_CONT "%lu*%lukB ",
 			       nr[order], K(1UL) << order);
 			if (nr[order])
@@ -406,7 +406,7 @@ void __show_mem(unsigned int filter, nodemask_t *nodemask, int max_zone_idx)
 	struct zone *zone;
 
 	printk("Mem-Info:\n");
-	__show_free_areas(filter, nodemask, max_zone_idx);
+	show_free_areas(filter, nodemask, max_zone_idx);
 
 	for_each_populated_zone(zone) {
 

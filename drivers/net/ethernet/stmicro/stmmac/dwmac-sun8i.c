@@ -11,9 +11,10 @@
 #include <linux/mdio-mux.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_mdio.h>
 #include <linux/of_net.h>
+#include <linux/of_platform.h>
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -440,8 +441,9 @@ static int sun8i_dwmac_dma_interrupt(struct stmmac_priv *priv,
 				     struct stmmac_extra_stats *x, u32 chan,
 				     u32 dir)
 {
-	u32 v;
+	struct stmmac_pcpu_stats *stats = this_cpu_ptr(priv->xstats.pcpu_stats);
 	int ret = 0;
+	u32 v;
 
 	v = readl(ioaddr + EMAC_INT_STA);
 
@@ -452,7 +454,9 @@ static int sun8i_dwmac_dma_interrupt(struct stmmac_priv *priv,
 
 	if (v & EMAC_TX_INT) {
 		ret |= handle_tx;
-		x->tx_normal_irq_n++;
+		u64_stats_update_begin(&stats->syncp);
+		u64_stats_inc(&stats->tx_normal_irq_n[chan]);
+		u64_stats_update_end(&stats->syncp);
 	}
 
 	if (v & EMAC_TX_DMA_STOP_INT)
@@ -474,7 +478,9 @@ static int sun8i_dwmac_dma_interrupt(struct stmmac_priv *priv,
 
 	if (v & EMAC_RX_INT) {
 		ret |= handle_rx;
-		x->rx_normal_irq_n++;
+		u64_stats_update_begin(&stats->syncp);
+		u64_stats_inc(&stats->rx_normal_irq_n[chan]);
+		u64_stats_update_end(&stats->syncp);
 	}
 
 	if (v & EMAC_RX_BUF_UA_INT)
@@ -1009,7 +1015,7 @@ static int sun8i_dwmac_set_syscon(struct device *dev,
 	if (gmac->variant->support_rmii)
 		reg &= ~SYSCON_RMII_EN;
 
-	switch (plat->interface) {
+	switch (plat->mac_interface) {
 	case PHY_INTERFACE_MODE_MII:
 		/* default */
 		break;
@@ -1024,7 +1030,7 @@ static int sun8i_dwmac_set_syscon(struct device *dev,
 		break;
 	default:
 		dev_err(dev, "Unsupported interface mode: %s",
-			phy_modes(plat->interface));
+			phy_modes(plat->mac_interface));
 		return -EINVAL;
 	}
 
@@ -1090,6 +1096,8 @@ static struct mac_device_info *sun8i_dwmac_setup(void *ppriv)
 
 	priv->dev->priv_flags |= IFF_UNICAST_FLT;
 
+	mac->link.caps = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
+			 MAC_10 | MAC_100 | MAC_1000;
 	/* The loopback bit seems to be re-set when link change
 	 * Simply mask it each time
 	 * Speed 10/100/1000 are set in BIT(2)/BIT(3)
@@ -1224,10 +1232,10 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	/* platform data specifying hardware features and callbacks.
 	 * hardware features were copied from Allwinner drivers.
 	 */
-	plat_dat->interface = interface;
+	plat_dat->mac_interface = interface;
 	plat_dat->rx_coe = STMMAC_RX_COE_TYPE2;
 	plat_dat->tx_coe = 1;
-	plat_dat->has_sun8i = true;
+	plat_dat->flags |= STMMAC_FLAG_HAS_SUN8I;
 	plat_dat->bsp_priv = gmac;
 	plat_dat->init = sun8i_dwmac_init;
 	plat_dat->exit = sun8i_dwmac_exit;

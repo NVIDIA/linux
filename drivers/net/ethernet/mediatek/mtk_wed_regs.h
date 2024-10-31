@@ -64,8 +64,8 @@ struct mtk_wdma_desc {
 #define MTK_WED_EXT_INT_STATUS_TKID_TITO_INVALID	BIT(4)
 #define MTK_WED_EXT_INT_STATUS_TX_FBUF_LO_TH		BIT(8)
 #define MTK_WED_EXT_INT_STATUS_TX_FBUF_HI_TH		BIT(9)
-#define MTK_WED_EXT_INT_STATUS_RX_FBUF_LO_TH		BIT(12)
-#define MTK_WED_EXT_INT_STATUS_RX_FBUF_HI_TH		BIT(13)
+#define MTK_WED_EXT_INT_STATUS_RX_FBUF_LO_TH		BIT(10) /* wed v2 */
+#define MTK_WED_EXT_INT_STATUS_RX_FBUF_HI_TH		BIT(11) /* wed v2 */
 #define MTK_WED_EXT_INT_STATUS_RX_DRV_R_RESP_ERR	BIT(16)
 #define MTK_WED_EXT_INT_STATUS_RX_DRV_W_RESP_ERR	BIT(17)
 #define MTK_WED_EXT_INT_STATUS_RX_DRV_COHERENT		BIT(18)
@@ -266,6 +266,8 @@ struct mtk_wdma_desc {
 
 #define MTK_WED_WPDMA_TX_MIB(_n)			(0x5a0 + (_n) * 4)
 #define MTK_WED_WPDMA_TX_COHERENT_MIB(_n)		(0x5d0 + (_n) * 4)
+#define MTK_WED_WPDMA_RX_MIB(_n)			(0x5e0 + (_n) * 4)
+#define MTK_WED_WPDMA_RX_COHERENT_MIB(_n)		(0x5f0 + (_n) * 4)
 
 #define MTK_WED_WPDMA_RING_TX(_n)			(0x600 + (_n) * 0x10)
 #define MTK_WED_WPDMA_RING_RX(_n)			(0x700 + (_n) * 0x10)

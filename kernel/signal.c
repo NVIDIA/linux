@@ -22,6 +22,7 @@
 #include <linux/sched/cputime.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/mm.h>
 #include <linux/proc_fs.h>
 #include <linux/tty.h>
 #include <linux/binfmts.h>
@@ -1260,7 +1261,17 @@ int send_signal_locked(int sig, struct kernel_siginfo *info,
 static void print_fatal_signal(int signr)
 {
 	struct pt_regs *regs = task_pt_regs(current);
-	pr_info("potentially unexpected fatal signal %d.\n", signr);
+	struct file *exe_file;
+
+	exe_file = get_task_exe_file(current);
+	if (exe_file) {
+		pr_info("%pD: %s: potentially unexpected fatal signal %d.\n",
+			exe_file, current->comm, signr);
+		fput(exe_file);
+	} else {
+		pr_info("%s: potentially unexpected fatal signal %d.\n",
+			current->comm, signr);
+	}
 
 #if defined(__i386__) && !defined(__arch_um__)
 	pr_info("code at %08lx: ", regs->ip);
@@ -2576,6 +2587,14 @@ static void do_freezer_trap(void)
 	spin_unlock_irq(&current->sighand->siglock);
 	cgroup_enter_frozen();
 	schedule();
+
+	/*
+	 * We could've been woken by task_work, run it to clear
+	 * TIF_NOTIFY_SIGNAL. The caller will retry if necessary.
+	 */
+	clear_notify_signal();
+	if (unlikely(task_work_pending(current)))
+		task_work_run();
 }
 
 static int ptrace_signal(int signr, kernel_siginfo_t *info, enum pid_type type)

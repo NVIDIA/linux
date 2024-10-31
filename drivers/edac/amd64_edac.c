@@ -80,7 +80,7 @@ int __amd64_read_pci_cfg_dword(struct pci_dev *pdev, int offset,
 		amd64_warn("%s: error reading F%dx%03x.\n",
 			   func, PCI_FUNC(pdev->devfn), offset);
 
-	return err;
+	return pcibios_err_to_errno(err);
 }
 
 int __amd64_write_pci_cfg_dword(struct pci_dev *pdev, int offset,
@@ -93,7 +93,7 @@ int __amd64_write_pci_cfg_dword(struct pci_dev *pdev, int offset,
 		amd64_warn("%s: error writing to F%dx%03x.\n",
 			   func, PCI_FUNC(pdev->devfn), offset);
 
-	return err;
+	return pcibios_err_to_errno(err);
 }
 
 /*
@@ -1016,8 +1016,10 @@ static int gpu_get_node_map(void)
 	}
 
 	ret = pci_read_config_dword(pdev, REG_LOCAL_NODE_TYPE_MAP, &tmp);
-	if (ret)
+	if (ret) {
+		ret = pcibios_err_to_errno(ret);
 		goto out;
+	}
 
 	gpu_node_map.node_count = FIELD_GET(LNTM_NODE_COUNT, tmp);
 	gpu_node_map.base_node_id = FIELD_GET(LNTM_BASE_NODE_ID, tmp);
@@ -4150,6 +4152,20 @@ static int per_family_init(struct amd64_pvt *pvt)
 		}
 		break;
 
+	case 0x1A:
+		switch (pvt->model) {
+		case 0x00 ... 0x1f:
+			pvt->ctl_name           = "F1Ah";
+			pvt->max_mcs            = 12;
+			pvt->flags.zn_regs_v2   = 1;
+			break;
+		case 0x40 ... 0x4f:
+			pvt->ctl_name           = "F1Ah_M40h";
+			pvt->flags.zn_regs_v2   = 1;
+			break;
+		}
+		break;
+
 	default:
 		amd64_err("Unsupported family!\n");
 		return -ENODEV;
@@ -4344,6 +4360,7 @@ static const struct x86_cpu_id amd64_cpuids[] = {
 	X86_MATCH_VENDOR_FAM(AMD,	0x17, NULL),
 	X86_MATCH_VENDOR_FAM(HYGON,	0x18, NULL),
 	X86_MATCH_VENDOR_FAM(AMD,	0x19, NULL),
+	X86_MATCH_VENDOR_FAM(AMD,	0x1A, NULL),
 	{ }
 };
 MODULE_DEVICE_TABLE(x86cpu, amd64_cpuids);

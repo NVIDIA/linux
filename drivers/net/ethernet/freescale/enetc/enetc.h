@@ -11,6 +11,7 @@
 #include <linux/if_vlan.h>
 #include <linux/phylink.h>
 #include <linux/dim.h>
+#include <net/xdp.h>
 
 #include "enetc_hw.h"
 
@@ -327,6 +328,7 @@ enum enetc_active_offloads {
 
 enum enetc_flags_bit {
 	ENETC_TX_ONESTEP_TSTAMP_IN_PROGRESS = 0,
+	ENETC_TX_DOWN,
 };
 
 /* interrupt coalescing modes */

@@ -16,7 +16,7 @@ struct icc_clk_node {
 struct icc_clk_provider {
 	struct icc_provider provider;
 	int num_clocks;
-	struct icc_clk_node clocks[];
+	struct icc_clk_node clocks[] __counted_by(num_clocks);
 };
 
 #define to_icc_clk_provider(_provider) \
@@ -87,6 +87,7 @@ struct icc_provider *icc_clk_register(struct device *dev,
 	onecell = devm_kzalloc(dev, struct_size(onecell, nodes, 2 * num_clocks), GFP_KERNEL);
 	if (!onecell)
 		return ERR_PTR(-ENOMEM);
+	onecell->num_nodes = 2 * num_clocks;
 
 	qp = devm_kzalloc(dev, struct_size(qp, clocks, num_clocks), GFP_KERNEL);
 	if (!qp)
@@ -132,8 +133,6 @@ struct icc_provider *icc_clk_register(struct device *dev,
 		icc_node_add(node, provider);
 		onecell->nodes[j++] = node;
 	}
-
-	onecell->num_nodes = j;
 
 	ret = icc_provider_register(provider);
 	if (ret)

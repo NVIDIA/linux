@@ -252,6 +252,8 @@ static const char * const iio_ev_info_text[] = {
 	[IIO_EV_INFO_TIMEOUT] = "timeout",
 	[IIO_EV_INFO_RESET_TIMEOUT] = "reset_timeout",
 	[IIO_EV_INFO_TAP2_MIN_DELAY] = "tap2_min_delay",
+	[IIO_EV_INFO_RUNNING_PERIOD] = "runningperiod",
+	[IIO_EV_INFO_RUNNING_COUNT] = "runningcount",
 };
 
 static enum iio_event_direction iio_ev_attr_dir(struct iio_dev_attr *attr)
@@ -283,6 +285,9 @@ static ssize_t iio_ev_state_store(struct device *dev,
 	if (ret < 0)
 		return ret;
 
+	if (!indio_dev->info->write_event_config)
+		return -EINVAL;
+
 	ret = indio_dev->info->write_event_config(indio_dev,
 		this_attr->c, iio_ev_attr_type(this_attr),
 		iio_ev_attr_dir(this_attr), val);
@@ -297,6 +302,9 @@ static ssize_t iio_ev_state_show(struct device *dev,
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	int val;
+
+	if (!indio_dev->info->read_event_config)
+		return -EINVAL;
 
 	val = indio_dev->info->read_event_config(indio_dev,
 		this_attr->c, iio_ev_attr_type(this_attr),
@@ -315,6 +323,9 @@ static ssize_t iio_ev_value_show(struct device *dev,
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	int val, val2, val_arr[2];
 	int ret;
+
+	if (!indio_dev->info->read_event_value)
+		return -EINVAL;
 
 	ret = indio_dev->info->read_event_value(indio_dev,
 		this_attr->c, iio_ev_attr_type(this_attr),

@@ -173,9 +173,8 @@ static int madvise_update_vma(struct vm_area_struct *vma,
 	}
 
 success:
-	/*
-	 * vm_flags is protected by the mmap_lock held in write mode.
-	 */
+	/* vm_flags is protected by the mmap_lock held in write mode. */
+	vma_start_write(vma);
 	vm_flags_reset(vma, new_flags);
 	if (!vma->vm_file || vma_is_anon_shmem(vma)) {
 		error = replace_anon_vma_name(vma, anon_name);
@@ -218,7 +217,7 @@ static int swapin_walk_pmd_entry(pmd_t *pmd, unsigned long start,
 		ptep = NULL;
 
 		page = read_swap_cache_async(entry, GFP_HIGHUSER_MOVABLE,
-					     vma, addr, false, &splug);
+					     vma, addr, &splug);
 		if (page)
 			put_page(page);
 	}
@@ -263,7 +262,7 @@ static void shmem_swapin_range(struct vm_area_struct *vma,
 		rcu_read_unlock();
 
 		page = read_swap_cache_async(entry, mapping_gfp_mask(mapping),
-					     vma, addr, false, &splug);
+					     vma, addr, &splug);
 		if (page)
 			put_page(page);
 
@@ -414,6 +413,8 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
 
 		folio_clear_referenced(folio);
 		folio_test_clear_young(folio);
+		if (folio_test_active(folio))
+			folio_set_workingset(folio);
 		if (pageout) {
 			if (folio_isolate_lru(folio)) {
 				if (folio_test_unevictable(folio))
@@ -511,6 +512,8 @@ regular_folio:
 		 */
 		folio_clear_referenced(folio);
 		folio_test_clear_young(folio);
+		if (folio_test_active(folio))
+			folio_set_workingset(folio);
 		if (pageout) {
 			if (folio_isolate_lru(folio)) {
 				if (folio_test_unevictable(folio))
@@ -662,7 +665,7 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
 				free_swap_and_cache(entry);
 				pte_clear_not_present_full(mm, addr, pte, tlb->fullmm);
 			} else if (is_hwpoison_entry(entry) ||
-				   is_swapin_error_entry(entry)) {
+				   is_poisoned_swp_entry(entry)) {
 				pte_clear_not_present_full(mm, addr, pte, tlb->fullmm);
 			}
 			continue;
@@ -914,27 +917,14 @@ static long madvise_populate(struct vm_area_struct *vma,
 {
 	const bool write = behavior == MADV_POPULATE_WRITE;
 	struct mm_struct *mm = vma->vm_mm;
-	unsigned long tmp_end;
 	int locked = 1;
 	long pages;
 
 	*prev = vma;
 
 	while (start < end) {
-		/*
-		 * We might have temporarily dropped the lock. For example,
-		 * our VMA might have been split.
-		 */
-		if (!vma || start >= vma->vm_end) {
-			vma = vma_lookup(mm, start);
-			if (!vma)
-				return -ENOMEM;
-		}
-
-		tmp_end = min_t(unsigned long, end, vma->vm_end);
 		/* Populate (prefault) page tables readable/writable. */
-		pages = faultin_vma_page_range(vma, start, tmp_end, write,
-					       &locked);
+		pages = faultin_page_range(mm, start, end, write, &locked);
 		if (!locked) {
 			mmap_read_lock(mm);
 			locked = 1;
@@ -955,7 +945,7 @@ static long madvise_populate(struct vm_area_struct *vma,
 				pr_warn_once("%s: unhandled return value: %ld\n",
 					     __func__, pages);
 				fallthrough;
-			case -ENOMEM:
+			case -ENOMEM: /* No VMA or out of memory. */
 				return -ENOMEM;
 			}
 		}

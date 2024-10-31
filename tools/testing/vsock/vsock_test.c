@@ -255,41 +255,149 @@ static void test_stream_multiconn_server(const struct test_opts *opts)
 		close(fds[i]);
 }
 
-static void test_stream_msg_peek_client(const struct test_opts *opts)
-{
-	int fd;
+#define MSG_PEEK_BUF_LEN 64
 
-	fd = vsock_stream_connect(opts->peer_cid, 1234);
+static void test_msg_peek_client(const struct test_opts *opts,
+				 bool seqpacket)
+{
+	unsigned char buf[MSG_PEEK_BUF_LEN];
+	ssize_t send_size;
+	int fd;
+	int i;
+
+	if (seqpacket)
+		fd = vsock_seqpacket_connect(opts->peer_cid, 1234);
+	else
+		fd = vsock_stream_connect(opts->peer_cid, 1234);
+
 	if (fd < 0) {
 		perror("connect");
 		exit(EXIT_FAILURE);
 	}
 
-	send_byte(fd, 1, 0);
+	for (i = 0; i < sizeof(buf); i++)
+		buf[i] = rand() & 0xFF;
+
+	control_expectln("SRVREADY");
+
+	send_size = send(fd, buf, sizeof(buf), 0);
+
+	if (send_size < 0) {
+		perror("send");
+		exit(EXIT_FAILURE);
+	}
+
+	if (send_size != sizeof(buf)) {
+		fprintf(stderr, "Invalid send size %zi\n", send_size);
+		exit(EXIT_FAILURE);
+	}
+
 	close(fd);
 }
 
-static void test_stream_msg_peek_server(const struct test_opts *opts)
+static void test_msg_peek_server(const struct test_opts *opts,
+				 bool seqpacket)
 {
+	unsigned char buf_half[MSG_PEEK_BUF_LEN / 2];
+	unsigned char buf_normal[MSG_PEEK_BUF_LEN];
+	unsigned char buf_peek[MSG_PEEK_BUF_LEN];
+	ssize_t res;
 	int fd;
 
-	fd = vsock_stream_accept(VMADDR_CID_ANY, 1234, NULL);
+	if (seqpacket)
+		fd = vsock_seqpacket_accept(VMADDR_CID_ANY, 1234, NULL);
+	else
+		fd = vsock_stream_accept(VMADDR_CID_ANY, 1234, NULL);
+
 	if (fd < 0) {
 		perror("accept");
 		exit(EXIT_FAILURE);
 	}
 
-	recv_byte(fd, 1, MSG_PEEK);
-	recv_byte(fd, 1, 0);
+	/* Peek from empty socket. */
+	res = recv(fd, buf_peek, sizeof(buf_peek), MSG_PEEK | MSG_DONTWAIT);
+	if (res != -1) {
+		fprintf(stderr, "expected recv(2) failure, got %zi\n", res);
+		exit(EXIT_FAILURE);
+	}
+
+	if (errno != EAGAIN) {
+		perror("EAGAIN expected");
+		exit(EXIT_FAILURE);
+	}
+
+	control_writeln("SRVREADY");
+
+	/* Peek part of data. */
+	res = recv(fd, buf_half, sizeof(buf_half), MSG_PEEK);
+	if (res != sizeof(buf_half)) {
+		fprintf(stderr, "recv(2) + MSG_PEEK, expected %zu, got %zi\n",
+			sizeof(buf_half), res);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Peek whole data. */
+	res = recv(fd, buf_peek, sizeof(buf_peek), MSG_PEEK);
+	if (res != sizeof(buf_peek)) {
+		fprintf(stderr, "recv(2) + MSG_PEEK, expected %zu, got %zi\n",
+			sizeof(buf_peek), res);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Compare partial and full peek. */
+	if (memcmp(buf_half, buf_peek, sizeof(buf_half))) {
+		fprintf(stderr, "Partial peek data mismatch\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (seqpacket) {
+		/* This type of socket supports MSG_TRUNC flag,
+		 * so check it with MSG_PEEK. We must get length
+		 * of the message.
+		 */
+		res = recv(fd, buf_half, sizeof(buf_half), MSG_PEEK |
+			   MSG_TRUNC);
+		if (res != sizeof(buf_peek)) {
+			fprintf(stderr,
+				"recv(2) + MSG_PEEK | MSG_TRUNC, exp %zu, got %zi\n",
+				sizeof(buf_half), res);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	res = recv(fd, buf_normal, sizeof(buf_normal), 0);
+	if (res != sizeof(buf_normal)) {
+		fprintf(stderr, "recv(2), expected %zu, got %zi\n",
+			sizeof(buf_normal), res);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Compare full peek and normal read. */
+	if (memcmp(buf_peek, buf_normal, sizeof(buf_peek))) {
+		fprintf(stderr, "Full peek data mismatch\n");
+		exit(EXIT_FAILURE);
+	}
+
 	close(fd);
 }
 
+static void test_stream_msg_peek_client(const struct test_opts *opts)
+{
+	return test_msg_peek_client(opts, false);
+}
+
+static void test_stream_msg_peek_server(const struct test_opts *opts)
+{
+	return test_msg_peek_server(opts, false);
+}
+
 #define SOCK_BUF_SIZE (2 * 1024 * 1024)
-#define MAX_MSG_SIZE (32 * 1024)
+#define MAX_MSG_PAGES 4
 
 static void test_seqpacket_msg_bounds_client(const struct test_opts *opts)
 {
 	unsigned long curr_hash;
+	size_t max_msg_size;
 	int page_size;
 	int msg_count;
 	int fd;
@@ -305,7 +413,8 @@ static void test_seqpacket_msg_bounds_client(const struct test_opts *opts)
 
 	curr_hash = 0;
 	page_size = getpagesize();
-	msg_count = SOCK_BUF_SIZE / MAX_MSG_SIZE;
+	max_msg_size = MAX_MSG_PAGES * page_size;
+	msg_count = SOCK_BUF_SIZE / max_msg_size;
 
 	for (int i = 0; i < msg_count; i++) {
 		ssize_t send_size;
@@ -316,7 +425,7 @@ static void test_seqpacket_msg_bounds_client(const struct test_opts *opts)
 		/* Use "small" buffers and "big" buffers. */
 		if (i & 1)
 			buf_size = page_size +
-					(rand() % (MAX_MSG_SIZE - page_size));
+					(rand() % (max_msg_size - page_size));
 		else
 			buf_size = 1 + (rand() % page_size);
 
@@ -372,7 +481,6 @@ static void test_seqpacket_msg_bounds_server(const struct test_opts *opts)
 	unsigned long remote_hash;
 	unsigned long curr_hash;
 	int fd;
-	char buf[MAX_MSG_SIZE];
 	struct msghdr msg = {0};
 	struct iovec iov = {0};
 
@@ -400,8 +508,13 @@ static void test_seqpacket_msg_bounds_server(const struct test_opts *opts)
 	control_writeln("SRVREADY");
 	/* Wait, until peer sends whole data. */
 	control_expectln("SENDDONE");
-	iov.iov_base = buf;
-	iov.iov_len = sizeof(buf);
+	iov.iov_len = MAX_MSG_PAGES * getpagesize();
+	iov.iov_base = malloc(iov.iov_len);
+	if (!iov.iov_base) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
@@ -426,6 +539,7 @@ static void test_seqpacket_msg_bounds_server(const struct test_opts *opts)
 		curr_hash += hash_djb2(msg.msg_iov[0].iov_base, recv_size);
 	}
 
+	free(iov.iov_base);
 	close(fd);
 	remote_hash = control_readulong();
 
@@ -1053,6 +1167,16 @@ static void test_stream_virtio_skb_merge_server(const struct test_opts *opts)
 	close(fd);
 }
 
+static void test_seqpacket_msg_peek_client(const struct test_opts *opts)
+{
+	return test_msg_peek_client(opts, true);
+}
+
+static void test_seqpacket_msg_peek_server(const struct test_opts *opts)
+{
+	return test_msg_peek_server(opts, true);
+}
+
 static struct test_case test_cases[] = {
 	{
 		.name = "SOCK_STREAM connection reset",
@@ -1127,6 +1251,11 @@ static struct test_case test_cases[] = {
 		.name = "SOCK_STREAM virtio skb merge",
 		.run_client = test_stream_virtio_skb_merge_client,
 		.run_server = test_stream_virtio_skb_merge_server,
+	},
+	{
+		.name = "SOCK_SEQPACKET MSG_PEEK",
+		.run_client = test_seqpacket_msg_peek_client,
+		.run_server = test_seqpacket_msg_peek_server,
 	},
 	{},
 };

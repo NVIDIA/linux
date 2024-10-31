@@ -10,4 +10,3 @@ obj-$(CONFIG_ASPEED_MCTP)	+= aspeed-mctp.o
 obj-$(CONFIG_ASPEED_LPC_PCC)	+= aspeed-lpc-pcc.o
 obj-$(CONFIG_ASPEED_OTP)        += aspeed-otp.o
 obj-y        += aspeed-2600-ara.o
-obj-$(CONFIG_ASPEED_XDMA)		+= aspeed-xdma.o

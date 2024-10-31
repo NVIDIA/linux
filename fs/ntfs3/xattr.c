@@ -219,6 +219,12 @@ static ssize_t ntfs_list_ea(struct ntfs_inode *ni, char *buffer,
 		if (!ea->name_len)
 			break;
 
+		if (ea->name_len > ea_size) {
+			ntfs_set_state(ni->mi.sbi, NTFS_DIRTY_ERROR);
+			err = -EINVAL; /* corrupted fs */
+			break;
+		}
+
 		if (buffer) {
 			/* Check if we can use field ea->name */
 			if (off + ea_size > size)
@@ -642,7 +648,7 @@ static noinline int ntfs_set_acl_ex(struct mnt_idmap *idmap,
 	if (!err) {
 		set_cached_acl(inode, type, acl);
 		inode->i_mode = mode;
-		inode->i_ctime = current_time(inode);
+		inode_set_ctime_current(inode);
 		mark_inode_dirty(inode);
 	}
 
@@ -743,6 +749,9 @@ static int ntfs_getxattr(const struct xattr_handler *handler, struct dentry *de,
 {
 	int err;
 	struct ntfs_inode *ni = ntfs_i(inode);
+
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	/* Dispatch request. */
 	if (!strcmp(name, SYSTEM_DOS_ATTRIB)) {
@@ -929,7 +938,7 @@ set_new_fa:
 			  NULL);
 
 out:
-	inode->i_ctime = current_time(inode);
+	inode_set_ctime_current(inode);
 	mark_inode_dirty(inode);
 
 	return err;

@@ -8,7 +8,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/rpmh.h>
@@ -263,6 +262,8 @@ static int clk_rpmh_bcm_send_cmd(struct clk_rpmh *c, bool enable)
 	} else {
 		cmd_state = 0;
 	}
+
+	cmd_state = min(cmd_state, BCM_TCS_CMD_VOTE_MASK);
 
 	if (c->last_sent_aggr_state != cmd_state) {
 		cmd.addr = c->res_addr;

@@ -106,8 +106,6 @@ struct bnxt_re_gsi_context {
 	struct	bnxt_re_sqp_entries *sqp_tbl;
 };
 
-#define BNXT_RE_MIN_MSIX		2
-#define BNXT_RE_MAX_MSIX		9
 #define BNXT_RE_AEQ_IDX			0
 #define BNXT_RE_NQ_IDX			1
 #define BNXT_RE_GEN_P5_MAX_VF		64
@@ -121,8 +119,10 @@ struct bnxt_re_pacing {
 	u32 dbq_pacing_time; /* ms */
 	u32 dbr_def_do_pacing;
 	bool dbr_pacing;
+	struct mutex dbq_lock; /* synchronize db pacing algo */
 };
 
+#define BNXT_RE_MAX_DBR_DO_PACING 0xFFFF
 #define BNXT_RE_DBR_PACING_TIME 5 /* ms */
 #define BNXT_RE_PACING_ALGO_THRESHOLD 250 /* Entries in DB FIFO */
 #define BNXT_RE_PACING_ALARM_TH_MULTIPLE 2 /* Multiple of pacing algo threshold */
@@ -164,7 +164,7 @@ struct bnxt_re_dev {
 	struct bnxt_qplib_rcfw		rcfw;
 
 	/* NQ */
-	struct bnxt_qplib_nq		nq[BNXT_RE_MAX_MSIX];
+	struct bnxt_qplib_nq		nq[BNXT_MAX_ROCE_MSIX];
 
 	/* Device Resources */
 	struct bnxt_qplib_dev_attr	dev_attr;
@@ -172,16 +172,9 @@ struct bnxt_re_dev {
 	struct bnxt_qplib_res		qplib_res;
 	struct bnxt_qplib_dpi		dpi_privileged;
 
-	atomic_t			qp_count;
 	struct mutex			qp_lock;	/* protect qp list */
 	struct list_head		qp_list;
 
-	atomic_t			cq_count;
-	atomic_t			srq_count;
-	atomic_t			mr_count;
-	atomic_t			mw_count;
-	atomic_t			ah_count;
-	atomic_t			pd_count;
 	/* Max of 2 lossless traffic class supported per port */
 	u16				cosq[2];
 
@@ -192,6 +185,8 @@ struct bnxt_re_dev {
 	u32 is_virtfn;
 	u32 num_vfs;
 	struct bnxt_re_pacing pacing;
+	struct work_struct dbq_fifo_check_work;
+	struct delayed_work dbq_pacing_work;
 };
 
 #define to_bnxt_re_dev(ptr, member)	\
@@ -202,6 +197,7 @@ struct bnxt_re_dev {
 #define BNXT_RE_ROCEV2_IPV6_PACKET	3
 
 #define BNXT_RE_CHECK_RC(x) ((x) && ((x) != -ETIMEDOUT))
+void bnxt_re_pacing_alert(struct bnxt_re_dev *rdev);
 
 static inline struct device *rdev_to_dev(struct bnxt_re_dev *rdev)
 {

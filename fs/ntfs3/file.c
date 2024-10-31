@@ -85,7 +85,7 @@ int ntfs_getattr(struct mnt_idmap *idmap, const struct path *path,
 
 	stat->attributes_mask |= STATX_ATTR_COMPRESSED | STATX_ATTR_ENCRYPTED;
 
-	generic_fillattr(idmap, inode, stat);
+	generic_fillattr(idmap, request_mask, inode, stat);
 
 	stat->result_mask |= STATX_BTIME;
 	stat->btime = ni->i_crtime;
@@ -260,6 +260,9 @@ static int ntfs_file_mmap(struct file *file, struct vm_area_struct *vma)
 	bool rw = vma->vm_flags & VM_WRITE;
 	int err;
 
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
+
 	if (is_encrypted(ni)) {
 		ntfs_inode_warn(inode, "mmap encrypted not supported");
 		return -EOPNOTSUPP;
@@ -296,10 +299,7 @@ static int ntfs_file_mmap(struct file *file, struct vm_area_struct *vma)
 		}
 
 		if (ni->i_valid < to) {
-			if (!inode_trylock(inode)) {
-				err = -EAGAIN;
-				goto out;
-			}
+			inode_lock(inode);
 			err = ntfs_extend_initialized_size(file, ni,
 							   ni->i_valid, to);
 			inode_unlock(inode);
@@ -342,7 +342,7 @@ static int ntfs_extend(struct inode *inode, loff_t pos, size_t count,
 		err = 0;
 	}
 
-	inode->i_ctime = inode->i_mtime = current_time(inode);
+	inode->i_mtime = inode_set_ctime_current(inode);
 	mark_inode_dirty(inode);
 
 	if (IS_SYNC(inode)) {
@@ -400,7 +400,7 @@ static int ntfs_truncate(struct inode *inode, loff_t new_size)
 	ni_unlock(ni);
 
 	ni->std_fa |= FILE_ATTRIBUTE_ARCHIVE;
-	inode->i_ctime = inode->i_mtime = current_time(inode);
+	inode->i_mtime = inode_set_ctime_current(inode);
 	if (!IS_DIRSYNC(inode)) {
 		dirty = 1;
 	} else {
@@ -418,7 +418,7 @@ static int ntfs_truncate(struct inode *inode, loff_t new_size)
 }
 
 /*
- * ntfs_fallocate
+ * ntfs_fallocate - file_operations::ntfs_fallocate
  *
  * Preallocate space for a file. This implements ntfs's fallocate file
  * operation, which gets called from sys_fallocate system call. User
@@ -498,10 +498,14 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 		ni_lock(ni);
 		err = attr_punch_hole(ni, vbo, len, &frame_size);
 		ni_unlock(ni);
+		if (!err)
+			goto ok;
+
 		if (err != E_NTFS_NOTALIGNED)
 			goto out;
 
 		/* Process not aligned punch. */
+		err = 0;
 		mask = frame_size - 1;
 		vbo_a = (vbo + mask) & ~mask;
 		end_a = end & ~mask;
@@ -524,6 +528,8 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 			ni_lock(ni);
 			err = attr_punch_hole(ni, vbo_a, end_a - vbo_a, NULL);
 			ni_unlock(ni);
+			if (err)
+				goto out;
 		}
 	} else if (mode & FALLOC_FL_COLLAPSE_RANGE) {
 		/*
@@ -547,6 +553,8 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 		ni_lock(ni);
 		err = attr_collapse_range(ni, vbo, len);
 		ni_unlock(ni);
+		if (err)
+			goto out;
 	} else if (mode & FALLOC_FL_INSERT_RANGE) {
 		/* Check new size. */
 		err = inode_newsize_ok(inode, new_size);
@@ -563,6 +571,8 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 		ni_lock(ni);
 		err = attr_insert_range(ni, vbo, len);
 		ni_unlock(ni);
+		if (err)
+			goto out;
 	} else {
 		/* Check new size. */
 		u8 cluster_bits = sbi->cluster_bits;
@@ -632,17 +642,24 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
 					    &ni->file.run, i_size, &ni->i_valid,
 					    true, NULL);
 			ni_unlock(ni);
+			if (err)
+				goto out;
 		} else if (new_size > i_size) {
-			inode->i_size = new_size;
+			i_size_write(inode, new_size);
 		}
 	}
+
+ok:
+	err = file_modified(file);
+	if (err)
+		goto out;
 
 out:
 	if (map_locked)
 		filemap_invalidate_unlock(mapping);
 
 	if (!err) {
-		inode->i_ctime = inode->i_mtime = current_time(inode);
+		inode->i_mtime = inode_set_ctime_current(inode);
 		mark_inode_dirty(inode);
 	}
 
@@ -662,6 +679,9 @@ int ntfs3_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 	umode_t mode = inode->i_mode;
 	int err;
 
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
+
 	err = setattr_prepare(idmap, dentry, attr);
 	if (err)
 		goto out;
@@ -675,7 +695,7 @@ int ntfs3_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 			goto out;
 		}
 		inode_dio_wait(inode);
-		oldsize = inode->i_size;
+		oldsize = i_size_read(inode);
 		newsize = attr->ia_size;
 
 		if (newsize <= oldsize)
@@ -687,7 +707,7 @@ int ntfs3_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 			goto out;
 
 		ni->ni_flags |= NI_FLAG_UPDATE_PARENT;
-		inode->i_size = newsize;
+		i_size_write(inode, newsize);
 	}
 
 	setattr_copy(idmap, inode, attr);
@@ -717,6 +737,9 @@ static ssize_t ntfs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 	struct inode *inode = file->f_mapping->host;
 	struct ntfs_inode *ni = ntfs_i(inode);
 
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
+
 	if (is_encrypted(ni)) {
 		ntfs_inode_warn(inode, "encrypted i/o not supported");
 		return -EOPNOTSUPP;
@@ -745,11 +768,14 @@ static ssize_t ntfs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 }
 
 static ssize_t ntfs_file_splice_read(struct file *in, loff_t *ppos,
-				     struct pipe_inode_info *pipe,
-				     size_t len, unsigned int flags)
+				     struct pipe_inode_info *pipe, size_t len,
+				     unsigned int flags)
 {
 	struct inode *inode = in->f_mapping->host;
 	struct ntfs_inode *ni = ntfs_i(inode);
+
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	if (is_encrypted(ni)) {
 		ntfs_inode_warn(inode, "encrypted i/o not supported");
@@ -820,7 +846,7 @@ static ssize_t ntfs_compress_write(struct kiocb *iocb, struct iov_iter *from)
 	size_t count = iov_iter_count(from);
 	loff_t pos = iocb->ki_pos;
 	struct inode *inode = file_inode(file);
-	loff_t i_size = inode->i_size;
+	loff_t i_size = i_size_read(inode);
 	struct address_space *mapping = inode->i_mapping;
 	struct ntfs_inode *ni = ntfs_i(inode);
 	u64 valid = ni->i_valid;
@@ -1027,6 +1053,8 @@ out:
 	iocb->ki_pos += written;
 	if (iocb->ki_pos > ni->i_valid)
 		ni->i_valid = iocb->ki_pos;
+	if (iocb->ki_pos > i_size)
+		i_size_write(inode, iocb->ki_pos);
 
 	return written;
 }
@@ -1040,7 +1068,11 @@ static ssize_t ntfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct address_space *mapping = file->f_mapping;
 	struct inode *inode = mapping->host;
 	ssize_t ret;
+	int err;
 	struct ntfs_inode *ni = ntfs_i(inode);
+
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	if (is_encrypted(ni)) {
 		ntfs_inode_warn(inode, "encrypted i/o not supported");
@@ -1066,6 +1098,12 @@ static ssize_t ntfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	ret = generic_write_checks(iocb, from);
 	if (ret <= 0)
 		goto out;
+
+	err = file_modified(iocb->ki_filp);
+	if (err) {
+		ret = err;
+		goto out;
+	}
 
 	if (WARN_ON(ni->ni_flags & NI_FLAG_COMPRESSED_MASK)) {
 		/* Should never be here, see ntfs_file_open(). */
@@ -1095,6 +1133,9 @@ out:
 int ntfs_file_open(struct inode *inode, struct file *file)
 {
 	struct ntfs_inode *ni = ntfs_i(inode);
+
+	if (unlikely(ntfs3_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	if (unlikely((is_compressed(ni) || is_encrypted(ni)) &&
 		     (file->f_flags & O_DIRECT))) {
@@ -1137,7 +1178,8 @@ static int ntfs_file_release(struct inode *inode, struct file *file)
 		down_write(&ni->file.run_lock);
 
 		err = attr_set_size(ni, ATTR_DATA, NULL, 0, &ni->file.run,
-				    inode->i_size, &ni->i_valid, false, NULL);
+				    i_size_read(inode), &ni->i_valid, false,
+				    NULL);
 
 		up_write(&ni->file.run_lock);
 		ni_unlock(ni);

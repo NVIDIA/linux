@@ -12,9 +12,7 @@
 #include <linux/iopoll.h>
 #include <linux/ioport.h>
 #include <linux/irq.h>
-#include <linux/of_address.h>
-#include <linux/of_device.h>
-#include <linux/of_irq.h>
+#include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
@@ -1224,7 +1222,7 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 	}
 
 	if (!sbc_error && !(events & MSDC_INT_CMDRDY)) {
-		if (events & MSDC_INT_CMDTMO ||
+		if ((events & MSDC_INT_CMDTMO && !host->hs400_tuning) ||
 		    (!mmc_op_tuning(cmd->opcode) && !host->hs400_tuning))
 			/*
 			 * should not clear fifo/interrupt as the tune data
@@ -1317,9 +1315,9 @@ static void msdc_start_command(struct msdc_host *host,
 static void msdc_cmd_next(struct msdc_host *host,
 		struct mmc_request *mrq, struct mmc_command *cmd)
 {
-	if ((cmd->error &&
-	    !(cmd->error == -EILSEQ &&
-	      (mmc_op_tuning(cmd->opcode) || host->hs400_tuning))) ||
+	if ((cmd->error && !host->hs400_tuning &&
+	     !(cmd->error == -EILSEQ &&
+	     mmc_op_tuning(cmd->opcode))) ||
 	    (mrq->sbc && mrq->sbc->error))
 		msdc_request_done(host, mrq);
 	else if (cmd == mrq->sbc)
@@ -2887,7 +2885,7 @@ host_free:
 	return ret;
 }
 
-static int msdc_drv_remove(struct platform_device *pdev)
+static void msdc_drv_remove(struct platform_device *pdev)
 {
 	struct mmc_host *mmc;
 	struct msdc_host *host;
@@ -2911,8 +2909,6 @@ static int msdc_drv_remove(struct platform_device *pdev)
 			host->dma.bd, host->dma.bd_addr);
 
 	mmc_free_host(mmc);
-
-	return 0;
 }
 
 static void msdc_save_reg(struct msdc_host *host)
@@ -3054,7 +3050,7 @@ static const struct dev_pm_ops msdc_dev_pm_ops = {
 
 static struct platform_driver mt_msdc_driver = {
 	.probe = msdc_drv_probe,
-	.remove = msdc_drv_remove,
+	.remove_new = msdc_drv_remove,
 	.driver = {
 		.name = "mtk-msdc",
 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,

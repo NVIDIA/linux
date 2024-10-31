@@ -82,6 +82,9 @@ static void __gfs2_ail_flush(struct gfs2_glock *gl, bool fsync,
 	GLOCK_BUG_ON(gl, !fsync && atomic_read(&gl->gl_ail_count));
 	spin_unlock(&sdp->sd_ail_lock);
 	gfs2_log_unlock(sdp);
+
+	if (gfs2_withdrawing(sdp))
+		gfs2_withdraw(sdp);
 }
 
 
@@ -174,7 +177,7 @@ static int gfs2_rgrp_metasync(struct gfs2_glock *gl)
 
 	filemap_fdatawrite_range(metamapping, start, end);
 	error = filemap_fdatawait_range(metamapping, start, end);
-	WARN_ON_ONCE(error && !gfs2_withdrawn(sdp));
+	WARN_ON_ONCE(error && !gfs2_withdrawing_or_withdrawn(sdp));
 	mapping_set_error(metamapping, error);
 	if (error)
 		gfs2_io_error(sdp);
@@ -437,8 +440,8 @@ static int gfs2_dinode_in(struct gfs2_inode *ip, const void *buf)
 		inode->i_atime = atime;
 	inode->i_mtime.tv_sec = be64_to_cpu(str->di_mtime);
 	inode->i_mtime.tv_nsec = be32_to_cpu(str->di_mtime_nsec);
-	inode->i_ctime.tv_sec = be64_to_cpu(str->di_ctime);
-	inode->i_ctime.tv_nsec = be32_to_cpu(str->di_ctime_nsec);
+	inode_set_ctime(inode, be64_to_cpu(str->di_ctime),
+			be32_to_cpu(str->di_ctime_nsec));
 
 	ip->i_goal = be64_to_cpu(str->di_goal_meta);
 	ip->i_generation = be64_to_cpu(str->di_generation);
@@ -638,7 +641,7 @@ static void iopen_go_callback(struct gfs2_glock *gl, bool remote)
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
 
 	if (!remote || sb_rdonly(sdp->sd_vfs) ||
-	    test_bit(SDF_DEACTIVATING, &sdp->sd_flags))
+	    test_bit(SDF_KILL, &sdp->sd_flags))
 		return;
 
 	if (gl->gl_demote_state == LM_ST_UNLOCKED &&

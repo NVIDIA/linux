@@ -33,6 +33,7 @@
 				#size-cells = <1>;
 
 				partition@0 {
+					compatible = "seama";
 					label = "firmware";
 					reg = <0x00000000 0x08000000>;
 				};
@@ -141,6 +142,14 @@
 
 		port@4 {
 			label = "wan";
+		};
+
+		port@5 {
+			status = "disabled";
+		};
+
+		port@7 {
+			status = "disabled";
 		};
 
 		port@8 {

@@ -332,6 +332,7 @@ alloc_range_bias(struct drm_buddy *mm,
 		 u64 start, u64 end,
 		 unsigned int order)
 {
+	u64 req_size = mm->chunk_size << order;
 	struct drm_buddy_block *block;
 	struct drm_buddy_block *buddy;
 	LIST_HEAD(dfs);
@@ -366,6 +367,15 @@ alloc_range_bias(struct drm_buddy *mm,
 
 		if (drm_buddy_block_is_allocated(block))
 			continue;
+
+		if (block_start < start || block_end > end) {
+			u64 adjusted_start = max(block_start, start);
+			u64 adjusted_end = min(block_end, end);
+
+			if (round_down(adjusted_end + 1, req_size) <=
+			    round_up(adjusted_start, req_size))
+				continue;
+		}
 
 		if (contains(start, end, block_start, block_end) &&
 		    order == drm_buddy_block_order(block)) {
@@ -781,15 +791,15 @@ void drm_buddy_print(struct drm_buddy *mm, struct drm_printer *p)
 			count++;
 		}
 
-		drm_printf(p, "order-%d ", order);
+		drm_printf(p, "order-%2d ", order);
 
 		free = count * (mm->chunk_size << order);
 		if (free < SZ_1M)
-			drm_printf(p, "free: %lluKiB", free >> 10);
+			drm_printf(p, "free: %8llu KiB", free >> 10);
 		else
-			drm_printf(p, "free: %lluMiB", free >> 20);
+			drm_printf(p, "free: %8llu MiB", free >> 20);
 
-		drm_printf(p, ", pages: %llu\n", count);
+		drm_printf(p, ", blocks: %llu\n", count);
 	}
 }
 EXPORT_SYMBOL(drm_buddy_print);

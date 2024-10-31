@@ -184,7 +184,7 @@ static void sisfb_search_mode(char *name, bool quiet)
 {
 	unsigned int j = 0, xres = 0, yres = 0, depth = 0, rate = 0;
 	int i = 0;
-	char strbuf[16], strbuf1[20];
+	char strbuf[24], strbuf1[20];
 	char *nameptr = name;
 
 	/* We don't know the hardware specs yet and there is no ivideo */
@@ -1475,6 +1475,8 @@ sisfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	vtotal = var->upper_margin + var->lower_margin + var->vsync_len;
 
+	if (!var->pixclock)
+		return -EINVAL;
 	pixclock = var->pixclock;
 
 	if((var->vmode & FB_VMODE_MASK) == FB_VMODE_NONINTERLACED) {
@@ -6472,14 +6474,11 @@ error_3:	vfree(ivideo->bios_abase);
 		sisfb_initaccel(ivideo);
 
 #if defined(FBINFO_HWACCEL_DISABLED) && defined(FBINFO_HWACCEL_XPAN)
-		sis_fb_info->flags = FBINFO_DEFAULT 		|
-				     FBINFO_HWACCEL_YPAN 	|
+		sis_fb_info->flags = FBINFO_HWACCEL_YPAN	|
 				     FBINFO_HWACCEL_XPAN 	|
 				     FBINFO_HWACCEL_COPYAREA 	|
 				     FBINFO_HWACCEL_FILLRECT 	|
 				     ((ivideo->accel) ? 0 : FBINFO_HWACCEL_DISABLED);
-#else
-		sis_fb_info->flags = FBINFO_FLAG_DEFAULT;
 #endif
 		sis_fb_info->var = ivideo->default_var;
 		sis_fb_info->fix = ivideo->sisfb_fix;

@@ -106,6 +106,10 @@ struct bpf_map_ops {
 	/* funcs called by prog_array and perf_event_array map */
 	void *(*map_fd_get_ptr)(struct bpf_map *map, struct file *map_file,
 				int fd);
+	/* If need_defer is true, the implementation should guarantee that
+	 * the to-be-put element is still alive before the bpf program, which
+	 * may manipulate it, exists.
+	 */
 	void (*map_fd_put_ptr)(struct bpf_map *map, void *ptr, bool need_defer);
 	int (*map_gen_lookup)(struct bpf_map *map, struct bpf_insn *insn_buf);
 	u32 (*map_fd_sys_lookup_elem)(void *ptr);
@@ -228,6 +232,18 @@ struct btf_record {
 	struct btf_field fields[];
 };
 
+/* Non-opaque version of bpf_rb_node in uapi/linux/bpf.h */
+struct bpf_rb_node_kern {
+	struct rb_node rb_node;
+	void *owner;
+} __attribute__((aligned(8)));
+
+/* Non-opaque version of bpf_list_node in uapi/linux/bpf.h */
+struct bpf_list_node_kern {
+	struct list_head list_head;
+	void *owner;
+} __attribute__((aligned(8)));
+
 struct bpf_map {
 	/* The first two cachelines with read-mostly members of which some
 	 * are also accessed in fast-path (e.g. ops, max_entries).
@@ -272,6 +288,7 @@ struct bpf_map {
 	 * same prog type, JITed flag and xdp_has_frags flag.
 	 */
 	struct {
+		const struct btf_type *attach_func_proto;
 		spinlock_t lock;
 		enum bpf_prog_type type;
 		bool jited;
@@ -280,6 +297,8 @@ struct bpf_map {
 	bool bypass_spec_v1;
 	bool frozen; /* write-once; write-protected by freeze_mutex */
 	bool free_after_mult_rcu_gp;
+	bool free_after_rcu_gp;
+	atomic64_t sleepable_refcnt;
 	s64 __percpu *elem_count;
 };
 
@@ -657,6 +676,11 @@ enum bpf_type_flag {
 	/* DYNPTR points to xdp_buff */
 	DYNPTR_TYPE_XDP		= BIT(16 + BPF_BASE_TYPE_BITS),
 
+	/* Memory must be aligned on some architectures, used in combination with
+	 * MEM_FIXED_SIZE.
+	 */
+	MEM_ALIGNED		= BIT(17 + BPF_BASE_TYPE_BITS),
+
 	__BPF_TYPE_FLAG_MAX,
 	__BPF_TYPE_LAST_FLAG	= __BPF_TYPE_FLAG_MAX - 1,
 };
@@ -693,8 +717,6 @@ enum bpf_arg_type {
 	ARG_ANYTHING,		/* any (initialized) argument is ok */
 	ARG_PTR_TO_SPIN_LOCK,	/* pointer to bpf_spin_lock */
 	ARG_PTR_TO_SOCK_COMMON,	/* pointer to sock_common */
-	ARG_PTR_TO_INT,		/* pointer to int */
-	ARG_PTR_TO_LONG,	/* pointer to long */
 	ARG_PTR_TO_SOCKET,	/* pointer to bpf_sock (fullsock) */
 	ARG_PTR_TO_BTF_ID,	/* pointer to in-kernel struct */
 	ARG_PTR_TO_RINGBUF_MEM,	/* pointer to dynamically reserved ringbuf memory */
@@ -896,10 +918,14 @@ bpf_ctx_record_field_size(struct bpf_insn_access_aux *aux, u32 size)
 	aux->ctx_field_size = size;
 }
 
+static bool bpf_is_ldimm64(const struct bpf_insn *insn)
+{
+	return insn->code == (BPF_LD | BPF_IMM | BPF_DW);
+}
+
 static inline bool bpf_pseudo_func(const struct bpf_insn *insn)
 {
-	return insn->code == (BPF_LD | BPF_IMM | BPF_DW) &&
-	       insn->src_reg == BPF_PSEUDO_FUNC;
+	return bpf_is_ldimm64(insn) && insn->src_reg == BPF_PSEUDO_FUNC;
 }
 
 struct bpf_prog_ops {
@@ -1021,6 +1047,11 @@ struct btf_func_model {
  * e.g., a live patch. This flag is set and cleared by ftrace call backs,
  */
 #define BPF_TRAMP_F_SHARE_IPMODIFY	BIT(6)
+
+/* Indicate that current trampoline is in a tail call context. Then, it has to
+ * cache and restore tail_call_cnt to avoid infinite tail call loop.
+ */
+#define BPF_TRAMP_F_TAIL_CALL_CTX	BIT(7)
 
 /* Each call __bpf_prog_enter + call bpf_func + call __bpf_prog_exit is ~50
  * bytes on x86.
@@ -1499,12 +1530,26 @@ struct bpf_link {
 	enum bpf_link_type type;
 	const struct bpf_link_ops *ops;
 	struct bpf_prog *prog;
-	struct work_struct work;
+	/* rcu is used before freeing, work can be used to schedule that
+	 * RCU-based freeing before that, so they never overlap
+	 */
+	union {
+		struct rcu_head rcu;
+		struct work_struct work;
+	};
 };
 
 struct bpf_link_ops {
 	void (*release)(struct bpf_link *link);
+	/* deallocate link resources callback, called without RCU grace period
+	 * waiting
+	 */
 	void (*dealloc)(struct bpf_link *link);
+	/* deallocate link resources callback, called after RCU grace period;
+	 * if underlying BPF program is sleepable we go through tasks trace
+	 * RCU GP and then "classic" RCU GP
+	 */
+	void (*dealloc_deferred)(struct bpf_link *link);
 	int (*detach)(struct bpf_link *link);
 	int (*update_prog)(struct bpf_link *link, struct bpf_prog *new_prog,
 			   struct bpf_prog *old_prog);
@@ -1544,6 +1589,53 @@ struct bpf_struct_ops_value;
 struct btf_member;
 
 #define BPF_STRUCT_OPS_MAX_NR_MEMBERS 64
+/**
+ * struct bpf_struct_ops - A structure of callbacks allowing a subsystem to
+ *			   define a BPF_MAP_TYPE_STRUCT_OPS map type composed
+ *			   of BPF_PROG_TYPE_STRUCT_OPS progs.
+ * @verifier_ops: A structure of callbacks that are invoked by the verifier
+ *		  when determining whether the struct_ops progs in the
+ *		  struct_ops map are valid.
+ * @init: A callback that is invoked a single time, and before any other
+ *	  callback, to initialize the structure. A nonzero return value means
+ *	  the subsystem could not be initialized.
+ * @check_member: When defined, a callback invoked by the verifier to allow
+ *		  the subsystem to determine if an entry in the struct_ops map
+ *		  is valid. A nonzero return value means that the map is
+ *		  invalid and should be rejected by the verifier.
+ * @init_member: A callback that is invoked for each member of the struct_ops
+ *		 map to allow the subsystem to initialize the member. A nonzero
+ *		 value means the member could not be initialized. This callback
+ *		 is exclusive with the @type, @type_id, @value_type, and
+ *		 @value_id fields.
+ * @reg: A callback that is invoked when the struct_ops map has been
+ *	 initialized and is being attached to. Zero means the struct_ops map
+ *	 has been successfully registered and is live. A nonzero return value
+ *	 means the struct_ops map could not be registered.
+ * @unreg: A callback that is invoked when the struct_ops map should be
+ *	   unregistered.
+ * @update: A callback that is invoked when the live struct_ops map is being
+ *	    updated to contain new values. This callback is only invoked when
+ *	    the struct_ops map is loaded with BPF_F_LINK. If not defined, the
+ *	    it is assumed that the struct_ops map cannot be updated.
+ * @validate: A callback that is invoked after all of the members have been
+ *	      initialized. This callback should perform static checks on the
+ *	      map, meaning that it should either fail or succeed
+ *	      deterministically. A struct_ops map that has been validated may
+ *	      not necessarily succeed in being registered if the call to @reg
+ *	      fails. For example, a valid struct_ops map may be loaded, but
+ *	      then fail to be registered due to there being another active
+ *	      struct_ops map on the system in the subsystem already. For this
+ *	      reason, if this callback is not defined, the check is skipped as
+ *	      the struct_ops map will have final verification performed in
+ *	      @reg.
+ * @type: BTF type.
+ * @value_type: Value type.
+ * @name: The name of the struct bpf_struct_ops object.
+ * @func_models: Func models
+ * @type_id: BTF type id.
+ * @value_id: BTF value id.
+ */
 struct bpf_struct_ops {
 	const struct bpf_verifier_ops *verifier_ops;
 	int (*init)(struct btf *btf);
@@ -1813,6 +1905,7 @@ struct bpf_cg_run_ctx {
 struct bpf_trace_run_ctx {
 	struct bpf_run_ctx run_ctx;
 	u64 bpf_cookie;
+	bool is_uprobe;
 };
 
 struct bpf_tramp_run_ctx {
@@ -1861,6 +1954,8 @@ bpf_prog_run_array(const struct bpf_prog_array *array,
 	if (unlikely(!array))
 		return ret;
 
+	run_ctx.is_uprobe = false;
+
 	migrate_disable();
 	old_run_ctx = bpf_set_run_ctx(&run_ctx.run_ctx);
 	item = &array->items[0];
@@ -1885,8 +1980,8 @@ bpf_prog_run_array(const struct bpf_prog_array *array,
  * rcu-protected dynamically sized maps.
  */
 static __always_inline u32
-bpf_prog_run_array_sleepable(const struct bpf_prog_array __rcu *array_rcu,
-			     const void *ctx, bpf_prog_run_fn run_prog)
+bpf_prog_run_array_uprobe(const struct bpf_prog_array __rcu *array_rcu,
+			  const void *ctx, bpf_prog_run_fn run_prog)
 {
 	const struct bpf_prog_array_item *item;
 	const struct bpf_prog *prog;
@@ -1899,6 +1994,8 @@ bpf_prog_run_array_sleepable(const struct bpf_prog_array __rcu *array_rcu,
 
 	rcu_read_lock_trace();
 	migrate_disable();
+
+	run_ctx.is_uprobe = true;
 
 	array = rcu_dereference_check(array_rcu, rcu_read_lock_trace_held());
 	if (unlikely(!array))
@@ -2047,6 +2144,35 @@ bpf_map_alloc_percpu(const struct bpf_map *map, size_t size, size_t align,
 }
 #endif
 
+static inline int
+bpf_map_init_elem_count(struct bpf_map *map)
+{
+	size_t size = sizeof(*map->elem_count), align = size;
+	gfp_t flags = GFP_USER | __GFP_NOWARN;
+
+	map->elem_count = bpf_map_alloc_percpu(map, size, align, flags);
+	if (!map->elem_count)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static inline void
+bpf_map_free_elem_count(struct bpf_map *map)
+{
+	free_percpu(map->elem_count);
+}
+
+static inline void bpf_map_inc_elem_count(struct bpf_map *map)
+{
+	this_cpu_inc(*map->elem_count);
+}
+
+static inline void bpf_map_dec_elem_count(struct bpf_map *map)
+{
+	this_cpu_dec(*map->elem_count);
+}
+
 extern int sysctl_unprivileged_bpf_disabled;
 
 static inline bool bpf_allow_ptr_leaks(void)
@@ -2080,7 +2206,6 @@ void bpf_link_cleanup(struct bpf_link_primer *primer);
 void bpf_link_inc(struct bpf_link *link);
 void bpf_link_put(struct bpf_link *link);
 int bpf_link_new_fd(struct bpf_link *link);
-struct file *bpf_link_new_file(struct bpf_link *link, int *reserved_fd);
 struct bpf_link *bpf_link_get_from_fd(u32 ufd);
 struct bpf_link *bpf_link_get_curr_or_next(u32 *id);
 
@@ -3046,6 +3171,9 @@ enum bpf_text_poke_type {
 
 int bpf_arch_text_poke(void *ip, enum bpf_text_poke_type t,
 		       void *addr1, void *addr2);
+
+void bpf_arch_poke_desc_update(struct bpf_jit_poke_descriptor *poke,
+			       struct bpf_prog *new, struct bpf_prog *old);
 
 void *bpf_arch_text_copy(void *dst, void *src, size_t len);
 int bpf_arch_text_invalidate(void *dst, size_t len);

@@ -251,6 +251,7 @@ static int set_core_reg(struct kvm_vcpu *vcpu, const struct kvm_one_reg *reg)
 		case PSR_AA32_MODE_SVC:
 		case PSR_AA32_MODE_ABT:
 		case PSR_AA32_MODE_UND:
+		case PSR_AA32_MODE_SYS:
 			if (!vcpu_el1_is_32bit(vcpu))
 				return -EINVAL;
 			break;
@@ -276,7 +277,7 @@ static int set_core_reg(struct kvm_vcpu *vcpu, const struct kvm_one_reg *reg)
 	if (*vcpu_cpsr(vcpu) & PSR_MODE32_BIT) {
 		int i, nr_reg;
 
-		switch (*vcpu_cpsr(vcpu)) {
+		switch (*vcpu_cpsr(vcpu) & PSR_AA32_MODE_MASK) {
 		/*
 		 * Either we are dealing with user mode, and only the
 		 * first 15 registers (+ PC) must be narrowed to 32bit.
@@ -874,7 +875,7 @@ u32 __attribute_const__ kvm_target_cpu(void)
 		break;
 	case ARM_CPU_IMP_APM:
 		switch (part_number) {
-		case APM_CPU_PART_POTENZA:
+		case APM_CPU_PART_XGENE:
 			return KVM_ARM_TARGET_XGENE_POTENZA;
 		}
 		break;
@@ -882,21 +883,6 @@ u32 __attribute_const__ kvm_target_cpu(void)
 
 	/* Return a default generic target */
 	return KVM_ARM_TARGET_GENERIC_V8;
-}
-
-void kvm_vcpu_preferred_target(struct kvm_vcpu_init *init)
-{
-	u32 target = kvm_target_cpu();
-
-	memset(init, 0, sizeof(*init));
-
-	/*
-	 * For now, we don't return any features.
-	 * In future, we might use features to return target
-	 * specific features available for the preferred
-	 * target type.
-	 */
-	init->target = (__u32)target;
 }
 
 int kvm_arch_vcpu_ioctl_get_fpu(struct kvm_vcpu *vcpu, struct kvm_fpu *fpu)

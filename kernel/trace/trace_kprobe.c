@@ -967,6 +967,7 @@ static int __trace_kprobe_create(int argc, const char *argv[])
 	}
 
 out:
+	traceprobe_finish_parse(&ctx);
 	trace_probe_log_clear();
 	kfree(new_argv);
 	kfree(symbol);
@@ -1019,9 +1020,9 @@ EXPORT_SYMBOL_GPL(kprobe_event_cmd_init);
 /**
  * __kprobe_event_gen_cmd_start - Generate a kprobe event command from arg list
  * @cmd: A pointer to the dynevent_cmd struct representing the new event
+ * @kretprobe: Is this a return probe?
  * @name: The name of the kprobe event
  * @loc: The location of the kprobe event
- * @kretprobe: Is this a return probe?
  * @...: Variable number of arg (pairs), one pair for each field
  *
  * NOTE: Users normally won't want to call this function directly, but
@@ -1621,15 +1622,10 @@ int bpf_get_kprobe_info(const struct perf_event *event, u32 *fd_type,
 
 	*fd_type = trace_kprobe_is_return(tk) ? BPF_FD_TYPE_KRETPROBE
 					      : BPF_FD_TYPE_KPROBE;
-	if (tk->symbol) {
-		*symbol = tk->symbol;
-		*probe_offset = tk->rp.kp.offset;
-		*probe_addr = 0;
-	} else {
-		*symbol = NULL;
-		*probe_offset = 0;
-		*probe_addr = (unsigned long)tk->rp.kp.addr;
-	}
+	*probe_offset = tk->rp.kp.offset;
+	*probe_addr = kallsyms_show_value(current_cred()) ?
+		      (unsigned long)tk->rp.kp.addr : 0;
+	*symbol = tk->symbol;
 	return 0;
 }
 #endif	/* CONFIG_PERF_EVENTS */

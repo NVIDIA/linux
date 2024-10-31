@@ -415,13 +415,20 @@ static void domain_dirty_limits(struct dirty_throttle_control *dtc)
 	else
 		bg_thresh = (bg_ratio * available_memory) / PAGE_SIZE;
 
-	if (bg_thresh >= thresh)
-		bg_thresh = thresh / 2;
 	tsk = current;
 	if (rt_task(tsk)) {
 		bg_thresh += bg_thresh / 4 + global_wb_domain.dirty_limit / 32;
 		thresh += thresh / 4 + global_wb_domain.dirty_limit / 32;
 	}
+	/*
+	 * Dirty throttling logic assumes the limits in page units fit into
+	 * 32-bits. This gives 16TB dirty limits max which is hopefully enough.
+	 */
+	if (thresh > UINT_MAX)
+		thresh = UINT_MAX;
+	/* This makes sure bg_thresh is within 32-bits as well */
+	if (bg_thresh >= thresh)
+		bg_thresh = thresh / 2;
 	dtc->thresh = thresh;
 	dtc->bg_thresh = bg_thresh;
 
@@ -471,7 +478,11 @@ static unsigned long node_dirty_limit(struct pglist_data *pgdat)
 	if (rt_task(tsk))
 		dirty += dirty / 4;
 
-	return dirty;
+	/*
+	 * Dirty throttling logic assumes the limits in page units fit into
+	 * 32-bits. This gives 16TB dirty limits max which is hopefully enough.
+	 */
+	return min_t(unsigned long, dirty, UINT_MAX);
 }
 
 /**
@@ -508,10 +519,17 @@ static int dirty_background_bytes_handler(struct ctl_table *table, int write,
 		void *buffer, size_t *lenp, loff_t *ppos)
 {
 	int ret;
+	unsigned long old_bytes = dirty_background_bytes;
 
 	ret = proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
-	if (ret == 0 && write)
+	if (ret == 0 && write) {
+		if (DIV_ROUND_UP(dirty_background_bytes, PAGE_SIZE) >
+								UINT_MAX) {
+			dirty_background_bytes = old_bytes;
+			return -ERANGE;
+		}
 		dirty_background_ratio = 0;
+	}
 	return ret;
 }
 
@@ -537,6 +555,10 @@ static int dirty_bytes_handler(struct ctl_table *table, int write,
 
 	ret = proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
 	if (ret == 0 && write && vm_dirty_bytes != old_bytes) {
+		if (DIV_ROUND_UP(vm_dirty_bytes, PAGE_SIZE) > UINT_MAX) {
+			vm_dirty_bytes = old_bytes;
+			return -ERANGE;
+		}
 		writeback_set_ratelimit();
 		vm_dirty_ratio = 0;
 	}
@@ -1193,7 +1215,7 @@ static void wb_update_write_bandwidth(struct bdi_writeback *wb,
 	 * write_bandwidth = ---------------------------------------------------
 	 *                                          period
 	 *
-	 * @written may have decreased due to folio_account_redirty().
+	 * @written may have decreased due to folio_redirty_for_writepage().
 	 * Avoid underflowing @bw calculation.
 	 */
 	bw = written - min(written, wb->written_stamp);
@@ -1921,7 +1943,7 @@ pause:
 			break;
 		}
 		__set_current_state(TASK_KILLABLE);
-		wb->dirty_sleep = now;
+		bdi->last_bdp_sleep = jiffies;
 		io_schedule_timeout(pause);
 
 		current->dirty_paused_when = now + pause;
@@ -2712,37 +2734,6 @@ bool filemap_dirty_folio(struct address_space *mapping, struct folio *folio)
 EXPORT_SYMBOL(filemap_dirty_folio);
 
 /**
- * folio_account_redirty - Manually account for redirtying a page.
- * @folio: The folio which is being redirtied.
- *
- * Most filesystems should call folio_redirty_for_writepage() instead
- * of this fuction.  If your filesystem is doing writeback outside the
- * context of a writeback_control(), it can call this when redirtying
- * a folio, to de-account the dirty counters (NR_DIRTIED, WB_DIRTIED,
- * tsk->nr_dirtied), so that they match the written counters (NR_WRITTEN,
- * WB_WRITTEN) in long term. The mismatches will lead to systematic errors
- * in balanced_dirty_ratelimit and the dirty pages position control.
- */
-void folio_account_redirty(struct folio *folio)
-{
-	struct address_space *mapping = folio->mapping;
-
-	if (mapping && mapping_can_writeback(mapping)) {
-		struct inode *inode = mapping->host;
-		struct bdi_writeback *wb;
-		struct wb_lock_cookie cookie = {};
-		long nr = folio_nr_pages(folio);
-
-		wb = unlocked_inode_to_wb_begin(inode, &cookie);
-		current->nr_dirtied -= nr;
-		node_stat_mod_folio(folio, NR_DIRTIED, -nr);
-		wb_stat_mod(wb, WB_DIRTIED, -nr);
-		unlocked_inode_to_wb_end(inode, &cookie);
-	}
-}
-EXPORT_SYMBOL(folio_account_redirty);
-
-/**
  * folio_redirty_for_writepage - Decline to write a dirty folio.
  * @wbc: The writeback control.
  * @folio: The folio.
@@ -2757,13 +2748,23 @@ EXPORT_SYMBOL(folio_account_redirty);
 bool folio_redirty_for_writepage(struct writeback_control *wbc,
 		struct folio *folio)
 {
-	bool ret;
+	struct address_space *mapping = folio->mapping;
 	long nr = folio_nr_pages(folio);
+	bool ret;
 
 	wbc->pages_skipped += nr;
-	ret = filemap_dirty_folio(folio->mapping, folio);
-	folio_account_redirty(folio);
+	ret = filemap_dirty_folio(mapping, folio);
+	if (mapping && mapping_can_writeback(mapping)) {
+		struct inode *inode = mapping->host;
+		struct bdi_writeback *wb;
+		struct wb_lock_cookie cookie = {};
 
+		wb = unlocked_inode_to_wb_begin(inode, &cookie);
+		current->nr_dirtied -= nr;
+		node_stat_mod_folio(folio, NR_DIRTIED, -nr);
+		wb_stat_mod(wb, WB_DIRTIED, -nr);
+		unlocked_inode_to_wb_end(inode, &cookie);
+	}
 	return ret;
 }
 EXPORT_SYMBOL(folio_redirty_for_writepage);
@@ -3131,7 +3132,7 @@ EXPORT_SYMBOL_GPL(folio_wait_writeback_killable);
  */
 void folio_wait_stable(struct folio *folio)
 {
-	if (folio_inode(folio)->i_sb->s_iflags & SB_I_STABLE_WRITES)
+	if (mapping_stable_writes(folio_mapping(folio)))
 		folio_wait_writeback(folio);
 }
 EXPORT_SYMBOL_GPL(folio_wait_stable);

@@ -63,13 +63,13 @@ static vm_fault_t udf_page_mkwrite(struct vm_fault *vmf)
 	else
 		end = PAGE_SIZE;
 	err = __block_write_begin(page, 0, end, udf_get_block);
-	if (!err)
-		err = block_commit_write(page, 0, end);
-	if (err < 0) {
+	if (err) {
 		unlock_page(page);
-		ret = block_page_mkwrite_return(err);
+		ret = vmf_fs_error(err);
 		goto out_unlock;
 	}
+
+	block_commit_write(page, 0, end);
 out_dirty:
 	set_page_dirty(page);
 	wait_for_stable_page(page);
@@ -232,7 +232,9 @@ static int udf_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 
 	if ((attr->ia_valid & ATTR_SIZE) &&
 	    attr->ia_size != i_size_read(inode)) {
+		filemap_invalidate_lock(inode->i_mapping);
 		error = udf_setsize(inode, attr->ia_size);
+		filemap_invalidate_unlock(inode->i_mapping);
 		if (error)
 			return error;
 	}

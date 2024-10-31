@@ -766,7 +766,6 @@ struct drm_gem_object *qaic_gem_prime_import(struct drm_device *dev, struct dma_
 	struct dma_buf_attachment *attach;
 	struct drm_gem_object *obj;
 	struct qaic_bo *bo;
-	size_t size;
 	int ret;
 
 	bo = qaic_alloc_init_bo();
@@ -784,13 +783,12 @@ struct drm_gem_object *qaic_gem_prime_import(struct drm_device *dev, struct dma_
 		goto attach_fail;
 	}
 
-	size = PAGE_ALIGN(attach->dmabuf->size);
-	if (size == 0) {
+	if (!attach->dmabuf->size) {
 		ret = -EINVAL;
 		goto size_align_fail;
 	}
 
-	drm_gem_private_object_init(dev, obj, size);
+	drm_gem_private_object_init(dev, obj, attach->dmabuf->size);
 	/*
 	 * skipping dma_buf_map_attachment() as we do not know the direction
 	 * just yet. Once the direction is known in the subsequent IOCTL to
@@ -1293,7 +1291,6 @@ static void update_profiling_data(struct drm_file *file_priv,
 static int __qaic_execute_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *file_priv,
 				   bool is_partial)
 {
-	struct qaic_partial_execute_entry *pexec;
 	struct qaic_execute *args = data;
 	struct qaic_execute_entry *exec;
 	struct dma_bridge_chan *dbc;
@@ -1313,7 +1310,7 @@ static int __qaic_execute_bo_ioctl(struct drm_device *dev, void *data, struct dr
 
 	received_ts = ktime_get_ns();
 
-	size = is_partial ? sizeof(*pexec) : sizeof(*exec);
+	size = is_partial ? sizeof(struct qaic_partial_execute_entry) : sizeof(*exec);
 	n = (unsigned long)size * args->hdr.count;
 	if (args->hdr.count == 0 || n / args->hdr.count != size)
 		return -EINVAL;
@@ -1321,7 +1318,6 @@ static int __qaic_execute_bo_ioctl(struct drm_device *dev, void *data, struct dr
 	user_data = u64_to_user_ptr(args->data);
 
 	exec = kcalloc(args->hdr.count, size, GFP_KERNEL);
-	pexec = (struct qaic_partial_execute_entry *)exec;
 	if (!exec)
 		return -ENOMEM;
 

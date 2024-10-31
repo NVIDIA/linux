@@ -10,6 +10,7 @@
 #include <linux/debugfs.h>
 #include <linux/sched/smt.h>
 #include <linux/task_work.h>
+#include <linux/mmu_notifier.h>
 
 #include <asm/tlbflush.h>
 #include <asm/mmu_context.h>
@@ -496,9 +497,9 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 {
 	struct mm_struct *real_prev = this_cpu_read(cpu_tlbstate.loaded_mm);
 	u16 prev_asid = this_cpu_read(cpu_tlbstate.loaded_mm_asid);
-	unsigned long new_lam = mm_lam_cr3_mask(next);
 	bool was_lazy = this_cpu_read(cpu_tlbstate_shared.is_lazy);
 	unsigned cpu = smp_processor_id();
+	unsigned long new_lam;
 	u64 next_tlb_gen;
 	bool need_flush;
 	u16 new_asid;
@@ -621,9 +622,7 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 			cpumask_clear_cpu(cpu, mm_cpumask(real_prev));
 		}
 
-		/*
-		 * Start remote flushes and then read tlb_gen.
-		 */
+		/* Start receiving IPIs and then read tlb_gen (and LAM below) */
 		if (next != &init_mm)
 			cpumask_set_cpu(cpu, mm_cpumask(next));
 		next_tlb_gen = atomic64_read(&next->context.tlb_gen);
@@ -635,6 +634,7 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 		barrier();
 	}
 
+	new_lam = mm_lam_cr3_mask(next);
 	set_tlbstate_lam_mode(next);
 	if (need_flush) {
 		this_cpu_write(cpu_tlbstate.ctxs[new_asid].ctx_id, next->context.ctx_id);
@@ -1036,6 +1036,7 @@ void flush_tlb_mm_range(struct mm_struct *mm, unsigned long start,
 
 	put_flush_tlb_info();
 	put_cpu();
+	mmu_notifier_arch_invalidate_secondary_tlbs(mm, start, end);
 }
 
 
@@ -1140,21 +1141,28 @@ void flush_tlb_one_kernel(unsigned long addr)
  */
 STATIC_NOPV void native_flush_tlb_one_user(unsigned long addr)
 {
-	u32 loaded_mm_asid = this_cpu_read(cpu_tlbstate.loaded_mm_asid);
+	u32 loaded_mm_asid;
+	bool cpu_pcide;
 
+	/* Flush 'addr' from the kernel PCID: */
 	asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
 
+	/* If PTI is off there is no user PCID and nothing to flush. */
 	if (!static_cpu_has(X86_FEATURE_PTI))
 		return;
 
+	loaded_mm_asid = this_cpu_read(cpu_tlbstate.loaded_mm_asid);
+	cpu_pcide      = this_cpu_read(cpu_tlbstate.cr4) & X86_CR4_PCIDE;
+
 	/*
-	 * Some platforms #GP if we call invpcid(type=1/2) before CR4.PCIDE=1.
-	 * Just use invalidate_user_asid() in case we are called early.
+	 * invpcid_flush_one(pcid>0) will #GP if CR4.PCIDE==0.  Check
+	 * 'cpu_pcide' to ensure that *this* CPU will not trigger those
+	 * #GP's even if called before CR4.PCIDE has been initialized.
 	 */
-	if (!this_cpu_has(X86_FEATURE_INVPCID_SINGLE))
-		invalidate_user_asid(loaded_mm_asid);
-	else
+	if (boot_cpu_has(X86_FEATURE_INVPCID) && cpu_pcide)
 		invpcid_flush_one(user_pcid(loaded_mm_asid), addr);
+	else
+		invalidate_user_asid(loaded_mm_asid);
 }
 
 void flush_tlb_one_user(unsigned long addr)

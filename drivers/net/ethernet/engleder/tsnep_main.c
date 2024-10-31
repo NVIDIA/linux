@@ -28,6 +28,7 @@
 #include <linux/iopoll.h>
 #include <linux/bpf.h>
 #include <linux/bpf_trace.h>
+#include <net/page_pool/helpers.h>
 #include <net/xdp_sock_drv.h>
 
 #define TSNEP_RX_OFFSET (max(NET_SKB_PAD, XDP_PACKET_HEADROOM) + NET_IP_ALIGN)
@@ -667,17 +668,25 @@ static void tsnep_xdp_xmit_flush(struct tsnep_tx *tx)
 
 static bool tsnep_xdp_xmit_back(struct tsnep_adapter *adapter,
 				struct xdp_buff *xdp,
-				struct netdev_queue *tx_nq, struct tsnep_tx *tx)
+				struct netdev_queue *tx_nq, struct tsnep_tx *tx,
+				bool zc)
 {
 	struct xdp_frame *xdpf = xdp_convert_buff_to_frame(xdp);
 	bool xmit;
+	u32 type;
 
 	if (unlikely(!xdpf))
 		return false;
 
+	/* no page pool for zero copy */
+	if (zc)
+		type = TSNEP_TX_TYPE_XDP_NDO;
+	else
+		type = TSNEP_TX_TYPE_XDP_TX;
+
 	__netif_tx_lock(tx_nq, smp_processor_id());
 
-	xmit = tsnep_xdp_xmit_frame_ring(xdpf, tx, TSNEP_TX_TYPE_XDP_TX);
+	xmit = tsnep_xdp_xmit_frame_ring(xdpf, tx, type);
 
 	/* Avoid transmit queue timeout since we share it with the slow path */
 	if (xmit)
@@ -1221,7 +1230,7 @@ static bool tsnep_xdp_run_prog(struct tsnep_rx *rx, struct bpf_prog *prog,
 	case XDP_PASS:
 		return false;
 	case XDP_TX:
-		if (!tsnep_xdp_xmit_back(rx->adapter, xdp, tx_nq, tx))
+		if (!tsnep_xdp_xmit_back(rx->adapter, xdp, tx_nq, tx, false))
 			goto out_failure;
 		*status |= TSNEP_XDP_TX;
 		return true;
@@ -1271,7 +1280,7 @@ static bool tsnep_xdp_run_prog_zc(struct tsnep_rx *rx, struct bpf_prog *prog,
 	case XDP_PASS:
 		return false;
 	case XDP_TX:
-		if (!tsnep_xdp_xmit_back(rx->adapter, xdp, tx_nq, tx))
+		if (!tsnep_xdp_xmit_back(rx->adapter, xdp, tx_nq, tx, true))
 			goto out_failure;
 		*status |= TSNEP_XDP_TX;
 		return true;
@@ -1339,7 +1348,7 @@ static void tsnep_rx_page(struct tsnep_rx *rx, struct napi_struct *napi,
 
 	skb = tsnep_build_skb(rx, page, length);
 	if (skb) {
-		page_pool_release_page(rx->page_pool, page);
+		skb_mark_for_recycle(skb);
 
 		rx->packets++;
 		rx->bytes += length;
@@ -1433,7 +1442,7 @@ static int tsnep_rx_poll(struct tsnep_rx *rx, struct napi_struct *napi,
 
 			xdp_prepare_buff(&xdp, page_address(entry->page),
 					 XDP_PACKET_HEADROOM + TSNEP_RX_INLINE_METADATA_SIZE,
-					 length, false);
+					 length - ETH_FCS_LEN, false);
 
 			consume = tsnep_xdp_run_prog(rx, prog, &xdp,
 						     &xdp_status, tx_nq, tx);
@@ -1516,7 +1525,7 @@ static int tsnep_rx_poll_zc(struct tsnep_rx *rx, struct napi_struct *napi,
 		prefetch(entry->xdp->data);
 		length = __le32_to_cpu(entry->desc_wb->properties) &
 			 TSNEP_DESC_LENGTH_MASK;
-		xsk_buff_set_size(entry->xdp, length);
+		xsk_buff_set_size(entry->xdp, length - ETH_FCS_LEN);
 		xsk_buff_dma_sync_for_cpu(entry->xdp, rx->xsk_pool);
 
 		/* RX metadata with timestamps is in front of actual data,
@@ -1710,6 +1719,19 @@ static void tsnep_rx_reopen_xsk(struct tsnep_rx *rx)
 			allocated--;
 		}
 	}
+
+	/* set need wakeup flag immediately if ring is not filled completely,
+	 * first polling would be too late as need wakeup signalisation would
+	 * be delayed for an indefinite time
+	 */
+	if (xsk_uses_need_wakeup(rx->xsk_pool)) {
+		int desc_available = tsnep_rx_desc_available(rx);
+
+		if (desc_available)
+			xsk_set_rx_need_wakeup(rx->xsk_pool);
+		else
+			xsk_clear_rx_need_wakeup(rx->xsk_pool);
+	}
 }
 
 static bool tsnep_pending(struct tsnep_queue *queue)
@@ -1778,14 +1800,14 @@ static int tsnep_request_irq(struct tsnep_queue *queue, bool first)
 		dev = queue->adapter;
 	} else {
 		if (queue->tx && queue->rx)
-			sprintf(queue->name, "%s-txrx-%d", name,
-				queue->rx->queue_index);
+			snprintf(queue->name, sizeof(queue->name), "%s-txrx-%d",
+				 name, queue->rx->queue_index);
 		else if (queue->tx)
-			sprintf(queue->name, "%s-tx-%d", name,
-				queue->tx->queue_index);
+			snprintf(queue->name, sizeof(queue->name), "%s-tx-%d",
+				 name, queue->tx->queue_index);
 		else
-			sprintf(queue->name, "%s-rx-%d", name,
-				queue->rx->queue_index);
+			snprintf(queue->name, sizeof(queue->name), "%s-rx-%d",
+				 name, queue->rx->queue_index);
 		handler = tsnep_irq_txrx;
 		dev = queue;
 	}

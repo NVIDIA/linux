@@ -203,16 +203,17 @@ static inline void tcp_event_ack_sent(struct sock *sk, u32 rcv_nxt)
  * This MUST be enforced by all callers.
  */
 void tcp_select_initial_window(const struct sock *sk, int __space, __u32 mss,
-			       __u32 *rcv_wnd, __u32 *window_clamp,
+			       __u32 *rcv_wnd, __u32 *__window_clamp,
 			       int wscale_ok, __u8 *rcv_wscale,
 			       __u32 init_rcv_wnd)
 {
 	unsigned int space = (__space < 0 ? 0 : __space);
+	u32 window_clamp = READ_ONCE(*__window_clamp);
 
 	/* If no clamp set the clamp to the max possible scaled window */
-	if (*window_clamp == 0)
-		(*window_clamp) = (U16_MAX << TCP_MAX_WSCALE);
-	space = min(*window_clamp, space);
+	if (window_clamp == 0)
+		window_clamp = (U16_MAX << TCP_MAX_WSCALE);
+	space = min(window_clamp, space);
 
 	/* Quantize space offering to a multiple of mss if possible. */
 	if (space > mss)
@@ -239,12 +240,13 @@ void tcp_select_initial_window(const struct sock *sk, int __space, __u32 mss,
 		/* Set window scaling on max possible window */
 		space = max_t(u32, space, READ_ONCE(sock_net(sk)->ipv4.sysctl_tcp_rmem[2]));
 		space = max_t(u32, space, READ_ONCE(sysctl_rmem_max));
-		space = min_t(u32, space, *window_clamp);
+		space = min_t(u32, space, window_clamp);
 		*rcv_wscale = clamp_t(int, ilog2(space) - 15,
 				      0, TCP_MAX_WSCALE);
 	}
 	/* Set the clamp no higher than max representable value */
-	(*window_clamp) = min_t(__u32, U16_MAX << (*rcv_wscale), *window_clamp);
+	WRITE_ONCE(*__window_clamp,
+		   min_t(__u32, U16_MAX << (*rcv_wscale), window_clamp));
 }
 EXPORT_SYMBOL(tcp_select_initial_window);
 
@@ -256,11 +258,19 @@ EXPORT_SYMBOL(tcp_select_initial_window);
 static u16 tcp_select_window(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	u32 old_win = tp->rcv_wnd;
-	u32 cur_win = tcp_receive_window(tp);
-	u32 new_win = __tcp_select_window(sk);
 	struct net *net = sock_net(sk);
+	u32 old_win = tp->rcv_wnd;
+	u32 cur_win, new_win;
 
+	/* Make the window 0 if we failed to queue the data because we
+	 * are out of memory. The window is temporary, so we don't store
+	 * it on the socket.
+	 */
+	if (unlikely(inet_csk(sk)->icsk_ack.pending & ICSK_ACK_NOMEM))
+		return 0;
+
+	cur_win = tcp_receive_window(tp);
+	new_win = __tcp_select_window(sk);
 	if (new_win < cur_win) {
 		/* Danger Will Robinson!
 		 * Don't update rcv_wup/rcv_wnd here or else
@@ -1292,14 +1302,21 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 	}
 	tcp_header_size = tcp_options_size + sizeof(struct tcphdr);
 
-	/* if no packet is in qdisc/device queue, then allow XPS to select
-	 * another queue. We can be called from tcp_tsq_handler()
-	 * which holds one reference to sk.
-	 *
-	 * TODO: Ideally, in-flight pure ACK packets should not matter here.
-	 * One way to get this would be to set skb->truesize = 2 on them.
+	/* We set skb->ooo_okay to one if this packet can select
+	 * a different TX queue than prior packets of this flow,
+	 * to avoid self inflicted reorders.
+	 * The 'other' queue decision is based on current cpu number
+	 * if XPS is enabled, or sk->sk_txhash otherwise.
+	 * We can switch to another (and better) queue if:
+	 * 1) No packet with payload is in qdisc/device queues.
+	 *    Delays in TX completion can defeat the test
+	 *    even if packets were already sent.
+	 * 2) Or rtx queue is empty.
+	 *    This mitigates above case if ACK packets for
+	 *    all prior packets were already processed.
 	 */
-	skb->ooo_okay = sk_wmem_alloc_get(sk) < SKB_TRUESIZE(1);
+	skb->ooo_okay = sk_wmem_alloc_get(sk) < SKB_TRUESIZE(1) ||
+			tcp_rtx_queue_empty(sk);
 
 	/* If we had to use memory reserve to allocate this skb,
 	 * this might cause drops if packet is looped back :
@@ -1316,7 +1333,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 	skb->destructor = skb_is_tcp_pure_ack(skb) ? __sock_wfree : tcp_wfree;
 	refcount_add(skb->truesize, &sk->sk_wmem_alloc);
 
-	skb_set_dst_pending_confirm(skb, sk->sk_dst_pending_confirm);
+	skb_set_dst_pending_confirm(skb, READ_ONCE(sk->sk_dst_pending_confirm));
 
 	/* Build TCP header and checksum it. */
 	th = (struct tcphdr *)skb->data;
@@ -2297,9 +2314,7 @@ static bool tcp_can_coalesce_send_queue_head(struct sock *sk, int len)
 		if (len <= skb->len)
 			break;
 
-		if (unlikely(TCP_SKB_CB(skb)->eor) ||
-		    tcp_has_tx_tstamp(skb) ||
-		    !skb_pure_zcopy_same(skb, next))
+		if (tcp_has_tx_tstamp(skb) || !tcp_skb_can_collapse(skb, next))
 			return false;
 
 		len -= skb->len;
@@ -3248,7 +3263,13 @@ int __tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb, int segs)
 	if (skb_still_in_host_queue(sk, skb))
 		return -EBUSY;
 
+start:
 	if (before(TCP_SKB_CB(skb)->seq, tp->snd_una)) {
+		if (unlikely(TCP_SKB_CB(skb)->tcp_flags & TCPHDR_SYN)) {
+			TCP_SKB_CB(skb)->tcp_flags &= ~TCPHDR_SYN;
+			TCP_SKB_CB(skb)->seq++;
+			goto start;
+		}
 		if (unlikely(before(TCP_SKB_CB(skb)->end_seq, tp->snd_una))) {
 			WARN_ON_ONCE(1);
 			return -EINVAL;
@@ -3512,7 +3533,9 @@ void tcp_send_fin(struct sock *sk)
 			return;
 		}
 	} else {
-		skb = alloc_skb_fclone(MAX_TCP_HEADER, sk->sk_allocation);
+		skb = alloc_skb_fclone(MAX_TCP_HEADER,
+				       sk_gfp_mask(sk, GFP_ATOMIC |
+						       __GFP_NOWARN));
 		if (unlikely(!skb))
 			return;
 
@@ -3754,11 +3777,6 @@ static void tcp_connect_init(struct sock *sk)
 	if (READ_ONCE(sock_net(sk)->ipv4.sysctl_tcp_timestamps))
 		tp->tcp_header_len += TCPOLEN_TSTAMP_ALIGNED;
 
-#ifdef CONFIG_TCP_MD5SIG
-	if (tp->af_specific->md5_lookup(sk, sk))
-		tp->tcp_header_len += TCPOLEN_MD5SIG_ALIGNED;
-#endif
-
 	/* If user gave his TCP_MAXSEG, record it to clamp */
 	if (tp->rx_opt.user_mss)
 		tp->rx_opt.mss_clamp = tp->rx_opt.user_mss;
@@ -3769,7 +3787,7 @@ static void tcp_connect_init(struct sock *sk)
 	tcp_ca_dst_init(sk, dst);
 
 	if (!tp->window_clamp)
-		tp->window_clamp = dst_metric(dst, RTAX_WINDOW);
+		WRITE_ONCE(tp->window_clamp, dst_metric(dst, RTAX_WINDOW));
 	tp->advmss = tcp_mss_clamp(tp, dst_metric_advmss(dst));
 
 	tcp_initialize_rcv_mss(sk);
@@ -3777,7 +3795,7 @@ static void tcp_connect_init(struct sock *sk)
 	/* limit the window selection if the user enforce a smaller rx buffer */
 	if (sk->sk_userlocks & SOCK_RCVBUF_LOCK &&
 	    (tp->window_clamp > tcp_full_space(sk) || tp->window_clamp == 0))
-		tp->window_clamp = tcp_full_space(sk);
+		WRITE_ONCE(tp->window_clamp, tcp_full_space(sk));
 
 	rcv_wnd = tcp_rwnd_init_bpf(sk);
 	if (rcv_wnd == 0)
@@ -3987,6 +4005,20 @@ int tcp_connect(struct sock *sk)
 }
 EXPORT_SYMBOL(tcp_connect);
 
+u32 tcp_delack_max(const struct sock *sk)
+{
+	const struct dst_entry *dst = __sk_dst_get(sk);
+	u32 delack_max = inet_csk(sk)->icsk_delack_max;
+
+	if (dst && dst_metric_locked(dst, RTAX_RTO_MIN)) {
+		u32 rto_min = dst_metric_rtt(dst, RTAX_RTO_MIN);
+		u32 delack_from_rto_min = max_t(int, 1, rto_min - 1);
+
+		delack_max = min_t(u32, delack_max, delack_from_rto_min);
+	}
+	return delack_max;
+}
+
 /* Send out a delayed ack, the caller does the policy checking
  * to see if we should even be here.  See tcp_input.c:tcp_ack_snd_check()
  * for details.
@@ -4022,7 +4054,7 @@ void tcp_send_delayed_ack(struct sock *sk)
 		ato = min(ato, max_ato);
 	}
 
-	ato = min_t(u32, ato, inet_csk(sk)->icsk_delack_max);
+	ato = min_t(u32, ato, tcp_delack_max(sk));
 
 	/* Stay within the limit we were given */
 	timeout = jiffies + ato;

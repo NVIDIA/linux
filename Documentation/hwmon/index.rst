@@ -44,6 +44,7 @@ Hardware Monitoring Kernel Drivers
    aquacomputer_d5next
    asb100
    asc7621
+   aspeed-g6-pwm-tach
    aspeed-pwm-tacho
    asus_ec_sensors
    asus_wmi_sensors
@@ -78,6 +79,7 @@ Hardware Monitoring Kernel Drivers
    gxp-fan-ctrl
    hih6130
    hp-wmi-sensors
+   hs3001
    ibmaem
    ibm-cffps
    ibmpowernv
@@ -155,9 +157,11 @@ Hardware Monitoring Kernel Drivers
    mcp3021
    menf21bmc
    mlxreg-fan
+   mp2856
    mp2888
    mp2975
    mp5023
+   mp5990
    nct6683
    nct6775
    nct7802
@@ -181,6 +185,7 @@ Hardware Monitoring Kernel Drivers
    peci-dimmtemp
    pmbus
    powr1220
+   pt5161l
    pxe1610
    pwm-fan
    q54sj108a2
@@ -198,7 +203,6 @@ Hardware Monitoring Kernel Drivers
    shtc1
    sis5595
    sl28cpld
-   smm665
    smpro-hwmon
    smsc47b397
    smsc47m192
@@ -239,6 +243,7 @@ Hardware Monitoring Kernel Drivers
    wm831x
    wm8350
    xgene-hwmon
+   xdp710
    xdpe12284
    xdpe152c4
    zl6100

@@ -9,6 +9,7 @@
 #include <linux/spinlock.h>
 #include <linux/completion.h>
 #include <linux/buffer_head.h>
+#include <linux/kthread.h>
 #include <linux/crc32.h>
 #include <linux/gfs2_ondisk.h>
 #include <linux/delay.h>
@@ -98,12 +99,12 @@ out_unlock:
  */
 int gfs2_freeze_lock_shared(struct gfs2_sbd *sdp)
 {
+	int flags = LM_FLAG_NOEXP | GL_EXACT;
 	int error;
 
-	error = gfs2_glock_nq_init(sdp->sd_freeze_gl, LM_ST_SHARED,
-				   LM_FLAG_NOEXP | GL_EXACT,
+	error = gfs2_glock_nq_init(sdp->sd_freeze_gl, LM_ST_SHARED, flags,
 				   &sdp->sd_freeze_gh);
-	if (error)
+	if (error && error != GLR_TRYFAILED)
 		fs_err(sdp, "can't lock the freeze glock: %d\n", error);
 	return error;
 }
@@ -150,7 +151,14 @@ static void signal_our_withdraw(struct gfs2_sbd *sdp)
 	if (!sb_rdonly(sdp->sd_vfs)) {
 		bool locked = mutex_trylock(&sdp->sd_freeze_mutex);
 
-		gfs2_make_fs_ro(sdp);
+		wake_up(&sdp->sd_logd_waitq);
+		wake_up(&sdp->sd_quota_wait);
+
+		wait_event_timeout(sdp->sd_log_waitq,
+				   gfs2_log_is_empty(sdp),
+				   HZ * 5);
+
+		sdp->sd_vfs->s_flags |= SB_RDONLY;
 
 		if (locked)
 			mutex_unlock(&sdp->sd_freeze_mutex);
@@ -315,19 +323,19 @@ int gfs2_withdraw(struct gfs2_sbd *sdp)
 	struct lm_lockstruct *ls = &sdp->sd_lockstruct;
 	const struct lm_lockops *lm = ls->ls_ops;
 
-	if (sdp->sd_args.ar_errors == GFS2_ERRORS_WITHDRAW &&
-	    test_and_set_bit(SDF_WITHDRAWN, &sdp->sd_flags)) {
-		if (!test_bit(SDF_WITHDRAW_IN_PROG, &sdp->sd_flags))
-			return -1;
-
-		wait_on_bit(&sdp->sd_flags, SDF_WITHDRAW_IN_PROG,
-			    TASK_UNINTERRUPTIBLE);
-		return -1;
-	}
-
-	set_bit(SDF_WITHDRAW_IN_PROG, &sdp->sd_flags);
-
 	if (sdp->sd_args.ar_errors == GFS2_ERRORS_WITHDRAW) {
+		unsigned long old = READ_ONCE(sdp->sd_flags), new;
+
+		do {
+			if (old & BIT(SDF_WITHDRAWN)) {
+				wait_on_bit(&sdp->sd_flags,
+					    SDF_WITHDRAW_IN_PROG,
+					    TASK_UNINTERRUPTIBLE);
+				return -1;
+			}
+			new = old | BIT(SDF_WITHDRAWN) | BIT(SDF_WITHDRAW_IN_PROG);
+		} while (unlikely(!try_cmpxchg(&sdp->sd_flags, &old, new)));
+
 		fs_err(sdp, "about to withdraw this file system\n");
 		BUG_ON(sdp->sd_args.ar_debug);
 
@@ -342,7 +350,6 @@ int gfs2_withdraw(struct gfs2_sbd *sdp)
 			fs_err(sdp, "telling LM to unmount\n");
 			lm->lm_unmount(sdp);
 		}
-		set_bit(SDF_SKIP_DLM_UNLOCK, &sdp->sd_flags);
 		fs_err(sdp, "File system withdrawn\n");
 		dump_stack();
 		clear_bit(SDF_WITHDRAW_IN_PROG, &sdp->sd_flags);
@@ -364,7 +371,7 @@ void gfs2_assert_withdraw_i(struct gfs2_sbd *sdp, char *assertion,
 			    const char *function, char *file, unsigned int line,
 			    bool delayed)
 {
-	if (gfs2_withdrawn(sdp))
+	if (gfs2_withdrawing_or_withdrawn(sdp))
 		return;
 
 	fs_err(sdp,
@@ -540,7 +547,7 @@ void gfs2_io_error_bh_i(struct gfs2_sbd *sdp, struct buffer_head *bh,
 			const char *function, char *file, unsigned int line,
 			bool withdraw)
 {
-	if (gfs2_withdrawn(sdp))
+	if (gfs2_withdrawing_or_withdrawn(sdp))
 		return;
 
 	fs_err(sdp, "fatal: I/O error\n"

@@ -18,6 +18,7 @@
 #include <linux/kobject.h>
 #include <linux/memblock.h>
 #include <linux/reboot.h>
+#include <linux/screen_info.h>
 #include <linux/uaccess.h>
 
 #include <asm/early_ioremap.h>
@@ -63,6 +64,12 @@ void __init efi_runtime_init(void)
 
 	efi_native_runtime_setup();
 	set_bit(EFI_RUNTIME_SERVICES, &efi.flags);
+}
+
+bool efi_poweroff_required(void)
+{
+	return efi_enabled(EFI_RUNTIME_SERVICES) &&
+		(acpi_gbl_reduced_hardware || acpi_no_s5);
 }
 
 unsigned long __initdata screen_info_table = EFI_INVALID_TABLE_ADDR;

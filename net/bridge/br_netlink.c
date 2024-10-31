@@ -211,6 +211,7 @@ static inline size_t br_port_info_size(void)
 		+ nla_total_size(sizeof(u8))	/* IFLA_BRPORT_MRP_IN_OPEN */
 		+ nla_total_size(sizeof(u32))	/* IFLA_BRPORT_MCAST_EHT_HOSTS_LIMIT */
 		+ nla_total_size(sizeof(u32))	/* IFLA_BRPORT_MCAST_EHT_HOSTS_CNT */
+		+ nla_total_size(sizeof(u32))	/* IFLA_BRPORT_BACKUP_NHID */
 		+ 0;
 }
 
@@ -318,6 +319,10 @@ static int br_port_fill_attrs(struct sk_buff *skb,
 		nla_put_u32(skb, IFLA_BRPORT_BACKUP_PORT,
 			    backup_p->dev->ifindex);
 	rcu_read_unlock();
+
+	if (p->backup_nhid &&
+	    nla_put_u32(skb, IFLA_BRPORT_BACKUP_NHID, p->backup_nhid))
+		return -EMSGSIZE;
 
 	return 0;
 }
@@ -450,7 +455,8 @@ static int br_fill_ifinfo(struct sk_buff *skb,
 			  u32 filter_mask, const struct net_device *dev,
 			  bool getlink)
 {
-	u8 operstate = netif_running(dev) ? dev->operstate : IF_OPER_DOWN;
+	u8 operstate = netif_running(dev) ? READ_ONCE(dev->operstate) :
+					    IF_OPER_DOWN;
 	struct nlattr *af = NULL;
 	struct net_bridge *br;
 	struct ifinfomsg *hdr;
@@ -661,7 +667,7 @@ void br_ifinfo_notify(int event, const struct net_bridge *br,
 {
 	u32 filter = RTEXT_FILTER_BRVLAN_COMPRESSED;
 
-	return br_info_notify(event, br, port, filter);
+	br_info_notify(event, br, port, filter);
 }
 
 /*
@@ -895,6 +901,7 @@ static const struct nla_policy br_port_policy[IFLA_BRPORT_MAX + 1] = {
 	[IFLA_BRPORT_MCAST_N_GROUPS] = { .type = NLA_REJECT },
 	[IFLA_BRPORT_MCAST_MAX_GROUPS] = { .type = NLA_U32 },
 	[IFLA_BRPORT_NEIGH_VLAN_SUPPRESS] = NLA_POLICY_MAX(NLA_U8, 1),
+	[IFLA_BRPORT_BACKUP_NHID] = { .type = NLA_U32 },
 };
 
 /* Change the state of the port and notify spanning tree */
@@ -1063,6 +1070,12 @@ static int br_setport(struct net_bridge_port *p, struct nlattr *tb[],
 		err = nbp_backup_change(p, backup_dev);
 		if (err)
 			return err;
+	}
+
+	if (tb[IFLA_BRPORT_BACKUP_NHID]) {
+		u32 backup_nhid = nla_get_u32(tb[IFLA_BRPORT_BACKUP_NHID]);
+
+		WRITE_ONCE(p->backup_nhid, backup_nhid);
 	}
 
 	return 0;
@@ -1892,7 +1905,10 @@ int __init br_netlink_init(void)
 {
 	int err;
 
-	br_vlan_rtnl_init();
+	err = br_vlan_rtnl_init();
+	if (err)
+		goto out;
+
 	rtnl_af_register(&br_af_ops);
 
 	err = rtnl_link_register(&br_link_ops);
@@ -1903,6 +1919,7 @@ int __init br_netlink_init(void)
 
 out_af:
 	rtnl_af_unregister(&br_af_ops);
+out:
 	return err;
 }
 

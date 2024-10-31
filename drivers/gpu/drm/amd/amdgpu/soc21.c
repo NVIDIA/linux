@@ -48,33 +48,28 @@
 static const struct amd_ip_funcs soc21_common_ip_funcs;
 
 /* SOC21 */
-static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_encode_array_vcn0[] =
-{
+static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_encode_array_vcn0[] = {
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4_AVC, 4096, 2304, 0)},
-	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 4096, 2304, 0)},
+	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 8192, 4352, 0)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_AV1, 8192, 4352, 0)},
 };
 
-static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_encode_array_vcn1[] =
-{
+static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_encode_array_vcn1[] = {
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4_AVC, 4096, 2304, 0)},
-	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 4096, 2304, 0)},
+	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 8192, 4352, 0)},
 };
 
-static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_encode_vcn0 =
-{
+static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_encode_vcn0 = {
 	.codec_count = ARRAY_SIZE(vcn_4_0_0_video_codecs_encode_array_vcn0),
 	.codec_array = vcn_4_0_0_video_codecs_encode_array_vcn0,
 };
 
-static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_encode_vcn1 =
-{
+static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_encode_vcn1 = {
 	.codec_count = ARRAY_SIZE(vcn_4_0_0_video_codecs_encode_array_vcn1),
 	.codec_array = vcn_4_0_0_video_codecs_encode_array_vcn1,
 };
 
-static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_decode_array_vcn0[] =
-{
+static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_decode_array_vcn0[] = {
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4_AVC, 4096, 4096, 52)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 8192, 4352, 186)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_JPEG, 4096, 4096, 0)},
@@ -82,22 +77,19 @@ static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_decode_array_
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_AV1, 8192, 4352, 0)},
 };
 
-static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_decode_array_vcn1[] =
-{
+static const struct amdgpu_video_codec_info vcn_4_0_0_video_codecs_decode_array_vcn1[] = {
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4_AVC, 4096, 4096, 52)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC, 8192, 4352, 186)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_JPEG, 4096, 4096, 0)},
 	{codec_info_build(AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_VP9, 8192, 4352, 0)},
 };
 
-static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_decode_vcn0 =
-{
+static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_decode_vcn0 = {
 	.codec_count = ARRAY_SIZE(vcn_4_0_0_video_codecs_decode_array_vcn0),
 	.codec_array = vcn_4_0_0_video_codecs_decode_array_vcn0,
 };
 
-static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_decode_vcn1 =
-{
+static const struct amdgpu_video_codecs vcn_4_0_0_video_codecs_decode_vcn1 = {
 	.codec_count = ARRAY_SIZE(vcn_4_0_0_video_codecs_decode_array_vcn1),
 	.codec_array = vcn_4_0_0_video_codecs_decode_array_vcn1,
 };
@@ -445,8 +437,7 @@ static void soc21_program_aspm(struct amdgpu_device *adev)
 		adev->nbio.funcs->program_aspm(adev);
 }
 
-const struct amdgpu_ip_block_version soc21_common_ip_block =
-{
+const struct amdgpu_ip_block_version soc21_common_ip_block = {
 	.type = AMD_IP_BLOCK_TYPE_COMMON,
 	.major = 1,
 	.minor = 0,
@@ -458,10 +449,8 @@ static bool soc21_need_full_reset(struct amdgpu_device *adev)
 {
 	switch (adev->ip_versions[GC_HWIP][0]) {
 	case IP_VERSION(11, 0, 0):
-		return amdgpu_ras_is_supported(adev, AMDGPU_RAS_BLOCK__UMC);
 	case IP_VERSION(11, 0, 2):
 	case IP_VERSION(11, 0, 3):
-		return false;
 	default:
 		return true;
 	}
@@ -482,16 +471,6 @@ static bool soc21_need_reset_on_init(struct amdgpu_device *adev)
 		return true;
 
 	return false;
-}
-
-static uint64_t soc21_get_pcie_replay_count(struct amdgpu_device *adev)
-{
-
-	/* TODO
-	 * dummy implement for pcie_replay_count sysfs interface
-	 * */
-
-	return 0;
 }
 
 static void soc21_init_doorbell_index(struct amdgpu_device *adev)
@@ -547,8 +526,7 @@ static int soc21_update_umd_stable_pstate(struct amdgpu_device *adev,
 	return 0;
 }
 
-static const struct amdgpu_asic_funcs soc21_asic_funcs =
-{
+static const struct amdgpu_asic_funcs soc21_asic_funcs = {
 	.read_disabled_bios = &soc21_read_disabled_bios,
 	.read_bios_from_rom = &amdgpu_soc15_read_bios_from_rom,
 	.read_register = &soc21_read_register,
@@ -561,7 +539,7 @@ static const struct amdgpu_asic_funcs soc21_asic_funcs =
 	.init_doorbell_index = &soc21_init_doorbell_index,
 	.need_full_reset = &soc21_need_full_reset,
 	.need_reset_on_init = &soc21_need_reset_on_init,
-	.get_pcie_replay_count = &soc21_get_pcie_replay_count,
+	.get_pcie_replay_count = &amdgpu_nbio_get_pcie_replay_count,
 	.supports_baco = &amdgpu_dpm_is_baco_supported,
 	.pre_asic_init = &soc21_pre_asic_init,
 	.query_video_codecs = &soc21_query_video_codecs,
@@ -824,9 +802,34 @@ static int soc21_common_suspend(void *handle)
 	return soc21_common_hw_fini(adev);
 }
 
+static bool soc21_need_reset_on_resume(struct amdgpu_device *adev)
+{
+	u32 sol_reg1, sol_reg2;
+
+	/* Will reset for the following suspend abort cases.
+	 * 1) Only reset dGPU side.
+	 * 2) S3 suspend got aborted and TOS is active.
+	 */
+	if (!(adev->flags & AMD_IS_APU) && adev->in_s3 &&
+	    !adev->suspend_complete) {
+		sol_reg1 = RREG32_SOC15(MP0, 0, regMP0_SMN_C2PMSG_81);
+		msleep(100);
+		sol_reg2 = RREG32_SOC15(MP0, 0, regMP0_SMN_C2PMSG_81);
+
+		return (sol_reg1 != sol_reg2);
+	}
+
+	return false;
+}
+
 static int soc21_common_resume(void *handle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
+
+	if (soc21_need_reset_on_resume(adev)) {
+		dev_info(adev->dev, "S3 suspend aborted, resetting...");
+		soc21_asic_reset(adev);
+	}
 
 	return soc21_common_hw_init(adev);
 }

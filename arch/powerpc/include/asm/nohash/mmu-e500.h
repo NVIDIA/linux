@@ -303,8 +303,7 @@ extern unsigned long linear_map_top;
 extern int book3e_htw_mode;
 
 #define PPC_HTW_NONE	0
-#define PPC_HTW_IBM	1
-#define PPC_HTW_E6500	2
+#define PPC_HTW_E6500	1
 
 /*
  * 64-bit booke platforms don't load the tlb in the tlb miss handler code.
@@ -318,6 +317,9 @@ extern int book3e_htw_mode;
 #define MAX_PHYSMEM_BITS        44
 
 #endif
+
+#include <asm/percpu.h>
+DECLARE_PER_CPU(int, next_tlbcam_idx);
 
 #endif /* !__ASSEMBLY__ */
 

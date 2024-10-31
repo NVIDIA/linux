@@ -177,7 +177,7 @@ static void tegra_bo_unpin(struct host1x_bo_mapping *map)
 static void *tegra_bo_mmap(struct host1x_bo *bo)
 {
 	struct tegra_bo *obj = host1x_to_tegra_bo(bo);
-	struct iosys_map map;
+	struct iosys_map map = { 0 };
 	int ret;
 
 	if (obj->vaddr) {
@@ -693,8 +693,6 @@ static int tegra_gem_prime_mmap(struct dma_buf *buf, struct vm_area_struct *vma)
 {
 	struct drm_gem_object *gem = buf->priv;
 	int err;
-
-	dma_resv_assert_held(buf->resv);
 
 	err = drm_gem_mmap_obj(gem, gem->size, vma);
 	if (err < 0)

@@ -206,23 +206,6 @@ int sync_blockdev_range(struct block_device *bdev, loff_t lstart, loff_t lend)
 }
 EXPORT_SYMBOL(sync_blockdev_range);
 
-/*
- * Write out and wait upon all dirty data associated with this
- * device.   Filesystem data as well as the underlying block
- * device.  Takes the superblock lock.
- */
-int fsync_bdev(struct block_device *bdev)
-{
-	struct super_block *sb = get_super(bdev);
-	if (sb) {
-		int res = sync_filesystem(sb);
-		drop_super(sb);
-		return res;
-	}
-	return sync_blockdev(bdev);
-}
-EXPORT_SYMBOL(fsync_bdev);
-
 /**
  * freeze_bdev - lock a filesystem and force it into a consistent state
  * @bdev:	blockdevice to lock
@@ -248,9 +231,9 @@ int freeze_bdev(struct block_device *bdev)
 	if (!sb)
 		goto sync;
 	if (sb->s_op->freeze_super)
-		error = sb->s_op->freeze_super(sb);
+		error = sb->s_op->freeze_super(sb, FREEZE_HOLDER_USERSPACE);
 	else
-		error = freeze_super(sb);
+		error = freeze_super(sb, FREEZE_HOLDER_USERSPACE);
 	deactivate_super(sb);
 
 	if (error) {
@@ -291,9 +274,9 @@ int thaw_bdev(struct block_device *bdev)
 		goto out;
 
 	if (sb->s_op->thaw_super)
-		error = sb->s_op->thaw_super(sb);
+		error = sb->s_op->thaw_super(sb, FREEZE_HOLDER_USERSPACE);
 	else
-		error = thaw_super(sb);
+		error = thaw_super(sb, FREEZE_HOLDER_USERSPACE);
 	if (error)
 		bdev->bd_fsfreeze_count++;
 	else
@@ -442,6 +425,8 @@ void bdev_set_nr_sectors(struct block_device *bdev, sector_t sectors)
 
 void bdev_add(struct block_device *bdev, dev_t dev)
 {
+	if (bdev_stable_writes(bdev))
+		mapping_set_stable_writes(bdev->bd_inode->i_mapping);
 	bdev->bd_dev = dev;
 	bdev->bd_inode->i_rdev = dev;
 	bdev->bd_inode->i_ino = dev;
@@ -846,6 +831,25 @@ put_blkdev:
 }
 EXPORT_SYMBOL(blkdev_get_by_dev);
 
+struct bdev_handle *bdev_open_by_dev(dev_t dev, blk_mode_t mode, void *holder,
+				     const struct blk_holder_ops *hops)
+{
+	struct bdev_handle *handle = kmalloc(sizeof(*handle), GFP_KERNEL);
+	struct block_device *bdev;
+
+	if (!handle)
+		return ERR_PTR(-ENOMEM);
+	bdev = blkdev_get_by_dev(dev, mode, holder, hops);
+	if (IS_ERR(bdev)) {
+		kfree(handle);
+		return ERR_CAST(bdev);
+	}
+	handle->bdev = bdev;
+	handle->holder = holder;
+	return handle;
+}
+EXPORT_SYMBOL(bdev_open_by_dev);
+
 /**
  * blkdev_get_by_path - open a block device by name
  * @path: path to the block device to open
@@ -884,6 +888,28 @@ struct block_device *blkdev_get_by_path(const char *path, blk_mode_t mode,
 }
 EXPORT_SYMBOL(blkdev_get_by_path);
 
+struct bdev_handle *bdev_open_by_path(const char *path, blk_mode_t mode,
+		void *holder, const struct blk_holder_ops *hops)
+{
+	struct bdev_handle *handle;
+	dev_t dev;
+	int error;
+
+	error = lookup_bdev(path, &dev);
+	if (error)
+		return ERR_PTR(error);
+
+	handle = bdev_open_by_dev(dev, mode, holder, hops);
+	if (!IS_ERR(handle) && (mode & BLK_OPEN_WRITE) &&
+	    bdev_read_only(handle->bdev)) {
+		bdev_release(handle);
+		return ERR_PTR(-EACCES);
+	}
+
+	return handle;
+}
+EXPORT_SYMBOL(bdev_open_by_path);
+
 void blkdev_put(struct block_device *bdev, void *holder)
 {
 	struct gendisk *disk = bdev->bd_disk;
@@ -919,6 +945,13 @@ void blkdev_put(struct block_device *bdev, void *holder)
 	blkdev_put_no_open(bdev);
 }
 EXPORT_SYMBOL(blkdev_put);
+
+void bdev_release(struct bdev_handle *handle)
+{
+	blkdev_put(handle->bdev, handle->holder);
+	kfree(handle);
+}
+EXPORT_SYMBOL(bdev_release);
 
 /**
  * lookup_bdev() - Look up a struct block_device by name.
@@ -960,26 +993,38 @@ out_path_put:
 }
 EXPORT_SYMBOL(lookup_bdev);
 
-int __invalidate_device(struct block_device *bdev, bool kill_dirty)
+/**
+ * bdev_mark_dead - mark a block device as dead
+ * @bdev: block device to operate on
+ * @surprise: indicate a surprise removal
+ *
+ * Tell the file system that this devices or media is dead.  If @surprise is set
+ * to %true the device or media is already gone, if not we are preparing for an
+ * orderly removal.
+ *
+ * This calls into the file system, which then typicall syncs out all dirty data
+ * and writes back inodes and then invalidates any cached data in the inodes on
+ * the file system.  In addition we also invalidate the block device mapping.
+ */
+void bdev_mark_dead(struct block_device *bdev, bool surprise)
 {
-	struct super_block *sb = get_super(bdev);
-	int res = 0;
+	mutex_lock(&bdev->bd_holder_lock);
+	if (bdev->bd_holder_ops && bdev->bd_holder_ops->mark_dead)
+		bdev->bd_holder_ops->mark_dead(bdev, surprise);
+	else
+		sync_blockdev(bdev);
+	mutex_unlock(&bdev->bd_holder_lock);
 
-	if (sb) {
-		/*
-		 * no need to lock the super, get_super holds the
-		 * read mutex so the filesystem cannot go away
-		 * under us (->put_super runs with the write lock
-		 * hold).
-		 */
-		shrink_dcache_sb(sb);
-		res = invalidate_inodes(sb, kill_dirty);
-		drop_super(sb);
-	}
 	invalidate_bdev(bdev);
-	return res;
 }
-EXPORT_SYMBOL(__invalidate_device);
+#ifdef CONFIG_DASD_MODULE
+/*
+ * Drivers should not use this directly, but the DASD driver has historically
+ * had a shutdown to offline mode that doesn't actually remove the gendisk
+ * that otherwise looks a lot like a safe device removal.
+ */
+EXPORT_SYMBOL_GPL(bdev_mark_dead);
+#endif
 
 void sync_bdevs(bool wait)
 {

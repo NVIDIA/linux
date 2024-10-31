@@ -35,7 +35,7 @@ static const char * const nct6775_sio_names[] __initconst = {
 	"NCT6796D",
 	"NCT6797D",
 	"NCT6798D",
-	"NCT6799D",
+	"NCT6796D-S/NCT6799D-R",
 };
 
 static unsigned short force_id;
@@ -1269,6 +1269,7 @@ static const char * const asus_msi_boards[] = {
 	"EX-B760M-V5 D4",
 	"EX-H510M-V3",
 	"EX-H610M-V3 D4",
+	"G15CF",
 	"PRIME A620M-A",
 	"PRIME B560-PLUS",
 	"PRIME B560-PLUS AC-HES",

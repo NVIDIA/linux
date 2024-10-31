@@ -922,8 +922,12 @@ bool radeon_get_atom_connector_info_from_supported_devices_table(struct
 		max_device = ATOM_MAX_SUPPORTED_DEVICE_INFO;
 
 	for (i = 0; i < max_device; i++) {
-		ATOM_CONNECTOR_INFO_I2C ci =
-		    supported_devices->info.asConnInfo[i];
+		ATOM_CONNECTOR_INFO_I2C ci;
+
+		if (frev > 1)
+			ci = supported_devices->info_2d1.asConnInfo[i];
+		else
+			ci = supported_devices->info.asConnInfo[i];
 
 		bios_connectors[i].valid = false;
 
@@ -1389,7 +1393,7 @@ bool radeon_atombios_get_ppll_ss_info(struct radeon_device *rdev,
 
 		num_indices = (size - sizeof(ATOM_COMMON_TABLE_HEADER)) /
 			sizeof(ATOM_SPREAD_SPECTRUM_ASSIGNMENT);
-		ss_assign = (struct _ATOM_SPREAD_SPECTRUM_ASSIGNMENT*)
+		ss_assign = (struct _ATOM_SPREAD_SPECTRUM_ASSIGNMENT *)
 			((u8 *)&ss_info->asSS_Info[0]);
 		for (i = 0; i < num_indices; i++) {
 			if (ss_assign->ucSS_Id == id) {
@@ -1402,7 +1406,7 @@ bool radeon_atombios_get_ppll_ss_info(struct radeon_device *rdev,
 				ss->refdiv = ss_assign->ucRecommendedRef_Div;
 				return true;
 			}
-			ss_assign = (struct _ATOM_SPREAD_SPECTRUM_ASSIGNMENT*)
+			ss_assign = (struct _ATOM_SPREAD_SPECTRUM_ASSIGNMENT *)
 				((u8 *)ss_assign + sizeof(struct _ATOM_SPREAD_SPECTRUM_ASSIGNMENT));
 		}
 	}
@@ -1712,26 +1716,29 @@ struct radeon_encoder_atom_dig *radeon_atombios_get_lvds_info(struct
 					fake_edid_record = (ATOM_FAKE_EDID_PATCH_RECORD *)record;
 					if (fake_edid_record->ucFakeEDIDLength) {
 						struct edid *edid;
-						int edid_size =
-							max((int)EDID_LENGTH, (int)fake_edid_record->ucFakeEDIDLength);
-						edid = kmalloc(edid_size, GFP_KERNEL);
-						if (edid) {
-							memcpy((u8 *)edid, (u8 *)&fake_edid_record->ucFakeEDIDString[0],
-							       fake_edid_record->ucFakeEDIDLength);
+						int edid_size;
 
+						if (fake_edid_record->ucFakeEDIDLength == 128)
+							edid_size = fake_edid_record->ucFakeEDIDLength;
+						else
+							edid_size = fake_edid_record->ucFakeEDIDLength * 128;
+						edid = kmemdup(&fake_edid_record->ucFakeEDIDString[0],
+							       edid_size, GFP_KERNEL);
+						if (edid) {
 							if (drm_edid_is_valid(edid)) {
 								rdev->mode_info.bios_hardcoded_edid = edid;
 								rdev->mode_info.bios_hardcoded_edid_size = edid_size;
-							} else
+							} else {
 								kfree(edid);
+							}
 						}
+						record += struct_size(fake_edid_record,
+								      ucFakeEDIDString,
+								      edid_size);
+					} else {
+						/* empty fake edid record must be 3 bytes long */
+						record += sizeof(ATOM_FAKE_EDID_PATCH_RECORD) + 1;
 					}
-					record += fake_edid_record->ucFakeEDIDLength ?
-						  struct_size(fake_edid_record,
-							      ucFakeEDIDString,
-							      fake_edid_record->ucFakeEDIDLength) :
-						  /* empty fake edid record must be 3 bytes long */
-						  sizeof(ATOM_FAKE_EDID_PATCH_RECORD) + 1;
 					break;
 				case LCD_PANEL_RESOLUTION_RECORD_TYPE:
 					panel_res_record = (ATOM_PANEL_RESOLUTION_PATCH_RECORD *)record;
@@ -3406,7 +3413,7 @@ static ATOM_VOLTAGE_OBJECT_V2 *atom_lookup_voltage_object_v2(ATOM_VOLTAGE_OBJECT
 {
 	u32 size = le16_to_cpu(v2->sHeader.usStructureSize);
 	u32 offset = offsetof(ATOM_VOLTAGE_OBJECT_INFO_V2, asVoltageObj[0]);
-	u8 *start = (u8*)v2;
+	u8 *start = (u8 *)v2;
 
 	while (offset < size) {
 		ATOM_VOLTAGE_OBJECT_V2 *vo = (ATOM_VOLTAGE_OBJECT_V2 *)(start + offset);
@@ -3423,7 +3430,7 @@ static ATOM_VOLTAGE_OBJECT_V3 *atom_lookup_voltage_object_v3(ATOM_VOLTAGE_OBJECT
 {
 	u32 size = le16_to_cpu(v3->sHeader.usStructureSize);
 	u32 offset = offsetof(ATOM_VOLTAGE_OBJECT_INFO_V3_1, asVoltageObj[0]);
-	u8 *start = (u8*)v3;
+	u8 *start = (u8 *)v3;
 
 	while (offset < size) {
 		ATOM_VOLTAGE_OBJECT_V3 *vo = (ATOM_VOLTAGE_OBJECT_V3 *)(start + offset);

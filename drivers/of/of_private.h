@@ -60,6 +60,12 @@ static inline int of_property_notify(int action, struct device_node *np,
 }
 #endif /* CONFIG_OF_DYNAMIC */
 
+#if defined(CONFIG_OF_DYNAMIC) && defined(CONFIG_OF_ADDRESS)
+void of_platform_register_reconfig_notifier(void);
+#else
+static inline void of_platform_register_reconfig_notifier(void) { }
+#endif
+
 #if defined(CONFIG_OF_KOBJ)
 int of_node_is_attached(const struct device_node *node);
 int __of_add_property_sysfs(struct device_node *np, struct property *pp);
@@ -151,6 +157,9 @@ extern void __of_sysfs_remove_bin_file(struct device_node *np,
 
 extern int of_bus_n_addr_cells(struct device_node *np);
 extern int of_bus_n_size_cells(struct device_node *np);
+
+const __be32 *of_irq_parse_imap_parent(const __be32 *imap, int len,
+				       struct of_phandle_args *out_irq);
 
 struct bus_dma_region;
 #if defined(CONFIG_OF_ADDRESS) && defined(CONFIG_HAS_DMA)

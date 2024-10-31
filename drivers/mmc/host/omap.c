@@ -1119,10 +1119,25 @@ static void mmc_omap_set_power(struct mmc_omap_slot *slot, int power_on,
 
 	host = slot->host;
 
-	if (slot->vsd)
-		gpiod_set_value(slot->vsd, power_on);
-	if (slot->vio)
-		gpiod_set_value(slot->vio, power_on);
+	if (power_on) {
+		if (slot->vsd) {
+			gpiod_set_value(slot->vsd, power_on);
+			msleep(1);
+		}
+		if (slot->vio) {
+			gpiod_set_value(slot->vio, power_on);
+			msleep(1);
+		}
+	} else {
+		if (slot->vio) {
+			gpiod_set_value(slot->vio, power_on);
+			msleep(50);
+		}
+		if (slot->vsd) {
+			gpiod_set_value(slot->vsd, power_on);
+			msleep(50);
+		}
+	}
 
 	if (slot->pdata->set_power != NULL)
 		slot->pdata->set_power(mmc_dev(slot->mmc), slot->id, power_on,
@@ -1259,18 +1274,18 @@ static int mmc_omap_new_slot(struct mmc_omap_host *host, int id)
 	slot->pdata = &host->pdata->slots[id];
 
 	/* Check for some optional GPIO controls */
-	slot->vsd = gpiod_get_index_optional(host->dev, "vsd",
-					     id, GPIOD_OUT_LOW);
+	slot->vsd = devm_gpiod_get_index_optional(host->dev, "vsd",
+						  id, GPIOD_OUT_LOW);
 	if (IS_ERR(slot->vsd))
 		return dev_err_probe(host->dev, PTR_ERR(slot->vsd),
 				     "error looking up VSD GPIO\n");
-	slot->vio = gpiod_get_index_optional(host->dev, "vio",
-					     id, GPIOD_OUT_LOW);
+	slot->vio = devm_gpiod_get_index_optional(host->dev, "vio",
+						  id, GPIOD_OUT_LOW);
 	if (IS_ERR(slot->vio))
 		return dev_err_probe(host->dev, PTR_ERR(slot->vio),
 				     "error looking up VIO GPIO\n");
-	slot->cover = gpiod_get_index_optional(host->dev, "cover",
-						id, GPIOD_IN);
+	slot->cover = devm_gpiod_get_index_optional(host->dev, "cover",
+						    id, GPIOD_IN);
 	if (IS_ERR(slot->cover))
 		return dev_err_probe(host->dev, PTR_ERR(slot->cover),
 				     "error looking up cover switch GPIO\n");
@@ -1384,13 +1399,6 @@ static int mmc_omap_probe(struct platform_device *pdev)
 	if (IS_ERR(host->virt_base))
 		return PTR_ERR(host->virt_base);
 
-	host->slot_switch = gpiod_get_optional(host->dev, "switch",
-					       GPIOD_OUT_LOW);
-	if (IS_ERR(host->slot_switch))
-		return dev_err_probe(host->dev, PTR_ERR(host->slot_switch),
-				     "error looking up slot switch GPIO\n");
-
-
 	INIT_WORK(&host->slot_release_work, mmc_omap_slot_release_work);
 	INIT_WORK(&host->send_stop_work, mmc_omap_send_stop_work);
 
@@ -1408,6 +1416,12 @@ static int mmc_omap_probe(struct platform_device *pdev)
 	host->features = host->pdata->slots[0].features;
 	host->dev = &pdev->dev;
 	platform_set_drvdata(pdev, host);
+
+	host->slot_switch = devm_gpiod_get_optional(host->dev, "switch",
+						    GPIOD_OUT_LOW);
+	if (IS_ERR(host->slot_switch))
+		return dev_err_probe(host->dev, PTR_ERR(host->slot_switch),
+				     "error looking up slot switch GPIO\n");
 
 	host->id = pdev->id;
 	host->irq = irq;
@@ -1506,7 +1520,7 @@ err_free_iclk:
 	return ret;
 }
 
-static int mmc_omap_remove(struct platform_device *pdev)
+static void mmc_omap_remove(struct platform_device *pdev)
 {
 	struct mmc_omap_host *host = platform_get_drvdata(pdev);
 	int i;
@@ -1532,8 +1546,6 @@ static int mmc_omap_remove(struct platform_device *pdev)
 		dma_release_channel(host->dma_rx);
 
 	destroy_workqueue(host->mmc_omap_wq);
-
-	return 0;
 }
 
 #if IS_BUILTIN(CONFIG_OF)
@@ -1546,7 +1558,7 @@ MODULE_DEVICE_TABLE(of, mmc_omap_match);
 
 static struct platform_driver mmc_omap_driver = {
 	.probe		= mmc_omap_probe,
-	.remove		= mmc_omap_remove,
+	.remove_new	= mmc_omap_remove,
 	.driver		= {
 		.name	= DRIVER_NAME,
 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,

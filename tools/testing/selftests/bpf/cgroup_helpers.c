@@ -278,6 +278,18 @@ int join_cgroup(const char *relative_path)
 }
 
 /**
+ * join_root_cgroup() - Join the root cgroup
+ *
+ * This function joins the root cgroup.
+ *
+ * On success, it returns 0, otherwise on failure it returns 1.
+ */
+int join_root_cgroup(void)
+{
+	return join_cgroup_from_top(CGROUP_MOUNT_PATH);
+}
+
+/**
  * join_parent_cgroup() - Join a cgroup in the parent process workdir
  * @relative_path: The cgroup path, relative to parent process workdir, to join
  *
@@ -487,10 +499,20 @@ int setup_classid_environment(void)
 		return 1;
 	}
 
-	if (mount("net_cls", NETCLS_MOUNT_PATH, "cgroup", 0, "net_cls") &&
-	    errno != EBUSY) {
-		log_err("mount cgroup net_cls");
-		return 1;
+	if (mount("net_cls", NETCLS_MOUNT_PATH, "cgroup", 0, "net_cls")) {
+		if (errno != EBUSY) {
+			log_err("mount cgroup net_cls");
+			return 1;
+		}
+
+		if (rmdir(NETCLS_MOUNT_PATH)) {
+			log_err("rmdir cgroup net_cls");
+			return 1;
+		}
+		if (umount(CGROUP_MOUNT_DFLT)) {
+			log_err("umount cgroup base");
+			return 1;
+		}
 	}
 
 	cleanup_classid_environment();

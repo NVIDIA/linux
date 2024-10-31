@@ -313,7 +313,7 @@ static struct btrfs_delayed_item *btrfs_alloc_delayed_item(u16 data_len,
 {
 	struct btrfs_delayed_item *item;
 
-	item = kmalloc(sizeof(*item) + data_len, GFP_NOFS);
+	item = kmalloc(struct_size(item, data, data_len), GFP_NOFS);
 	if (item) {
 		item->data_len = data_len;
 		item->type = type;
@@ -424,8 +424,6 @@ static void __btrfs_remove_delayed_item(struct btrfs_delayed_item *delayed_item)
 	lockdep_assert_held(&delayed_node->mutex);
 
 	delayed_root = delayed_node->root->fs_info->delayed_root;
-
-	BUG_ON(!delayed_root);
 
 	if (delayed_item->type == BTRFS_DELAYED_INSERTION_ITEM)
 		root = &delayed_node->ins_root;
@@ -975,7 +973,7 @@ static void btrfs_release_delayed_inode(struct btrfs_delayed_node *delayed_node)
 
 	if (delayed_node &&
 	    test_bit(BTRFS_DELAYED_NODE_INODE_DIRTY, &delayed_node->flags)) {
-		BUG_ON(!delayed_node->root);
+		ASSERT(delayed_node->root);
 		clear_bit(BTRFS_DELAYED_NODE_INODE_DIRTY, &delayed_node->flags);
 		delayed_node->count--;
 
@@ -1030,7 +1028,7 @@ static int __btrfs_update_delayed_inode(struct btrfs_trans_handle *trans,
 				    struct btrfs_inode_item);
 	write_extent_buffer(leaf, &node->inode_item, (unsigned long)inode_item,
 			    sizeof(struct btrfs_inode_item));
-	btrfs_mark_buffer_dirty(leaf);
+	btrfs_mark_buffer_dirty(trans, leaf);
 
 	if (!test_bit(BTRFS_DELAYED_NODE_DEL_IREF, &node->flags))
 		goto out;
@@ -1120,6 +1118,9 @@ __btrfs_commit_inode_delayed_items(struct btrfs_trans_handle *trans,
 	if (ret)
 		return ret;
 
+	ret = btrfs_record_root_in_trans(trans, node->root);
+	if (ret)
+		return ret;
 	ret = btrfs_update_delayed_inode(trans, node->root, path, node);
 	return ret;
 }
@@ -1774,9 +1775,6 @@ int btrfs_readdir_delayed_dir_index(struct dir_context *ctx,
 	int over = 0;
 	unsigned char d_type;
 
-	if (list_empty(ins_list))
-		return 0;
-
 	/*
 	 * Changing the data of the delayed item is impossible. So
 	 * we needn't lock them. And we have held i_mutex of the
@@ -1847,9 +1845,9 @@ static void fill_stack_inode_item(struct btrfs_trans_handle *trans,
 				      inode->i_mtime.tv_nsec);
 
 	btrfs_set_stack_timespec_sec(&inode_item->ctime,
-				     inode->i_ctime.tv_sec);
+				     inode_get_ctime(inode).tv_sec);
 	btrfs_set_stack_timespec_nsec(&inode_item->ctime,
-				      inode->i_ctime.tv_nsec);
+				      inode_get_ctime(inode).tv_nsec);
 
 	btrfs_set_stack_timespec_sec(&inode_item->otime,
 				     BTRFS_I(inode)->i_otime.tv_sec);
@@ -1900,8 +1898,8 @@ int btrfs_fill_inode(struct inode *inode, u32 *rdev)
 	inode->i_mtime.tv_sec = btrfs_stack_timespec_sec(&inode_item->mtime);
 	inode->i_mtime.tv_nsec = btrfs_stack_timespec_nsec(&inode_item->mtime);
 
-	inode->i_ctime.tv_sec = btrfs_stack_timespec_sec(&inode_item->ctime);
-	inode->i_ctime.tv_nsec = btrfs_stack_timespec_nsec(&inode_item->ctime);
+	inode_set_ctime(inode, btrfs_stack_timespec_sec(&inode_item->ctime),
+			btrfs_stack_timespec_nsec(&inode_item->ctime));
 
 	BTRFS_I(inode)->i_otime.tv_sec =
 		btrfs_stack_timespec_sec(&inode_item->otime);

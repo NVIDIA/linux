@@ -16,6 +16,7 @@
 #include <linux/sched/clock.h>
 #include <linux/sched/signal.h>
 #include <net/ip.h>
+#include <net/xdp.h>
 
 /*		0 - Reserved to indicate value not set
  *     1..NR_CPUS - Reserved for sender_cpu
@@ -63,7 +64,7 @@ static inline bool sk_can_busy_loop(struct sock *sk)
 static inline unsigned long busy_loop_current_time(void)
 {
 #ifdef CONFIG_NET_RX_BUSY_POLL
-	return (unsigned long)(local_clock() >> 10);
+	return (unsigned long)(ktime_get_ns() >> 10);
 #else
 	return 0;
 #endif

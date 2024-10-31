@@ -51,16 +51,6 @@
 
 struct tls_rec;
 
-struct tls_cipher_size_desc {
-	unsigned int iv;
-	unsigned int key;
-	unsigned int salt;
-	unsigned int tag;
-	unsigned int rec_seq;
-};
-
-extern const struct tls_cipher_size_desc tls_cipher_size_desc[];
-
 /* Maximum data size carried in a TLS record */
 #define TLS_MAX_PAYLOAD_SIZE		((size_t)1 << 14)
 
@@ -68,10 +58,6 @@ extern const struct tls_cipher_size_desc tls_cipher_size_desc[];
 #define TLS_NONCE_OFFSET		TLS_HEADER_SIZE
 
 #define TLS_CRYPTO_INFO_READY(info)	((info)->cipher_type)
-
-#define TLS_RECORD_TYPE_ALERT		0x15
-#define TLS_RECORD_TYPE_HANDSHAKE	0x16
-#define TLS_RECORD_TYPE_DATA		0x17
 
 #define TLS_AAD_SPACE_SIZE		13
 
@@ -110,9 +96,6 @@ struct tls_sw_context_tx {
 	struct tls_rec *open_rec;
 	struct list_head tx_list;
 	atomic_t encrypt_pending;
-	/* protect crypto_wait with encrypt_pending */
-	spinlock_t encrypt_compl_lock;
-	int async_notify;
 	u8 async_capable:1;
 
 #define BIT_TX_SCHEDULED	0
@@ -127,7 +110,8 @@ struct tls_strparser {
 	u32 stopped : 1;
 	u32 copy_mode : 1;
 	u32 mixed_decrypted : 1;
-	u32 msg_ready : 1;
+
+	bool msg_ready;
 
 	struct strp_msg stm;
 
@@ -149,8 +133,6 @@ struct tls_sw_context_rx {
 	struct tls_strparser strp;
 
 	atomic_t decrypt_pending;
-	/* protect crypto_wait with decrypt_pending*/
-	spinlock_t decrypt_compl_lock;
 	struct sk_buff_head async_hold;
 	struct wait_queue_head wq;
 };

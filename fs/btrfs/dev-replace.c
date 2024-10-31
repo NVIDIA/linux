@@ -442,7 +442,7 @@ int btrfs_run_dev_replace(struct btrfs_trans_handle *trans)
 	dev_replace->item_needs_writeback = 0;
 	up_write(&dev_replace->rwsem);
 
-	btrfs_mark_buffer_dirty(eb);
+	btrfs_mark_buffer_dirty(trans, eb);
 
 out:
 	btrfs_free_path(path);
@@ -726,6 +726,23 @@ leave:
 	return ret;
 }
 
+static int btrfs_check_replace_dev_names(struct btrfs_ioctl_dev_replace_args *args)
+{
+	if (args->start.srcdevid == 0) {
+		if (memchr(args->start.srcdev_name, 0,
+			   sizeof(args->start.srcdev_name)) == NULL)
+			return -ENAMETOOLONG;
+	} else {
+		args->start.srcdev_name[0] = 0;
+	}
+
+	if (memchr(args->start.tgtdev_name, 0,
+		   sizeof(args->start.tgtdev_name)) == NULL)
+	    return -ENAMETOOLONG;
+
+	return 0;
+}
+
 int btrfs_dev_replace_by_ioctl(struct btrfs_fs_info *fs_info,
 			    struct btrfs_ioctl_dev_replace_args *args)
 {
@@ -738,10 +755,9 @@ int btrfs_dev_replace_by_ioctl(struct btrfs_fs_info *fs_info,
 	default:
 		return -EINVAL;
 	}
-
-	if ((args->start.srcdevid == 0 && args->start.srcdev_name[0] == '\0') ||
-	    args->start.tgtdev_name[0] == '\0')
-		return -EINVAL;
+	ret = btrfs_check_replace_dev_names(args);
+	if (ret < 0)
+		return ret;
 
 	ret = btrfs_dev_replace_start(fs_info, args->start.tgtdev_name,
 					args->start.srcdevid,
@@ -792,9 +808,9 @@ static int btrfs_set_target_alloc_state(struct btrfs_device *srcdev,
 
 	lockdep_assert_held(&srcdev->fs_info->chunk_mutex);
 
-	while (!find_first_extent_bit(&srcdev->alloc_state, start,
-				      &found_start, &found_end,
-				      CHUNK_ALLOCATED, &cached_state)) {
+	while (find_first_extent_bit(&srcdev->alloc_state, start,
+				     &found_start, &found_end,
+				     CHUNK_ALLOCATED, &cached_state)) {
 		ret = set_extent_bit(&tgtdev->alloc_state, found_start,
 				     found_end, CHUNK_ALLOCATED, NULL);
 		if (ret)

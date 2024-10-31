@@ -1073,10 +1073,8 @@ static int rk817_charger_probe(struct platform_device *pdev)
 		return ret;
 
 	charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
-	if (!charger) {
-		of_node_put(node);
+	if (!charger)
 		return -ENOMEM;
-	}
 
 	charger->rk808 = rk808;
 

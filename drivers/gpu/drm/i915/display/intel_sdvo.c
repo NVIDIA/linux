@@ -1212,7 +1212,7 @@ static bool intel_sdvo_set_tv_format(struct intel_sdvo *intel_sdvo,
 	struct intel_sdvo_tv_format format;
 	u32 format_map;
 
-	format_map = 1 << conn_state->tv.mode;
+	format_map = 1 << conn_state->tv.legacy_mode;
 	memset(&format, 0, sizeof(format));
 	memcpy(&format, &format_map, min(sizeof(format), sizeof(format_map)));
 
@@ -1906,12 +1906,18 @@ static enum drm_mode_status
 intel_sdvo_mode_valid(struct drm_connector *connector,
 		      struct drm_display_mode *mode)
 {
+	struct drm_i915_private *i915 = to_i915(connector->dev);
 	struct intel_sdvo *intel_sdvo = intel_attached_sdvo(to_intel_connector(connector));
 	struct intel_sdvo_connector *intel_sdvo_connector =
 		to_intel_sdvo_connector(connector);
-	int max_dotclk = to_i915(connector->dev)->max_dotclk_freq;
 	bool has_hdmi_sink = intel_has_hdmi_sink(intel_sdvo_connector, connector->state);
+	int max_dotclk = i915->max_dotclk_freq;
+	enum drm_mode_status status;
 	int clock = mode->clock;
+
+	status = intel_cpu_transcoder_mode_valid(i915, mode);
+	if (status != MODE_OK)
+		return status;
 
 	if (mode->flags & DRM_MODE_FLAG_DBLSCAN)
 		return MODE_NO_DBLESCAN;
@@ -2097,7 +2103,7 @@ intel_sdvo_tmds_sink_detect(struct drm_connector *connector)
 		const struct edid *edid = drm_edid_raw(drm_edid);
 
 		/* DDC bus is shared, match EDID to connector type */
-		if (edid->input & DRM_EDID_INPUT_DIGITAL)
+		if (edid && edid->input & DRM_EDID_INPUT_DIGITAL)
 			status = connector_status_connected;
 		else
 			status = connector_status_disconnected;
@@ -2289,7 +2295,7 @@ static int intel_sdvo_get_tv_modes(struct drm_connector *connector)
 	 * Read the list of supported input resolutions for the selected TV
 	 * format.
 	 */
-	format_map = 1 << conn_state->tv.mode;
+	format_map = 1 << conn_state->tv.legacy_mode;
 	memcpy(&tv_res, &format_map,
 	       min(sizeof(format_map), sizeof(struct intel_sdvo_sdtv_resolution_request)));
 
@@ -2354,7 +2360,7 @@ intel_sdvo_connector_atomic_get_property(struct drm_connector *connector,
 		int i;
 
 		for (i = 0; i < intel_sdvo_connector->format_supported_num; i++)
-			if (state->tv.mode == intel_sdvo_connector->tv_format_supported[i]) {
+			if (state->tv.legacy_mode == intel_sdvo_connector->tv_format_supported[i]) {
 				*val = i;
 
 				return 0;
@@ -2410,7 +2416,7 @@ intel_sdvo_connector_atomic_set_property(struct drm_connector *connector,
 	struct intel_sdvo_connector_state *sdvo_state = to_intel_sdvo_connector_state(state);
 
 	if (property == intel_sdvo_connector->tv_format) {
-		state->tv.mode = intel_sdvo_connector->tv_format_supported[val];
+		state->tv.legacy_mode = intel_sdvo_connector->tv_format_supported[val];
 
 		if (state->crtc) {
 			struct drm_crtc_state *crtc_state =
@@ -3065,7 +3071,7 @@ static bool intel_sdvo_tv_create_property(struct intel_sdvo *intel_sdvo,
 		drm_property_add_enum(intel_sdvo_connector->tv_format, i,
 				      tv_format_names[intel_sdvo_connector->tv_format_supported[i]]);
 
-	intel_sdvo_connector->base.base.state->tv.mode = intel_sdvo_connector->tv_format_supported[0];
+	intel_sdvo_connector->base.base.state->tv.legacy_mode = intel_sdvo_connector->tv_format_supported[0];
 	drm_object_attach_property(&intel_sdvo_connector->base.base.base,
 				   intel_sdvo_connector->tv_format, 0);
 	return true;
@@ -3313,13 +3319,19 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo,
 	return i2c_add_adapter(&sdvo->ddc) == 0;
 }
 
-static void assert_sdvo_port_valid(const struct drm_i915_private *dev_priv,
-				   enum port port)
+static bool is_sdvo_port_valid(struct drm_i915_private *dev_priv, enum port port)
 {
 	if (HAS_PCH_SPLIT(dev_priv))
-		drm_WARN_ON(&dev_priv->drm, port != PORT_B);
+		return port == PORT_B;
 	else
-		drm_WARN_ON(&dev_priv->drm, port != PORT_B && port != PORT_C);
+		return port == PORT_B || port == PORT_C;
+}
+
+static bool assert_sdvo_port_valid(struct drm_i915_private *dev_priv,
+				   enum port port)
+{
+	return !drm_WARN(&dev_priv->drm, !is_sdvo_port_valid(dev_priv, port),
+			 "Platform does not support SDVO %c\n", port_name(port));
 }
 
 bool intel_sdvo_init(struct drm_i915_private *dev_priv,
@@ -3329,7 +3341,11 @@ bool intel_sdvo_init(struct drm_i915_private *dev_priv,
 	struct intel_sdvo *intel_sdvo;
 	int i;
 
-	assert_sdvo_port_valid(dev_priv, port);
+	if (!assert_port_valid(dev_priv, port))
+		return false;
+
+	if (!assert_sdvo_port_valid(dev_priv, port))
+		return false;
 
 	intel_sdvo = kzalloc(sizeof(*intel_sdvo), GFP_KERNEL);
 	if (!intel_sdvo)

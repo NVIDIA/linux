@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2003-2015, 2018-2022 Intel Corporation
+ * Copyright (C) 2003-2015, 2018-2023 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -190,17 +190,17 @@ struct iwl_rb_allocator {
  * iwl_get_closed_rb_stts - get closed rb stts from different structs
  * @rxq - the rxq to get the rb stts from
  */
-static inline __le16 iwl_get_closed_rb_stts(struct iwl_trans *trans,
-					    struct iwl_rxq *rxq)
+static inline u16 iwl_get_closed_rb_stts(struct iwl_trans *trans,
+					 struct iwl_rxq *rxq)
 {
 	if (trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) {
 		__le16 *rb_stts = rxq->rb_stts;
 
-		return READ_ONCE(*rb_stts);
+		return le16_to_cpu(READ_ONCE(*rb_stts));
 	} else {
 		struct iwl_rb_status *rb_stts = rxq->rb_stts;
 
-		return READ_ONCE(rb_stts->closed_rb_num);
+		return le16_to_cpu(READ_ONCE(rb_stts->closed_rb_num)) & 0xFFF;
 	}
 }
 
@@ -315,7 +315,6 @@ enum iwl_pcie_imr_status {
  * @ucode_write_complete: indicates that the ucode has been copied.
  * @ucode_write_waitq: wait queue for uCode load
  * @cmd_queue - command queue number
- * @def_rx_queue - default rx queue number
  * @rx_buf_size: Rx buffer size
  * @scd_set_active: should the transport configure the SCD for HCMD queue
  * @rx_page_order: page order for receive buffer size
@@ -398,7 +397,6 @@ struct iwl_trans_pcie {
 	wait_queue_head_t ucode_write_waitq;
 	wait_queue_head_t sx_waitq;
 
-	u8 def_rx_queue;
 	u8 n_no_reclaim_cmds;
 	u8 no_reclaim_cmds[MAX_NO_RECLAIM_CMDS];
 	u16 num_rx_bufs;
@@ -751,7 +749,7 @@ static inline void iwl_enable_rfkill_int(struct iwl_trans *trans)
 	}
 }
 
-void iwl_pcie_handle_rfkill_irq(struct iwl_trans *trans);
+void iwl_pcie_handle_rfkill_irq(struct iwl_trans *trans, bool from_irq);
 
 static inline bool iwl_is_rfkill_set(struct iwl_trans *trans)
 {
@@ -798,7 +796,7 @@ static inline bool iwl_pcie_dbg_on(struct iwl_trans *trans)
 	return (trans->dbg.dest_tlv || iwl_trans_dbg_ini_valid(trans));
 }
 
-void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state);
+void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state, bool from_irq);
 void iwl_trans_pcie_dump_regs(struct iwl_trans *trans);
 
 #ifdef CONFIG_IWLWIFI_DEBUGFS

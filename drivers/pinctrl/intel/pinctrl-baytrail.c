@@ -13,6 +13,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/types.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -276,33 +277,33 @@ static const unsigned int byt_score_plt_clk5_pins[] = { 101 };
 static const unsigned int byt_score_smbus_pins[] = { 51, 52, 53 };
 
 static const struct intel_pingroup byt_score_groups[] = {
-	PIN_GROUP("uart1_grp", byt_score_uart1_pins, 1),
-	PIN_GROUP("uart2_grp", byt_score_uart2_pins, 1),
-	PIN_GROUP("pwm0_grp", byt_score_pwm0_pins, 1),
-	PIN_GROUP("pwm1_grp", byt_score_pwm1_pins, 1),
-	PIN_GROUP("ssp2_grp", byt_score_ssp2_pins, 1),
-	PIN_GROUP("sio_spi_grp", byt_score_sio_spi_pins, 1),
-	PIN_GROUP("i2c5_grp", byt_score_i2c5_pins, 1),
-	PIN_GROUP("i2c6_grp", byt_score_i2c6_pins, 1),
-	PIN_GROUP("i2c4_grp", byt_score_i2c4_pins, 1),
-	PIN_GROUP("i2c3_grp", byt_score_i2c3_pins, 1),
-	PIN_GROUP("i2c2_grp", byt_score_i2c2_pins, 1),
-	PIN_GROUP("i2c1_grp", byt_score_i2c1_pins, 1),
-	PIN_GROUP("i2c0_grp", byt_score_i2c0_pins, 1),
-	PIN_GROUP("ssp0_grp", byt_score_ssp0_pins, 1),
-	PIN_GROUP("ssp1_grp", byt_score_ssp1_pins, 1),
-	PIN_GROUP("sdcard_grp", byt_score_sdcard_pins, byt_score_sdcard_mux_values),
-	PIN_GROUP("sdio_grp", byt_score_sdio_pins, 1),
-	PIN_GROUP("emmc_grp", byt_score_emmc_pins, 1),
-	PIN_GROUP("lpc_grp", byt_score_ilb_lpc_pins, 1),
-	PIN_GROUP("sata_grp", byt_score_sata_pins, 1),
-	PIN_GROUP("plt_clk0_grp", byt_score_plt_clk0_pins, 1),
-	PIN_GROUP("plt_clk1_grp", byt_score_plt_clk1_pins, 1),
-	PIN_GROUP("plt_clk2_grp", byt_score_plt_clk2_pins, 1),
-	PIN_GROUP("plt_clk3_grp", byt_score_plt_clk3_pins, 1),
-	PIN_GROUP("plt_clk4_grp", byt_score_plt_clk4_pins, 1),
-	PIN_GROUP("plt_clk5_grp", byt_score_plt_clk5_pins, 1),
-	PIN_GROUP("smbus_grp", byt_score_smbus_pins, 1),
+	PIN_GROUP_GPIO("uart1_grp", byt_score_uart1_pins, 1),
+	PIN_GROUP_GPIO("uart2_grp", byt_score_uart2_pins, 1),
+	PIN_GROUP_GPIO("pwm0_grp", byt_score_pwm0_pins, 1),
+	PIN_GROUP_GPIO("pwm1_grp", byt_score_pwm1_pins, 1),
+	PIN_GROUP_GPIO("ssp2_grp", byt_score_ssp2_pins, 1),
+	PIN_GROUP_GPIO("sio_spi_grp", byt_score_sio_spi_pins, 1),
+	PIN_GROUP_GPIO("i2c5_grp", byt_score_i2c5_pins, 1),
+	PIN_GROUP_GPIO("i2c6_grp", byt_score_i2c6_pins, 1),
+	PIN_GROUP_GPIO("i2c4_grp", byt_score_i2c4_pins, 1),
+	PIN_GROUP_GPIO("i2c3_grp", byt_score_i2c3_pins, 1),
+	PIN_GROUP_GPIO("i2c2_grp", byt_score_i2c2_pins, 1),
+	PIN_GROUP_GPIO("i2c1_grp", byt_score_i2c1_pins, 1),
+	PIN_GROUP_GPIO("i2c0_grp", byt_score_i2c0_pins, 1),
+	PIN_GROUP_GPIO("ssp0_grp", byt_score_ssp0_pins, 1),
+	PIN_GROUP_GPIO("ssp1_grp", byt_score_ssp1_pins, 1),
+	PIN_GROUP_GPIO("sdcard_grp", byt_score_sdcard_pins, byt_score_sdcard_mux_values),
+	PIN_GROUP_GPIO("sdio_grp", byt_score_sdio_pins, 1),
+	PIN_GROUP_GPIO("emmc_grp", byt_score_emmc_pins, 1),
+	PIN_GROUP_GPIO("lpc_grp", byt_score_ilb_lpc_pins, 1),
+	PIN_GROUP_GPIO("sata_grp", byt_score_sata_pins, 1),
+	PIN_GROUP_GPIO("plt_clk0_grp", byt_score_plt_clk0_pins, 1),
+	PIN_GROUP_GPIO("plt_clk1_grp", byt_score_plt_clk1_pins, 1),
+	PIN_GROUP_GPIO("plt_clk2_grp", byt_score_plt_clk2_pins, 1),
+	PIN_GROUP_GPIO("plt_clk3_grp", byt_score_plt_clk3_pins, 1),
+	PIN_GROUP_GPIO("plt_clk4_grp", byt_score_plt_clk4_pins, 1),
+	PIN_GROUP_GPIO("plt_clk5_grp", byt_score_plt_clk5_pins, 1),
+	PIN_GROUP_GPIO("smbus_grp", byt_score_smbus_pins, 1),
 };
 
 static const char * const byt_score_uart_groups[] = {
@@ -330,12 +331,14 @@ static const char * const byt_score_plt_clk_groups[] = {
 };
 static const char * const byt_score_smbus_groups[] = { "smbus_grp" };
 static const char * const byt_score_gpio_groups[] = {
-	"uart1_grp", "uart2_grp", "pwm0_grp", "pwm1_grp", "ssp0_grp",
-	"ssp1_grp", "ssp2_grp", "sio_spi_grp", "i2c0_grp", "i2c1_grp",
-	"i2c2_grp", "i2c3_grp", "i2c4_grp", "i2c5_grp", "i2c6_grp",
-	"sdcard_grp", "sdio_grp", "emmc_grp", "lpc_grp", "sata_grp",
-	"plt_clk0_grp", "plt_clk1_grp", "plt_clk2_grp", "plt_clk3_grp",
-	"plt_clk4_grp", "plt_clk5_grp", "smbus_grp",
+	"uart1_grp_gpio", "uart2_grp_gpio", "pwm0_grp_gpio",
+	"pwm1_grp_gpio", "ssp0_grp_gpio", "ssp1_grp_gpio", "ssp2_grp_gpio",
+	"sio_spi_grp_gpio", "i2c0_grp_gpio", "i2c1_grp_gpio", "i2c2_grp_gpio",
+	"i2c3_grp_gpio", "i2c4_grp_gpio", "i2c5_grp_gpio", "i2c6_grp_gpio",
+	"sdcard_grp_gpio", "sdio_grp_gpio", "emmc_grp_gpio", "lpc_grp_gpio",
+	"sata_grp_gpio", "plt_clk0_grp_gpio", "plt_clk1_grp_gpio",
+	"plt_clk2_grp_gpio", "plt_clk3_grp_gpio", "plt_clk4_grp_gpio",
+	"plt_clk5_grp_gpio", "smbus_grp_gpio",
 };
 
 static const struct intel_function byt_score_functions[] = {
@@ -454,8 +457,8 @@ static const struct intel_pingroup byt_sus_groups[] = {
 	PIN_GROUP("usb_oc_grp_gpio", byt_sus_usb_over_current_pins, byt_sus_usb_over_current_gpio_mode_values),
 	PIN_GROUP("usb_ulpi_grp_gpio", byt_sus_usb_ulpi_pins, byt_sus_usb_ulpi_gpio_mode_values),
 	PIN_GROUP("pcu_spi_grp_gpio", byt_sus_pcu_spi_pins, byt_sus_pcu_spi_gpio_mode_values),
-	PIN_GROUP("pmu_clk1_grp", byt_sus_pmu_clk1_pins, 1),
-	PIN_GROUP("pmu_clk2_grp", byt_sus_pmu_clk2_pins, 1),
+	PIN_GROUP_GPIO("pmu_clk1_grp", byt_sus_pmu_clk1_pins, 1),
+	PIN_GROUP_GPIO("pmu_clk2_grp", byt_sus_pmu_clk2_pins, 1),
 };
 
 static const char * const byt_sus_usb_groups[] = {
@@ -467,7 +470,7 @@ static const char * const byt_sus_pmu_clk_groups[] = {
 };
 static const char * const byt_sus_gpio_groups[] = {
 	"usb_oc_grp_gpio", "usb_ulpi_grp_gpio", "pcu_spi_grp_gpio",
-	"pmu_clk1_grp", "pmu_clk2_grp",
+	"pmu_clk1_grp_gpio", "pmu_clk2_grp_gpio",
 };
 
 static const struct intel_function byt_sus_functions[] = {
@@ -551,25 +554,10 @@ static const struct intel_pinctrl_soc_data *byt_soc_data[] = {
 
 static DEFINE_RAW_SPINLOCK(byt_lock);
 
-static struct intel_community *byt_get_community(struct intel_pinctrl *vg,
-						 unsigned int pin)
-{
-	struct intel_community *comm;
-	int i;
-
-	for (i = 0; i < vg->ncommunities; i++) {
-		comm = vg->communities + i;
-		if (pin < comm->pin_base + comm->npins && pin >= comm->pin_base)
-			return comm;
-	}
-
-	return NULL;
-}
-
 static void __iomem *byt_gpio_reg(struct intel_pinctrl *vg, unsigned int offset,
 				  int reg)
 {
-	struct intel_community *comm = byt_get_community(vg, offset);
+	struct intel_community *comm = intel_get_community(vg, offset);
 	u32 reg_offset;
 
 	if (!comm)
@@ -591,67 +579,11 @@ static void __iomem *byt_gpio_reg(struct intel_pinctrl *vg, unsigned int offset,
 	return comm->pad_regs + reg_offset + reg;
 }
 
-static int byt_get_groups_count(struct pinctrl_dev *pctldev)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	return vg->soc->ngroups;
-}
-
-static const char *byt_get_group_name(struct pinctrl_dev *pctldev,
-				      unsigned int selector)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	return vg->soc->groups[selector].grp.name;
-}
-
-static int byt_get_group_pins(struct pinctrl_dev *pctldev,
-			      unsigned int selector,
-			      const unsigned int **pins,
-			      unsigned int *num_pins)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	*pins		= vg->soc->groups[selector].grp.pins;
-	*num_pins	= vg->soc->groups[selector].grp.npins;
-
-	return 0;
-}
-
 static const struct pinctrl_ops byt_pinctrl_ops = {
-	.get_groups_count	= byt_get_groups_count,
-	.get_group_name		= byt_get_group_name,
-	.get_group_pins		= byt_get_group_pins,
+	.get_groups_count	= intel_get_groups_count,
+	.get_group_name		= intel_get_group_name,
+	.get_group_pins		= intel_get_group_pins,
 };
-
-static int byt_get_functions_count(struct pinctrl_dev *pctldev)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	return vg->soc->nfunctions;
-}
-
-static const char *byt_get_function_name(struct pinctrl_dev *pctldev,
-					 unsigned int selector)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	return vg->soc->functions[selector].func.name;
-}
-
-static int byt_get_function_groups(struct pinctrl_dev *pctldev,
-				   unsigned int selector,
-				   const char * const **groups,
-				   unsigned int *ngroups)
-{
-	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctldev);
-
-	*groups		= vg->soc->functions[selector].func.groups;
-	*ngroups	= vg->soc->functions[selector].func.ngroups;
-
-	return 0;
-}
 
 static void byt_set_group_simple_mux(struct intel_pinctrl *vg,
 				     const struct intel_pingroup group,
@@ -851,9 +783,9 @@ static int byt_gpio_set_direction(struct pinctrl_dev *pctl_dev,
 }
 
 static const struct pinmux_ops byt_pinmux_ops = {
-	.get_functions_count	= byt_get_functions_count,
-	.get_function_name	= byt_get_function_name,
-	.get_function_groups	= byt_get_function_groups,
+	.get_functions_count	= intel_get_functions_count,
+	.get_function_name	= intel_get_function_name,
+	.get_function_groups	= intel_get_function_groups,
 	.set_mux		= byt_set_mux,
 	.gpio_request_enable	= byt_gpio_request_enable,
 	.gpio_disable_free	= byt_gpio_disable_free,
@@ -991,13 +923,14 @@ static int byt_pin_config_set(struct pinctrl_dev *pctl_dev,
 			      unsigned int num_configs)
 {
 	struct intel_pinctrl *vg = pinctrl_dev_get_drvdata(pctl_dev);
-	unsigned int param, arg;
 	void __iomem *conf_reg = byt_gpio_reg(vg, offset, BYT_CONF0_REG);
 	void __iomem *val_reg = byt_gpio_reg(vg, offset, BYT_VAL_REG);
 	void __iomem *db_reg = byt_gpio_reg(vg, offset, BYT_DEBOUNCE_REG);
+	u32 conf, val, db_pulse, debounce;
+	enum pin_config_param param;
 	unsigned long flags;
-	u32 conf, val, debounce;
 	int i, ret = 0;
+	u32 arg;
 
 	raw_spin_lock_irqsave(&byt_lock, flags);
 
@@ -1053,41 +986,39 @@ static int byt_pin_config_set(struct pinctrl_dev *pctl_dev,
 
 			break;
 		case PIN_CONFIG_INPUT_DEBOUNCE:
-			debounce = readl(db_reg);
-
-			if (arg)
+			if (arg) {
 				conf |= BYT_DEBOUNCE_EN;
-			else
+			} else {
 				conf &= ~BYT_DEBOUNCE_EN;
+
+				/*
+				 * No need to update the pulse value.
+				 * Debounce is going to be disabled.
+				 */
+				break;
+			}
 
 			switch (arg) {
 			case 375:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_375US;
+				db_pulse = BYT_DEBOUNCE_PULSE_375US;
 				break;
 			case 750:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_750US;
+				db_pulse = BYT_DEBOUNCE_PULSE_750US;
 				break;
 			case 1500:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_1500US;
+				db_pulse = BYT_DEBOUNCE_PULSE_1500US;
 				break;
 			case 3000:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_3MS;
+				db_pulse = BYT_DEBOUNCE_PULSE_3MS;
 				break;
 			case 6000:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_6MS;
+				db_pulse = BYT_DEBOUNCE_PULSE_6MS;
 				break;
 			case 12000:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_12MS;
+				db_pulse = BYT_DEBOUNCE_PULSE_12MS;
 				break;
 			case 24000:
-				debounce &= ~BYT_DEBOUNCE_PULSE_MASK;
-				debounce |= BYT_DEBOUNCE_PULSE_24MS;
+				db_pulse = BYT_DEBOUNCE_PULSE_24MS;
 				break;
 			default:
 				if (arg)
@@ -1095,8 +1026,13 @@ static int byt_pin_config_set(struct pinctrl_dev *pctl_dev,
 				break;
 			}
 
-			if (!ret)
-				writel(debounce, db_reg);
+			if (ret)
+				break;
+
+			debounce = readl(db_reg);
+			debounce = (debounce & ~BYT_DEBOUNCE_PULSE_MASK) | db_pulse;
+			writel(debounce, db_reg);
+
 			break;
 		default:
 			ret = -ENOTSUPP;
@@ -1265,7 +1201,7 @@ static void byt_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 		val = readl(val_reg);
 		raw_spin_unlock_irqrestore(&byt_lock, flags);
 
-		comm = byt_get_community(vg, pin);
+		comm = intel_get_community(vg, pin);
 		if (!comm) {
 			seq_printf(s, "Pin %i: can't retrieve community\n", pin);
 			continue;
@@ -1733,7 +1669,6 @@ static int byt_pinctrl_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
 static int byt_gpio_suspend(struct device *dev)
 {
 	struct intel_pinctrl *vg = dev_get_drvdata(dev);
@@ -1817,9 +1752,7 @@ static int byt_gpio_resume(struct device *dev)
 	raw_spin_unlock_irqrestore(&byt_lock, flags);
 	return 0;
 }
-#endif
 
-#ifdef CONFIG_PM
 static int byt_gpio_runtime_suspend(struct device *dev)
 {
 	return 0;
@@ -1829,19 +1762,17 @@ static int byt_gpio_runtime_resume(struct device *dev)
 {
 	return 0;
 }
-#endif
 
 static const struct dev_pm_ops byt_gpio_pm_ops = {
-	SET_LATE_SYSTEM_SLEEP_PM_OPS(byt_gpio_suspend, byt_gpio_resume)
-	SET_RUNTIME_PM_OPS(byt_gpio_runtime_suspend, byt_gpio_runtime_resume,
-			   NULL)
+	LATE_SYSTEM_SLEEP_PM_OPS(byt_gpio_suspend, byt_gpio_resume)
+	RUNTIME_PM_OPS(byt_gpio_runtime_suspend, byt_gpio_runtime_resume, NULL)
 };
 
 static struct platform_driver byt_gpio_driver = {
 	.probe          = byt_pinctrl_probe,
 	.driver         = {
 		.name			= "byt_gpio",
-		.pm			= &byt_gpio_pm_ops,
+		.pm			= pm_ptr(&byt_gpio_pm_ops),
 		.acpi_match_table	= byt_gpio_acpi_match,
 		.suppress_bind_attrs	= true,
 	},
@@ -1852,3 +1783,5 @@ static int __init byt_gpio_init(void)
 	return platform_driver_register(&byt_gpio_driver);
 }
 subsys_initcall(byt_gpio_init);
+
+MODULE_IMPORT_NS(PINCTRL_INTEL);

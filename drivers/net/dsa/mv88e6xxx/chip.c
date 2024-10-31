@@ -23,7 +23,7 @@
 #include <linux/list.h>
 #include <linux/mdio.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_mdio.h>
 #include <linux/platform_data/mv88e6xxx.h>
@@ -131,8 +131,8 @@ struct mii_bus *mv88e6xxx_default_mdio_bus(struct mv88e6xxx_chip *chip)
 {
 	struct mv88e6xxx_mdio_bus *mdio_bus;
 
-	mdio_bus = list_first_entry(&chip->mdios, struct mv88e6xxx_mdio_bus,
-				    list);
+	mdio_bus = list_first_entry_or_null(&chip->mdios,
+					    struct mv88e6xxx_mdio_bus, list);
 	if (!mdio_bus)
 		return NULL;
 
@@ -499,81 +499,6 @@ static int mv88e6xxx_port_ppu_updates(struct mv88e6xxx_chip *chip, int port)
 	return !!(reg & MV88E6XXX_PORT_STS_PHY_DETECT);
 }
 
-static int mv88e6xxx_serdes_pcs_get_state(struct dsa_switch *ds, int port,
-					  struct phylink_link_state *state)
-{
-	struct mv88e6xxx_chip *chip = ds->priv;
-	int lane;
-	int err;
-
-	mv88e6xxx_reg_lock(chip);
-	lane = mv88e6xxx_serdes_get_lane(chip, port);
-	if (lane >= 0 && chip->info->ops->serdes_pcs_get_state)
-		err = chip->info->ops->serdes_pcs_get_state(chip, port, lane,
-							    state);
-	else
-		err = -EOPNOTSUPP;
-	mv88e6xxx_reg_unlock(chip);
-
-	return err;
-}
-
-static int mv88e6xxx_serdes_pcs_config(struct mv88e6xxx_chip *chip, int port,
-				       unsigned int mode,
-				       phy_interface_t interface,
-				       const unsigned long *advertise)
-{
-	const struct mv88e6xxx_ops *ops = chip->info->ops;
-	int lane;
-
-	if (ops->serdes_pcs_config) {
-		lane = mv88e6xxx_serdes_get_lane(chip, port);
-		if (lane >= 0)
-			return ops->serdes_pcs_config(chip, port, lane, mode,
-						      interface, advertise);
-	}
-
-	return 0;
-}
-
-static void mv88e6xxx_serdes_pcs_an_restart(struct dsa_switch *ds, int port)
-{
-	struct mv88e6xxx_chip *chip = ds->priv;
-	const struct mv88e6xxx_ops *ops;
-	int err = 0;
-	int lane;
-
-	ops = chip->info->ops;
-
-	if (ops->serdes_pcs_an_restart) {
-		mv88e6xxx_reg_lock(chip);
-		lane = mv88e6xxx_serdes_get_lane(chip, port);
-		if (lane >= 0)
-			err = ops->serdes_pcs_an_restart(chip, port, lane);
-		mv88e6xxx_reg_unlock(chip);
-
-		if (err)
-			dev_err(ds->dev, "p%d: failed to restart AN\n", port);
-	}
-}
-
-static int mv88e6xxx_serdes_pcs_link_up(struct mv88e6xxx_chip *chip, int port,
-					unsigned int mode,
-					int speed, int duplex)
-{
-	const struct mv88e6xxx_ops *ops = chip->info->ops;
-	int lane;
-
-	if (!phylink_autoneg_inband(mode) && ops->serdes_pcs_link_up) {
-		lane = mv88e6xxx_serdes_get_lane(chip, port);
-		if (lane >= 0)
-			return ops->serdes_pcs_link_up(chip, port, lane,
-						       speed, duplex);
-	}
-
-	return 0;
-}
-
 static const u8 mv88e6185_phy_interface_modes[] = {
 	[MV88E6185_PORT_STS_CMODE_GMII_FD]	 = PHY_INTERFACE_MODE_GMII,
 	[MV88E6185_PORT_STS_CMODE_MII_100_FD_PS] = PHY_INTERFACE_MODE_MII,
@@ -641,7 +566,66 @@ static void mv88e6xxx_translate_cmode(u8 cmode, unsigned long *supported)
 		phy_interface_set_rgmii(supported);
 }
 
+static void
+mv88e6250_setup_supported_interfaces(struct mv88e6xxx_chip *chip, int port,
+				     struct phylink_config *config)
+{
+	unsigned long *supported = config->supported_interfaces;
+	int err;
+	u16 reg;
+
+	err = mv88e6xxx_port_read(chip, port, MV88E6XXX_PORT_STS, &reg);
+	if (err) {
+		dev_err(chip->dev, "p%d: failed to read port status\n", port);
+		return;
+	}
+
+	switch (reg & MV88E6250_PORT_STS_PORTMODE_MASK) {
+	case MV88E6250_PORT_STS_PORTMODE_MII_10_HALF_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_100_HALF_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_10_FULL_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_100_FULL_PHY:
+		__set_bit(PHY_INTERFACE_MODE_REVMII, supported);
+		break;
+
+	case MV88E6250_PORT_STS_PORTMODE_MII_HALF:
+	case MV88E6250_PORT_STS_PORTMODE_MII_FULL:
+		__set_bit(PHY_INTERFACE_MODE_MII, supported);
+		break;
+
+	case MV88E6250_PORT_STS_PORTMODE_MII_DUAL_100_RMII_FULL_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_200_RMII_FULL_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_10_100_RMII_HALF_PHY:
+	case MV88E6250_PORT_STS_PORTMODE_MII_10_100_RMII_FULL_PHY:
+		__set_bit(PHY_INTERFACE_MODE_REVRMII, supported);
+		break;
+
+	case MV88E6250_PORT_STS_PORTMODE_MII_DUAL_100_RMII_FULL:
+	case MV88E6250_PORT_STS_PORTMODE_MII_10_100_RMII_FULL:
+		__set_bit(PHY_INTERFACE_MODE_RMII, supported);
+		break;
+
+	case MV88E6250_PORT_STS_PORTMODE_MII_100_RGMII:
+		__set_bit(PHY_INTERFACE_MODE_RGMII, supported);
+		break;
+
+	default:
+		dev_err(chip->dev,
+			"p%d: invalid port mode in status register: %04x\n",
+			port, reg);
+	}
+}
+
 static void mv88e6250_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
+				       struct phylink_config *config)
+{
+	if (!mv88e6xxx_phy_is_internal(chip, port))
+		mv88e6250_setup_supported_interfaces(chip, port, config);
+
+	config->mac_capabilities = MAC_SYM_PAUSE | MAC_10 | MAC_100;
+}
+
+static void mv88e6351_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 				       struct phylink_config *config)
 {
 	unsigned long *supported = config->supported_interfaces;
@@ -649,7 +633,8 @@ static void mv88e6250_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 	/* Translate the default cmode */
 	mv88e6xxx_translate_cmode(chip->ports[port].cmode, supported);
 
-	config->mac_capabilities = MAC_SYM_PAUSE | MAC_10 | MAC_100;
+	config->mac_capabilities = MAC_SYM_PAUSE | MAC_10 | MAC_100 |
+				   MAC_1000FD;
 }
 
 static int mv88e6352_get_port4_serdes_cmode(struct mv88e6xxx_chip *chip)
@@ -710,6 +695,18 @@ static void mv88e6352_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
 		else
 			mv88e6xxx_translate_cmode(cmode, supported);
 	}
+}
+
+static void mv88e632x_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
+				       struct phylink_config *config)
+{
+	unsigned long *supported = config->supported_interfaces;
+
+	/* Translate the default cmode */
+	mv88e6xxx_translate_cmode(chip->ports[port].cmode, supported);
+
+	config->mac_capabilities = MAC_SYM_PAUSE | MAC_10 | MAC_100 |
+				   MAC_1000FD;
 }
 
 static void mv88e6341_phylink_get_caps(struct mv88e6xxx_chip *chip, int port,
@@ -853,6 +850,20 @@ static void mv88e6xxx_get_caps(struct dsa_switch *ds, int port,
 	}
 }
 
+static struct phylink_pcs *mv88e6xxx_mac_select_pcs(struct dsa_switch *ds,
+						    int port,
+						    phy_interface_t interface)
+{
+	struct mv88e6xxx_chip *chip = ds->priv;
+	struct phylink_pcs *pcs = ERR_PTR(-EOPNOTSUPP);
+
+	if (chip->info->ops->pcs_ops)
+		pcs = chip->info->ops->pcs_ops->pcs_select(chip, port,
+							   interface);
+
+	return pcs;
+}
+
 static int mv88e6xxx_mac_prepare(struct dsa_switch *ds, int port,
 				 unsigned int mode, phy_interface_t interface)
 {
@@ -889,16 +900,6 @@ static void mv88e6xxx_mac_config(struct dsa_switch *ds, int port,
 						      state->interface);
 		if (err && err != -EOPNOTSUPP)
 			goto err_unlock;
-
-		err = mv88e6xxx_serdes_pcs_config(chip, port, mode,
-						  state->interface,
-						  state->advertising);
-		/* FIXME: we should restart negotiation if something changed -
-		 * which is something we get if we convert to using phylinks
-		 * PCS operations.
-		 */
-		if (err > 0)
-			err = 0;
 	}
 
 err_unlock:
@@ -982,17 +983,6 @@ static void mv88e6xxx_mac_link_up(struct dsa_switch *ds, int port,
 	 */
 	if (!mv88e6xxx_port_ppu_updates(chip, port) ||
 	    mode == MLO_AN_FIXED) {
-		/* FIXME: for an automedia port, should we force the link
-		 * down here - what if the link comes up due to "other" media
-		 * while we're bringing the port up, how is the exclusivity
-		 * handled in the Marvell hardware? E.g. port 2 on 88E6390
-		 * shared between internal PHY and Serdes.
-		 */
-		err = mv88e6xxx_serdes_pcs_link_up(chip, port, mode, speed,
-						   duplex);
-		if (err)
-			goto error;
-
 		if (ops->port_set_speed_duplex) {
 			err = ops->port_set_speed_duplex(chip, port,
 							 speed, duplex);
@@ -3031,6 +3021,7 @@ static int mv88e6xxx_software_reset(struct mv88e6xxx_chip *chip)
 static void mv88e6xxx_hardware_reset(struct mv88e6xxx_chip *chip)
 {
 	struct gpio_desc *gpiod = chip->reset;
+	int err;
 
 	/* If there is a GPIO connected to the reset pin, toggle it */
 	if (gpiod) {
@@ -3039,17 +3030,26 @@ static void mv88e6xxx_hardware_reset(struct mv88e6xxx_chip *chip)
 		 * mid-byte, causing the first EEPROM read after the reset
 		 * from the wrong location resulting in the switch booting
 		 * to wrong mode and inoperable.
+		 * For this reason, switch families with EEPROM support
+		 * generally wait for EEPROM loads to complete as their pre-
+		 * and post-reset handlers.
 		 */
-		if (chip->info->ops->get_eeprom)
-			mv88e6xxx_g2_eeprom_wait(chip);
+		if (chip->info->ops->hardware_reset_pre) {
+			err = chip->info->ops->hardware_reset_pre(chip);
+			if (err)
+				dev_err(chip->dev, "pre-reset error: %d\n", err);
+		}
 
 		gpiod_set_value_cansleep(gpiod, 1);
 		usleep_range(10000, 20000);
 		gpiod_set_value_cansleep(gpiod, 0);
 		usleep_range(10000, 20000);
 
-		if (chip->info->ops->get_eeprom)
-			mv88e6xxx_g2_eeprom_wait(chip);
+		if (chip->info->ops->hardware_reset_post) {
+			err = chip->info->ops->hardware_reset_post(chip);
+			if (err)
+				dev_err(chip->dev, "post-reset error: %d\n", err);
+		}
 	}
 }
 
@@ -3173,102 +3173,6 @@ static int mv88e6xxx_setup_egress_floods(struct mv88e6xxx_chip *chip, int port)
 	return 0;
 }
 
-static irqreturn_t mv88e6xxx_serdes_irq_thread_fn(int irq, void *dev_id)
-{
-	struct mv88e6xxx_port *mvp = dev_id;
-	struct mv88e6xxx_chip *chip = mvp->chip;
-	irqreturn_t ret = IRQ_NONE;
-	int port = mvp->port;
-	int lane;
-
-	mv88e6xxx_reg_lock(chip);
-	lane = mv88e6xxx_serdes_get_lane(chip, port);
-	if (lane >= 0)
-		ret = mv88e6xxx_serdes_irq_status(chip, port, lane);
-	mv88e6xxx_reg_unlock(chip);
-
-	return ret;
-}
-
-static int mv88e6xxx_serdes_irq_request(struct mv88e6xxx_chip *chip, int port,
-					int lane)
-{
-	struct mv88e6xxx_port *dev_id = &chip->ports[port];
-	unsigned int irq;
-	int err;
-
-	/* Nothing to request if this SERDES port has no IRQ */
-	irq = mv88e6xxx_serdes_irq_mapping(chip, port);
-	if (!irq)
-		return 0;
-
-	snprintf(dev_id->serdes_irq_name, sizeof(dev_id->serdes_irq_name),
-		 "mv88e6xxx-%s-serdes-%d", dev_name(chip->dev), port);
-
-	/* Requesting the IRQ will trigger IRQ callbacks, so release the lock */
-	mv88e6xxx_reg_unlock(chip);
-	err = request_threaded_irq(irq, NULL, mv88e6xxx_serdes_irq_thread_fn,
-				   IRQF_ONESHOT, dev_id->serdes_irq_name,
-				   dev_id);
-	mv88e6xxx_reg_lock(chip);
-	if (err)
-		return err;
-
-	dev_id->serdes_irq = irq;
-
-	return mv88e6xxx_serdes_irq_enable(chip, port, lane);
-}
-
-static int mv88e6xxx_serdes_irq_free(struct mv88e6xxx_chip *chip, int port,
-				     int lane)
-{
-	struct mv88e6xxx_port *dev_id = &chip->ports[port];
-	unsigned int irq = dev_id->serdes_irq;
-	int err;
-
-	/* Nothing to free if no IRQ has been requested */
-	if (!irq)
-		return 0;
-
-	err = mv88e6xxx_serdes_irq_disable(chip, port, lane);
-
-	/* Freeing the IRQ will trigger IRQ callbacks, so release the lock */
-	mv88e6xxx_reg_unlock(chip);
-	free_irq(irq, dev_id);
-	mv88e6xxx_reg_lock(chip);
-
-	dev_id->serdes_irq = 0;
-
-	return err;
-}
-
-static int mv88e6xxx_serdes_power(struct mv88e6xxx_chip *chip, int port,
-				  bool on)
-{
-	int lane;
-	int err;
-
-	lane = mv88e6xxx_serdes_get_lane(chip, port);
-	if (lane < 0)
-		return 0;
-
-	if (on) {
-		err = mv88e6xxx_serdes_power_up(chip, port, lane);
-		if (err)
-			return err;
-
-		err = mv88e6xxx_serdes_irq_request(chip, port, lane);
-	} else {
-		err = mv88e6xxx_serdes_irq_free(chip, port, lane);
-		if (err)
-			return err;
-
-		err = mv88e6xxx_serdes_power_down(chip, port, lane);
-	}
-
-	return err;
-}
-
 static int mv88e6xxx_set_egress_port(struct mv88e6xxx_chip *chip,
 				     enum mv88e6xxx_egress_direction direction,
 				     int port)
@@ -3332,56 +3236,17 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 {
 	struct device_node *phy_handle = NULL;
 	struct dsa_switch *ds = chip->ds;
-	phy_interface_t mode;
 	struct dsa_port *dp;
-	int tx_amp, speed;
+	int tx_amp;
 	int err;
 	u16 reg;
 
 	chip->ports[port].chip = chip;
 	chip->ports[port].port = port;
 
-	dp = dsa_to_port(ds, port);
-
-	/* MAC Forcing register: don't force link, speed, duplex or flow control
-	 * state to any particular values on physical ports, but force the CPU
-	 * port and all DSA ports to their maximum bandwidth and full duplex.
-	 */
-	if (dsa_is_cpu_port(ds, port) || dsa_is_dsa_port(ds, port)) {
-		struct phylink_config pl_config = {};
-		unsigned long caps;
-
-		chip->info->ops->phylink_get_caps(chip, port, &pl_config);
-
-		caps = pl_config.mac_capabilities;
-
-		if (chip->info->ops->port_max_speed_mode)
-			mode = chip->info->ops->port_max_speed_mode(chip, port);
-		else
-			mode = PHY_INTERFACE_MODE_NA;
-
-		if (caps & MAC_10000FD)
-			speed = SPEED_10000;
-		else if (caps & MAC_5000FD)
-			speed = SPEED_5000;
-		else if (caps & MAC_2500FD)
-			speed = SPEED_2500;
-		else if (caps & MAC_1000)
-			speed = SPEED_1000;
-		else if (caps & MAC_100)
-			speed = SPEED_100;
-		else
-			speed = SPEED_10;
-
-		err = mv88e6xxx_port_setup_mac(chip, port, LINK_FORCED_UP,
-					       speed, DUPLEX_FULL,
-					       PAUSE_OFF, mode);
-	} else {
-		err = mv88e6xxx_port_setup_mac(chip, port, LINK_UNFORCED,
-					       SPEED_UNFORCED, DUPLEX_UNFORCED,
-					       PAUSE_ON,
-					       PHY_INTERFACE_MODE_NA);
-	}
+	err = mv88e6xxx_port_setup_mac(chip, port, LINK_UNFORCED,
+				       SPEED_UNFORCED, DUPLEX_UNFORCED,
+				       PAUSE_ON, PHY_INTERFACE_MODE_NA);
 	if (err)
 		return err;
 
@@ -3558,6 +3423,7 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 	}
 
 	if (chip->info->ops->serdes_set_tx_amplitude) {
+		dp = dsa_to_port(ds, port);
 		if (dp)
 			phy_handle = of_parse_phandle(dp->dn, "phy-handle", 0);
 
@@ -3624,34 +3490,12 @@ static int mv88e6xxx_change_mtu(struct dsa_switch *ds, int port, int new_mtu)
 	mv88e6xxx_reg_lock(chip);
 	if (chip->info->ops->port_set_jumbo_size)
 		ret = chip->info->ops->port_set_jumbo_size(chip, port, new_mtu);
-	else if (chip->info->ops->set_max_frame_size)
+	else if (chip->info->ops->set_max_frame_size &&
+		 dsa_is_cpu_port(ds, port))
 		ret = chip->info->ops->set_max_frame_size(chip, new_mtu);
 	mv88e6xxx_reg_unlock(chip);
 
 	return ret;
-}
-
-static int mv88e6xxx_port_enable(struct dsa_switch *ds, int port,
-				 struct phy_device *phydev)
-{
-	struct mv88e6xxx_chip *chip = ds->priv;
-	int err;
-
-	mv88e6xxx_reg_lock(chip);
-	err = mv88e6xxx_serdes_power(chip, port, true);
-	mv88e6xxx_reg_unlock(chip);
-
-	return err;
-}
-
-static void mv88e6xxx_port_disable(struct dsa_switch *ds, int port)
-{
-	struct mv88e6xxx_chip *chip = ds->priv;
-
-	mv88e6xxx_reg_lock(chip);
-	if (mv88e6xxx_serdes_power(chip, port, false))
-		dev_err(chip->dev, "failed to power off SERDES\n");
-	mv88e6xxx_reg_unlock(chip);
 }
 
 static int mv88e6xxx_set_ageing_time(struct dsa_switch *ds,
@@ -3772,7 +3616,7 @@ static int mv88e6xxx_mdio_read_c45(struct mii_bus *bus, int phy, int devad,
 	int err;
 
 	if (!chip->info->ops->phy_read_c45)
-		return -EOPNOTSUPP;
+		return 0xffff;
 
 	mv88e6xxx_reg_lock(chip);
 	err = chip->info->ops->phy_read_c45(chip, bus, phy, devad, reg, &val);
@@ -4116,12 +3960,28 @@ out_mdios:
 
 static int mv88e6xxx_port_setup(struct dsa_switch *ds, int port)
 {
+	struct mv88e6xxx_chip *chip = ds->priv;
+	int err;
+
+	if (chip->info->ops->pcs_ops &&
+	    chip->info->ops->pcs_ops->pcs_init) {
+		err = chip->info->ops->pcs_ops->pcs_init(chip, port);
+		if (err)
+			return err;
+	}
+
 	return mv88e6xxx_setup_devlink_regions_port(ds, port);
 }
 
 static void mv88e6xxx_port_teardown(struct dsa_switch *ds, int port)
 {
+	struct mv88e6xxx_chip *chip = ds->priv;
+
 	mv88e6xxx_teardown_devlink_regions_port(ds, port);
+
+	if (chip->info->ops->pcs_ops &&
+	    chip->info->ops->pcs_ops->pcs_teardown)
+		chip->info->ops->pcs_ops->pcs_teardown(chip, port);
 }
 
 static int mv88e6xxx_get_eeprom_len(struct dsa_switch *ds)
@@ -4238,15 +4098,13 @@ static const struct mv88e6xxx_ops mv88e6095_ops = {
 	.stats_get_strings = mv88e6095_stats_get_strings,
 	.stats_get_stats = mv88e6095_stats_get_stats,
 	.mgmt_rsvd2cpu = mv88e6185_g2_mgmt_rsvd2cpu,
-	.serdes_power = mv88e6185_serdes_power,
-	.serdes_get_lane = mv88e6185_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6185_serdes_pcs_get_state,
 	.ppu_enable = mv88e6185_g1_ppu_enable,
 	.ppu_disable = mv88e6185_g1_ppu_disable,
 	.reset = mv88e6185_g1_reset,
 	.vtu_getnext = mv88e6185_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6185_g1_vtu_loadpurge,
 	.phylink_get_caps = mv88e6095_phylink_get_caps,
+	.pcs_ops = &mv88e6185_pcs_ops,
 	.set_max_frame_size = mv88e6185_g1_set_max_frame_size,
 };
 
@@ -4284,18 +4142,14 @@ static const struct mv88e6xxx_ops mv88e6097_ops = {
 	.set_egress_port = mv88e6095_g1_set_egress_port,
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
-	.serdes_power = mv88e6185_serdes_power,
-	.serdes_get_lane = mv88e6185_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6185_serdes_pcs_get_state,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6097_serdes_irq_enable,
-	.serdes_irq_status = mv88e6097_serdes_irq_status,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6085_g1_rmu_disable,
 	.vtu_getnext = mv88e6352_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.phylink_get_caps = mv88e6095_phylink_get_caps,
+	.pcs_ops = &mv88e6185_pcs_ops,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
 	.set_max_frame_size = mv88e6185_g1_set_max_frame_size,
@@ -4423,6 +4277,8 @@ static const struct mv88e6xxx_ops mv88e6141_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu =  mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4431,16 +4287,8 @@ static const struct mv88e6xxx_ops mv88e6141_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6341_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.serdes_get_sset_count = mv88e6390_serdes_get_sset_count,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
@@ -4448,6 +4296,7 @@ static const struct mv88e6xxx_ops mv88e6141_ops = {
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.phylink_get_caps = mv88e6341_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6161_ops = {
@@ -4578,7 +4427,7 @@ static const struct mv88e6xxx_ops mv88e6171_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e6351_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6172_ops = {
@@ -4620,6 +4469,8 @@ static const struct mv88e6xxx_ops mv88e6172_ops = {
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6352_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4628,16 +4479,11 @@ static const struct mv88e6xxx_ops mv88e6172_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_get_lane = mv88e6352_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6352_serdes_pcs_link_up,
-	.serdes_power = mv88e6352_serdes_power,
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.phylink_get_caps = mv88e6352_phylink_get_caps,
+	.pcs_ops = &mv88e6352_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6175_ops = {
@@ -4683,7 +4529,7 @@ static const struct mv88e6xxx_ops mv88e6175_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e6351_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6176_ops = {
@@ -4725,6 +4571,8 @@ static const struct mv88e6xxx_ops mv88e6176_ops = {
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6352_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4733,20 +4581,13 @@ static const struct mv88e6xxx_ops mv88e6176_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_get_lane = mv88e6352_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6352_serdes_pcs_link_up,
-	.serdes_power = mv88e6352_serdes_power,
 	.serdes_irq_mapping = mv88e6352_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6352_serdes_irq_enable,
-	.serdes_irq_status = mv88e6352_serdes_irq_status,
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.serdes_set_tx_amplitude = mv88e6352_serdes_set_tx_amplitude,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.phylink_get_caps = mv88e6352_phylink_get_caps,
+	.pcs_ops = &mv88e6352_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6185_ops = {
@@ -4776,9 +4617,6 @@ static const struct mv88e6xxx_ops mv88e6185_ops = {
 	.set_egress_port = mv88e6095_g1_set_egress_port,
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6185_g2_mgmt_rsvd2cpu,
-	.serdes_power = mv88e6185_serdes_power,
-	.serdes_get_lane = mv88e6185_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6185_serdes_pcs_get_state,
 	.set_cascade_port = mv88e6185_g1_set_cascade_port,
 	.ppu_enable = mv88e6185_g1_ppu_enable,
 	.ppu_disable = mv88e6185_g1_ppu_disable,
@@ -4786,6 +4624,7 @@ static const struct mv88e6xxx_ops mv88e6185_ops = {
 	.vtu_getnext = mv88e6185_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6185_g1_vtu_loadpurge,
 	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.pcs_ops = &mv88e6185_pcs_ops,
 	.set_max_frame_size = mv88e6185_g1_set_max_frame_size,
 };
 
@@ -4828,6 +4667,8 @@ static const struct mv88e6xxx_ops mv88e6190_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4836,22 +4677,15 @@ static const struct mv88e6xxx_ops mv88e6190_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.phylink_get_caps = mv88e6390_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6190x_ops = {
@@ -4893,6 +4727,8 @@ static const struct mv88e6xxx_ops mv88e6190x_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4901,22 +4737,15 @@ static const struct mv88e6xxx_ops mv88e6190x_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390x_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.phylink_get_caps = mv88e6390x_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6191_ops = {
@@ -4956,6 +4785,8 @@ static const struct mv88e6xxx_ops mv88e6191_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -4964,16 +4795,8 @@ static const struct mv88e6xxx_ops mv88e6191_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
@@ -4981,6 +4804,7 @@ static const struct mv88e6xxx_ops mv88e6191_ops = {
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
 	.phylink_get_caps = mv88e6390_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6240_ops = {
@@ -5022,6 +4846,8 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6352_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5030,15 +4856,7 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_get_lane = mv88e6352_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6352_serdes_pcs_link_up,
-	.serdes_power = mv88e6352_serdes_power,
 	.serdes_irq_mapping = mv88e6352_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6352_serdes_irq_enable,
-	.serdes_irq_status = mv88e6352_serdes_irq_status,
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.serdes_set_tx_amplitude = mv88e6352_serdes_set_tx_amplitude,
@@ -5046,6 +4864,7 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
 	.phylink_get_caps = mv88e6352_phylink_get_caps,
+	.pcs_ops = &mv88e6352_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6250_ops = {
@@ -5082,6 +4901,8 @@ static const struct mv88e6xxx_ops mv88e6250_ops = {
 	.watchdog_ops = &mv88e6250_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6250_g1_wait_eeprom_done_prereset,
+	.hardware_reset_post = mv88e6xxx_g1_wait_eeprom_done,
 	.reset = mv88e6250_g1_reset,
 	.vtu_getnext = mv88e6185_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6185_g1_vtu_loadpurge,
@@ -5129,6 +4950,8 @@ static const struct mv88e6xxx_ops mv88e6290_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5137,16 +4960,8 @@ static const struct mv88e6xxx_ops mv88e6290_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
@@ -5155,6 +4970,7 @@ static const struct mv88e6xxx_ops mv88e6290_ops = {
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6390_ptp_ops,
 	.phylink_get_caps = mv88e6390_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6320_ops = {
@@ -5195,13 +5011,15 @@ static const struct mv88e6xxx_ops mv88e6320_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.vtu_getnext = mv88e6185_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6185_g1_vtu_loadpurge,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e632x_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6321_ops = {
@@ -5241,13 +5059,15 @@ static const struct mv88e6xxx_ops mv88e6321_ops = {
 	.set_egress_port = mv88e6095_g1_set_egress_port,
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.vtu_getnext = mv88e6185_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6185_g1_vtu_loadpurge,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e632x_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6341_ops = {
@@ -5291,6 +5111,8 @@ static const struct mv88e6xxx_ops mv88e6341_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu =  mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5299,16 +5121,8 @@ static const struct mv88e6xxx_ops mv88e6341_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6341_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
@@ -5318,6 +5132,7 @@ static const struct mv88e6xxx_ops mv88e6341_ops = {
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.phylink_get_caps = mv88e6341_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6350_ops = {
@@ -5363,7 +5178,7 @@ static const struct mv88e6xxx_ops mv88e6350_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e6351_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6351_ops = {
@@ -5411,7 +5226,7 @@ static const struct mv88e6xxx_ops mv88e6351_ops = {
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
-	.phylink_get_caps = mv88e6185_phylink_get_caps,
+	.phylink_get_caps = mv88e6351_phylink_get_caps,
 };
 
 static const struct mv88e6xxx_ops mv88e6352_ops = {
@@ -5453,6 +5268,8 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
 	.watchdog_ops = &mv88e6097_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6352_g2_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6352_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5461,15 +5278,7 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6352_g1_stu_getnext,
 	.stu_loadpurge = mv88e6352_g1_stu_loadpurge,
-	.serdes_get_lane = mv88e6352_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6352_serdes_pcs_link_up,
-	.serdes_power = mv88e6352_serdes_power,
 	.serdes_irq_mapping = mv88e6352_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6352_serdes_irq_enable,
-	.serdes_irq_status = mv88e6352_serdes_irq_status,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
@@ -5480,6 +5289,7 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.serdes_set_tx_amplitude = mv88e6352_serdes_set_tx_amplitude,
 	.phylink_get_caps = mv88e6352_phylink_get_caps,
+	.pcs_ops = &mv88e6352_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6390_ops = {
@@ -5522,6 +5332,8 @@ static const struct mv88e6xxx_ops mv88e6390_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5530,16 +5342,8 @@ static const struct mv88e6xxx_ops mv88e6390_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390_serdes_get_lane,
-	/* Check status register pause & lpa register */
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6390_ptp_ops,
@@ -5549,6 +5353,7 @@ static const struct mv88e6xxx_ops mv88e6390_ops = {
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.phylink_get_caps = mv88e6390_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6390x_ops = {
@@ -5591,6 +5396,8 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
 	.watchdog_ops = &mv88e6390_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6390_g1_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5599,15 +5406,8 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6390_serdes_power,
 	.serdes_get_lane = mv88e6390x_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6390_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
-	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.serdes_get_sset_count = mv88e6390_serdes_get_sset_count,
 	.serdes_get_strings = mv88e6390_serdes_get_strings,
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
@@ -5617,11 +5417,11 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6390_ptp_ops,
 	.phylink_get_caps = mv88e6390x_phylink_get_caps,
+	.pcs_ops = &mv88e6390_pcs_ops,
 };
 
 static const struct mv88e6xxx_ops mv88e6393x_ops = {
 	/* MV88E6XXX_FAMILY_6393 */
-	.setup_errata = mv88e6393x_serdes_setup_errata,
 	.irl_init_all = mv88e6390_g2_irl_init_all,
 	.get_eeprom = mv88e6xxx_g2_get_eeprom8,
 	.set_eeprom = mv88e6xxx_g2_set_eeprom8,
@@ -5663,6 +5463,8 @@ static const struct mv88e6xxx_ops mv88e6393x_ops = {
 	.watchdog_ops = &mv88e6393x_watchdog_ops,
 	.mgmt_rsvd2cpu = mv88e6393x_port_mgmt_rsvd2cpu,
 	.pot_clear = mv88e6xxx_g2_pot_clear,
+	.hardware_reset_pre = mv88e6xxx_g2_eeprom_wait,
+	.hardware_reset_post = mv88e6xxx_g2_eeprom_wait,
 	.reset = mv88e6352_g1_reset,
 	.rmu_disable = mv88e6390_g1_rmu_disable,
 	.atu_get_hash = mv88e6165_g1_atu_get_hash,
@@ -5671,20 +5473,14 @@ static const struct mv88e6xxx_ops mv88e6393x_ops = {
 	.vtu_loadpurge = mv88e6390_g1_vtu_loadpurge,
 	.stu_getnext = mv88e6390_g1_stu_getnext,
 	.stu_loadpurge = mv88e6390_g1_stu_loadpurge,
-	.serdes_power = mv88e6393x_serdes_power,
 	.serdes_get_lane = mv88e6393x_serdes_get_lane,
-	.serdes_pcs_get_state = mv88e6393x_serdes_pcs_get_state,
-	.serdes_pcs_config = mv88e6390_serdes_pcs_config,
-	.serdes_pcs_an_restart = mv88e6390_serdes_pcs_an_restart,
-	.serdes_pcs_link_up = mv88e6390_serdes_pcs_link_up,
 	.serdes_irq_mapping = mv88e6390_serdes_irq_mapping,
-	.serdes_irq_enable = mv88e6393x_serdes_irq_enable,
-	.serdes_irq_status = mv88e6393x_serdes_irq_status,
 	/* TODO: serdes stats */
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
 	.phylink_get_caps = mv88e6393x_phylink_get_caps,
+	.pcs_ops = &mv88e6393x_pcs_ops,
 };
 
 static const struct mv88e6xxx_info mv88e6xxx_table[] = {
@@ -5693,8 +5489,12 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
 		.family = MV88E6XXX_FAMILY_6250,
 		.name = "Marvell 88E6020",
 		.num_databases = 64,
-		.num_ports = 4,
+		/* Ports 2-4 are not routed to pins
+		 * => usable ports 0, 1, 5, 6
+		 */
+		.num_ports = 7,
 		.num_internal_phys = 2,
+		.invalid_port_mask = BIT(2) | BIT(3) | BIT(4),
 		.max_vid = 4095,
 		.port_base_addr = 0x8,
 		.phy_base_addr = 0x0,
@@ -5843,7 +5643,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
 		.prod_num = MV88E6XXX_PORT_SWITCH_ID_PROD_6141,
 		.family = MV88E6XXX_FAMILY_6341,
 		.name = "Marvell 88E6141",
-		.num_databases = 4096,
+		.num_databases = 256,
 		.num_macs = 2048,
 		.num_ports = 6,
 		.num_internal_phys = 5,
@@ -6302,7 +6102,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
 		.prod_num = MV88E6XXX_PORT_SWITCH_ID_PROD_6341,
 		.family = MV88E6XXX_FAMILY_6341,
 		.name = "Marvell 88E6341",
-		.num_databases = 4096,
+		.num_databases = 256,
 		.num_macs = 2048,
 		.num_internal_phys = 5,
 		.num_ports = 6,
@@ -7116,18 +6916,15 @@ static const struct dsa_switch_ops mv88e6xxx_switch_ops = {
 	.port_setup		= mv88e6xxx_port_setup,
 	.port_teardown		= mv88e6xxx_port_teardown,
 	.phylink_get_caps	= mv88e6xxx_get_caps,
-	.phylink_mac_link_state	= mv88e6xxx_serdes_pcs_get_state,
+	.phylink_mac_select_pcs	= mv88e6xxx_mac_select_pcs,
 	.phylink_mac_prepare	= mv88e6xxx_mac_prepare,
 	.phylink_mac_config	= mv88e6xxx_mac_config,
 	.phylink_mac_finish	= mv88e6xxx_mac_finish,
-	.phylink_mac_an_restart	= mv88e6xxx_serdes_pcs_an_restart,
 	.phylink_mac_link_down	= mv88e6xxx_mac_link_down,
 	.phylink_mac_link_up	= mv88e6xxx_mac_link_up,
 	.get_strings		= mv88e6xxx_get_strings,
 	.get_ethtool_stats	= mv88e6xxx_get_ethtool_stats,
 	.get_sset_count		= mv88e6xxx_get_sset_count,
-	.port_enable		= mv88e6xxx_port_enable,
-	.port_disable		= mv88e6xxx_port_disable,
 	.port_max_mtu		= mv88e6xxx_get_max_mtu,
 	.port_change_mtu	= mv88e6xxx_change_mtu,
 	.get_mac_eee		= mv88e6xxx_get_mac_eee,

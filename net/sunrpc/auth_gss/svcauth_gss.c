@@ -986,7 +986,7 @@ bad_unwrap:
 	return -EINVAL;
 }
 
-static int
+static enum svc_auth_status
 svcauth_gss_set_client(struct svc_rqst *rqstp)
 {
 	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
@@ -1043,17 +1043,11 @@ null_verifier:
 
 static void gss_free_in_token_pages(struct gssp_in_token *in_token)
 {
-	u32 inlen;
 	int i;
 
 	i = 0;
-	inlen = in_token->page_len;
-	while (inlen) {
-		if (in_token->pages[i])
-			put_page(in_token->pages[i]);
-		inlen -= inlen > PAGE_SIZE ? PAGE_SIZE : inlen;
-	}
-
+	while (in_token->pages[i])
+		put_page(in_token->pages[i++]);
 	kfree(in_token->pages);
 	in_token->pages = NULL;
 }
@@ -1085,7 +1079,7 @@ static int gss_read_proxy_verf(struct svc_rqst *rqstp,
 		goto out_denied_free;
 
 	pages = DIV_ROUND_UP(inlen, PAGE_SIZE);
-	in_token->pages = kcalloc(pages, sizeof(struct page *), GFP_KERNEL);
+	in_token->pages = kcalloc(pages + 1, sizeof(struct page *), GFP_KERNEL);
 	if (!in_token->pages)
 		goto out_denied_free;
 	in_token->page_base = 0;
@@ -1634,7 +1628,7 @@ svcauth_gss_decode_credbody(struct xdr_stream *xdr,
  *
  * The rqstp->rq_auth_stat field is also set (see RFCs 2203 and 5531).
  */
-static int
+static enum svc_auth_status
 svcauth_gss_accept(struct svc_rqst *rqstp)
 {
 	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
@@ -1945,9 +1939,6 @@ bad_wrap:
  *    %0: the Reply is ready to be sent
  *    %-ENOMEM: failed to allocate memory
  *    %-EINVAL: encoding error
- *
- * XXX: These return values do not match the return values documented
- *      for the auth_ops ->release method in linux/sunrpc/svcauth.h.
  */
 static int
 svcauth_gss_release(struct svc_rqst *rqstp)

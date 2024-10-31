@@ -2,6 +2,7 @@
 /* Copyright (C) 2021 Felix Fietkau <nbd@nbd.name> */
 
 #include <linux/kernel.h>
+#include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/bitfield.h>
@@ -597,13 +598,13 @@ mtk_wed_dma_disable(struct mtk_wed_device *dev)
 static void
 mtk_wed_stop(struct mtk_wed_device *dev)
 {
+	mtk_wed_dma_disable(dev);
 	mtk_wed_set_ext_int(dev, false);
 
 	wed_w32(dev, MTK_WED_WPDMA_INT_TRIGGER, 0);
 	wed_w32(dev, MTK_WED_WDMA_INT_TRIGGER, 0);
 	wdma_w32(dev, MTK_WDMA_INT_MASK, 0);
 	wdma_w32(dev, MTK_WDMA_INT_GRP2, 0);
-	wed_w32(dev, MTK_WED_WPDMA_INT_MASK, 0);
 
 	if (dev->hw->version == 1)
 		return;
@@ -616,7 +617,6 @@ static void
 mtk_wed_deinit(struct mtk_wed_device *dev)
 {
 	mtk_wed_stop(dev);
-	mtk_wed_dma_disable(dev);
 
 	wed_clr(dev, MTK_WED_CTRL,
 		MTK_WED_CTRL_WDMA_INT_AGENT_EN |
@@ -1099,7 +1099,7 @@ mtk_wed_rx_reset(struct mtk_wed_device *dev)
 	} else {
 		struct mtk_eth *eth = dev->hw->eth;
 
-		if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2))
+		if (mtk_is_netsys_v2_or_greater(eth))
 			wed_set(dev, MTK_WED_RESET_IDX,
 				MTK_WED_RESET_IDX_RX_V2);
 		else
@@ -1702,9 +1702,6 @@ mtk_wed_irq_get(struct mtk_wed_device *dev, u32 mask)
 static void
 mtk_wed_irq_set_mask(struct mtk_wed_device *dev, u32 mask)
 {
-	if (!dev->running)
-		return;
-
 	mtk_wed_set_ext_int(dev, !!mask);
 	wed_w32(dev, MTK_WED_INT_MASK, mask);
 }
@@ -1765,14 +1762,15 @@ mtk_wed_setup_tc_block_cb(enum tc_setup_type type, void *type_data, void *cb_pri
 {
 	struct mtk_wed_flow_block_priv *priv = cb_priv;
 	struct flow_cls_offload *cls = type_data;
-	struct mtk_wed_hw *hw = priv->hw;
+	struct mtk_wed_hw *hw = NULL;
 
-	if (!tc_can_offload(priv->dev))
+	if (!priv || !tc_can_offload(priv->dev))
 		return -EOPNOTSUPP;
 
 	if (type != TC_SETUP_CLSFLOWER)
 		return -EOPNOTSUPP;
 
+	hw = priv->hw;
 	return mtk_flow_offload_cmd(hw->eth, cls, hw->index);
 }
 
@@ -1828,6 +1826,7 @@ mtk_wed_setup_tc_block(struct mtk_wed_hw *hw, struct net_device *dev,
 			flow_block_cb_remove(block_cb, f);
 			list_del(&block_cb->driver_list);
 			kfree(block_cb->cb_priv);
+			block_cb->cb_priv = NULL;
 		}
 		return 0;
 	default:
@@ -1915,7 +1914,7 @@ void mtk_wed_add_hw(struct device_node *np, struct mtk_eth *eth,
 	hw->wdma = wdma;
 	hw->index = index;
 	hw->irq = irq;
-	hw->version = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ? 2 : 1;
+	hw->version = mtk_is_netsys_v1(eth) ? 1 : 2;
 
 	if (hw->version == 1) {
 		hw->mirror = syscon_regmap_lookup_by_phandle(eth_np,

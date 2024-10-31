@@ -365,7 +365,8 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	ktime_t now;
 	s64 timer;
 
-	if (count > sizeof(struct ipmi_ssif_msg))
+	if (count < sizeof(msg.len) ||
+	    count > sizeof(struct ipmi_ssif_msg))
 		return -EINVAL;
 
 	if (copy_from_user(&msg, buf, count))
@@ -375,6 +376,20 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	//tell upper layers that all is fine even though the message was dropped by the user
 	if (msg.header.msg_num != ssif_bmc->msg_count) {
 		return count;
+	if (!msg.len || msg.len > IPMI_SSIF_PAYLOAD_MAX ||
+	    count < sizeof_field(struct ipmi_ssif_msg, len) + msg.len)
+		return -EINVAL;
+
+	spin_lock_irqsave(&ssif_bmc->lock, flags);
+	while (ssif_bmc->response_in_progress) {
+		spin_unlock_irqrestore(&ssif_bmc->lock, flags);
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+		ret = wait_event_interruptible(ssif_bmc->wait_queue,
+					       !ssif_bmc->response_in_progress);
+		if (ret)
+			return ret;
+		spin_lock_irqsave(&ssif_bmc->lock, flags);
 	}
 
 	if (!msg.header.len || count < sizeof(struct ipmi_ssif_msg_header) + msg.header.len) {

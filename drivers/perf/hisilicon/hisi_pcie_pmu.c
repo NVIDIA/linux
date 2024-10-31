@@ -221,7 +221,7 @@ static void hisi_pcie_pmu_config_filter(struct perf_event *event)
 	struct hisi_pcie_pmu *pcie_pmu = to_pcie_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
 	u64 port, trig_len, thr_len, len_mode;
-	u64 reg = HISI_PCIE_INIT_SET;
+	u64 reg = 0;
 
 	/* Config HISI_PCIE_EVENT_CTRL according to event. */
 	reg |= FIELD_PREP(HISI_PCIE_EVENT_M, hisi_pcie_get_real_event(event));
@@ -337,15 +337,27 @@ static bool hisi_pcie_pmu_validate_event_group(struct perf_event *event)
 			return false;
 
 		for (num = 0; num < counters; num++) {
+			/*
+			 * If we find a related event, then it's a valid group
+			 * since we don't need to allocate a new counter for it.
+			 */
 			if (hisi_pcie_pmu_cmp_event(event_group[num], sibling))
 				break;
 		}
+
+		/*
+		 * Otherwise it's a new event but if there's no available counter,
+		 * fail the check since we cannot schedule all the events in
+		 * the group simultaneously.
+		 */
+		if (num == HISI_PCIE_MAX_COUNTERS)
+			return false;
 
 		if (num == counters)
 			event_group[counters++] = sibling;
 	}
 
-	return counters <= HISI_PCIE_MAX_COUNTERS;
+	return true;
 }
 
 static int hisi_pcie_pmu_event_init(struct perf_event *event)
@@ -353,15 +365,16 @@ static int hisi_pcie_pmu_event_init(struct perf_event *event)
 	struct hisi_pcie_pmu *pcie_pmu = to_pcie_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
 
+	/* Check the type first before going on, otherwise it's not our event */
+	if (event->attr.type != event->pmu->type)
+		return -ENOENT;
+
 	event->cpu = pcie_pmu->on_cpu;
 
 	if (EXT_COUNTER_IS_USED(hisi_pcie_get_event(event)))
 		hwc->event_base = HISI_PCIE_EXT_CNT;
 	else
 		hwc->event_base = HISI_PCIE_CNT;
-
-	if (event->attr.type != event->pmu->type)
-		return -ENOENT;
 
 	/* Sampling is not supported. */
 	if (is_sampling_event(event) || event->attach_state & PERF_ATTACH_TASK)
@@ -445,10 +458,24 @@ static void hisi_pcie_pmu_set_period(struct perf_event *event)
 	struct hisi_pcie_pmu *pcie_pmu = to_pcie_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
 	int idx = hwc->idx;
+	u64 orig_cnt, cnt;
+
+	orig_cnt = hisi_pcie_pmu_read_counter(event);
 
 	local64_set(&hwc->prev_count, HISI_PCIE_INIT_VAL);
 	hisi_pcie_pmu_writeq(pcie_pmu, HISI_PCIE_CNT, idx, HISI_PCIE_INIT_VAL);
 	hisi_pcie_pmu_writeq(pcie_pmu, HISI_PCIE_EXT_CNT, idx, HISI_PCIE_INIT_VAL);
+
+	/*
+	 * The counter maybe unwritable if the target event is unsupported.
+	 * Check this by comparing the counts after setting the period. If
+	 * the counts stay unchanged after setting the period then update
+	 * the hwc->prev_count correctly. Otherwise the final counts user
+	 * get maybe totally wrong.
+	 */
+	cnt = hisi_pcie_pmu_read_counter(event);
+	if (orig_cnt == cnt)
+		local64_set(&hwc->prev_count, cnt);
 }
 
 static void hisi_pcie_pmu_enable_counter(struct hisi_pcie_pmu *pcie_pmu, struct hw_perf_event *hwc)
@@ -665,8 +692,8 @@ static int hisi_pcie_pmu_online_cpu(unsigned int cpu, struct hlist_node *node)
 	struct hisi_pcie_pmu *pcie_pmu = hlist_entry_safe(node, struct hisi_pcie_pmu, node);
 
 	if (pcie_pmu->on_cpu == -1) {
-		pcie_pmu->on_cpu = cpu;
-		WARN_ON(irq_set_affinity(pcie_pmu->irq, cpumask_of(cpu)));
+		pcie_pmu->on_cpu = cpumask_local_spread(0, dev_to_node(&pcie_pmu->pdev->dev));
+		WARN_ON(irq_set_affinity(pcie_pmu->irq, cpumask_of(pcie_pmu->on_cpu)));
 	}
 
 	return 0;
@@ -676,14 +703,23 @@ static int hisi_pcie_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 {
 	struct hisi_pcie_pmu *pcie_pmu = hlist_entry_safe(node, struct hisi_pcie_pmu, node);
 	unsigned int target;
+	cpumask_t mask;
+	int numa_node;
 
 	/* Nothing to do if this CPU doesn't own the PMU */
 	if (pcie_pmu->on_cpu != cpu)
 		return 0;
 
 	pcie_pmu->on_cpu = -1;
-	/* Choose a new CPU from all online cpus. */
-	target = cpumask_any_but(cpu_online_mask, cpu);
+
+	/* Choose a local CPU from all online cpus. */
+	numa_node = dev_to_node(&pcie_pmu->pdev->dev);
+	if (cpumask_and(&mask, cpumask_of_node(numa_node), cpu_online_mask) &&
+	    cpumask_andnot(&mask, &mask, cpumask_of(cpu)))
+		target = cpumask_any(&mask);
+	else
+		target = cpumask_any_but(cpu_online_mask, cpu);
+
 	if (target >= nr_cpu_ids) {
 		pci_err(pcie_pmu->pdev, "There is no CPU to set\n");
 		return 0;

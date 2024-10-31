@@ -78,7 +78,7 @@ struct bridge_mcast_own_query {
 /* other querier */
 struct bridge_mcast_other_query {
 	struct timer_list		timer;
-	unsigned long			delay_time;
+	struct timer_list		delay_timer;
 };
 
 /* selected querier */
@@ -387,6 +387,7 @@ struct net_bridge_port {
 	struct net_bridge_vlan_group	__rcu *vlgrp;
 #endif
 	struct net_bridge_port		__rcu *backup_port;
+	u32				backup_nhid;
 
 	/* STP */
 	u8				priority;
@@ -582,6 +583,7 @@ struct br_input_skb_cb {
 #endif
 	u8 proxyarp_replied:1;
 	u8 src_port_isolated:1;
+	u8 promisc:1;
 #ifdef CONFIG_BRIDGE_VLAN_FILTERING
 	u8 vlan_filtered:1;
 #endif
@@ -605,6 +607,8 @@ struct br_input_skb_cb {
 	 */
 	unsigned long fwd_hwdoms;
 #endif
+
+	u32 backup_nhid;
 };
 
 #define BR_INPUT_SKB_CB(__skb)	((struct br_input_skb_cb *)(__skb)->cb)
@@ -971,7 +975,6 @@ int br_multicast_set_vlan_router(struct net_bridge_vlan *v, u8 mcast_router);
 int br_multicast_toggle(struct net_bridge *br, unsigned long val,
 			struct netlink_ext_ack *extack);
 int br_multicast_set_querier(struct net_bridge_mcast *brmctx, unsigned long val);
-int br_multicast_set_hash_max(struct net_bridge *br, unsigned long val);
 int br_multicast_set_igmp_version(struct net_bridge_mcast *brmctx,
 				  unsigned long val);
 #if IS_ENABLED(CONFIG_IPV6)
@@ -1147,7 +1150,7 @@ __br_multicast_querier_exists(struct net_bridge_mcast *brmctx,
 		own_querier_enabled = false;
 	}
 
-	return time_is_before_jiffies(querier->delay_time) &&
+	return !timer_pending(&querier->delay_timer) &&
 	       (own_querier_enabled || timer_pending(&querier->timer));
 }
 
@@ -1544,7 +1547,7 @@ void br_vlan_get_stats(const struct net_bridge_vlan *v,
 void br_vlan_port_event(struct net_bridge_port *p, unsigned long event);
 int br_vlan_bridge_event(struct net_device *dev, unsigned long event,
 			 void *ptr);
-void br_vlan_rtnl_init(void);
+int br_vlan_rtnl_init(void);
 void br_vlan_rtnl_uninit(void);
 void br_vlan_notify(const struct net_bridge *br,
 		    const struct net_bridge_port *p,
@@ -1775,8 +1778,9 @@ static inline int br_vlan_bridge_event(struct net_device *dev,
 	return 0;
 }
 
-static inline void br_vlan_rtnl_init(void)
+static inline int br_vlan_rtnl_init(void)
 {
+	return 0;
 }
 
 static inline void br_vlan_rtnl_uninit(void)
@@ -2115,6 +2119,12 @@ void br_switchdev_port_unoffload(struct net_bridge_port *p, const void *ctx,
 				 struct notifier_block *atomic_nb,
 				 struct notifier_block *blocking_nb);
 
+int br_switchdev_port_replay(struct net_bridge_port *p,
+			     struct net_device *dev, const void *ctx,
+			     struct notifier_block *atomic_nb,
+			     struct notifier_block *blocking_nb,
+			     struct netlink_ext_ack *extack);
+
 bool br_switchdev_frame_uses_tx_fwd_offload(struct sk_buff *skb);
 
 void br_switchdev_frame_set_offload_fwd_mark(struct sk_buff *skb);
@@ -2163,6 +2173,16 @@ br_switchdev_port_unoffload(struct net_bridge_port *p, const void *ctx,
 			    struct notifier_block *atomic_nb,
 			    struct notifier_block *blocking_nb)
 {
+}
+
+static inline int
+br_switchdev_port_replay(struct net_bridge_port *p,
+			 struct net_device *dev, const void *ctx,
+			 struct notifier_block *atomic_nb,
+			 struct notifier_block *blocking_nb,
+			 struct netlink_ext_ack *extack)
+{
+	return -EOPNOTSUPP;
 }
 
 static inline bool br_switchdev_frame_uses_tx_fwd_offload(struct sk_buff *skb)

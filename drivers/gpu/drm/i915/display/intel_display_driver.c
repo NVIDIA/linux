@@ -28,6 +28,7 @@
 #include "intel_crtc.h"
 #include "intel_display_debugfs.h"
 #include "intel_display_driver.h"
+#include "intel_display_irq.h"
 #include "intel_display_power.h"
 #include "intel_display_types.h"
 #include "intel_dkl_phy.h"
@@ -177,6 +178,7 @@ void intel_display_driver_early_probe(struct drm_i915_private *i915)
 	if (!HAS_DISPLAY(i915))
 		return;
 
+	intel_display_irq_init(i915);
 	intel_dkl_phy_init(i915);
 	intel_color_init_hooks(i915);
 	intel_init_cdclk_hooks(i915);
@@ -383,6 +385,8 @@ void intel_display_driver_register(struct drm_i915_private *i915)
 	intel_acpi_video_register(i915);
 
 	intel_audio_init(i915);
+
+	intel_audio_register(i915);
 
 	intel_display_debugfs_register(i915);
 

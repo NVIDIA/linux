@@ -1225,6 +1225,7 @@ int regmap_multi_reg_write_bypassed(struct regmap *map,
 int regmap_raw_write_async(struct regmap *map, unsigned int reg,
 			   const void *val, size_t val_len);
 int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val);
+int regmap_read_bypassed(struct regmap *map, unsigned int reg, unsigned int *val);
 int regmap_raw_read(struct regmap *map, unsigned int reg,
 		    void *val, size_t val_len);
 int regmap_noinc_read(struct regmap *map, unsigned int reg,
@@ -1287,6 +1288,7 @@ int regcache_drop_region(struct regmap *map, unsigned int min,
 void regcache_cache_only(struct regmap *map, bool enable);
 void regcache_cache_bypass(struct regmap *map, bool enable);
 void regcache_mark_dirty(struct regmap *map);
+bool regcache_reg_cached(struct regmap *map, unsigned int reg);
 
 bool regmap_check_range_table(struct regmap *map, unsigned int reg,
 			      const struct regmap_access_table *table);
@@ -1728,6 +1730,13 @@ static inline int regmap_bulk_write(struct regmap *map, unsigned int reg,
 
 static inline int regmap_read(struct regmap *map, unsigned int reg,
 			      unsigned int *val)
+{
+	WARN_ONCE(1, "regmap API is disabled");
+	return -EINVAL;
+}
+
+static inline int regmap_read_bypassed(struct regmap *map, unsigned int reg,
+				       unsigned int *val)
 {
 	WARN_ONCE(1, "regmap API is disabled");
 	return -EINVAL;

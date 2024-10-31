@@ -346,38 +346,13 @@
 				};
 			};
 
-			lpc_host: lpc_host@7000 {
-				compatible = "nuvoton,npcm750-lpc-host",
-						"simple-mfd", "syscon";
-				reg = <0x7000 0x60>;
-
-				#address-cells = <1>;
-				#size-cells = <1>;
-				ranges = <0x0 0x7000 0x60>;
-
-				lpc_bpc: lpc_bpc@40 {
-					compatible = "nuvoton,npcm750-lpc-bpc";
-					reg = <0x40 0x20>;
-					interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
-					status = "disabled";
-				};
-			};
-
-			peci: peci-bus@100000 {
-				compatible = "simple-bus";
-				#address-cells = <1>;
-				#size-cells = <1>;
-				ranges = <0x0 0x100000 0x200>;
-
-				peci0: peci-bus@0 {
-					compatible = "nuvoton,npcm750-peci";
-					reg = <0x0 0x200>;
-					#address-cells = <1>;
-					#size-cells = <0>;
-					interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
-					clocks = <&clk NPCM7XX_CLK_APB3>;
-					status = "disabled";
-				};
+			peci: peci-controller@f0100000 {
+				compatible = "nuvoton,npcm750-peci";
+				reg = <0xf0100000 0x200>;
+				interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clk NPCM7XX_CLK_APB3>;
+				cmd-timeout-ms = <1000>;
+				status = "disabled";
 			};
 
 			spi0: spi@200000 {

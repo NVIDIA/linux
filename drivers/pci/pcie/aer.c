@@ -29,6 +29,7 @@
 #include <linux/kfifo.h>
 #include <linux/slab.h>
 #include <acpi/apei.h>
+#include <acpi/ghes.h>
 #include <ras/ras_event.h>
 
 #include "../pci.h"
@@ -229,8 +230,9 @@ int pcie_aer_is_native(struct pci_dev *dev)
 
 	return pcie_ports_native || host->native_aer;
 }
+EXPORT_SYMBOL_NS_GPL(pcie_aer_is_native, CXL);
 
-int pci_enable_pcie_error_reporting(struct pci_dev *dev)
+static int pci_enable_pcie_error_reporting(struct pci_dev *dev)
 {
 	int rc;
 
@@ -240,19 +242,6 @@ int pci_enable_pcie_error_reporting(struct pci_dev *dev)
 	rc = pcie_capability_set_word(dev, PCI_EXP_DEVCTL, PCI_EXP_AER_FLAGS);
 	return pcibios_err_to_errno(rc);
 }
-EXPORT_SYMBOL_GPL(pci_enable_pcie_error_reporting);
-
-int pci_disable_pcie_error_reporting(struct pci_dev *dev)
-{
-	int rc;
-
-	if (!pcie_aer_is_native(dev))
-		return -EIO;
-
-	rc = pcie_capability_clear_word(dev, PCI_EXP_DEVCTL, PCI_EXP_AER_FLAGS);
-	return pcibios_err_to_errno(rc);
-}
-EXPORT_SYMBOL_GPL(pci_disable_pcie_error_reporting);
 
 int pci_aer_clear_nonfatal_status(struct pci_dev *dev)
 {
@@ -712,7 +701,7 @@ static void __aer_print_error(struct pci_dev *dev,
 void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
 {
 	int layer, agent;
-	int id = ((dev->bus->number << 8) | dev->devfn);
+	int id = pci_dev_id(dev);
 	const char *level;
 
 	if (!info->status) {
@@ -751,7 +740,7 @@ static void aer_print_port_info(struct pci_dev *dev, struct aer_err_info *info)
 	u8 bus = info->id >> 8;
 	u8 devfn = info->id & 0xff;
 
-	pci_info(dev, "%s%s error received: %04x:%02x:%02x.%d\n",
+	pci_info(dev, "%s%s error message received from %04x:%02x:%02x.%d\n",
 		 info->multi_error_valid ? "Multiple " : "",
 		 aer_error_severity_string[info->severity],
 		 pci_domain_nr(dev->bus), bus, PCI_SLOT(devfn),
@@ -847,7 +836,7 @@ static bool is_error_source(struct pci_dev *dev, struct aer_err_info *e_info)
 	if ((PCI_BUS_NUM(e_info->id) != 0) &&
 	    !(dev->bus->bus_flags & PCI_BUS_FLAGS_NO_AERSID)) {
 		/* Device ID match? */
-		if (e_info->id == ((dev->bus->number << 8) | dev->devfn))
+		if (e_info->id == pci_dev_id(dev))
 			return true;
 
 		/* Continue id comparing if there is no multiple error */
@@ -939,7 +928,12 @@ static bool find_source_device(struct pci_dev *parent,
 		pci_walk_bus(parent->subordinate, find_device_iter, e_info);
 
 	if (!e_info->error_dev_num) {
-		pci_info(parent, "can't find device of ID%04x\n", e_info->id);
+		u8 bus = e_info->id >> 8;
+		u8 devfn = e_info->id & 0xff;
+
+		pci_info(parent, "found no error details for %04x:%02x:%02x.%d\n",
+			 pci_domain_nr(parent->bus), bus, PCI_SLOT(devfn),
+			 PCI_FUNC(devfn));
 		return false;
 	}
 	return true;
@@ -981,8 +975,7 @@ static void handle_error_source(struct pci_dev *dev, struct aer_err_info *info)
 
 #ifdef CONFIG_ACPI_APEI_PCIEAER
 
-#define AER_RECOVER_RING_ORDER		4
-#define AER_RECOVER_RING_SIZE		(1 << AER_RECOVER_RING_ORDER)
+#define AER_RECOVER_RING_SIZE		16
 
 struct aer_recover_entry {
 	u8	bus;
@@ -1010,6 +1003,15 @@ static void aer_recover_work_func(struct work_struct *work)
 			continue;
 		}
 		cper_print_aer(pdev, entry.severity, entry.regs);
+		/*
+		 * Memory for aer_capability_regs(entry.regs) is being allocated from the
+		 * ghes_estatus_pool to protect it from overwriting when multiple sections
+		 * are present in the error status. Thus free the same after processing
+		 * the data.
+		 */
+		ghes_estatus_pool_region_free((unsigned long)entry.regs,
+					      sizeof(struct aer_capability_regs));
+
 		if (entry.severity == AER_NONFATAL)
 			pcie_do_recovery(pdev, pci_channel_io_normal,
 					 aer_root_reset);

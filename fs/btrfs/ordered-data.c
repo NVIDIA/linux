@@ -153,11 +153,12 @@ static struct btrfs_ordered_extent *alloc_ordered_extent(
 {
 	struct btrfs_ordered_extent *entry;
 	int ret;
+	u64 qgroup_rsv = 0;
 
 	if (flags &
 	    ((1 << BTRFS_ORDERED_NOCOW) | (1 << BTRFS_ORDERED_PREALLOC))) {
 		/* For nocow write, we can release the qgroup rsv right now */
-		ret = btrfs_qgroup_free_data(inode, NULL, file_offset, num_bytes);
+		ret = btrfs_qgroup_free_data(inode, NULL, file_offset, num_bytes, &qgroup_rsv);
 		if (ret < 0)
 			return ERR_PTR(ret);
 	} else {
@@ -165,7 +166,7 @@ static struct btrfs_ordered_extent *alloc_ordered_extent(
 		 * The ordered extent has reserved qgroup space, release now
 		 * and pass the reserved number for qgroup_record to free.
 		 */
-		ret = btrfs_qgroup_release_data(inode, file_offset, num_bytes);
+		ret = btrfs_qgroup_release_data(inode, file_offset, num_bytes, &qgroup_rsv);
 		if (ret < 0)
 			return ERR_PTR(ret);
 	}
@@ -183,7 +184,7 @@ static struct btrfs_ordered_extent *alloc_ordered_extent(
 	entry->inode = igrab(&inode->vfs_inode);
 	entry->compress_type = compress_type;
 	entry->truncated_len = (u64)-1;
-	entry->qgroup_rsv = ret;
+	entry->qgroup_rsv = qgroup_rsv;
 	entry->flags = flags;
 	refcount_set(&entry->refs, 1);
 	init_waitqueue_head(&entry->wait);
@@ -603,7 +604,9 @@ void btrfs_remove_ordered_extent(struct btrfs_inode *btrfs_inode,
 			release = entry->disk_num_bytes;
 		else
 			release = entry->num_bytes;
-		btrfs_delalloc_release_metadata(btrfs_inode, release, false);
+		btrfs_delalloc_release_metadata(btrfs_inode, release,
+						test_bit(BTRFS_ORDERED_IOERR,
+							 &entry->flags));
 	}
 
 	percpu_counter_add_batch(&fs_info->ordered_bytes, -entry->num_bytes,
@@ -740,10 +743,8 @@ void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, u64 nr,
 			     const u64 range_start, const u64 range_len)
 {
 	struct btrfs_root *root;
-	struct list_head splice;
+	LIST_HEAD(splice);
 	u64 done;
-
-	INIT_LIST_HEAD(&splice);
 
 	mutex_lock(&fs_info->ordered_operations_mutex);
 	spin_lock(&fs_info->ordered_root_lock);
@@ -1201,6 +1202,7 @@ struct btrfs_ordered_extent *btrfs_split_ordered_extent(
 	ordered->disk_bytenr += len;
 	ordered->num_bytes -= len;
 	ordered->disk_num_bytes -= len;
+	ordered->ram_bytes -= len;
 
 	if (test_bit(BTRFS_ORDERED_IO_DONE, &ordered->flags)) {
 		ASSERT(ordered->bytes_left == 0);

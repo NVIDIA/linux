@@ -34,6 +34,8 @@ mod build_assert;
 pub mod error;
 pub mod init;
 pub mod ioctl;
+#[cfg(CONFIG_KUNIT)]
+pub mod kunit;
 pub mod prelude;
 pub mod print;
 mod static_assert;
@@ -58,7 +60,7 @@ const __LOG_PREFIX: &[u8] = b"rust_kernel\0";
 /// The top level entrypoint to implementing a kernel module.
 ///
 /// For any teardown or cleanup operations, your type may implement [`Drop`].
-pub trait Module: Sized + Sync {
+pub trait Module: Sized + Sync + Send {
     /// Called at module initialization time.
     ///
     /// Use this method to perform whatever setup or registration your module
@@ -93,7 +95,4 @@ fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
     pr_emerg!("{}\n", info);
     // SAFETY: FFI call.
     unsafe { bindings::BUG() };
-    // Bindgen currently does not recognize `__noreturn` so `BUG` returns `()`
-    // instead of `!`. See <https://github.com/rust-lang/rust-bindgen/issues/2094>.
-    loop {}
 }

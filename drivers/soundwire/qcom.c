@@ -10,7 +10,6 @@
 #include <linux/debugfs.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
-#include <linux/of_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
@@ -1612,6 +1611,9 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 			goto err_init;
 		}
 	}
+
+	/* FIXME: is there a DT-defined value to use ? */
+	ctrl->bus.controller_id = -1;
 
 	ret = sdw_bus_master_add(&ctrl->bus, dev, dev->fwnode);
 	if (ret) {

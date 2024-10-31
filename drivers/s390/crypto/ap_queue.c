@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright IBM Corp. 2016
+ * Copyright IBM Corp. 2016, 2023
  * Author(s): Martin Schwidefsky <schwidefsky@de.ibm.com>
  *
  * Adjunct processor bus, queue related code.
@@ -92,51 +92,6 @@ __ap_send(ap_qid_t qid, unsigned long psmid, void *msg, size_t msglen,
 		qid |= 0x400000UL;
 	return ap_nqap(qid, psmid, msg, msglen);
 }
-
-int ap_send(ap_qid_t qid, unsigned long psmid, void *msg, size_t msglen)
-{
-	struct ap_queue_status status;
-
-	status = __ap_send(qid, psmid, msg, msglen, 0);
-	if (status.async)
-		return -EPERM;
-	switch (status.response_code) {
-	case AP_RESPONSE_NORMAL:
-		return 0;
-	case AP_RESPONSE_Q_FULL:
-	case AP_RESPONSE_RESET_IN_PROGRESS:
-		return -EBUSY;
-	case AP_RESPONSE_REQ_FAC_NOT_INST:
-		return -EINVAL;
-	default:	/* Device is gone. */
-		return -ENODEV;
-	}
-}
-EXPORT_SYMBOL(ap_send);
-
-int ap_recv(ap_qid_t qid, unsigned long *psmid, void *msg, size_t msglen)
-{
-	struct ap_queue_status status;
-
-	if (!msg)
-		return -EINVAL;
-	status = ap_dqap(qid, psmid, msg, msglen, NULL, NULL, NULL);
-	if (status.async)
-		return -EPERM;
-	switch (status.response_code) {
-	case AP_RESPONSE_NORMAL:
-		return 0;
-	case AP_RESPONSE_NO_PENDING_REPLY:
-		if (status.queue_empty)
-			return -ENOENT;
-		return -EBUSY;
-	case AP_RESPONSE_RESET_IN_PROGRESS:
-		return -EBUSY;
-	default:
-		return -ENODEV;
-	}
-}
-EXPORT_SYMBOL(ap_recv);
 
 /* State machine definitions and helpers */
 
@@ -1205,14 +1160,19 @@ void ap_queue_remove(struct ap_queue *aq)
 	spin_unlock_bh(&aq->lock);
 }
 
-void ap_queue_init_state(struct ap_queue *aq)
+void _ap_queue_init_state(struct ap_queue *aq)
 {
-	spin_lock_bh(&aq->lock);
 	aq->dev_state = AP_DEV_STATE_OPERATING;
 	aq->sm_state = AP_SM_STATE_RESET_START;
 	aq->last_err_rc = 0;
 	aq->assoc_idx = ASSOC_IDX_INVALID;
 	ap_wait(ap_sm_event(aq, AP_SM_EVENT_POLL));
+}
+
+void ap_queue_init_state(struct ap_queue *aq)
+{
+	spin_lock_bh(&aq->lock);
+	_ap_queue_init_state(aq);
 	spin_unlock_bh(&aq->lock);
 }
 EXPORT_SYMBOL(ap_queue_init_state);

@@ -7,9 +7,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_device.h>
-#include <linux/of_irq.h>
+#include <linux/platform_device.h>
 #include <linux/perf_event.h>
 
 /* Performance monitor configuration */
@@ -478,11 +476,11 @@ static int ddr_perf_event_add(struct perf_event *event, int flags)
 	hwc->idx = counter;
 	hwc->state |= PERF_HES_STOPPED;
 
-	if (flags & PERF_EF_START)
-		ddr_perf_event_start(event, flags);
-
 	/* read trans, write trans, read beat */
 	ddr_perf_monitor_config(pmu, cfg, cfg1, cfg2);
+
+	if (flags & PERF_EF_START)
+		ddr_perf_event_start(event, flags);
 
 	return 0;
 }

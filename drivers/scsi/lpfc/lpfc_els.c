@@ -1041,7 +1041,7 @@ stop_rr_fcf_flogi:
 		    !(ndlp->fc4_xpt_flags & SCSI_XPT_REGD))
 			lpfc_nlp_put(ndlp);
 
-		lpfc_printf_vlog(vport, KERN_WARNING, LOG_TRACE_EVENT,
+		lpfc_printf_vlog(vport, KERN_WARNING, LOG_ELS,
 				 "0150 FLOGI failure Status:x%x/x%x "
 				 "xri x%x TMO:x%x refcnt %d\n",
 				 ulp_status, ulp_word4, cmdiocb->sli4_xritag,
@@ -1091,7 +1091,6 @@ stop_rr_fcf_flogi:
 			if (!lpfc_error_lost_link(vport, ulp_status, ulp_word4))
 				lpfc_issue_reg_vfi(vport);
 
-			lpfc_nlp_put(ndlp);
 			goto out;
 		}
 		goto flogifail;
@@ -1120,12 +1119,12 @@ stop_rr_fcf_flogi:
 			 vport->port_state, vport->fc_flag,
 			 sp->cmn.priority_tagging, kref_read(&ndlp->kref));
 
-	if (sp->cmn.priority_tagging)
-		vport->phba->pport->vmid_flag |= (LPFC_VMID_ISSUE_QFPA |
-						  LPFC_VMID_TYPE_PRIO);
 	/* reinitialize the VMID datastructure before returning */
 	if (lpfc_is_vmid_enabled(phba))
 		lpfc_reinit_vmid(vport);
+	if (sp->cmn.priority_tagging)
+		vport->phba->pport->vmid_flag |= (LPFC_VMID_ISSUE_QFPA |
+						  LPFC_VMID_TYPE_PRIO);
 
 	/*
 	 * Address a timing race with dev_loss.  If dev_loss is active on
@@ -1332,7 +1331,8 @@ lpfc_issue_els_flogi(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 	if (phba->cfg_vmid_priority_tagging) {
 		sp->cmn.priority_tagging = 1;
 		/* lpfc_vmid_host_uuid is combination of wwpn and wwnn */
-		if (uuid_is_null((uuid_t *)vport->lpfc_vmid_host_uuid)) {
+		if (!memchr_inv(vport->lpfc_vmid_host_uuid, 0,
+				sizeof(vport->lpfc_vmid_host_uuid))) {
 			memcpy(vport->lpfc_vmid_host_uuid, phba->wwpn,
 			       sizeof(phba->wwpn));
 			memcpy(&vport->lpfc_vmid_host_uuid[8], phba->wwnn,
@@ -2377,10 +2377,10 @@ lpfc_cmpl_els_prli(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		/* PRLI failed */
 		lpfc_printf_vlog(vport, mode, loglevel,
 				 "2754 PRLI failure DID:%06X Status:x%x/x%x, "
-				 "data: x%x x%x\n",
+				 "data: x%x x%x x%x\n",
 				 ndlp->nlp_DID, ulp_status,
 				 ulp_word4, ndlp->nlp_state,
-				 ndlp->fc4_prli_sent);
+				 ndlp->fc4_prli_sent, ndlp->nlp_flag);
 
 		/* Do not call DSM for lpfc_els_abort'ed ELS cmds */
 		if (!lpfc_error_lost_link(vport, ulp_status, ulp_word4))
@@ -2391,14 +2391,16 @@ lpfc_cmpl_els_prli(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		 * mismatch typically caused by an RSCN. Skip any
 		 * processing to allow recovery.
 		 */
-		if (ndlp->nlp_state >= NLP_STE_PLOGI_ISSUE &&
-		    ndlp->nlp_state <= NLP_STE_REG_LOGIN_ISSUE) {
+		if ((ndlp->nlp_state >= NLP_STE_PLOGI_ISSUE &&
+		     ndlp->nlp_state <= NLP_STE_REG_LOGIN_ISSUE) ||
+		    (ndlp->nlp_state == NLP_STE_NPR_NODE &&
+		     ndlp->nlp_flag & NLP_DELAY_TMO)) {
 			lpfc_printf_vlog(vport, KERN_WARNING, LOG_NODE,
-					 "2784 PRLI cmpl: state mismatch "
+					 "2784 PRLI cmpl: Allow Node recovery "
 					 "DID x%06x nstate x%x nflag x%x\n",
 					 ndlp->nlp_DID, ndlp->nlp_state,
 					 ndlp->nlp_flag);
-				goto out;
+			goto out;
 		}
 
 		/*
@@ -4430,23 +4432,23 @@ lpfc_els_retry_delay(struct timer_list *t)
 	unsigned long flags;
 	struct lpfc_work_evt  *evtp = &ndlp->els_retry_evt;
 
+	/* Hold a node reference for outstanding queued work */
+	if (!lpfc_nlp_get(ndlp))
+		return;
+
 	spin_lock_irqsave(&phba->hbalock, flags);
 	if (!list_empty(&evtp->evt_listp)) {
 		spin_unlock_irqrestore(&phba->hbalock, flags);
+		lpfc_nlp_put(ndlp);
 		return;
 	}
 
-	/* We need to hold the node by incrementing the reference
-	 * count until the queued work is done
-	 */
-	evtp->evt_arg1  = lpfc_nlp_get(ndlp);
-	if (evtp->evt_arg1) {
-		evtp->evt = LPFC_EVT_ELS_RETRY;
-		list_add_tail(&evtp->evt_listp, &phba->work_list);
-		lpfc_worker_wake_up(phba);
-	}
+	evtp->evt_arg1 = ndlp;
+	evtp->evt = LPFC_EVT_ELS_RETRY;
+	list_add_tail(&evtp->evt_listp, &phba->work_list);
 	spin_unlock_irqrestore(&phba->hbalock, flags);
-	return;
+
+	lpfc_worker_wake_up(phba);
 }
 
 /**
@@ -5226,9 +5228,10 @@ lpfc_cmpl_els_logo_acc(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 	/* ACC to LOGO completes to NPort <nlp_DID> */
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_ELS,
 			 "0109 ACC to LOGO completes to NPort x%x refcnt %d "
-			 "Data: x%x x%x x%x\n",
-			 ndlp->nlp_DID, kref_read(&ndlp->kref), ndlp->nlp_flag,
-			 ndlp->nlp_state, ndlp->nlp_rpi);
+			 "last els x%x Data: x%x x%x x%x\n",
+			 ndlp->nlp_DID, kref_read(&ndlp->kref),
+			 ndlp->nlp_last_elscmd, ndlp->nlp_flag, ndlp->nlp_state,
+			 ndlp->nlp_rpi);
 
 	/* This clause allows the LOGO ACC to complete and free resources
 	 * for the Fabric Domain Controller.  It does deliberately skip
@@ -5240,18 +5243,22 @@ lpfc_cmpl_els_logo_acc(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		goto out;
 
 	if (ndlp->nlp_state == NLP_STE_NPR_NODE) {
-		/* If PLOGI is being retried, PLOGI completion will cleanup the
-		 * node. The NLP_NPR_2B_DISC flag needs to be retained to make
-		 * progress on nodes discovered from last RSCN.
-		 */
-		if ((ndlp->nlp_flag & NLP_DELAY_TMO) &&
-		    (ndlp->nlp_last_elscmd == ELS_CMD_PLOGI))
-			goto out;
-
 		if (ndlp->nlp_flag & NLP_RPI_REGISTERED)
 			lpfc_unreg_rpi(vport, ndlp);
 
+		/* If came from PRLO, then PRLO_ACC is done.
+		 * Start rediscovery now.
+		 */
+		if (ndlp->nlp_last_elscmd == ELS_CMD_PRLO) {
+			spin_lock_irq(&ndlp->lock);
+			ndlp->nlp_flag |= NLP_NPR_2B_DISC;
+			spin_unlock_irq(&ndlp->lock);
+			ndlp->nlp_prev_state = ndlp->nlp_state;
+			lpfc_nlp_set_state(vport, ndlp, NLP_STE_PLOGI_ISSUE);
+			lpfc_issue_els_plogi(vport, ndlp->nlp_DID, 0);
+		}
 	}
+
  out:
 	/*
 	 * The driver received a LOGO from the rport and has ACK'd it.
@@ -6166,11 +6173,25 @@ lpfc_els_rsp_prli_acc(struct lpfc_vport *vport, struct lpfc_iocbq *oldiocb,
 			npr->TaskRetryIdReq = 1;
 		}
 		npr->acceptRspCode = PRLI_REQ_EXECUTED;
-		npr->estabImagePair = 1;
+
+		/* Set image pair for complementary pairs only. */
+		if (ndlp->nlp_type & NLP_FCP_TARGET)
+			npr->estabImagePair = 1;
+		else
+			npr->estabImagePair = 0;
 		npr->readXferRdyDis = 1;
 		npr->ConfmComplAllowed = 1;
 		npr->prliType = PRLI_FCP_TYPE;
 		npr->initiatorFunc = 1;
+
+		/* Xmit PRLI ACC response tag <ulpIoTag> */
+		lpfc_printf_vlog(vport, KERN_INFO,
+				 LOG_ELS | LOG_NODE | LOG_DISCOVERY,
+				 "6014 FCP issue PRLI ACC imgpair %d "
+				 "retry %d task %d\n",
+				 npr->estabImagePair,
+				 npr->Retry, npr->TaskRetryIdReq);
+
 	} else if (prli_fc4_req == PRLI_NVME_TYPE) {
 		/* Respond with an NVME PRLI Type */
 		npr_nvme = (struct lpfc_nvme_prli *) pcmd;
@@ -9629,11 +9650,12 @@ lpfc_els_flush_cmd(struct lpfc_vport *vport)
 		if (piocb->cmd_flag & LPFC_DRIVER_ABORTED && !mbx_tmo_err)
 			continue;
 
-		/* On the ELS ring we can have ELS_REQUESTs or
-		 * GEN_REQUESTs waiting for a response.
+		/* On the ELS ring we can have ELS_REQUESTs, ELS_RSPs,
+		 * or GEN_REQUESTs waiting for a CQE response.
 		 */
 		ulp_command = get_job_cmnd(phba, piocb);
-		if (ulp_command == CMD_ELS_REQUEST64_CR) {
+		if (ulp_command == CMD_ELS_REQUEST64_WQE ||
+		    ulp_command == CMD_XMIT_ELS_RSP64_WQE) {
 			list_add_tail(&piocb->dlist, &abort_list);
 
 			/* If the link is down when flushing ELS commands
@@ -11095,6 +11117,14 @@ mbox_err_exit:
 	lpfc_nlp_put(ndlp);
 
 	mempool_free(pmb, phba->mbox_mem_pool);
+
+	/* reinitialize the VMID datastructure before returning.
+	 * this is specifically for vport
+	 */
+	if (lpfc_is_vmid_enabled(phba))
+		lpfc_reinit_vmid(vport);
+	vport->vmid_flag = vport->phba->pport->vmid_flag;
+
 	return;
 }
 
@@ -12343,9 +12373,10 @@ lpfc_vmid_uvem(struct lpfc_vport *vport,
 	elsiocb->vmid_tag.vmid_context = vmid_context;
 	pcmd = (u8 *)elsiocb->cmd_dmabuf->virt;
 
-	if (uuid_is_null((uuid_t *)vport->lpfc_vmid_host_uuid))
+	if (!memchr_inv(vport->lpfc_vmid_host_uuid, 0,
+			sizeof(vport->lpfc_vmid_host_uuid)))
 		memcpy(vport->lpfc_vmid_host_uuid, vmid->host_vmid,
-		       LPFC_COMPRESS_VMID_SIZE);
+		       sizeof(vport->lpfc_vmid_host_uuid));
 
 	*((u32 *)(pcmd)) = ELS_CMD_UVEM;
 	len = (u32 *)(pcmd + 4);
@@ -12355,13 +12386,13 @@ lpfc_vmid_uvem(struct lpfc_vport *vport,
 	vem_id_desc->tag = be32_to_cpu(VEM_ID_DESC_TAG);
 	vem_id_desc->length = be32_to_cpu(LPFC_UVEM_VEM_ID_DESC_SIZE);
 	memcpy(vem_id_desc->vem_id, vport->lpfc_vmid_host_uuid,
-	       LPFC_COMPRESS_VMID_SIZE);
+	       sizeof(vem_id_desc->vem_id));
 
 	inst_desc = (struct instantiated_ve_desc *)(pcmd + 32);
 	inst_desc->tag = be32_to_cpu(INSTANTIATED_VE_DESC_TAG);
 	inst_desc->length = be32_to_cpu(LPFC_UVEM_VE_MAP_DESC_SIZE);
 	memcpy(inst_desc->global_vem_id, vmid->host_vmid,
-	       LPFC_COMPRESS_VMID_SIZE);
+	       sizeof(inst_desc->global_vem_id));
 
 	bf_set(lpfc_instantiated_nport_id, inst_desc, vport->fc_myDID);
 	bf_set(lpfc_instantiated_local_id, inst_desc,

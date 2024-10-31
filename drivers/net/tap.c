@@ -22,6 +22,7 @@
 #include <net/net_namespace.h>
 #include <net/rtnetlink.h>
 #include <net/sock.h>
+#include <net/xdp.h>
 #include <linux/virtio_net.h>
 #include <linux/skb_array.h>
 
@@ -614,8 +615,10 @@ static inline struct sk_buff *tap_alloc_skb(struct sock *sk, size_t prepad,
 	if (prepad + len < PAGE_SIZE || !linear)
 		linear = len;
 
+	if (len - linear > MAX_SKB_FRAGS * (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER))
+		linear = len - MAX_SKB_FRAGS * (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER);
 	skb = sock_alloc_send_pskb(sk, prepad + linear, len - linear, noblock,
-				   err, 0);
+				   err, PAGE_ALLOC_COSTLY_ORDER);
 	if (!skb)
 		return NULL;
 
@@ -1173,6 +1176,11 @@ static int tap_get_user_xdp(struct tap_queue *q, struct xdp_buff *xdp)
 	struct tap_dev *tap;
 	struct sk_buff *skb;
 	int err, depth;
+
+	if (unlikely(xdp->data_end - xdp->data < ETH_HLEN)) {
+		err = -EINVAL;
+		goto err;
+	}
 
 	if (q->flags & IFF_VNET_HDR)
 		vnet_hdr_len = READ_ONCE(q->vnet_hdr_sz);

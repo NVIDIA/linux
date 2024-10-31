@@ -219,8 +219,8 @@ static int rq_qos_wake_function(struct wait_queue_entry *curr,
 
 	data->got_token = true;
 	smp_wmb();
-	list_del_init(&curr->entry);
 	wake_up_process(data->task);
+	list_del_init_careful(&curr->entry);
 	return 1;
 }
 
@@ -270,7 +270,7 @@ void rq_qos_wait(struct rq_wait *rqw, void *private_data,
 			finish_wait(&rqw->wait, &data.wq);
 
 			/*
-			 * We raced with wbt_wake_function() getting a token,
+			 * We raced with rq_qos_wake_function() getting a token,
 			 * which means we now have two. Put our local token
 			 * and wake anyone else potentially waiting for one.
 			 */

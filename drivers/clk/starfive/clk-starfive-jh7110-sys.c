@@ -7,6 +7,7 @@
  */
 
 #include <linux/auxiliary_bus.h>
+#include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -384,11 +385,38 @@ int jh7110_reset_controller_register(struct jh71x0_clk_priv *priv,
 }
 EXPORT_SYMBOL_GPL(jh7110_reset_controller_register);
 
+/*
+ * This clock notifier is called when the rate of PLL0 clock is to be changed.
+ * The cpu_root clock should save the curent parent clock and switch its parent
+ * clock to osc before PLL0 rate will be changed. Then switch its parent clock
+ * back after the PLL0 rate is completed.
+ */
+static int jh7110_pll0_clk_notifier_cb(struct notifier_block *nb,
+				       unsigned long action, void *data)
+{
+	struct jh71x0_clk_priv *priv = container_of(nb, struct jh71x0_clk_priv, pll_clk_nb);
+	struct clk *cpu_root = priv->reg[JH7110_SYSCLK_CPU_ROOT].hw.clk;
+	int ret = 0;
+
+	if (action == PRE_RATE_CHANGE) {
+		struct clk *osc = clk_get(priv->dev, "osc");
+
+		priv->original_clk = clk_get_parent(cpu_root);
+		ret = clk_set_parent(cpu_root, osc);
+		clk_put(osc);
+	} else if (action == POST_RATE_CHANGE) {
+		ret = clk_set_parent(cpu_root, priv->original_clk);
+	}
+
+	return notifier_from_errno(ret);
+}
+
 static int __init jh7110_syscrg_probe(struct platform_device *pdev)
 {
 	struct jh71x0_clk_priv *priv;
 	unsigned int idx;
 	int ret;
+	struct clk *pllclk;
 
 	priv = devm_kzalloc(&pdev->dev,
 			    struct_size(priv, reg, JH7110_SYSCLK_END),
@@ -402,28 +430,45 @@ static int __init jh7110_syscrg_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
-	/*
-	 * These PLL clocks are not actually fixed factor clocks and can be
-	 * controlled by the syscon registers of JH7110. They will be dropped
-	 * and registered in the PLL clock driver instead.
-	 */
-	/* 24MHz -> 1000.0MHz */
-	priv->pll[0] = devm_clk_hw_register_fixed_factor(priv->dev, "pll0_out",
-							 "osc", 0, 125, 3);
-	if (IS_ERR(priv->pll[0]))
-		return PTR_ERR(priv->pll[0]);
+	/* Use fixed factor clocks if can not get the PLL clocks from DTS */
+	pllclk = clk_get(priv->dev, "pll0_out");
+	if (IS_ERR(pllclk)) {
+		/* 24MHz -> 1000.0MHz */
+		priv->pll[0] = devm_clk_hw_register_fixed_factor(priv->dev, "pll0_out",
+								 "osc", 0, 125, 3);
+		if (IS_ERR(priv->pll[0]))
+			return PTR_ERR(priv->pll[0]);
+	} else {
+		priv->pll_clk_nb.notifier_call = jh7110_pll0_clk_notifier_cb;
+		ret = clk_notifier_register(pllclk, &priv->pll_clk_nb);
+		if (ret)
+			return ret;
+		priv->pll[0] = NULL;
+	}
 
-	/* 24MHz -> 1066.0MHz */
-	priv->pll[1] = devm_clk_hw_register_fixed_factor(priv->dev, "pll1_out",
-							 "osc", 0, 533, 12);
-	if (IS_ERR(priv->pll[1]))
-		return PTR_ERR(priv->pll[1]);
+	pllclk = clk_get(priv->dev, "pll1_out");
+	if (IS_ERR(pllclk)) {
+		/* 24MHz -> 1066.0MHz */
+		priv->pll[1] = devm_clk_hw_register_fixed_factor(priv->dev, "pll1_out",
+								 "osc", 0, 533, 12);
+		if (IS_ERR(priv->pll[1]))
+			return PTR_ERR(priv->pll[1]);
+	} else {
+		clk_put(pllclk);
+		priv->pll[1] = NULL;
+	}
 
-	/* 24MHz -> 1188.0MHz */
-	priv->pll[2] = devm_clk_hw_register_fixed_factor(priv->dev, "pll2_out",
-							 "osc", 0, 99, 2);
-	if (IS_ERR(priv->pll[2]))
-		return PTR_ERR(priv->pll[2]);
+	pllclk = clk_get(priv->dev, "pll2_out");
+	if (IS_ERR(pllclk)) {
+		/* 24MHz -> 1188.0MHz */
+		priv->pll[2] = devm_clk_hw_register_fixed_factor(priv->dev, "pll2_out",
+								 "osc", 0, 99, 2);
+		if (IS_ERR(priv->pll[2]))
+			return PTR_ERR(priv->pll[2]);
+	} else {
+		clk_put(pllclk);
+		priv->pll[2] = NULL;
+	}
 
 	for (idx = 0; idx < JH7110_SYSCLK_END; idx++) {
 		u32 max = jh7110_sysclk_data[idx].max;
@@ -462,6 +507,12 @@ static int __init jh7110_syscrg_probe(struct platform_device *pdev)
 				parents[i].fw_name = "tdm_ext";
 			else if (pidx == JH7110_SYSCLK_MCLK_EXT)
 				parents[i].fw_name = "mclk_ext";
+			else if (pidx == JH7110_SYSCLK_PLL0_OUT && !priv->pll[0])
+				parents[i].fw_name = "pll0_out";
+			else if (pidx == JH7110_SYSCLK_PLL1_OUT && !priv->pll[1])
+				parents[i].fw_name = "pll1_out";
+			else if (pidx == JH7110_SYSCLK_PLL2_OUT && !priv->pll[2])
+				parents[i].fw_name = "pll2_out";
 			else
 				parents[i].hw = priv->pll[pidx - JH7110_SYSCLK_PLL0_OUT];
 		}

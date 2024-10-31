@@ -13,7 +13,7 @@
 #include <linux/iopoll.h>
 #include <linux/minmax.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_dma.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
@@ -745,6 +745,9 @@ static int tegra_dma_get_residual(struct tegra_dma_channel *tdc)
 
 	bytes_xfer = dma_desc->bytes_xfer +
 		     sg_req[dma_desc->sg_idx].len - (wcount * 4);
+
+	if (dma_desc->bytes_req == bytes_xfer)
+		return 0;
 
 	residual = dma_desc->bytes_req - (bytes_xfer % dma_desc->bytes_req);
 

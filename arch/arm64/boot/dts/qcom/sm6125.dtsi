@@ -181,6 +181,78 @@
 		method = "smc";
 	};
 
+	rpm: remoteproc {
+		compatible = "qcom,sm6125-rpm-proc", "qcom,rpm-proc";
+
+		glink-edge {
+			compatible = "qcom,glink-rpm";
+
+			interrupts = <GIC_SPI 194 IRQ_TYPE_EDGE_RISING>;
+			qcom,rpm-msg-ram = <&rpm_msg_ram>;
+			mboxes = <&apcs_glb 0>;
+
+			rpm_requests: rpm-requests {
+				compatible = "qcom,rpm-sm6125";
+				qcom,glink-channels = "rpm_requests";
+
+				rpmcc: clock-controller {
+					compatible = "qcom,rpmcc-sm6125", "qcom,rpmcc";
+					#clock-cells = <1>;
+				};
+
+				rpmpd: power-controller {
+					compatible = "qcom,sm6125-rpmpd";
+					#power-domain-cells = <1>;
+					operating-points-v2 = <&rpmpd_opp_table>;
+
+					rpmpd_opp_table: opp-table {
+						compatible = "operating-points-v2";
+
+						rpmpd_opp_ret: opp1 {
+							opp-level = <RPM_SMD_LEVEL_RETENTION>;
+						};
+
+						rpmpd_opp_ret_plus: opp2 {
+							opp-level = <RPM_SMD_LEVEL_RETENTION_PLUS>;
+						};
+
+						rpmpd_opp_min_svs: opp3 {
+							opp-level = <RPM_SMD_LEVEL_MIN_SVS>;
+						};
+
+						rpmpd_opp_low_svs: opp4 {
+							opp-level = <RPM_SMD_LEVEL_LOW_SVS>;
+						};
+
+						rpmpd_opp_svs: opp5 {
+							opp-level = <RPM_SMD_LEVEL_SVS>;
+						};
+
+						rpmpd_opp_svs_plus: opp6 {
+							opp-level = <RPM_SMD_LEVEL_SVS_PLUS>;
+						};
+
+						rpmpd_opp_nom: opp7 {
+							opp-level = <RPM_SMD_LEVEL_NOM>;
+						};
+
+						rpmpd_opp_nom_plus: opp8 {
+							opp-level = <RPM_SMD_LEVEL_NOM_PLUS>;
+						};
+
+						rpmpd_opp_turbo: opp9 {
+							opp-level = <RPM_SMD_LEVEL_TURBO>;
+						};
+
+						rpmpd_opp_turbo_no_cpr: opp10 {
+							opp-level = <RPM_SMD_LEVEL_TURBO_NO_CPR>;
+						};
+					};
+				};
+			};
+		};
+	};
+
 	reserved_memory: reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -289,74 +361,6 @@
 		qseecom_ta_mem: memory@13fc00000 {
 			reg = <0x1 0x3fc00000 0x0 0x400000>;
 			no-map;
-		};
-	};
-
-	rpm-glink {
-		compatible = "qcom,glink-rpm";
-
-		interrupts = <GIC_SPI 194 IRQ_TYPE_EDGE_RISING>;
-		qcom,rpm-msg-ram = <&rpm_msg_ram>;
-		mboxes = <&apcs_glb 0>;
-
-		rpm_requests: rpm-requests {
-			compatible = "qcom,rpm-sm6125";
-			qcom,glink-channels = "rpm_requests";
-
-			rpmcc: clock-controller {
-				compatible = "qcom,rpmcc-sm6125", "qcom,rpmcc";
-				#clock-cells = <1>;
-			};
-
-			rpmpd: power-controller {
-				compatible = "qcom,sm6125-rpmpd";
-				#power-domain-cells = <1>;
-				operating-points-v2 = <&rpmpd_opp_table>;
-
-				rpmpd_opp_table: opp-table {
-					compatible = "operating-points-v2";
-
-					rpmpd_opp_ret: opp1 {
-						opp-level = <RPM_SMD_LEVEL_RETENTION>;
-					};
-
-					rpmpd_opp_ret_plus: opp2 {
-						opp-level = <RPM_SMD_LEVEL_RETENTION_PLUS>;
-					};
-
-					rpmpd_opp_min_svs: opp3 {
-						opp-level = <RPM_SMD_LEVEL_MIN_SVS>;
-					};
-
-					rpmpd_opp_low_svs: opp4 {
-						opp-level = <RPM_SMD_LEVEL_LOW_SVS>;
-					};
-
-					rpmpd_opp_svs: opp5 {
-						opp-level = <RPM_SMD_LEVEL_SVS>;
-					};
-
-					rpmpd_opp_svs_plus: opp6 {
-						opp-level = <RPM_SMD_LEVEL_SVS_PLUS>;
-					};
-
-					rpmpd_opp_nom: opp7 {
-						opp-level = <RPM_SMD_LEVEL_NOM>;
-					};
-
-					rpmpd_opp_nom_plus: opp8 {
-						opp-level = <RPM_SMD_LEVEL_NOM_PLUS>;
-					};
-
-					rpmpd_opp_turbo: opp9 {
-						opp-level = <RPM_SMD_LEVEL_TURBO>;
-					};
-
-					rpmpd_opp_turbo_no_cpr: opp10 {
-						opp-level = <RPM_SMD_LEVEL_TURBO_NO_CPR>;
-					};
-				};
-			};
 		};
 	};
 
@@ -1161,6 +1165,10 @@
 					  <&gcc GCC_USB30_PRIM_MASTER_CLK>;
 			assigned-clock-rates = <19200000>, <66666667>;
 
+			interrupts = <GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 422 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "hs_phy_irq", "ss_phy_irq";
+
 			power-domains = <&gcc USB30_PRIM_GDSC>;
 			qcom,select-utmi-as-pipe-clk;
 			status = "disabled";
@@ -1204,7 +1212,7 @@
 
 		apps_smmu: iommu@c600000 {
 			compatible = "qcom,sm6125-smmu-500", "qcom,smmu-500", "arm,mmu-500";
-			reg = <0xc600000 0x80000>;
+			reg = <0x0c600000 0x80000>;
 			interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>,

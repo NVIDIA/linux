@@ -324,14 +324,13 @@ struct hid_data {
 	int bat_connected;
 	int ps_connected;
 	bool pad_input_event_flag;
-	unsigned short sequence_number;
+	int sequence_number;
 	ktime_t time_delayed;
 };
 
-struct wacom_remote_data {
+struct wacom_remote_work_data {
 	struct {
 		u32 serial;
-		bool connected;
 	} remote[WACOM_MAX_REMOTES];
 };
 

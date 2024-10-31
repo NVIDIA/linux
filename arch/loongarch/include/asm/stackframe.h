@@ -41,7 +41,7 @@
 	.macro JUMP_VIRT_ADDR temp1 temp2
 	li.d	\temp1, CACHE_BASE
 	pcaddi	\temp2, 0
-	or	\temp1, \temp1, \temp2
+	bstrins.d  \temp1, \temp2, (DMW_PABITS - 1), 0
 	jirl	zero, \temp1, 0xc
 	.endm
 
@@ -158,6 +158,10 @@
 	cfi_st  u0, PT_R21, \docfi
 	csrrd	u0, PERCPU_BASE_KS
 9:
+#ifdef CONFIG_KGDB
+	li.w	t0, CSR_CRMD_WE
+	csrxchg	t0, t0, LOONGARCH_CSR_CRMD
+#endif
 	.endm
 
 	.macro	SAVE_ALL docfi=0

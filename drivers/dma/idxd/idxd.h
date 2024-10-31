@@ -275,18 +275,18 @@ struct idxd_driver_data {
 	int evl_cr_off;
 	int cr_status_off;
 	int cr_result_off;
+	bool user_submission_safe;
 };
 
 struct idxd_evl {
 	/* Lock to protect event log access. */
-	spinlock_t lock;
+	struct mutex lock;
 	void *log;
 	dma_addr_t dma;
 	/* Total size of event log = number of entries * entry size. */
 	unsigned int log_size;
 	/* The number of entries in the event log. */
 	u16 size;
-	u16 head;
 	unsigned long *bmap;
 	bool batch_fail[IDXD_MAX_BATCH_IDENT];
 };
@@ -361,6 +361,8 @@ struct idxd_device {
 
 	struct dentry *dbgfs_dir;
 	struct dentry *dbgfs_evl_file;
+
+	bool user_submission_safe;
 };
 
 static inline unsigned int evl_ent_size(struct idxd_device *idxd)
@@ -471,6 +473,15 @@ static inline struct idxd_wq *ie_to_wq(struct idxd_irq_entry *ie)
 static inline struct idxd_device *ie_to_idxd(struct idxd_irq_entry *ie)
 {
 	return container_of(ie, struct idxd_device, ie);
+}
+
+static inline void idxd_set_user_intr(struct idxd_device *idxd, bool enable)
+{
+	union gencfg_reg reg;
+
+	reg.bits = ioread32(idxd->reg_base + IDXD_GENCFG_OFFSET);
+	reg.user_int_en = enable;
+	iowrite32(reg.bits, idxd->reg_base + IDXD_GENCFG_OFFSET);
 }
 
 extern struct bus_type dsa_bus_type;
@@ -651,8 +662,6 @@ int idxd_register_bus_type(void);
 void idxd_unregister_bus_type(void);
 int idxd_register_devices(struct idxd_device *idxd);
 void idxd_unregister_devices(struct idxd_device *idxd);
-int idxd_register_driver(void);
-void idxd_unregister_driver(void);
 void idxd_wqs_quiesce(struct idxd_device *idxd);
 bool idxd_queue_int_handle_resubmit(struct idxd_desc *desc);
 void multi_u64_to_bmap(unsigned long *bmap, u64 *val, int count);
@@ -664,8 +673,6 @@ void idxd_mask_error_interrupts(struct idxd_device *idxd);
 void idxd_unmask_error_interrupts(struct idxd_device *idxd);
 
 /* device control */
-int idxd_register_idxd_drv(void);
-void idxd_unregister_idxd_drv(void);
 int idxd_device_drv_probe(struct idxd_dev *idxd_dev);
 void idxd_device_drv_remove(struct idxd_dev *idxd_dev);
 int drv_enable_wq(struct idxd_wq *wq);
@@ -710,7 +717,6 @@ int idxd_enqcmds(struct idxd_wq *wq, void __iomem *portal, const void *desc);
 /* dmaengine */
 int idxd_register_dma_device(struct idxd_device *idxd);
 void idxd_unregister_dma_device(struct idxd_device *idxd);
-void idxd_parse_completion_status(u8 status, enum dmaengine_tx_result *res);
 void idxd_dma_complete_txd(struct idxd_desc *desc,
 			   enum idxd_complete_type comp_type, bool free_desc);
 

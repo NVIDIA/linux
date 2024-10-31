@@ -141,8 +141,20 @@ static void rkisp1_csi_disable(struct rkisp1_csi *csi)
 	struct rkisp1_device *rkisp1 = csi->rkisp1;
 	u32 val;
 
-	/* Mask and clear interrupts. */
+	/* Mask MIPI interrupts. */
 	rkisp1_write(rkisp1, RKISP1_CIF_MIPI_IMSC, 0);
+
+	/* Flush posted writes */
+	rkisp1_read(rkisp1, RKISP1_CIF_MIPI_IMSC);
+
+	/*
+	 * Wait until the IRQ handler has ended. The IRQ handler may get called
+	 * even after this, but it will return immediately as the MIPI
+	 * interrupts have been masked.
+	 */
+	synchronize_irq(rkisp1->irqs[RKISP1_IRQ_MIPI]);
+
+	/* Clear MIPI interrupt status */
 	rkisp1_write(rkisp1, RKISP1_CIF_MIPI_ICR, ~0);
 
 	val = rkisp1_read(rkisp1, RKISP1_CIF_MIPI_CTRL);
@@ -198,6 +210,9 @@ irqreturn_t rkisp1_csi_isr(int irq, void *ctx)
 	struct device *dev = ctx;
 	struct rkisp1_device *rkisp1 = dev_get_drvdata(dev);
 	u32 val, status;
+
+	if (!rkisp1->irqs_enabled)
+		return IRQ_NONE;
 
 	status = rkisp1_read(rkisp1, RKISP1_CIF_MIPI_MIS);
 	if (!status)
@@ -381,6 +396,7 @@ static int rkisp1_csi_s_stream(struct v4l2_subdev *sd, int enable)
 	struct rkisp1_csi *csi = to_rkisp1_csi(sd);
 	struct rkisp1_device *rkisp1 = csi->rkisp1;
 	struct rkisp1_sensor_async *source_asd;
+	struct v4l2_async_connection *asc;
 	struct media_pad *source_pad;
 	struct v4l2_subdev *source;
 	int ret;
@@ -406,7 +422,11 @@ static int rkisp1_csi_s_stream(struct v4l2_subdev *sd, int enable)
 		return -EPIPE;
 	}
 
-	source_asd = container_of(source->asd, struct rkisp1_sensor_async, asd);
+	asc = v4l2_async_connection_unique(source);
+	if (!asc)
+		return -EPIPE;
+
+	source_asd = container_of(asc, struct rkisp1_sensor_async, asd);
 	if (source_asd->mbus_type != V4L2_MBUS_CSI2_DPHY)
 		return -EINVAL;
 

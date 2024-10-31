@@ -6,6 +6,7 @@
  * Copyright (C) 2010 Alexey Charkov <alchark@gmail.com>
  */
 
+#include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
@@ -17,10 +18,6 @@
 #include <linux/clk.h>
 
 #include <asm/div64.h>
-
-#include <linux/of.h>
-#include <linux/of_device.h>
-#include <linux/of_address.h>
 
 /*
  * SoC architecture allocates register space for 4 PWMs but only
@@ -209,7 +206,7 @@ static int vt8500_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	 * We cannot skip calling ->config even if state->period ==
 	 * pwm->state.period && state->duty_cycle == pwm->state.duty_cycle
 	 * because we might have exited early in the last call to
-	 * pwm_apply_state because of !state->enabled and so the two values in
+	 * pwm_apply_might_sleep because of !state->enabled and so the two values in
 	 * pwm->state might not be configured in hardware.
 	 */
 	err = vt8500_pwm_config(pwm->chip, pwm, state->duty_cycle, state->period);

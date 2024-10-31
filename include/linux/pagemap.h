@@ -203,6 +203,9 @@ enum mapping_flags {
 	/* writeback related tags are not used */
 	AS_NO_WRITEBACK_TAGS = 5,
 	AS_LARGE_FOLIO_SUPPORT = 6,
+	AS_RELEASE_ALWAYS,	/* Call ->release_folio(), even if no private data */
+	AS_STABLE_WRITES,	/* must wait for writeback before modifying
+				   folio contents */
 };
 
 /**
@@ -273,6 +276,36 @@ static inline int mapping_use_writeback_tags(struct address_space *mapping)
 	return !test_bit(AS_NO_WRITEBACK_TAGS, &mapping->flags);
 }
 
+static inline bool mapping_release_always(const struct address_space *mapping)
+{
+	return test_bit(AS_RELEASE_ALWAYS, &mapping->flags);
+}
+
+static inline void mapping_set_release_always(struct address_space *mapping)
+{
+	set_bit(AS_RELEASE_ALWAYS, &mapping->flags);
+}
+
+static inline void mapping_clear_release_always(struct address_space *mapping)
+{
+	clear_bit(AS_RELEASE_ALWAYS, &mapping->flags);
+}
+
+static inline bool mapping_stable_writes(const struct address_space *mapping)
+{
+	return test_bit(AS_STABLE_WRITES, &mapping->flags);
+}
+
+static inline void mapping_set_stable_writes(struct address_space *mapping)
+{
+	set_bit(AS_STABLE_WRITES, &mapping->flags);
+}
+
+static inline void mapping_clear_stable_writes(struct address_space *mapping)
+{
+	clear_bit(AS_STABLE_WRITES, &mapping->flags);
+}
+
 static inline gfp_t mapping_gfp_mask(struct address_space * mapping)
 {
 	return mapping->gfp_mask;
@@ -293,6 +326,26 @@ static inline void mapping_set_gfp_mask(struct address_space *m, gfp_t mask)
 {
 	m->gfp_mask = mask;
 }
+
+/*
+ * There are some parts of the kernel which assume that PMD entries
+ * are exactly HPAGE_PMD_ORDER.  Those should be fixed, but until then,
+ * limit the maximum allocation order to PMD size.  I'm not aware of any
+ * assumptions about maximum order if THP are disabled, but 8 seems like
+ * a good order (that's 1MB if you're using 4kB pages)
+ */
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+#define PREFERRED_MAX_PAGECACHE_ORDER	HPAGE_PMD_ORDER
+#else
+#define PREFERRED_MAX_PAGECACHE_ORDER	8
+#endif
+
+/*
+ * xas_split_alloc() does not support arbitrary orders. This implies no
+ * 512MB THP on ARM64 with 64KB base page size.
+ */
+#define MAX_XAS_ORDER		(XA_CHUNK_SHIFT * 2 - 1)
+#define MAX_PAGECACHE_ORDER	min(MAX_XAS_ORDER, PREFERRED_MAX_PAGECACHE_ORDER)
 
 /**
  * mapping_set_large_folios() - Indicate the file supports large folios.
@@ -318,6 +371,14 @@ static inline bool mapping_large_folio_support(struct address_space *mapping)
 {
 	return IS_ENABLED(CONFIG_TRANSPARENT_HUGEPAGE) &&
 		test_bit(AS_LARGE_FOLIO_SUPPORT, &mapping->flags);
+}
+
+/* Return the maximum folio size for this pagecache mapping, in bytes. */
+static inline size_t mapping_max_folio_size(struct address_space *mapping)
+{
+	if (mapping_large_folio_support(mapping))
+		return PAGE_SIZE << MAX_PAGECACHE_ORDER;
+	return PAGE_SIZE;
 }
 
 static inline int filemap_nr_thps(struct address_space *mapping)
@@ -373,21 +434,29 @@ static inline struct address_space *folio_file_mapping(struct folio *folio)
 	return folio->mapping;
 }
 
+/**
+ * folio_flush_mapping - Find the file mapping this folio belongs to.
+ * @folio: The folio.
+ *
+ * For folios which are in the page cache, return the mapping that this
+ * page belongs to.  Anonymous folios return NULL, even if they're in
+ * the swap cache.  Other kinds of folio also return NULL.
+ *
+ * This is ONLY used by architecture cache flushing code.  If you aren't
+ * writing cache flushing code, you want either folio_mapping() or
+ * folio_file_mapping().
+ */
+static inline struct address_space *folio_flush_mapping(struct folio *folio)
+{
+	if (unlikely(folio_test_swapcache(folio)))
+		return NULL;
+
+	return folio_mapping(folio);
+}
+
 static inline struct address_space *page_file_mapping(struct page *page)
 {
 	return folio_file_mapping(page_folio(page));
-}
-
-/*
- * For file cache pages, return the address_space, otherwise return NULL
- */
-static inline struct address_space *page_mapping_file(struct page *page)
-{
-	struct folio *folio = page_folio(page);
-
-	if (unlikely(folio_test_swapcache(folio)))
-		return NULL;
-	return folio_mapping(folio);
 }
 
 /**
@@ -501,22 +570,69 @@ pgoff_t page_cache_next_miss(struct address_space *mapping,
 pgoff_t page_cache_prev_miss(struct address_space *mapping,
 			     pgoff_t index, unsigned long max_scan);
 
-#define FGP_ACCESSED		0x00000001
-#define FGP_LOCK		0x00000002
-#define FGP_CREAT		0x00000004
-#define FGP_WRITE		0x00000008
-#define FGP_NOFS		0x00000010
-#define FGP_NOWAIT		0x00000020
-#define FGP_FOR_MMAP		0x00000040
-#define FGP_STABLE		0x00000080
+/**
+ * typedef fgf_t - Flags for getting folios from the page cache.
+ *
+ * Most users of the page cache will not need to use these flags;
+ * there are convenience functions such as filemap_get_folio() and
+ * filemap_lock_folio().  For users which need more control over exactly
+ * what is done with the folios, these flags to __filemap_get_folio()
+ * are available.
+ *
+ * * %FGP_ACCESSED - The folio will be marked accessed.
+ * * %FGP_LOCK - The folio is returned locked.
+ * * %FGP_CREAT - If no folio is present then a new folio is allocated,
+ *   added to the page cache and the VM's LRU list.  The folio is
+ *   returned locked.
+ * * %FGP_FOR_MMAP - The caller wants to do its own locking dance if the
+ *   folio is already in cache.  If the folio was allocated, unlock it
+ *   before returning so the caller can do the same dance.
+ * * %FGP_WRITE - The folio will be written to by the caller.
+ * * %FGP_NOFS - __GFP_FS will get cleared in gfp.
+ * * %FGP_NOWAIT - Don't block on the folio lock.
+ * * %FGP_STABLE - Wait for the folio to be stable (finished writeback)
+ * * %FGP_WRITEBEGIN - The flags to use in a filesystem write_begin()
+ *   implementation.
+ */
+typedef unsigned int __bitwise fgf_t;
+
+#define FGP_ACCESSED		((__force fgf_t)0x00000001)
+#define FGP_LOCK		((__force fgf_t)0x00000002)
+#define FGP_CREAT		((__force fgf_t)0x00000004)
+#define FGP_WRITE		((__force fgf_t)0x00000008)
+#define FGP_NOFS		((__force fgf_t)0x00000010)
+#define FGP_NOWAIT		((__force fgf_t)0x00000020)
+#define FGP_FOR_MMAP		((__force fgf_t)0x00000040)
+#define FGP_STABLE		((__force fgf_t)0x00000080)
+#define FGF_GET_ORDER(fgf)	(((__force unsigned)fgf) >> 26)	/* top 6 bits */
 
 #define FGP_WRITEBEGIN		(FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE)
 
+/**
+ * fgf_set_order - Encode a length in the fgf_t flags.
+ * @size: The suggested size of the folio to create.
+ *
+ * The caller of __filemap_get_folio() can use this to suggest a preferred
+ * size for the folio that is created.  If there is already a folio at
+ * the index, it will be returned, no matter what its size.  If a folio
+ * is freshly created, it may be of a different size than requested
+ * due to alignment constraints, memory pressure, or the presence of
+ * other folios at nearby indices.
+ */
+static inline fgf_t fgf_set_order(size_t size)
+{
+	unsigned int shift = ilog2(size);
+
+	if (shift <= PAGE_SHIFT)
+		return 0;
+	return (__force fgf_t)((shift - PAGE_SHIFT) << 26);
+}
+
 void *filemap_get_entry(struct address_space *mapping, pgoff_t index);
 struct folio *__filemap_get_folio(struct address_space *mapping, pgoff_t index,
-		int fgp_flags, gfp_t gfp);
+		fgf_t fgp_flags, gfp_t gfp);
 struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index,
-		int fgp_flags, gfp_t gfp);
+		fgf_t fgp_flags, gfp_t gfp);
 
 /**
  * filemap_get_folio - Find and get a folio.
@@ -590,7 +706,7 @@ static inline struct page *find_get_page(struct address_space *mapping,
 }
 
 static inline struct page *find_get_page_flags(struct address_space *mapping,
-					pgoff_t offset, int fgp_flags)
+					pgoff_t offset, fgf_t fgp_flags)
 {
 	return pagecache_get_page(mapping, offset, fgp_flags, 0);
 }
@@ -900,8 +1016,7 @@ static inline bool wake_page_match(struct wait_page_queue *wait_page,
 
 void __folio_lock(struct folio *folio);
 int __folio_lock_killable(struct folio *folio);
-bool __folio_lock_or_retry(struct folio *folio, struct mm_struct *mm,
-				unsigned int flags);
+vm_fault_t __folio_lock_or_retry(struct folio *folio, struct vm_fault *vmf);
 void unlock_page(struct page *page);
 void folio_unlock(struct folio *folio);
 
@@ -1005,11 +1120,13 @@ static inline int folio_lock_killable(struct folio *folio)
  * Return value and mmap_lock implications depend on flags; see
  * __folio_lock_or_retry().
  */
-static inline bool folio_lock_or_retry(struct folio *folio,
-		struct mm_struct *mm, unsigned int flags)
+static inline vm_fault_t folio_lock_or_retry(struct folio *folio,
+					     struct vm_fault *vmf)
 {
 	might_sleep();
-	return folio_trylock(folio) || __folio_lock_or_retry(folio, mm, flags);
+	if (!folio_trylock(folio))
+		return __folio_lock_or_retry(folio, vmf);
+	return 0;
 }
 
 /*
@@ -1042,11 +1159,6 @@ static inline int folio_wait_locked_killable(struct folio *folio)
 static inline void wait_on_page_locked(struct page *page)
 {
 	folio_wait_locked(page_folio(page));
-}
-
-static inline int wait_on_page_locked_killable(struct page *page)
-{
-	return folio_wait_locked_killable(page_folio(page));
 }
 
 void wait_on_page_writeback(struct page *page);

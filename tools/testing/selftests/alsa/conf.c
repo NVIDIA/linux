@@ -186,7 +186,7 @@ static char *sysfs_get(const char *sysfs_root, const char *id)
 	close(fd);
 	if (len < 0)
 		ksft_exit_fail_msg("sysfs: unable to read value '%s': %s\n",
-				   path, errno);
+				   path, strerror(errno));
 	while (len > 0 && path[len-1] == '\n')
 		len--;
 	path[len] = '\0';
@@ -431,7 +431,6 @@ long conf_get_long(snd_config_t *root, const char *key1, const char *key2, long 
 int conf_get_bool(snd_config_t *root, const char *key1, const char *key2, int def)
 {
 	snd_config_t *cfg;
-	long l;
 	int ret;
 
 	if (!root)

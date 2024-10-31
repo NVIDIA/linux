@@ -810,8 +810,9 @@ err_config_interrupt:
  */
 static void epf_ntb_epc_cleanup(struct epf_ntb *ntb)
 {
-	epf_ntb_db_bar_clear(ntb);
 	epf_ntb_mw_bar_clear(ntb, ntb->num_mws);
+	epf_ntb_db_bar_clear(ntb);
+	epf_ntb_config_sspad_bar_clear(ntb);
 }
 
 #define EPF_NTB_R(_name)						\
@@ -986,22 +987,22 @@ static struct config_group *epf_ntb_add_cfs(struct pci_epf *epf,
 /*==== virtual PCI bus driver, which only load virtual NTB PCI driver ====*/
 
 static u32 pci_space[] = {
-	0xffffffff,	/*DeviceID, Vendor ID*/
-	0,		/*Status, Command*/
-	0xffffffff,	/*Class code, subclass, prog if, revision id*/
-	0x40,		/*bist, header type, latency Timer, cache line size*/
-	0,		/*BAR 0*/
-	0,		/*BAR 1*/
-	0,		/*BAR 2*/
-	0,		/*BAR 3*/
-	0,		/*BAR 4*/
-	0,		/*BAR 5*/
-	0,		/*Cardbus cis point*/
-	0,		/*Subsystem ID Subystem vendor id*/
-	0,		/*ROM Base Address*/
-	0,		/*Reserved, Cap. Point*/
-	0,		/*Reserved,*/
-	0,		/*Max Lat, Min Gnt, interrupt pin, interrupt line*/
+	0xffffffff,	/* Device ID, Vendor ID */
+	0,		/* Status, Command */
+	0xffffffff,	/* Base Class, Subclass, Prog Intf, Revision ID */
+	0x40,		/* BIST, Header Type, Latency Timer, Cache Line Size */
+	0,		/* BAR 0 */
+	0,		/* BAR 1 */
+	0,		/* BAR 2 */
+	0,		/* BAR 3 */
+	0,		/* BAR 4 */
+	0,		/* BAR 5 */
+	0,		/* Cardbus CIS Pointer */
+	0,		/* Subsystem ID, Subsystem Vendor ID */
+	0,		/* ROM Base Address */
+	0,		/* Reserved, Capabilities Pointer */
+	0,		/* Reserved */
+	0,		/* Max_Lat, Min_Gnt, Interrupt Pin, Interrupt Line */
 };
 
 static int pci_read(struct pci_bus *bus, unsigned int devfn, int where, int size, u32 *val)
@@ -1029,8 +1030,10 @@ static int vpci_scan_bus(void *sysdata)
 	struct epf_ntb *ndev = sysdata;
 
 	vpci_bus = pci_scan_bus(ndev->vbus_number, &vpci_ops, sysdata);
-	if (vpci_bus)
-		pr_err("create pci bus\n");
+	if (!vpci_bus) {
+		pr_err("create pci bus failed\n");
+		return -EINVAL;
+	}
 
 	pci_bus_add_devices(vpci_bus);
 
@@ -1278,15 +1281,11 @@ static int pci_vntb_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	ret = ntb_register_device(&ndev->ntb);
 	if (ret) {
 		dev_err(dev, "Failed to register NTB device\n");
-		goto err_register_dev;
+		return ret;
 	}
 
 	dev_dbg(dev, "PCI Virtual NTB driver loaded\n");
 	return 0;
-
-err_register_dev:
-	put_device(&ndev->ntb.dev);
-	return -EINVAL;
 }
 
 static struct pci_device_id pci_vntb_table[] = {
@@ -1353,13 +1352,19 @@ static int epf_ntb_bind(struct pci_epf *epf)
 	ret = pci_register_driver(&vntb_pci_driver);
 	if (ret) {
 		dev_err(dev, "failure register vntb pci driver\n");
-		goto err_bar_alloc;
+		goto err_epc_cleanup;
 	}
 
-	vpci_scan_bus(ntb);
+	ret = vpci_scan_bus(ntb);
+	if (ret)
+		goto err_unregister;
 
 	return 0;
 
+err_unregister:
+	pci_unregister_driver(&vntb_pci_driver);
+err_epc_cleanup:
+	epf_ntb_epc_cleanup(ntb);
 err_bar_alloc:
 	epf_ntb_config_spad_bar_free(ntb);
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright IBM Corp. 2006, 2021
+ * Copyright IBM Corp. 2006, 2023
  * Author(s): Cornelia Huck <cornelia.huck@de.ibm.com>
  *	      Martin Schwidefsky <schwidefsky@de.ibm.com>
  *	      Ralph Wuerthner <rwuerthn@de.ibm.com>
@@ -219,6 +219,15 @@ int ap_sb_available(void)
 }
 
 /*
+ * ap_is_se_guest(): Check for SE guest with AP pass-through support.
+ */
+bool ap_is_se_guest(void)
+{
+	return is_prot_virt_guest() && ap_sb_available();
+}
+EXPORT_SYMBOL(ap_is_se_guest);
+
+/*
  * ap_fetch_qci_info(): Fetch cryptographic config info
  *
  * Returns the ap configuration info fetched via PQAP(QCI).
@@ -387,23 +396,6 @@ static int ap_queue_info(ap_qid_t qid, int *q_type, unsigned int *q_fac,
 		*q_ml = tapq_info.ml;
 		*q_decfg = status.response_code == AP_RESPONSE_DECONFIGURED;
 		*q_cstop = status.response_code == AP_RESPONSE_CHECKSTOPPED;
-		switch (*q_type) {
-			/* For CEX2 and CEX3 the available functions
-			 * are not reflected by the facilities bits.
-			 * Instead it is coded into the type. So here
-			 * modify the function bits based on the type.
-			 */
-		case AP_DEVICE_TYPE_CEX2A:
-		case AP_DEVICE_TYPE_CEX3A:
-			*q_fac |= 0x08000000;
-			break;
-		case AP_DEVICE_TYPE_CEX2C:
-		case AP_DEVICE_TYPE_CEX3C:
-			*q_fac |= 0x10000000;
-			break;
-		default:
-			break;
-		}
 		return 1;
 	default:
 		/*
@@ -1030,6 +1022,10 @@ EXPORT_SYMBOL(ap_driver_unregister);
 
 void ap_bus_force_rescan(void)
 {
+	/* Only trigger AP bus scans after the initial scan is done */
+	if (atomic64_read(&ap_scan_bus_count) <= 0)
+		return;
+
 	/* processing a asynchronous bus rescan */
 	del_timer(&ap_config_timer);
 	queue_work(system_long_wq, &ap_scan_work);
@@ -1102,7 +1098,7 @@ static int hex2bitmap(const char *str, unsigned long *bitmap, int bits)
  */
 static int modify_bitmap(const char *str, unsigned long *bitmap, int bits)
 {
-	int a, i, z;
+	unsigned long a, i, z;
 	char *np, sign;
 
 	/* bits needs to be a multiple of 8 */
@@ -1678,8 +1674,8 @@ static int ap_get_compatible_type(ap_qid_t qid, int rawtype, unsigned int func)
 {
 	int comp_type = 0;
 
-	/* < CEX2A is not supported */
-	if (rawtype < AP_DEVICE_TYPE_CEX2A) {
+	/* < CEX4 is not supported */
+	if (rawtype < AP_DEVICE_TYPE_CEX4) {
 		AP_DBF_WARN("%s queue=%02x.%04x unsupported type %d\n",
 			    __func__, AP_QID_CARD(qid),
 			    AP_QID_QUEUE(qid), rawtype);
@@ -1701,7 +1697,7 @@ static int ap_get_compatible_type(ap_qid_t qid, int rawtype, unsigned int func)
 		apinfo.cat = AP_DEVICE_TYPE_CEX8;
 		status = ap_qact(qid, 0, &apinfo);
 		if (status.response_code == AP_RESPONSE_NORMAL &&
-		    apinfo.cat >= AP_DEVICE_TYPE_CEX2A &&
+		    apinfo.cat >= AP_DEVICE_TYPE_CEX4 &&
 		    apinfo.cat <= AP_DEVICE_TYPE_CEX8)
 			comp_type = apinfo.cat;
 	}
@@ -1873,15 +1869,18 @@ static inline void ap_scan_domains(struct ap_card *ac)
 			}
 			/* get it and thus adjust reference counter */
 			get_device(dev);
-			if (decfg)
+			if (decfg) {
 				AP_DBF_INFO("%s(%d,%d) new (decfg) queue dev created\n",
 					    __func__, ac->id, dom);
-			else if (chkstop)
+			} else if (chkstop) {
 				AP_DBF_INFO("%s(%d,%d) new (chkstop) queue dev created\n",
 					    __func__, ac->id, dom);
-			else
+			} else {
+				/* nudge the queue's state machine */
+				ap_queue_init_state(aq);
 				AP_DBF_INFO("%s(%d,%d) new queue dev created\n",
 					    __func__, ac->id, dom);
+			}
 			goto put_dev_and_continue;
 		}
 		/* handle state changes on already existing queue device */
@@ -1903,10 +1902,8 @@ static inline void ap_scan_domains(struct ap_card *ac)
 		} else if (!chkstop && aq->chkstop) {
 			/* checkstop off */
 			aq->chkstop = false;
-			if (aq->dev_state > AP_DEV_STATE_UNINITIATED) {
-				aq->dev_state = AP_DEV_STATE_OPERATING;
-				aq->sm_state = AP_SM_STATE_RESET_START;
-			}
+			if (aq->dev_state > AP_DEV_STATE_UNINITIATED)
+				_ap_queue_init_state(aq);
 			spin_unlock_bh(&aq->lock);
 			AP_DBF_DBG("%s(%d,%d) queue dev checkstop off\n",
 				   __func__, ac->id, dom);
@@ -1930,10 +1927,8 @@ static inline void ap_scan_domains(struct ap_card *ac)
 		} else if (!decfg && !aq->config) {
 			/* config on this queue device */
 			aq->config = true;
-			if (aq->dev_state > AP_DEV_STATE_UNINITIATED) {
-				aq->dev_state = AP_DEV_STATE_OPERATING;
-				aq->sm_state = AP_SM_STATE_RESET_START;
-			}
+			if (aq->dev_state > AP_DEV_STATE_UNINITIATED)
+				_ap_queue_init_state(aq);
 			spin_unlock_bh(&aq->lock);
 			AP_DBF_DBG("%s(%d,%d) queue dev config on\n",
 				   __func__, ac->id, dom);

@@ -13,7 +13,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/media-bus-format.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/regulator/consumer.h>
 
 #include <video/display_timing.h>
@@ -260,6 +260,8 @@ static int panel_nv3051d_unprepare(struct drm_panel *panel)
 	}
 
 	usleep_range(10000, 15000);
+
+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 
 	regulator_disable(ctx->vdd);
 

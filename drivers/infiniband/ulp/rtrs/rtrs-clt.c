@@ -45,7 +45,9 @@ static struct rtrs_rdma_dev_pd dev_pd = {
 };
 
 static struct workqueue_struct *rtrs_wq;
-static struct class *rtrs_clt_dev_class;
+static const struct class rtrs_clt_dev_class = {
+	.name = "rtrs-client",
+};
 
 static inline bool rtrs_clt_is_connected(const struct rtrs_clt_sess *clt)
 {
@@ -382,7 +384,7 @@ static void complete_rdma_req(struct rtrs_clt_io_req *req, int errno,
 	struct rtrs_clt_path *clt_path;
 	int err;
 
-	if (WARN_ON(!req->in_use))
+	if (!req->in_use)
 		return;
 	if (WARN_ON(!req->con))
 		return;
@@ -624,6 +626,7 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
 		 */
 		if (WARN_ON(wc->wr_cqe->done != rtrs_clt_rdma_done))
 			return;
+		clt_path->s.hb_missed_cnt = 0;
 		rtrs_from_imm(be32_to_cpu(wc->ex.imm_data),
 			       &imm_type, &imm_payload);
 		if (imm_type == RTRS_IO_RSP_IMM ||
@@ -641,7 +644,6 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
 				return  rtrs_clt_recv_done(con, wc);
 		} else if (imm_type == RTRS_HB_ACK_IMM) {
 			WARN_ON(con->c.cid);
-			clt_path->s.hb_missed_cnt = 0;
 			clt_path->s.hb_cur_latency =
 				ktime_sub(ktime_get(), clt_path->s.hb_last_sent);
 			if (clt_path->flags & RTRS_MSG_NEW_RKEY_F)
@@ -668,6 +670,7 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
 		/*
 		 * Key invalidations from server side
 		 */
+		clt_path->s.hb_missed_cnt = 0;
 		WARN_ON(!(wc->wc_flags & IB_WC_WITH_INVALIDATE ||
 			  wc->wc_flags & IB_WC_WITH_IMM));
 		WARN_ON(wc->wr_cqe->done != rtrs_clt_rdma_done);
@@ -1692,7 +1695,7 @@ static int create_con_cq_qp(struct rtrs_clt_con *con)
 		clt_path->s.dev_ref++;
 		max_send_wr = min_t(int, wr_limit,
 			      /* QD * (REQ + RSP + FR REGS or INVS) + drain */
-			      clt_path->queue_depth * 3 + 1);
+			      clt_path->queue_depth * 4 + 1);
 		max_recv_wr = min_t(int, wr_limit,
 			      clt_path->queue_depth * 3 + 1);
 		max_send_sge = 2;
@@ -2339,11 +2342,15 @@ static int init_conns(struct rtrs_clt_path *clt_path)
 		if (err)
 			goto destroy;
 	}
+
+	/*
+	 * Set the cid to con_num - 1, since if we fail later, we want to stay in bounds.
+	 */
+	cid = clt_path->s.con_num - 1;
+
 	err = alloc_path_reqs(clt_path);
 	if (err)
 		goto destroy;
-
-	rtrs_start_hb(&clt_path->s);
 
 	return 0;
 
@@ -2618,6 +2625,7 @@ static int init_path(struct rtrs_clt_path *clt_path)
 		goto out;
 	}
 	rtrs_clt_path_up(clt_path);
+	rtrs_start_hb(&clt_path->s);
 out:
 	mutex_unlock(&clt_path->init_mutex);
 
@@ -2698,7 +2706,7 @@ static struct rtrs_clt_sess *alloc_clt(const char *sessname, size_t paths_num,
 		return ERR_PTR(-ENOMEM);
 	}
 
-	clt->dev.class = rtrs_clt_dev_class;
+	clt->dev.class = &rtrs_clt_dev_class;
 	clt->dev.release = rtrs_clt_dev_release;
 	uuid_gen(&clt->paths_uuid);
 	INIT_LIST_HEAD_RCU(&clt->paths_list);
@@ -3151,16 +3159,17 @@ static const struct rtrs_rdma_dev_pd_ops dev_pd_ops = {
 
 static int __init rtrs_client_init(void)
 {
-	rtrs_rdma_dev_pd_init(0, &dev_pd);
+	int ret = 0;
 
-	rtrs_clt_dev_class = class_create("rtrs-client");
-	if (IS_ERR(rtrs_clt_dev_class)) {
+	rtrs_rdma_dev_pd_init(0, &dev_pd);
+	ret = class_register(&rtrs_clt_dev_class);
+	if (ret) {
 		pr_err("Failed to create rtrs-client dev class\n");
-		return PTR_ERR(rtrs_clt_dev_class);
+		return ret;
 	}
 	rtrs_wq = alloc_workqueue("rtrs_client_wq", 0, 0);
 	if (!rtrs_wq) {
-		class_destroy(rtrs_clt_dev_class);
+		class_unregister(&rtrs_clt_dev_class);
 		return -ENOMEM;
 	}
 
@@ -3170,7 +3179,7 @@ static int __init rtrs_client_init(void)
 static void __exit rtrs_client_exit(void)
 {
 	destroy_workqueue(rtrs_wq);
-	class_destroy(rtrs_clt_dev_class);
+	class_unregister(&rtrs_clt_dev_class);
 	rtrs_rdma_dev_pd_deinit(&dev_pd);
 }
 

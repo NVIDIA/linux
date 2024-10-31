@@ -12,6 +12,8 @@
 
 #include <net/checksum.h>
 #include <net/ip6_checksum.h>
+#include <net/page_pool/helpers.h>
+#include <net/xdp.h>
 
 #include <net/mana/mana.h>
 #include <net/mana/mana_auxiliary.h>
@@ -597,9 +599,13 @@ static void mana_get_rxbuf_cfg(int mtu, u32 *datasize, u32 *alloc_size,
 	else
 		*headroom = XDP_PACKET_HEADROOM;
 
-	*alloc_size = mtu + MANA_RXBUF_PAD + *headroom;
+	*alloc_size = SKB_DATA_ALIGN(mtu + MANA_RXBUF_PAD + *headroom);
 
-	*datasize = ALIGN(mtu + ETH_HLEN, MANA_RX_DATA_ALIGN);
+	/* Using page pool in this case, so alloc_size is PAGE_SIZE */
+	if (*alloc_size < PAGE_SIZE)
+		*alloc_size = PAGE_SIZE;
+
+	*datasize = mtu + ETH_HLEN;
 }
 
 static int mana_pre_alloc_rxbufs(struct mana_port_context *mpc, int new_mtu)
@@ -1468,8 +1474,8 @@ static void mana_post_pkt_rxq(struct mana_rxq *rxq)
 
 	recv_buf_oob = &rxq->rx_oobs[curr_index];
 
-	err = mana_gd_post_and_ring(rxq->gdma_rq, &recv_buf_oob->wqe_req,
-				    &recv_buf_oob->wqe_inf);
+	err = mana_gd_post_work_request(rxq->gdma_rq, &recv_buf_oob->wqe_req,
+					&recv_buf_oob->wqe_inf);
 	if (WARN_ON_ONCE(err))
 		return;
 
@@ -1496,8 +1502,8 @@ static struct sk_buff *mana_build_skb(struct mana_rxq *rxq, void *buf_va,
 	return skb;
 }
 
-static void mana_rx_skb(void *buf_va, struct mana_rxcomp_oob *cqe,
-			struct mana_rxq *rxq)
+static void mana_rx_skb(void *buf_va, bool from_pool,
+			struct mana_rxcomp_oob *cqe, struct mana_rxq *rxq)
 {
 	struct mana_stats_rx *rx_stats = &rxq->stats;
 	struct net_device *ndev = rxq->ndev;
@@ -1529,6 +1535,9 @@ static void mana_rx_skb(void *buf_va, struct mana_rxcomp_oob *cqe,
 
 	if (!skb)
 		goto drop;
+
+	if (from_pool)
+		skb_mark_for_recycle(skb);
 
 	skb->dev = napi->dev;
 
@@ -1580,9 +1589,14 @@ drop_xdp:
 	u64_stats_update_end(&rx_stats->syncp);
 
 drop:
-	WARN_ON_ONCE(rxq->xdp_save_va);
-	/* Save for reuse */
-	rxq->xdp_save_va = buf_va;
+	if (from_pool) {
+		page_pool_recycle_direct(rxq->page_pool,
+					 virt_to_head_page(buf_va));
+	} else {
+		WARN_ON_ONCE(rxq->xdp_save_va);
+		/* Save for reuse */
+		rxq->xdp_save_va = buf_va;
+	}
 
 	++ndev->stats.rx_dropped;
 
@@ -1590,10 +1604,12 @@ drop:
 }
 
 static void *mana_get_rxfrag(struct mana_rxq *rxq, struct device *dev,
-			     dma_addr_t *da, bool is_napi)
+			     dma_addr_t *da, bool *from_pool, bool is_napi)
 {
 	struct page *page;
 	void *va;
+
+	*from_pool = false;
 
 	/* Reuse XDP dropped page if available */
 	if (rxq->xdp_save_va) {
@@ -1615,17 +1631,22 @@ static void *mana_get_rxfrag(struct mana_rxq *rxq, struct device *dev,
 			return NULL;
 		}
 	} else {
-		page = dev_alloc_page();
+		page = page_pool_dev_alloc_pages(rxq->page_pool);
 		if (!page)
 			return NULL;
 
+		*from_pool = true;
 		va = page_to_virt(page);
 	}
 
 	*da = dma_map_single(dev, va + rxq->headroom, rxq->datasize,
 			     DMA_FROM_DEVICE);
 	if (dma_mapping_error(dev, *da)) {
-		put_page(virt_to_head_page(va));
+		if (*from_pool)
+			page_pool_put_full_page(rxq->page_pool, page, false);
+		else
+			put_page(virt_to_head_page(va));
+
 		return NULL;
 	}
 
@@ -1634,21 +1655,25 @@ static void *mana_get_rxfrag(struct mana_rxq *rxq, struct device *dev,
 
 /* Allocate frag for rx buffer, and save the old buf */
 static void mana_refill_rx_oob(struct device *dev, struct mana_rxq *rxq,
-			       struct mana_recv_buf_oob *rxoob, void **old_buf)
+			       struct mana_recv_buf_oob *rxoob, void **old_buf,
+			       bool *old_fp)
 {
+	bool from_pool;
 	dma_addr_t da;
 	void *va;
 
-	va = mana_get_rxfrag(rxq, dev, &da, true);
+	va = mana_get_rxfrag(rxq, dev, &da, &from_pool, true);
 	if (!va)
 		return;
 
 	dma_unmap_single(dev, rxoob->sgl[0].address, rxq->datasize,
 			 DMA_FROM_DEVICE);
 	*old_buf = rxoob->buf_va;
+	*old_fp = rxoob->from_pool;
 
 	rxoob->buf_va = va;
 	rxoob->sgl[0].address = da;
+	rxoob->from_pool = from_pool;
 }
 
 static void mana_process_rx_cqe(struct mana_rxq *rxq, struct mana_cq *cq,
@@ -1662,6 +1687,7 @@ static void mana_process_rx_cqe(struct mana_rxq *rxq, struct mana_cq *cq,
 	struct device *dev = gc->dev;
 	void *old_buf = NULL;
 	u32 curr, pktlen;
+	bool old_fp;
 
 	apc = netdev_priv(ndev);
 
@@ -1704,12 +1730,12 @@ static void mana_process_rx_cqe(struct mana_rxq *rxq, struct mana_cq *cq,
 	rxbuf_oob = &rxq->rx_oobs[curr];
 	WARN_ON_ONCE(rxbuf_oob->wqe_inf.wqe_size_in_bu != 1);
 
-	mana_refill_rx_oob(dev, rxq, rxbuf_oob, &old_buf);
+	mana_refill_rx_oob(dev, rxq, rxbuf_oob, &old_buf, &old_fp);
 
 	/* Unsuccessful refill will have old_buf == NULL.
 	 * In this case, mana_rx_skb() will drop the packet.
 	 */
-	mana_rx_skb(old_buf, oob, rxq);
+	mana_rx_skb(old_buf, old_fp, oob, rxq);
 
 drop:
 	mana_move_wq_tail(rxq->gdma_rq, rxbuf_oob->wqe_inf.wqe_size_in_bu);
@@ -1739,6 +1765,12 @@ static void mana_poll_rx_cq(struct mana_cq *cq)
 		mana_process_rx_cqe(rxq, cq, &comp[i]);
 	}
 
+	if (comp_read > 0) {
+		struct gdma_context *gc = rxq->gdma_rq->gdma_dev->gdma_context;
+
+		mana_gd_wq_ring_doorbell(gc, rxq->gdma_rq);
+	}
+
 	if (rxq->xdp_flush)
 		xdp_do_flush();
 }
@@ -1746,7 +1778,6 @@ static void mana_poll_rx_cq(struct mana_cq *cq)
 static int mana_cq_handler(void *context, struct gdma_queue *gdma_queue)
 {
 	struct mana_cq *cq = context;
-	u8 arm_bit;
 	int w;
 
 	WARN_ON_ONCE(cq->gdma_cq != gdma_queue);
@@ -1757,15 +1788,22 @@ static int mana_cq_handler(void *context, struct gdma_queue *gdma_queue)
 		mana_poll_tx_cq(cq);
 
 	w = cq->work_done;
+	cq->work_done_since_doorbell += w;
 
-	if (w < cq->budget &&
-	    napi_complete_done(&cq->napi, w)) {
-		arm_bit = SET_ARM_BIT;
-	} else {
-		arm_bit = 0;
+	if (w < cq->budget) {
+		mana_gd_ring_cq(gdma_queue, SET_ARM_BIT);
+		cq->work_done_since_doorbell = 0;
+		napi_complete_done(&cq->napi, w);
+	} else if (cq->work_done_since_doorbell >
+		   cq->gdma_cq->queue_size / COMP_ENTRY_SIZE * 4) {
+		/* MANA hardware requires at least one doorbell ring every 8
+		 * wraparounds of CQ even if there is no need to arm the CQ.
+		 * This driver rings the doorbell as soon as we have exceeded
+		 * 4 wraparounds.
+		 */
+		mana_gd_ring_cq(gdma_queue, 0);
+		cq->work_done_since_doorbell = 0;
 	}
-
-	mana_gd_ring_cq(gdma_queue, arm_bit);
 
 	return w;
 }
@@ -1820,10 +1858,12 @@ static void mana_destroy_txq(struct mana_port_context *apc)
 
 	for (i = 0; i < apc->num_queues; i++) {
 		napi = &apc->tx_qp[i].tx_cq.napi;
-		napi_synchronize(napi);
-		napi_disable(napi);
-		netif_napi_del(napi);
-
+		if (apc->tx_qp[i].txq.napi_initialized) {
+			napi_synchronize(napi);
+			napi_disable(napi);
+			netif_napi_del(napi);
+			apc->tx_qp[i].txq.napi_initialized = false;
+		}
 		mana_destroy_wq_obj(apc, GDMA_SQ, apc->tx_qp[i].tx_object);
 
 		mana_deinit_cq(apc, &apc->tx_qp[i].tx_cq);
@@ -1862,10 +1902,10 @@ static int mana_create_txq(struct mana_port_context *apc,
 	 *  to prevent overflow.
 	 */
 	txq_size = MAX_SEND_BUFFERS_PER_QUEUE * 32;
-	BUILD_BUG_ON(!PAGE_ALIGNED(txq_size));
+	BUILD_BUG_ON(!MANA_PAGE_ALIGNED(txq_size));
 
 	cq_size = MAX_SEND_BUFFERS_PER_QUEUE * COMP_ENTRY_SIZE;
-	cq_size = PAGE_ALIGN(cq_size);
+	cq_size = MANA_PAGE_ALIGN(cq_size);
 
 	gc = gd->gdma_context;
 
@@ -1879,6 +1919,7 @@ static int mana_create_txq(struct mana_port_context *apc,
 		txq->ndev = net;
 		txq->net_txq = netdev_get_tx_queue(net, i);
 		txq->vp_offset = apc->tx_vp_offset;
+		txq->napi_initialized = false;
 		skb_queue_head_init(&txq->pending_skbs);
 
 		memset(&spec, 0, sizeof(spec));
@@ -1945,6 +1986,7 @@ static int mana_create_txq(struct mana_port_context *apc,
 
 		netif_napi_add_tx(net, &cq->napi, mana_poll);
 		napi_enable(&cq->napi);
+		txq->napi_initialized = true;
 
 		mana_gd_ring_cq(cq->gdma_cq, SET_ARM_BIT);
 	}
@@ -1956,13 +1998,14 @@ out:
 }
 
 static void mana_destroy_rxq(struct mana_port_context *apc,
-			     struct mana_rxq *rxq, bool validate_state)
+			     struct mana_rxq *rxq, bool napi_initialized)
 
 {
 	struct gdma_context *gc = apc->ac->gdma_dev->gdma_context;
 	struct mana_recv_buf_oob *rx_oob;
 	struct device *dev = gc->dev;
 	struct napi_struct *napi;
+	struct page *page;
 	int i;
 
 	if (!rxq)
@@ -1970,14 +2013,14 @@ static void mana_destroy_rxq(struct mana_port_context *apc,
 
 	napi = &rxq->rx_cq.napi;
 
-	if (validate_state)
+	if (napi_initialized) {
 		napi_synchronize(napi);
 
-	napi_disable(napi);
+		napi_disable(napi);
 
+		netif_napi_del(napi);
+	}
 	xdp_rxq_info_unreg(&rxq->xdp_rxq);
-
-	netif_napi_del(napi);
 
 	mana_destroy_wq_obj(apc, GDMA_RQ, rxq->rxobj);
 
@@ -1995,9 +2038,17 @@ static void mana_destroy_rxq(struct mana_port_context *apc,
 		dma_unmap_single(dev, rx_oob->sgl[0].address,
 				 rx_oob->sgl[0].size, DMA_FROM_DEVICE);
 
-		put_page(virt_to_head_page(rx_oob->buf_va));
+		page = virt_to_head_page(rx_oob->buf_va);
+
+		if (rx_oob->from_pool)
+			page_pool_put_full_page(rxq->page_pool, page, false);
+		else
+			put_page(page);
+
 		rx_oob->buf_va = NULL;
 	}
+
+	page_pool_destroy(rxq->page_pool);
 
 	if (rxq->gdma_rq)
 		mana_gd_destroy_queue(gc, rxq->gdma_rq);
@@ -2009,18 +2060,20 @@ static int mana_fill_rx_oob(struct mana_recv_buf_oob *rx_oob, u32 mem_key,
 			    struct mana_rxq *rxq, struct device *dev)
 {
 	struct mana_port_context *mpc = netdev_priv(rxq->ndev);
+	bool from_pool = false;
 	dma_addr_t da;
 	void *va;
 
 	if (mpc->rxbufs_pre)
 		va = mana_get_rxbuf_pre(rxq, &da);
 	else
-		va = mana_get_rxfrag(rxq, dev, &da, false);
+		va = mana_get_rxfrag(rxq, dev, &da, &from_pool, false);
 
 	if (!va)
 		return -ENOMEM;
 
 	rx_oob->buf_va = va;
+	rx_oob->from_pool = from_pool;
 
 	rx_oob->sgl[0].address = da;
 	rx_oob->sgl[0].size = rxq->datasize;
@@ -2090,6 +2143,26 @@ static int mana_push_wqe(struct mana_rxq *rxq)
 	return 0;
 }
 
+static int mana_create_page_pool(struct mana_rxq *rxq, struct gdma_context *gc)
+{
+	struct page_pool_params pprm = {};
+	int ret;
+
+	pprm.pool_size = RX_BUFFERS_PER_QUEUE;
+	pprm.nid = gc->numa_node;
+	pprm.napi = &rxq->rx_cq.napi;
+
+	rxq->page_pool = page_pool_create(&pprm);
+
+	if (IS_ERR(rxq->page_pool)) {
+		ret = PTR_ERR(rxq->page_pool);
+		rxq->page_pool = NULL;
+		return ret;
+	}
+
+	return 0;
+}
+
 static struct mana_rxq *mana_create_rxq(struct mana_port_context *apc,
 					u32 rxq_idx, struct mana_eq *eq,
 					struct net_device *ndev)
@@ -2119,12 +2192,19 @@ static struct mana_rxq *mana_create_rxq(struct mana_port_context *apc,
 	mana_get_rxbuf_cfg(ndev->mtu, &rxq->datasize, &rxq->alloc_size,
 			   &rxq->headroom);
 
+	/* Create page pool for RX queue */
+	err = mana_create_page_pool(rxq, gc);
+	if (err) {
+		netdev_err(ndev, "Create page pool err:%d\n", err);
+		goto out;
+	}
+
 	err = mana_alloc_rx_wqe(apc, rxq, &rq_size, &cq_size);
 	if (err)
 		goto out;
 
-	rq_size = PAGE_ALIGN(rq_size);
-	cq_size = PAGE_ALIGN(cq_size);
+	rq_size = MANA_PAGE_ALIGN(rq_size);
+	cq_size = MANA_PAGE_ALIGN(cq_size);
 
 	/* Create RQ */
 	memset(&spec, 0, sizeof(spec));
@@ -2190,8 +2270,8 @@ static struct mana_rxq *mana_create_rxq(struct mana_port_context *apc,
 
 	WARN_ON(xdp_rxq_info_reg(&rxq->xdp_rxq, ndev, rxq_idx,
 				 cq->napi.napi_id));
-	WARN_ON(xdp_rxq_info_reg_mem_model(&rxq->xdp_rxq,
-					   MEM_TYPE_PAGE_SHARED, NULL));
+	WARN_ON(xdp_rxq_info_reg_mem_model(&rxq->xdp_rxq, MEM_TYPE_PAGE_POOL,
+					   rxq->page_pool));
 
 	napi_enable(&cq->napi);
 
@@ -2308,6 +2388,46 @@ int mana_config_rss(struct mana_port_context *apc, enum TRI_STATE rx,
 	mana_fence_rqs(apc);
 
 	return 0;
+}
+
+void mana_query_gf_stats(struct mana_port_context *apc)
+{
+	struct mana_query_gf_stat_resp resp = {};
+	struct mana_query_gf_stat_req req = {};
+	struct net_device *ndev = apc->ndev;
+	int err;
+
+	mana_gd_init_req_hdr(&req.hdr, MANA_QUERY_GF_STAT,
+			     sizeof(req), sizeof(resp));
+	req.req_stats = STATISTICS_FLAGS_HC_TX_BYTES |
+			STATISTICS_FLAGS_HC_TX_UCAST_PACKETS |
+			STATISTICS_FLAGS_HC_TX_UCAST_BYTES |
+			STATISTICS_FLAGS_HC_TX_MCAST_PACKETS |
+			STATISTICS_FLAGS_HC_TX_MCAST_BYTES |
+			STATISTICS_FLAGS_HC_TX_BCAST_PACKETS |
+			STATISTICS_FLAGS_HC_TX_BCAST_BYTES;
+
+	err = mana_send_request(apc->ac, &req, sizeof(req), &resp,
+				sizeof(resp));
+	if (err) {
+		netdev_err(ndev, "Failed to query GF stats: %d\n", err);
+		return;
+	}
+	err = mana_verify_resp_hdr(&resp.hdr, MANA_QUERY_GF_STAT,
+				   sizeof(resp));
+	if (err || resp.hdr.status) {
+		netdev_err(ndev, "Failed to query GF stats: %d, 0x%x\n", err,
+			   resp.hdr.status);
+		return;
+	}
+
+	apc->eth_stats.hc_tx_bytes = resp.hc_tx_bytes;
+	apc->eth_stats.hc_tx_ucast_pkts = resp.hc_tx_ucast_pkts;
+	apc->eth_stats.hc_tx_ucast_bytes = resp.hc_tx_ucast_bytes;
+	apc->eth_stats.hc_tx_bcast_pkts = resp.hc_tx_bcast_pkts;
+	apc->eth_stats.hc_tx_bcast_bytes = resp.hc_tx_bcast_bytes;
+	apc->eth_stats.hc_tx_mcast_pkts = resp.hc_tx_mcast_pkts;
+	apc->eth_stats.hc_tx_mcast_bytes = resp.hc_tx_mcast_bytes;
 }
 
 static int mana_init_port(struct net_device *ndev)
@@ -2646,6 +2766,8 @@ static int add_adev(struct gdma_dev *gd)
 	if (ret)
 		goto init_fail;
 
+	/* madev is owned by the auxiliary device */
+	madev = NULL;
 	ret = auxiliary_device_add(adev);
 	if (ret)
 		goto add_fail;

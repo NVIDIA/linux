@@ -456,6 +456,8 @@ static int write_cpudesc(struct feat_fd *ff,
 #define CPUINFO_PROC	{ "Processor", }
 #elif defined(__xtensa__)
 #define CPUINFO_PROC	{ "core ID", }
+#elif defined(__loongarch__)
+#define CPUINFO_PROC	{ "Model Name", }
 #else
 #define CPUINFO_PROC	{ "model name", }
 #endif
@@ -746,20 +748,14 @@ static int write_pmu_mappings(struct feat_fd *ff,
 	 * Do a first pass to count number of pmu to avoid lseek so this
 	 * works in pipe mode as well.
 	 */
-	while ((pmu = perf_pmus__scan(pmu))) {
-		if (!pmu->name)
-			continue;
+	while ((pmu = perf_pmus__scan(pmu)))
 		pmu_num++;
-	}
 
 	ret = do_write(ff, &pmu_num, sizeof(pmu_num));
 	if (ret < 0)
 		return ret;
 
 	while ((pmu = perf_pmus__scan(pmu))) {
-		if (!pmu->name)
-			continue;
-
 		ret = do_write(ff, &pmu->type, sizeof(pmu->type));
 		if (ret < 0)
 			return ret;
@@ -1448,7 +1444,9 @@ static int build_mem_topology(struct memory_node **nodesp, u64 *cntp)
 			nodes = new_nodes;
 			size += 4;
 		}
-		ret = memory_node__read(&nodes[cnt++], idx);
+		ret = memory_node__read(&nodes[cnt], idx);
+		if (!ret)
+			cnt += 1;
 	}
 out:
 	closedir(dir);
@@ -1851,8 +1849,8 @@ static void print_bpf_prog_info(struct feat_fd *ff, FILE *fp)
 		node = rb_entry(next, struct bpf_prog_info_node, rb_node);
 		next = rb_next(&node->rb_node);
 
-		bpf_event__print_bpf_prog_info(&node->info_linear->info,
-					       env, fp);
+		__bpf_event__print_bpf_prog_info(&node->info_linear->info,
+						 env, fp);
 	}
 
 	up_read(&env->bpf_progs.lock);
@@ -3179,7 +3177,7 @@ static int process_bpf_prog_info(struct feat_fd *ff, void *data __maybe_unused)
 		/* after reading from file, translate offset to address */
 		bpil_offs_to_addr(info_linear);
 		info_node->info_linear = info_linear;
-		perf_env__insert_bpf_prog_info(env, info_node);
+		__perf_env__insert_bpf_prog_info(env, info_node);
 	}
 
 	up_write(&env->bpf_progs.lock);
@@ -3226,7 +3224,7 @@ static int process_bpf_btf(struct feat_fd *ff, void *data __maybe_unused)
 		if (__do_read(ff, node->data, data_size))
 			goto out;
 
-		perf_env__insert_btf(env, node);
+		__perf_env__insert_btf(env, node);
 		node = NULL;
 	}
 
@@ -4365,9 +4363,10 @@ size_t perf_event__fprintf_event_update(union perf_event *event, FILE *fp)
 		ret += fprintf(fp, "... ");
 
 		map = cpu_map__new_data(&ev->cpus.cpus);
-		if (map)
+		if (map) {
 			ret += cpu_map__fprintf(map, fp);
-		else
+			perf_cpu_map__put(map);
+		} else
 			ret += fprintf(fp, "failed to get cpus\n");
 		break;
 	default:
@@ -4409,7 +4408,7 @@ int perf_event__process_attr(struct perf_tool *tool __maybe_unused,
 	if (perf_evsel__alloc_id(&evsel->core, 1, n_ids))
 		return -ENOMEM;
 
-	ids = (void *)&event->attr.attr + event->attr.attr.size;
+	ids = perf_record_header_attr_id(event);
 	for (i = 0; i < n_ids; i++) {
 		perf_evlist__id_add(&evlist->core, &evsel->core, 0, i, ids[i]);
 	}

@@ -48,7 +48,7 @@ int pipe_priority_map[] = {
 
 struct kfd_mem_obj *allocate_hiq_mqd(struct kfd_node *dev, struct queue_properties *q)
 {
-	struct kfd_mem_obj *mqd_mem_obj = NULL;
+	struct kfd_mem_obj *mqd_mem_obj;
 
 	mqd_mem_obj = kzalloc(sizeof(struct kfd_mem_obj), GFP_KERNEL);
 	if (!mqd_mem_obj)
@@ -64,7 +64,7 @@ struct kfd_mem_obj *allocate_hiq_mqd(struct kfd_node *dev, struct queue_properti
 struct kfd_mem_obj *allocate_sdma_mqd(struct kfd_node *dev,
 					struct queue_properties *q)
 {
-	struct kfd_mem_obj *mqd_mem_obj = NULL;
+	struct kfd_mem_obj *mqd_mem_obj;
 	uint64_t offset;
 
 	mqd_mem_obj = kzalloc(sizeof(struct kfd_mem_obj), GFP_KERNEL);
@@ -223,7 +223,7 @@ void kfd_free_mqd_cp(struct mqd_manager *mm, void *mqd,
 	      struct kfd_mem_obj *mqd_mem_obj)
 {
 	if (mqd_mem_obj->gtt_mem) {
-		amdgpu_amdkfd_free_gtt_mem(mm->dev->adev, mqd_mem_obj->gtt_mem);
+		amdgpu_amdkfd_free_gtt_mem(mm->dev->adev, &mqd_mem_obj->gtt_mem);
 		kfree(mqd_mem_obj);
 	} else {
 		kfd_gtt_sa_free(mm->dev, mqd_mem_obj);

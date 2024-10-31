@@ -14,7 +14,6 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/seq_file.h>
@@ -136,7 +135,7 @@ static int jh7110_dt_node_to_map(struct pinctrl_dev *pctldev,
 	int ret;
 
 	ngroups = 0;
-	for_each_child_of_node(np, child)
+	for_each_available_child_of_node(np, child)
 		ngroups += 1;
 	nmaps = 2 * ngroups;
 
@@ -151,7 +150,7 @@ static int jh7110_dt_node_to_map(struct pinctrl_dev *pctldev,
 	nmaps = 0;
 	ngroups = 0;
 	mutex_lock(&sfp->mutex);
-	for_each_child_of_node(np, child) {
+	for_each_available_child_of_node(np, child) {
 		int npins = of_property_count_u32_elems(child, "pinmux");
 		int *pins;
 		u32 *pinmux;
@@ -806,12 +805,12 @@ static int jh7110_irq_set_type(struct irq_data *d, unsigned int trigger)
 	case IRQ_TYPE_LEVEL_HIGH:
 		irq_type  = 0;    /* 0: level triggered */
 		edge_both = 0;    /* 0: ignored */
-		polarity  = mask; /* 1: high level */
+		polarity  = 0;    /* 0: high level */
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
 		irq_type  = 0;    /* 0: level triggered */
 		edge_both = 0;    /* 0: ignored */
-		polarity  = 0;    /* 0: low level */
+		polarity  = mask; /* 1: low level */
 		break;
 	default:
 		return -EINVAL;
@@ -872,6 +871,13 @@ int jh7110_pinctrl_probe(struct platform_device *pdev)
 	sfp = devm_kzalloc(dev, sizeof(*sfp), GFP_KERNEL);
 	if (!sfp)
 		return -ENOMEM;
+
+#if IS_ENABLED(CONFIG_PM_SLEEP)
+	sfp->saved_regs = devm_kcalloc(dev, info->nsaved_regs,
+				       sizeof(*sfp->saved_regs), GFP_KERNEL);
+	if (!sfp->saved_regs)
+		return -ENOMEM;
+#endif
 
 	sfp->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(sfp->base))
@@ -973,6 +979,39 @@ int jh7110_pinctrl_probe(struct platform_device *pdev)
 	return pinctrl_enable(sfp->pctl);
 }
 EXPORT_SYMBOL_GPL(jh7110_pinctrl_probe);
+
+static int jh7110_pinctrl_suspend(struct device *dev)
+{
+	struct jh7110_pinctrl *sfp = dev_get_drvdata(dev);
+	unsigned long flags;
+	unsigned int i;
+
+	raw_spin_lock_irqsave(&sfp->lock, flags);
+	for (i = 0 ; i < sfp->info->nsaved_regs ; i++)
+		sfp->saved_regs[i] = readl_relaxed(sfp->base + 4 * i);
+
+	raw_spin_unlock_irqrestore(&sfp->lock, flags);
+	return 0;
+}
+
+static int jh7110_pinctrl_resume(struct device *dev)
+{
+	struct jh7110_pinctrl *sfp = dev_get_drvdata(dev);
+	unsigned long flags;
+	unsigned int i;
+
+	raw_spin_lock_irqsave(&sfp->lock, flags);
+	for (i = 0 ; i < sfp->info->nsaved_regs ; i++)
+		writel_relaxed(sfp->saved_regs[i], sfp->base + 4 * i);
+
+	raw_spin_unlock_irqrestore(&sfp->lock, flags);
+	return 0;
+}
+
+const struct dev_pm_ops jh7110_pinctrl_pm_ops = {
+	LATE_SYSTEM_SLEEP_PM_OPS(jh7110_pinctrl_suspend, jh7110_pinctrl_resume)
+};
+EXPORT_SYMBOL_GPL(jh7110_pinctrl_pm_ops);
 
 MODULE_DESCRIPTION("Pinctrl driver for the StarFive JH7110 SoC");
 MODULE_AUTHOR("Emil Renner Berthing <kernel@esmil.dk>");

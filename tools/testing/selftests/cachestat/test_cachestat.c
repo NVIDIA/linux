@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 #define _GNU_SOURCE
+#define __SANE_USERSPACE_TYPES__ // Use ll64
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -23,7 +24,6 @@ static const char * const dev_files[] = {
 	"/dev/zero", "/dev/null", "/dev/urandom",
 	"/proc/version", "/proc"
 };
-static const int cachestat_nr = 451;
 
 void print_cachestat(struct cachestat *cs)
 {
@@ -144,7 +144,7 @@ static int test_cachestat(const char *filename, bool write_random, bool create,
 		}
 	}
 
-	syscall_ret = syscall(cachestat_nr, fd, &cs_range, &cs, 0);
+	syscall_ret = syscall(__NR_cachestat, fd, &cs_range, &cs, 0);
 
 	ksft_print_msg("Cachestat call returned %ld\n", syscall_ret);
 
@@ -172,7 +172,7 @@ static int test_cachestat(const char *filename, bool write_random, bool create,
 			ksft_print_msg("fsync fails.\n");
 			ret = KSFT_FAIL;
 		} else {
-			syscall_ret = syscall(cachestat_nr, fd, &cs_range, &cs, 0);
+			syscall_ret = syscall(__NR_cachestat, fd, &cs_range, &cs, 0);
 
 			ksft_print_msg("Cachestat call (after fsync) returned %ld\n",
 				syscall_ret);
@@ -233,7 +233,7 @@ bool test_cachestat_shmem(void)
 		goto close_fd;
 	}
 
-	syscall_ret = syscall(cachestat_nr, fd, &cs_range, &cs, 0);
+	syscall_ret = syscall(__NR_cachestat, fd, &cs_range, &cs, 0);
 
 	if (syscall_ret) {
 		ksft_print_msg("Cachestat returned non-zero.\n");

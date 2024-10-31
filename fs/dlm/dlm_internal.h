@@ -222,6 +222,7 @@ struct dlm_callback {
 	int			sb_status;	/* copy to lksb status */
 	uint8_t			sb_flags;	/* copy to lksb flags */
 	int8_t			mode; /* rq mode of bast, gr mode of cast */
+	int			copy_lvb;
 
 	struct list_head	list;
 	struct kref		ref;
@@ -598,6 +599,7 @@ struct dlm_ls {
 	struct dentry		*ls_debug_locks_dentry; /* debugfs */
 	struct dentry		*ls_debug_all_dentry; /* debugfs */
 	struct dentry		*ls_debug_toss_dentry; /* debugfs */
+	struct dentry		*ls_debug_queued_asts_dentry; /* debugfs */
 
 	wait_queue_head_t	ls_uevent_wait;	/* user part of join/leave */
 	int			ls_uevent_result;

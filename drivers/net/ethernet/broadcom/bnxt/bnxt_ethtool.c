@@ -164,9 +164,8 @@ static int bnxt_set_coalesce(struct net_device *dev,
 reset_coalesce:
 	if (test_bit(BNXT_STATE_OPEN, &bp->state)) {
 		if (update_stats) {
-			rc = bnxt_close_nic(bp, true, false);
-			if (!rc)
-				rc = bnxt_open_nic(bp, true, false);
+			bnxt_close_nic(bp, true, false);
+			rc = bnxt_open_nic(bp, true, false);
 		} else {
 			rc = bnxt_hwrm_set_coal(bp);
 		}
@@ -339,13 +338,16 @@ enum {
 	RX_NETPOLL_DISCARDS,
 };
 
-static struct {
-	u64			counter;
-	char			string[ETH_GSTRING_LEN];
-} bnxt_sw_func_stats[] = {
-	{0, "rx_total_discard_pkts"},
-	{0, "tx_total_discard_pkts"},
-	{0, "rx_total_netpoll_discards"},
+static const char *const bnxt_ring_err_stats_arr[] = {
+	"rx_total_l4_csum_errors",
+	"rx_total_resets",
+	"rx_total_buf_errors",
+	"rx_total_oom_discards",
+	"rx_total_netpoll_discards",
+	"rx_total_ring_discards",
+	"tx_total_resets",
+	"tx_total_ring_discards",
+	"total_missed_irqs",
 };
 
 #define NUM_RING_RX_SW_STATS		ARRAY_SIZE(bnxt_rx_sw_stats_str)
@@ -495,7 +497,7 @@ static const struct {
 	BNXT_TX_STATS_PRI_ENTRIES(tx_packets),
 };
 
-#define BNXT_NUM_SW_FUNC_STATS	ARRAY_SIZE(bnxt_sw_func_stats)
+#define BNXT_NUM_RING_ERR_STATS	ARRAY_SIZE(bnxt_ring_err_stats_arr)
 #define BNXT_NUM_PORT_STATS ARRAY_SIZE(bnxt_port_stats_arr)
 #define BNXT_NUM_STATS_PRI			\
 	(ARRAY_SIZE(bnxt_rx_bytes_pri_arr) +	\
@@ -532,7 +534,7 @@ static int bnxt_get_num_stats(struct bnxt *bp)
 {
 	int num_stats = bnxt_get_num_ring_stats(bp);
 
-	num_stats += BNXT_NUM_SW_FUNC_STATS;
+	num_stats += BNXT_NUM_RING_ERR_STATS;
 
 	if (bp->flags & BNXT_FLAG_PORT_STATS)
 		num_stats += BNXT_NUM_PORT_STATS;
@@ -583,17 +585,16 @@ static bool is_tx_ring(struct bnxt *bp, int ring_num)
 static void bnxt_get_ethtool_stats(struct net_device *dev,
 				   struct ethtool_stats *stats, u64 *buf)
 {
-	u32 i, j = 0;
+	struct bnxt_total_ring_err_stats ring_err_stats = {0};
 	struct bnxt *bp = netdev_priv(dev);
+	u64 *curr, *prev;
 	u32 tpa_stats;
+	u32 i, j = 0;
 
 	if (!bp->bnapi) {
-		j += bnxt_get_num_ring_stats(bp) + BNXT_NUM_SW_FUNC_STATS;
+		j += bnxt_get_num_ring_stats(bp);
 		goto skip_ring_stats;
 	}
-
-	for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++)
-		bnxt_sw_func_stats[i].counter = 0;
 
 	tpa_stats = bnxt_get_num_tpa_ring_stats(bp);
 	for (i = 0; i < bp->cp_nr_rings; i++) {
@@ -631,19 +632,16 @@ skip_tpa_ring_stats:
 		sw = (u64 *)&cpr->sw_stats.cmn;
 		for (k = 0; k < NUM_RING_CMN_SW_STATS; j++, k++)
 			buf[j] = sw[k];
-
-		bnxt_sw_func_stats[RX_TOTAL_DISCARDS].counter +=
-			BNXT_GET_RING_STATS64(sw_stats, rx_discard_pkts);
-		bnxt_sw_func_stats[TX_TOTAL_DISCARDS].counter +=
-			BNXT_GET_RING_STATS64(sw_stats, tx_discard_pkts);
-		bnxt_sw_func_stats[RX_NETPOLL_DISCARDS].counter +=
-			cpr->sw_stats.rx.rx_netpoll_discards;
 	}
 
-	for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++, j++)
-		buf[j] = bnxt_sw_func_stats[i].counter;
+	bnxt_get_ring_err_stats(bp, &ring_err_stats);
 
 skip_ring_stats:
+	curr = &ring_err_stats.rx_total_l4_csum_errors;
+	prev = &bp->ring_err_stats_prev.rx_total_l4_csum_errors;
+	for (i = 0; i < BNXT_NUM_RING_ERR_STATS; i++, j++, curr++, prev++)
+		buf[j] = *curr + *prev;
+
 	if (bp->flags & BNXT_FLAG_PORT_STATS) {
 		u64 *port_stats = bp->port_stats.sw_stats;
 
@@ -745,8 +743,8 @@ skip_tpa_stats:
 				buf += ETH_GSTRING_LEN;
 			}
 		}
-		for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++) {
-			strcpy(buf, bnxt_sw_func_stats[i].string);
+		for (i = 0; i < BNXT_NUM_RING_ERR_STATS; i++) {
+			strscpy(buf, bnxt_ring_err_stats_arr[i], ETH_GSTRING_LEN);
 			buf += ETH_GSTRING_LEN;
 		}
 
@@ -956,12 +954,7 @@ static int bnxt_set_channels(struct net_device *dev,
 			 * before PF unload
 			 */
 		}
-		rc = bnxt_close_nic(bp, true, false);
-		if (rc) {
-			netdev_err(bp->dev, "Set channel failure rc :%x\n",
-				   rc);
-			return rc;
-		}
+		bnxt_close_nic(bp, true, false);
 	}
 
 	if (sh) {
@@ -3028,7 +3021,7 @@ static void bnxt_get_pkgver(struct net_device *dev)
 
 	if (!bnxt_get_pkginfo(dev, buf, sizeof(buf))) {
 		len = strlen(bp->fw_ver_str);
-		snprintf(bp->fw_ver_str + len, FW_VER_STR_LEN - len - 1,
+		snprintf(bp->fw_ver_str + len, FW_VER_STR_LEN - len,
 			 "/pkg %s", buf);
 	}
 }
@@ -3738,12 +3731,7 @@ static void bnxt_self_test(struct net_device *dev, struct ethtool_test *etest,
 		bnxt_run_fw_tests(bp, test_mask, &test_results);
 	} else {
 		bnxt_ulp_stop(bp);
-		rc = bnxt_close_nic(bp, true, false);
-		if (rc) {
-			etest->flags |= ETH_TEST_FL_FAILED;
-			bnxt_ulp_start(bp, rc);
-			return;
-		}
+		bnxt_close_nic(bp, true, false);
 		bnxt_run_fw_tests(bp, test_mask, &test_results);
 
 		buf[BNXT_MACLPBK_TEST_IDX] = 1;

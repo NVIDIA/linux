@@ -41,7 +41,6 @@ static int otx2_dl_mcam_count_set(struct devlink *devlink, u32 id,
 		return 0;
 
 	otx2_alloc_mcam_entries(pfvf, ctx->val.vu16);
-	otx2_tc_alloc_ent_bitmap(pfvf);
 
 	return 0;
 }
@@ -113,6 +112,7 @@ err_dl:
 	devlink_free(dl);
 	return err;
 }
+EXPORT_SYMBOL(otx2_register_dl);
 
 void otx2_unregister_dl(struct otx2_nic *pfvf)
 {
@@ -124,3 +124,4 @@ void otx2_unregister_dl(struct otx2_nic *pfvf)
 				  ARRAY_SIZE(otx2_dl_params));
 	devlink_free(dl);
 }
+EXPORT_SYMBOL(otx2_unregister_dl);

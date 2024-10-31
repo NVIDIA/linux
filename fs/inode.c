@@ -215,6 +215,8 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
 	lockdep_set_class_and_name(&mapping->invalidate_lock,
 				   &sb->s_type->invalidate_lock_key,
 				   "mapping.invalidate_lock");
+	if (sb->s_iflags & SB_I_STABLE_WRITES)
+		mapping_set_stable_writes(mapping);
 	inode->i_private = NULL;
 	inode->i_mapping = mapping;
 	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */
@@ -484,6 +486,39 @@ static void inode_lru_list_del(struct inode *inode)
 		this_cpu_dec(nr_unused);
 }
 
+static void inode_pin_lru_isolating(struct inode *inode)
+{
+	lockdep_assert_held(&inode->i_lock);
+	WARN_ON(inode->i_state & (I_LRU_ISOLATING | I_FREEING | I_WILL_FREE));
+	inode->i_state |= I_LRU_ISOLATING;
+}
+
+static void inode_unpin_lru_isolating(struct inode *inode)
+{
+	spin_lock(&inode->i_lock);
+	WARN_ON(!(inode->i_state & I_LRU_ISOLATING));
+	inode->i_state &= ~I_LRU_ISOLATING;
+	smp_mb();
+	wake_up_bit(&inode->i_state, __I_LRU_ISOLATING);
+	spin_unlock(&inode->i_lock);
+}
+
+static void inode_wait_for_lru_isolating(struct inode *inode)
+{
+	spin_lock(&inode->i_lock);
+	if (inode->i_state & I_LRU_ISOLATING) {
+		DEFINE_WAIT_BIT(wq, &inode->i_state, __I_LRU_ISOLATING);
+		wait_queue_head_t *wqh;
+
+		wqh = bit_waitqueue(&inode->i_state, __I_LRU_ISOLATING);
+		spin_unlock(&inode->i_lock);
+		__wait_on_bit(wqh, &wq, bit_wait, TASK_UNINTERRUPTIBLE);
+		spin_lock(&inode->i_lock);
+		WARN_ON(inode->i_state & I_LRU_ISOLATING);
+	}
+	spin_unlock(&inode->i_lock);
+}
+
 /**
  * inode_sb_list_add - add inode to the superblock list of inodes
  * @inode: inode to add
@@ -652,6 +687,8 @@ static void evict(struct inode *inode)
 
 	inode_sb_list_del(inode);
 
+	inode_wait_for_lru_isolating(inode);
+
 	/*
 	 * Wait for flusher thread to be done with the inode so that filesystem
 	 * does not start destroying it while writeback is still running. Since
@@ -720,6 +757,10 @@ again:
 			continue;
 
 		spin_lock(&inode->i_lock);
+		if (atomic_read(&inode->i_count)) {
+			spin_unlock(&inode->i_lock);
+			continue;
+		}
 		if (inode->i_state & (I_NEW | I_FREEING | I_WILL_FREE)) {
 			spin_unlock(&inode->i_lock);
 			continue;
@@ -751,16 +792,11 @@ EXPORT_SYMBOL_GPL(evict_inodes);
 /**
  * invalidate_inodes	- attempt to free all inodes on a superblock
  * @sb:		superblock to operate on
- * @kill_dirty: flag to guide handling of dirty inodes
  *
- * Attempts to free all inodes for a given superblock.  If there were any
- * busy inodes return a non-zero value, else zero.
- * If @kill_dirty is set, discard dirty inodes too, otherwise treat
- * them as busy.
+ * Attempts to free all inodes (including dirty inodes) for a given superblock.
  */
-int invalidate_inodes(struct super_block *sb, bool kill_dirty)
+void invalidate_inodes(struct super_block *sb)
 {
-	int busy = 0;
 	struct inode *inode, *next;
 	LIST_HEAD(dispose);
 
@@ -772,14 +808,8 @@ again:
 			spin_unlock(&inode->i_lock);
 			continue;
 		}
-		if (inode->i_state & I_DIRTY_ALL && !kill_dirty) {
-			spin_unlock(&inode->i_lock);
-			busy = 1;
-			continue;
-		}
 		if (atomic_read(&inode->i_count)) {
 			spin_unlock(&inode->i_lock);
-			busy = 1;
 			continue;
 		}
 
@@ -797,8 +827,6 @@ again:
 	spin_unlock(&sb->s_inode_list_lock);
 
 	dispose_list(&dispose);
-
-	return busy;
 }
 
 /*
@@ -853,7 +881,7 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
 	 * be under pressure before the cache inside the highmem zone.
 	 */
 	if (inode_has_buffers(inode) || !mapping_empty(&inode->i_data)) {
-		__iget(inode);
+		inode_pin_lru_isolating(inode);
 		spin_unlock(&inode->i_lock);
 		spin_unlock(lru_lock);
 		if (remove_inode_buffers(inode)) {
@@ -865,7 +893,7 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
 				__count_vm_events(PGINODESTEAL, reap);
 			mm_account_reclaimed_pages(reap);
 		}
-		iput(inode);
+		inode_unpin_lru_isolating(inode);
 		spin_lock(lru_lock);
 		return LRU_RETRY;
 	}
@@ -1850,6 +1878,7 @@ EXPORT_SYMBOL(bmap);
 static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
 			     struct timespec64 now)
 {
+	struct timespec64 ctime;
 
 	if (!(mnt->mnt_flags & MNT_RELATIME))
 		return 1;
@@ -1861,7 +1890,8 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
 	/*
 	 * Is ctime younger than or equal to atime? If yes, update atime:
 	 */
-	if (timespec64_compare(&inode->i_ctime, &inode->i_atime) >= 0)
+	ctime = inode_get_ctime(inode);
+	if (timespec64_compare(&ctime, &inode->i_atime) >= 0)
 		return 1;
 
 	/*
@@ -1876,29 +1906,76 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
 	return 0;
 }
 
-int generic_update_time(struct inode *inode, struct timespec64 *time, int flags)
+/**
+ * inode_update_timestamps - update the timestamps on the inode
+ * @inode: inode to be updated
+ * @flags: S_* flags that needed to be updated
+ *
+ * The update_time function is called when an inode's timestamps need to be
+ * updated for a read or write operation. This function handles updating the
+ * actual timestamps. It's up to the caller to ensure that the inode is marked
+ * dirty appropriately.
+ *
+ * In the case where any of S_MTIME, S_CTIME, or S_VERSION need to be updated,
+ * attempt to update all three of them. S_ATIME updates can be handled
+ * independently of the rest.
+ *
+ * Returns a set of S_* flags indicating which values changed.
+ */
+int inode_update_timestamps(struct inode *inode, int flags)
 {
-	int dirty_flags = 0;
+	int updated = 0;
+	struct timespec64 now;
 
-	if (flags & (S_ATIME | S_CTIME | S_MTIME)) {
-		if (flags & S_ATIME)
-			inode->i_atime = *time;
-		if (flags & S_CTIME)
-			inode->i_ctime = *time;
-		if (flags & S_MTIME)
-			inode->i_mtime = *time;
+	if (flags & (S_MTIME|S_CTIME|S_VERSION)) {
+		struct timespec64 ctime = inode_get_ctime(inode);
 
-		if (inode->i_sb->s_flags & SB_LAZYTIME)
-			dirty_flags |= I_DIRTY_TIME;
-		else
-			dirty_flags |= I_DIRTY_SYNC;
+		now = inode_set_ctime_current(inode);
+		if (!timespec64_equal(&now, &ctime))
+			updated |= S_CTIME;
+		if (!timespec64_equal(&now, &inode->i_mtime)) {
+			inode->i_mtime = now;
+			updated |= S_MTIME;
+		}
+		if (IS_I_VERSION(inode) && inode_maybe_inc_iversion(inode, updated))
+			updated |= S_VERSION;
+	} else {
+		now = current_time(inode);
 	}
 
-	if ((flags & S_VERSION) && inode_maybe_inc_iversion(inode, false))
-		dirty_flags |= I_DIRTY_SYNC;
+	if (flags & S_ATIME) {
+		if (!timespec64_equal(&now, &inode->i_atime)) {
+			inode->i_atime = now;
+			updated |= S_ATIME;
+		}
+	}
+	return updated;
+}
+EXPORT_SYMBOL(inode_update_timestamps);
 
+/**
+ * generic_update_time - update the timestamps on the inode
+ * @inode: inode to be updated
+ * @flags: S_* flags that needed to be updated
+ *
+ * The update_time function is called when an inode's timestamps need to be
+ * updated for a read or write operation. In the case where any of S_MTIME, S_CTIME,
+ * or S_VERSION need to be updated we attempt to update all three of them. S_ATIME
+ * updates can be handled done independently of the rest.
+ *
+ * Returns a S_* mask indicating which fields were updated.
+ */
+int generic_update_time(struct inode *inode, int flags)
+{
+	int updated = inode_update_timestamps(inode, flags);
+	int dirty_flags = 0;
+
+	if (updated & (S_ATIME|S_MTIME|S_CTIME))
+		dirty_flags = inode->i_sb->s_flags & SB_LAZYTIME ? I_DIRTY_TIME : I_DIRTY_SYNC;
+	if (updated & S_VERSION)
+		dirty_flags |= I_DIRTY_SYNC;
 	__mark_inode_dirty(inode, dirty_flags);
-	return 0;
+	return updated;
 }
 EXPORT_SYMBOL(generic_update_time);
 
@@ -1906,11 +1983,12 @@ EXPORT_SYMBOL(generic_update_time);
  * This does the actual work of updating an inodes time or version.  Must have
  * had called mnt_want_write() before calling this.
  */
-int inode_update_time(struct inode *inode, struct timespec64 *time, int flags)
+int inode_update_time(struct inode *inode, int flags)
 {
 	if (inode->i_op->update_time)
-		return inode->i_op->update_time(inode, time, flags);
-	return generic_update_time(inode, time, flags);
+		return inode->i_op->update_time(inode, flags);
+	generic_update_time(inode, flags);
+	return 0;
 }
 EXPORT_SYMBOL(inode_update_time);
 
@@ -1962,7 +2040,6 @@ void touch_atime(const struct path *path)
 {
 	struct vfsmount *mnt = path->mnt;
 	struct inode *inode = d_inode(path->dentry);
-	struct timespec64 now;
 
 	if (!atime_needs_update(path, inode))
 		return;
@@ -1981,8 +2058,7 @@ void touch_atime(const struct path *path)
 	 * We may also fail on filesystems that have the ability to make parts
 	 * of the fs read only, e.g. subvolumes in Btrfs.
 	 */
-	now = current_time(inode);
-	inode_update_time(inode, &now, S_ATIME);
+	inode_update_time(inode, S_ATIME);
 	__mnt_drop_write(mnt);
 skip_update:
 	sb_end_write(inode->i_sb);
@@ -2067,18 +2143,21 @@ int file_remove_privs(struct file *file)
 }
 EXPORT_SYMBOL(file_remove_privs);
 
-static int inode_needs_update_time(struct inode *inode, struct timespec64 *now)
+static int inode_needs_update_time(struct inode *inode)
 {
 	int sync_it = 0;
+	struct timespec64 now = current_time(inode);
+	struct timespec64 ctime;
 
 	/* First try to exhaust all avenues to not sync */
 	if (IS_NOCMTIME(inode))
 		return 0;
 
-	if (!timespec64_equal(&inode->i_mtime, now))
+	if (!timespec64_equal(&inode->i_mtime, &now))
 		sync_it = S_MTIME;
 
-	if (!timespec64_equal(&inode->i_ctime, now))
+	ctime = inode_get_ctime(inode);
+	if (!timespec64_equal(&ctime, &now))
 		sync_it |= S_CTIME;
 
 	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
@@ -2087,15 +2166,14 @@ static int inode_needs_update_time(struct inode *inode, struct timespec64 *now)
 	return sync_it;
 }
 
-static int __file_update_time(struct file *file, struct timespec64 *now,
-			int sync_mode)
+static int __file_update_time(struct file *file, int sync_mode)
 {
 	int ret = 0;
 	struct inode *inode = file_inode(file);
 
 	/* try to update time settings */
 	if (!__mnt_want_write_file(file)) {
-		ret = inode_update_time(inode, now, sync_mode);
+		ret = inode_update_time(inode, sync_mode);
 		__mnt_drop_write_file(file);
 	}
 
@@ -2120,13 +2198,12 @@ int file_update_time(struct file *file)
 {
 	int ret;
 	struct inode *inode = file_inode(file);
-	struct timespec64 now = current_time(inode);
 
-	ret = inode_needs_update_time(inode, &now);
+	ret = inode_needs_update_time(inode);
 	if (ret <= 0)
 		return ret;
 
-	return __file_update_time(file, &now, ret);
+	return __file_update_time(file, ret);
 }
 EXPORT_SYMBOL(file_update_time);
 
@@ -2149,7 +2226,6 @@ static int file_modified_flags(struct file *file, int flags)
 {
 	int ret;
 	struct inode *inode = file_inode(file);
-	struct timespec64 now = current_time(inode);
 
 	/*
 	 * Clear the security bits if the process is not being run by root.
@@ -2162,13 +2238,13 @@ static int file_modified_flags(struct file *file, int flags)
 	if (unlikely(file->f_mode & FMODE_NOCMTIME))
 		return 0;
 
-	ret = inode_needs_update_time(inode, &now);
+	ret = inode_needs_update_time(inode);
 	if (ret <= 0)
 		return ret;
 	if (flags & IOCB_NOWAIT)
 		return -EAGAIN;
 
-	return __file_update_time(file, &now, ret);
+	return __file_update_time(file, ret);
 }
 
 /**
@@ -2488,15 +2564,25 @@ struct timespec64 current_time(struct inode *inode)
 	struct timespec64 now;
 
 	ktime_get_coarse_real_ts64(&now);
-
-	if (unlikely(!inode->i_sb)) {
-		WARN(1, "current_time() called with uninitialized super_block in the inode");
-		return now;
-	}
-
 	return timestamp_truncate(now, inode);
 }
 EXPORT_SYMBOL(current_time);
+
+/**
+ * inode_set_ctime_current - set the ctime to current_time
+ * @inode: inode
+ *
+ * Set the inode->i_ctime to the current value for the inode. Returns
+ * the current value that was assigned to i_ctime.
+ */
+struct timespec64 inode_set_ctime_current(struct inode *inode)
+{
+	struct timespec64 now = current_time(inode);
+
+	inode_set_ctime(inode, now.tv_sec, now.tv_nsec);
+	return now;
+}
+EXPORT_SYMBOL(inode_set_ctime_current);
 
 /**
  * in_group_or_capable - check whether caller is CAP_FSETID privileged

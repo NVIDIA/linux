@@ -330,9 +330,6 @@ mt76_dma_tx_cleanup_idx(struct mt76_dev *dev, struct mt76_queue *q, int idx,
 	if (e->txwi == DMA_DUMMY_DATA)
 		e->txwi = NULL;
 
-	if (e->skb == DMA_DUMMY_DATA)
-		e->skb = NULL;
-
 	*prev_e = *e;
 	memset(e, 0, sizeof(*e));
 }
@@ -466,6 +463,9 @@ mt76_dma_tx_queue_skb_raw(struct mt76_dev *dev, struct mt76_queue *q,
 	struct mt76_queue_buf buf = {};
 	dma_addr_t addr;
 
+	if (test_bit(MT76_MCU_RESET, &dev->phy.state))
+		goto error;
+
 	if (q->queued + 1 >= q->ndesc - 1)
 		goto error;
 
@@ -506,6 +506,9 @@ mt76_dma_tx_queue_skb(struct mt76_dev *dev, struct mt76_queue *q,
 	struct sk_buff *iter;
 	dma_addr_t addr;
 	u8 *txwi;
+
+	if (test_bit(MT76_RESET, &dev->phy.state))
+		goto free_skb;
 
 	t = mt76_get_txwi(dev);
 	if (!t)
@@ -773,7 +776,7 @@ mt76_dma_rx_reset(struct mt76_dev *dev, enum mt76_rxq_id qid)
 
 static void
 mt76_add_fragment(struct mt76_dev *dev, struct mt76_queue *q, void *data,
-		  int len, bool more, u32 info)
+		  int len, bool more, u32 info, bool allow_direct)
 {
 	struct sk_buff *skb = q->rx_head;
 	struct skb_shared_info *shinfo = skb_shinfo(skb);
@@ -785,7 +788,7 @@ mt76_add_fragment(struct mt76_dev *dev, struct mt76_queue *q, void *data,
 
 		skb_add_rx_frag(skb, nr_frags, page, offset, len, q->buf_size);
 	} else {
-		mt76_put_page_pool_buf(data, true);
+		mt76_put_page_pool_buf(data, allow_direct);
 	}
 
 	if (more)
@@ -805,6 +808,7 @@ mt76_dma_rx_process(struct mt76_dev *dev, struct mt76_queue *q, int budget)
 	struct sk_buff *skb;
 	unsigned char *data;
 	bool check_ddone = false;
+	bool allow_direct = !mt76_queue_is_wed_rx(q);
 	bool more;
 
 	if (IS_ENABLED(CONFIG_NET_MEDIATEK_SOC_WED) &&
@@ -845,7 +849,8 @@ mt76_dma_rx_process(struct mt76_dev *dev, struct mt76_queue *q, int budget)
 		}
 
 		if (q->rx_head) {
-			mt76_add_fragment(dev, q, data, len, more, info);
+			mt76_add_fragment(dev, q, data, len, more, info,
+					  allow_direct);
 			continue;
 		}
 
@@ -874,7 +879,7 @@ mt76_dma_rx_process(struct mt76_dev *dev, struct mt76_queue *q, int budget)
 		continue;
 
 free_frag:
-		mt76_put_page_pool_buf(data, true);
+		mt76_put_page_pool_buf(data, allow_direct);
 	}
 
 	mt76_dma_rx_fill(dev, q, true);

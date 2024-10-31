@@ -322,6 +322,14 @@ static const struct serial8250_config uart_config[] = {
 		.rxtrig_bytes   = {2, 66, 130, 194},
 		.flags          = UART_CAP_FIFO,
 	},
+	[PORT_BCM7271] = {
+		.name		= "Broadcom BCM7271 UART",
+		.fifo_size	= 32,
+		.tx_loadsz	= 32,
+		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_01,
+		.rxtrig_bytes	= {1, 8, 16, 30},
+		.flags		= UART_CAP_FIFO | UART_CAP_AFE,
+	},
 };
 
 /* Uart divisor latch read */
@@ -1329,9 +1337,6 @@ static void autoconfig_irq(struct uart_8250_port *up)
 		inb_p(ICP);
 	}
 
-	if (uart_console(port))
-		console_lock();
-
 	/* forget possible initially masked and pending IRQ */
 	probe_irq_off(probe_irq_on());
 	save_mcr = serial8250_in_MCR(up);
@@ -1370,9 +1375,6 @@ static void autoconfig_irq(struct uart_8250_port *up)
 
 	if (port->flags & UPF_FOURPORT)
 		outb_p(save_ICP, ICP);
-
-	if (uart_console(port))
-		console_unlock();
 
 	port->irq = (irq > 0) ? irq : 0;
 }
@@ -1703,8 +1705,7 @@ static void serial8250_enable_ms(struct uart_port *port)
 void serial8250_read_char(struct uart_8250_port *up, u16 lsr)
 {
 	struct uart_port *port = &up->port;
-	unsigned char ch;
-	char flag = TTY_NORMAL;
+	u8 ch, flag = TTY_NORMAL;
 
 	if (likely(lsr & UART_LSR_DR))
 		ch = serial_in(up, UART_RX);

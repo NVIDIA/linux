@@ -32,6 +32,12 @@ static int io_sqe_buffer_register(struct io_ring_ctx *ctx, struct iovec *iov,
 #define IORING_MAX_FIXED_FILES	(1U << 20)
 #define IORING_MAX_REG_BUFFERS	(1U << 14)
 
+static const struct io_mapped_ubuf dummy_ubuf = {
+	/* set invalid range, so io_import_fixed() fails meeting it */
+	.ubuf = -1UL,
+	.ubuf_end = 0,
+};
+
 int __io_account_mem(struct user_struct *user, unsigned long nr_pages)
 {
 	unsigned long page_limit, cur_pages, new_pages;
@@ -131,7 +137,7 @@ static void io_buffer_unmap(struct io_ring_ctx *ctx, struct io_mapped_ubuf **slo
 	struct io_mapped_ubuf *imu = *slot;
 	unsigned int i;
 
-	if (imu != ctx->dummy_ubuf) {
+	if (imu != &dummy_ubuf) {
 		for (i = 0; i < imu->nr_bvecs; i++)
 			unpin_user_page(imu->bvec[i].bv_page);
 		if (imu->acct_pages)
@@ -244,6 +250,7 @@ __cold static int io_rsrc_ref_quiesce(struct io_rsrc_data *data,
 
 		ret = io_run_task_work_sig(ctx);
 		if (ret < 0) {
+			__set_current_state(TASK_RUNNING);
 			mutex_lock(&ctx->uring_lock);
 			if (list_empty(&ctx->rsrc_ref_list))
 				ret = 0;
@@ -448,14 +455,14 @@ static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 			break;
 
 		i = array_index_nospec(up->offset + done, ctx->nr_user_bufs);
-		if (ctx->user_bufs[i] != ctx->dummy_ubuf) {
+		if (ctx->user_bufs[i] != &dummy_ubuf) {
 			err = io_queue_rsrc_removal(ctx->buf_data, i,
 						    ctx->user_bufs[i]);
 			if (unlikely(err)) {
 				io_buffer_unmap(ctx, &imu);
 				break;
 			}
-			ctx->user_bufs[i] = ctx->dummy_ubuf;
+			ctx->user_bufs[i] = (struct io_mapped_ubuf *)&dummy_ubuf;
 		}
 
 		ctx->user_bufs[i] = imu;
@@ -916,7 +923,7 @@ static int io_sqe_buffer_register(struct io_ring_ctx *ctx, struct iovec *iov,
 	int ret, nr_pages, i;
 	struct folio *folio = NULL;
 
-	*pimu = ctx->dummy_ubuf;
+	*pimu = (struct io_mapped_ubuf *)&dummy_ubuf;
 	if (!iov->iov_base)
 		return 0;
 
@@ -1094,14 +1101,13 @@ int io_import_fixed(int ddir, struct iov_iter *iter,
 		 */
 		const struct bio_vec *bvec = imu->bvec;
 
-		if (offset <= bvec->bv_len) {
+		if (offset < bvec->bv_len) {
 			/*
 			 * Note, huge pages buffers consists of one large
 			 * bvec entry and should always go this way. The other
 			 * branch doesn't expect non PAGE_SIZE'd chunks.
 			 */
 			iter->bvec = bvec;
-			iter->nr_segs = bvec->bv_len;
 			iter->count -= offset;
 			iter->iov_offset = offset;
 		} else {

@@ -82,7 +82,7 @@ typedef union {
 #include "qla_nvme.h"
 #define QLA2XXX_DRIVER_NAME	"qla2xxx"
 #define QLA2XXX_APIDEV		"ql2xapidev"
-#define QLA2XXX_MANUFACTURER	"Marvell Semiconductor, Inc."
+#define QLA2XXX_MANUFACTURER	"Marvell"
 
 /*
  * We have MAILBOX_REGISTER_COUNT sized arrays in a few places,
@@ -346,6 +346,12 @@ struct name_list_extended {
 	u8			sent;
 };
 
+struct qla_nvme_fc_rjt {
+	struct fcnvme_ls_rjt *c;
+	dma_addr_t  cdma;
+	u16 size;
+};
+
 struct els_reject {
 	struct fc_els_ls_rjt *c;
 	dma_addr_t  cdma;
@@ -503,6 +509,20 @@ struct ct_arg {
 	port_id_t	id;
 };
 
+struct qla_nvme_lsrjt_pt_arg {
+	struct fc_port *fcport;
+	u8 opcode;
+	u8 vp_idx;
+	u8 reason;
+	u8 explanation;
+	__le16 nport_handle;
+	u16 control_flags;
+	__le16 ox_id;
+	__le32 xchg_address;
+	u32 tx_byte_count, rx_byte_count;
+	dma_addr_t tx_addr, rx_addr;
+};
+
 /*
  * SRB extensions.
  */
@@ -611,13 +631,16 @@ struct srb_iocb {
 			void *desc;
 
 			/* These are only used with ls4 requests */
-			int cmd_len;
-			int rsp_len;
+			__le32 cmd_len;
+			__le32 rsp_len;
 			dma_addr_t cmd_dma;
 			dma_addr_t rsp_dma;
 			enum nvmefc_fcp_datadir dir;
 			uint32_t dl;
 			uint32_t timeout_sec;
+			__le32 exchange_address;
+			__le16 nport_handle;
+			__le16 ox_id;
 			struct	list_head   entry;
 		} nvme;
 		struct {
@@ -707,6 +730,10 @@ typedef struct srb {
 	struct fc_port *fcport;
 	struct scsi_qla_host *vha;
 	unsigned int start_timer:1;
+	unsigned int abort:1;
+	unsigned int aborted:1;
+	unsigned int completed:1;
+	unsigned int unsol_rsp:1;
 
 	uint32_t handle;
 	uint16_t flags;
@@ -2542,6 +2569,7 @@ enum rscn_addr_format {
 typedef struct fc_port {
 	struct list_head list;
 	struct scsi_qla_host *vha;
+	struct list_head unsol_ctx_head;
 
 	unsigned int conf_compl_supported:1;
 	unsigned int deleted:2;
@@ -3281,9 +3309,20 @@ struct fab_scan_rp {
 	u8 node_name[8];
 };
 
+enum scan_step {
+	FAB_SCAN_START,
+	FAB_SCAN_GPNFT_FCP,
+	FAB_SCAN_GNNFT_FCP,
+	FAB_SCAN_GPNFT_NVME,
+	FAB_SCAN_GNNFT_NVME,
+};
+
 struct fab_scan {
 	struct fab_scan_rp *l;
 	u32 size;
+	u32 rscn_gen_start;
+	u32 rscn_gen_end;
+	enum scan_step step;
 	u16 scan_retry;
 #define MAX_SCAN_RETRIES 5
 	enum scan_flags_t scan_flags;
@@ -3509,9 +3548,8 @@ enum qla_work_type {
 	QLA_EVT_RELOGIN,
 	QLA_EVT_ASYNC_PRLO,
 	QLA_EVT_ASYNC_PRLO_DONE,
-	QLA_EVT_GPNFT,
-	QLA_EVT_GPNFT_DONE,
-	QLA_EVT_GNNFT_DONE,
+	QLA_EVT_SCAN_CMD,
+	QLA_EVT_SCAN_FINISH,
 	QLA_EVT_GFPNID,
 	QLA_EVT_SP_RETRY,
 	QLA_EVT_IIDMA,
@@ -3797,6 +3835,12 @@ struct qla_qpair {
 
 	uint16_t id;			/* qp number used with FW */
 	uint16_t vp_idx;		/* vport ID */
+
+	uint16_t dsd_inuse;
+	uint16_t dsd_avail;
+	struct list_head dsd_list;
+#define NUM_DSD_CHAIN 4096
+
 	mempool_t *srb_mempool;
 
 	struct pci_dev  *pdev;
@@ -4723,11 +4767,6 @@ struct qla_hw_data {
 	struct fw_blob	*hablob;
 	struct qla82xx_legacy_intr_set nx_legacy_intr;
 
-	uint16_t	gbl_dsd_inuse;
-	uint16_t	gbl_dsd_avail;
-	struct list_head gbl_dsd_list;
-#define NUM_DSD_CHAIN 4096
-
 	uint8_t fw_type;
 	uint32_t file_prd_off;	/* File firmware product offset */
 
@@ -4809,6 +4848,7 @@ struct qla_hw_data {
 	struct els_reject elsrej;
 	u8 edif_post_stop_cnt_down;
 	struct qla_vp_map *vp_map;
+	struct qla_nvme_fc_rjt lsrjt;
 	struct qla_fw_res fwres ____cacheline_aligned;
 };
 
@@ -4842,6 +4882,7 @@ struct active_regions {
  * is variable) starting at "iocb".
  */
 struct purex_item {
+	void *purls_context;
 	struct list_head list;
 	struct scsi_qla_host *vha;
 	void (*process_item)(struct scsi_qla_host *vha,
@@ -4999,6 +5040,7 @@ typedef struct scsi_qla_host {
 
 	/* Counter to detect races between ELS and RSCN events */
 	atomic_t		generation_tick;
+	atomic_t		rscn_gen;
 	/* Time when global fcport update has been scheduled */
 	int			total_fcport_update_gen;
 	/* List of pending LOGOs, protected by tgt_mutex */

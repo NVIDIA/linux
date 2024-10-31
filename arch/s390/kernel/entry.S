@@ -8,6 +8,7 @@
  *		 Denis Joseph Barrow (djbarrow@de.ibm.com,barrow_dj@yahoo.com),
  */
 
+#include <linux/export.h>
 #include <linux/init.h>
 #include <linux/linkage.h>
 #include <asm/asm-extable.h>
@@ -26,7 +27,6 @@
 #include <asm/vx-insn.h>
 #include <asm/setup.h>
 #include <asm/nmi.h>
-#include <asm/export.h>
 #include <asm/nospec-insn.h>
 
 _LPP_OFFSET	= __LC_LPP
@@ -653,6 +653,7 @@ SYM_DATA_START_LOCAL(daton_psw)
 SYM_DATA_END(daton_psw)
 
 	.section .rodata, "a"
+	.balign	8
 #define SYSCALL(esame,emu)	.quad __s390x_ ## esame
 SYM_DATA_START(sys_call_table)
 #include "asm/syscall_table.h"

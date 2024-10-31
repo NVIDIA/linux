@@ -168,6 +168,12 @@ static int mlx5_devlink_reload_down(struct devlink *devlink, bool netns_change,
 		return -EOPNOTSUPP;
 	}
 
+	if (action == DEVLINK_RELOAD_ACTION_FW_ACTIVATE &&
+	    !dev->priv.fw_reset) {
+		NL_SET_ERR_MSG_MOD(extack, "FW activate is unsupported for this function");
+		return -EOPNOTSUPP;
+	}
+
 	if (mlx5_core_is_pf(dev) && pci_num_vf(pdev))
 		NL_SET_ERR_MSG_MOD(extack, "reload while VFs are present is unfavorable");
 
@@ -212,6 +218,9 @@ static int mlx5_devlink_reload_up(struct devlink *devlink, enum devlink_reload_a
 		/* On fw_activate action, also driver is reloaded and reinit performed */
 		*actions_performed |= BIT(DEVLINK_RELOAD_ACTION_DRIVER_REINIT);
 		ret = mlx5_load_one_devl_locked(dev, true);
+		if (ret)
+			return ret;
+		ret = mlx5_fw_reset_verify_fw_complete(dev, extack);
 		break;
 	default:
 		/* Unsupported action should not get to this function */

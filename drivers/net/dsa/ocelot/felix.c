@@ -528,7 +528,9 @@ static int felix_tag_8021q_setup(struct dsa_switch *ds)
 	 * so we need to be careful that there are no extra frames to be
 	 * dequeued over MMIO, since we would never know to discard them.
 	 */
+	ocelot_lock_xtr_grp_bh(ocelot, 0);
 	ocelot_drain_cpu_queue(ocelot, 0);
+	ocelot_unlock_xtr_grp_bh(ocelot, 0);
 
 	return 0;
 }
@@ -1042,12 +1044,6 @@ static void felix_phylink_get_caps(struct dsa_switch *ds, int port,
 {
 	struct ocelot *ocelot = ds->priv;
 
-	/* This driver does not make use of the speed, duplex, pause or the
-	 * advertisement in its mac_config, so it is safe to mark this driver
-	 * as non-legacy.
-	 */
-	config->legacy_pre_march2020 = false;
-
 	config->mac_capabilities = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
 				   MAC_10 | MAC_100 | MAC_1000FD |
 				   MAC_2500FD;
@@ -1510,6 +1506,8 @@ static void felix_port_deferred_xmit(struct kthread_work *work)
 	int port = xmit_work->dp->index;
 	int retries = 10;
 
+	ocelot_lock_inj_grp(ocelot, 0);
+
 	do {
 		if (ocelot_can_inject(ocelot, 0))
 			break;
@@ -1518,6 +1516,7 @@ static void felix_port_deferred_xmit(struct kthread_work *work)
 	} while (--retries);
 
 	if (!retries) {
+		ocelot_unlock_inj_grp(ocelot, 0);
 		dev_err(ocelot->dev, "port %d failed to inject skb\n",
 			port);
 		ocelot_port_purge_txtstamp_skb(ocelot, port, skb);
@@ -1526,6 +1525,8 @@ static void felix_port_deferred_xmit(struct kthread_work *work)
 	}
 
 	ocelot_port_inject_frame(ocelot, port, 0, rew_op, skb);
+
+	ocelot_unlock_inj_grp(ocelot, 0);
 
 	consume_skb(skb);
 	kfree(xmit_work);
@@ -1677,6 +1678,8 @@ static bool felix_check_xtr_pkt(struct ocelot *ocelot)
 	if (!felix->info->quirk_no_xtr_irq)
 		return false;
 
+	ocelot_lock_xtr_grp(ocelot, grp);
+
 	while (ocelot_read(ocelot, QS_XTR_DATA_PRESENT) & BIT(grp)) {
 		struct sk_buff *skb;
 		unsigned int type;
@@ -1712,6 +1715,8 @@ out:
 				    ERR_PTR(err));
 		ocelot_drain_cpu_queue(ocelot, 0);
 	}
+
+	ocelot_unlock_xtr_grp(ocelot, grp);
 
 	return true;
 }

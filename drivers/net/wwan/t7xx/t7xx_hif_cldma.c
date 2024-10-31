@@ -139,8 +139,9 @@ static int t7xx_cldma_gpd_rx_from_q(struct cldma_queue *queue, int budget, bool 
 				return -ENODEV;
 			}
 
-			gpd_addr = ioread64(hw_info->ap_pdn_base + REG_CLDMA_DL_CURRENT_ADDRL_0 +
-					    queue->index * sizeof(u64));
+			gpd_addr = ioread64_lo_hi(hw_info->ap_pdn_base +
+						  REG_CLDMA_DL_CURRENT_ADDRL_0 +
+						  queue->index * sizeof(u64));
 			if (req->gpd_addr == gpd_addr || hwo_polling_count++ >= 100)
 				return 0;
 
@@ -318,8 +319,8 @@ static void t7xx_cldma_txq_empty_hndl(struct cldma_queue *queue)
 		struct t7xx_cldma_hw *hw_info = &md_ctrl->hw_info;
 
 		/* Check current processing TGPD, 64-bit address is in a table by Q index */
-		ul_curr_addr = ioread64(hw_info->ap_pdn_base + REG_CLDMA_UL_CURRENT_ADDRL_0 +
-					queue->index * sizeof(u64));
+		ul_curr_addr = ioread64_lo_hi(hw_info->ap_pdn_base + REG_CLDMA_UL_CURRENT_ADDRL_0 +
+					      queue->index * sizeof(u64));
 		if (req->gpd_addr != ul_curr_addr) {
 			spin_unlock_irqrestore(&md_ctrl->cldma_lock, flags);
 			dev_err(md_ctrl->dev, "CLDMA%d queue %d is not empty\n",
@@ -1066,13 +1067,18 @@ static void t7xx_hw_info_init(struct cldma_ctrl *md_ctrl)
 	struct t7xx_cldma_hw *hw_info = &md_ctrl->hw_info;
 	u32 phy_ao_base, phy_pd_base;
 
-	if (md_ctrl->hif_id != CLDMA_ID_MD)
-		return;
-
-	phy_ao_base = CLDMA1_AO_BASE;
-	phy_pd_base = CLDMA1_PD_BASE;
-	hw_info->phy_interrupt_id = CLDMA1_INT;
 	hw_info->hw_mode = MODE_BIT_64;
+
+	if (md_ctrl->hif_id == CLDMA_ID_MD) {
+		phy_ao_base = CLDMA1_AO_BASE;
+		phy_pd_base = CLDMA1_PD_BASE;
+		hw_info->phy_interrupt_id = CLDMA1_INT;
+	} else {
+		phy_ao_base = CLDMA0_AO_BASE;
+		phy_pd_base = CLDMA0_PD_BASE;
+		hw_info->phy_interrupt_id = CLDMA0_INT;
+	}
+
 	hw_info->ap_ao_base = t7xx_pcie_addr_transfer(pbase->pcie_ext_reg_base,
 						      pbase->pcie_dev_reg_trsl_addr, phy_ao_base);
 	hw_info->ap_pdn_base = t7xx_pcie_addr_transfer(pbase->pcie_ext_reg_base,

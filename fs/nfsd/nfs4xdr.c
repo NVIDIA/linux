@@ -1246,14 +1246,6 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, union nfsd4_op_u *u)
 }
 
 static __be32
-nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, union nfsd4_op_u *p)
-{
-	if (argp->minorversion == 0)
-		return nfs_ok;
-	return nfserr_notsupp;
-}
-
-static __be32
 nfsd4_decode_read(struct nfsd4_compoundargs *argp, union nfsd4_op_u *u)
 {
 	struct nfsd4_read *read = &u->read;
@@ -2345,7 +2337,7 @@ static const nfsd4_dec nfsd4_dec_ops[] = {
 	[OP_OPEN_CONFIRM]	= nfsd4_decode_open_confirm,
 	[OP_OPEN_DOWNGRADE]	= nfsd4_decode_open_downgrade,
 	[OP_PUTFH]		= nfsd4_decode_putfh,
-	[OP_PUTPUBFH]		= nfsd4_decode_putpubfh,
+	[OP_PUTPUBFH]		= nfsd4_decode_noop,
 	[OP_PUTROOTFH]		= nfsd4_decode_noop,
 	[OP_READ]		= nfsd4_decode_read,
 	[OP_READDIR]		= nfsd4_decode_readdir,
@@ -2981,6 +2973,11 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
 
 	if (exp->ex_fslocs.migrated) {
 		status = fattr_handle_absent_fs(&bmval0, &bmval1, &bmval2, &rdattr_err);
+		if (status)
+			goto out;
+	}
+	if (bmval0 & (FATTR4_WORD0_CHANGE | FATTR4_WORD0_SIZE)) {
+		status = nfsd4_deleg_getattr_conflict(rqstp, d_inode(dentry));
 		if (status)
 			goto out;
 	}
@@ -3973,17 +3970,20 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr,
 		nfserr = nfsd4_encode_stateid(xdr, &open->op_delegate_stateid);
 		if (nfserr)
 			return nfserr;
-		p = xdr_reserve_space(xdr, 32);
+
+		p = xdr_reserve_space(xdr, XDR_UNIT * 8);
 		if (!p)
 			return nfserr_resource;
 		*p++ = cpu_to_be32(open->op_recall);
 
 		/*
+		 * Always flush on close
+		 *
 		 * TODO: space_limit's in delegations
 		 */
 		*p++ = cpu_to_be32(NFS4_LIMIT_SIZE);
-		*p++ = cpu_to_be32(~(u32)0);
-		*p++ = cpu_to_be32(~(u32)0);
+		*p++ = xdr_zero;
+		*p++ = xdr_zero;
 
 		/*
 		 * TODO: ACE's in delegations

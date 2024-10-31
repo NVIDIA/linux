@@ -113,7 +113,7 @@ SYM_CODE_START(primary_entry)
 	 */
 #if VA_BITS > 48
 	mrs_s	x0, SYS_ID_AA64MMFR2_EL1
-	tst	x0, #0xf << ID_AA64MMFR2_EL1_VARange_SHIFT
+	tst	x0, ID_AA64MMFR2_EL1_VARange_MASK
 	mov	x0, #VA_BITS
 	mov	x25, #VA_BITS_MIN
 	csel	x25, x25, x0, eq
@@ -569,6 +569,11 @@ SYM_INNER_LABEL(init_el2, SYM_L_LOCAL)
 	adr_l	x1, __hyp_text_end
 	adr_l	x2, dcache_clean_poc
 	blr	x2
+
+	mov_q	x0, INIT_SCTLR_EL2_MMU_OFF
+	pre_disable_mmu_workaround
+	msr	sctlr_el2, x0
+	isb
 0:
 	mov_q	x0, HCR_HOST_NVHE_FLAGS
 	msr	hcr_el2, x0
@@ -756,7 +761,7 @@ SYM_FUNC_START(__cpu_secondary_check52bitva)
 	b.ne	2f
 
 	mrs_s	x0, SYS_ID_AA64MMFR2_EL1
-	and	x0, x0, #(0xf << ID_AA64MMFR2_EL1_VARange_SHIFT)
+	and	x0, x0, ID_AA64MMFR2_EL1_VARange_MASK
 	cbnz	x0, 2f
 
 	update_early_cpu_boot_status \

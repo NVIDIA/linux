@@ -1309,11 +1309,10 @@ int fsi_master_register(struct fsi_master *master)
 
 	mutex_init(&master->scan_lock);
 
+	/* Alloc the requested index if it's non-zero */
 	if (master->idx) {
 		master->idx = ida_alloc_range(&master_ida, master->idx,
 					      master->idx, GFP_KERNEL);
-		if (master->idx < 0)
-			master->idx = ida_alloc(&master_ida, GFP_KERNEL);
 	} else {
 		master->idx = ida_alloc(&master_ida, GFP_KERNEL);
 	}
@@ -1330,13 +1329,14 @@ int fsi_master_register(struct fsi_master *master)
 	rc = device_register(&master->dev);
 	if (rc) {
 		ida_free(&master_ida, master->idx);
-	} else {
-		struct device_node *np = dev_of_node(&master->dev);
-
-		if (!of_property_read_bool(np, "no-scan-on-init"))
-			fsi_master_scan(master);
+		goto out;
 	}
 
+	np = dev_of_node(&master->dev);
+	if (!of_property_read_bool(np, "no-scan-on-init")) {
+		fsi_master_scan(master);
+	}
+out:
 	mutex_unlock(&master->scan_lock);
 	return rc;
 }

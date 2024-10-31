@@ -2430,6 +2430,14 @@ DEFINE_EVENT(btrfs__space_info_update, update_bytes_pinned,
 	TP_ARGS(fs_info, sinfo, old, diff)
 );
 
+DEFINE_EVENT(btrfs__space_info_update, update_bytes_zone_unusable,
+
+	TP_PROTO(const struct btrfs_fs_info *fs_info,
+		 const struct btrfs_space_info *sinfo, u64 old, s64 diff),
+
+	TP_ARGS(fs_info, sinfo, old, diff)
+);
+
 DECLARE_EVENT_CLASS(btrfs_raid56_bio,
 
 	TP_PROTO(const struct btrfs_raid_bio *rbio,
@@ -2481,7 +2489,7 @@ DECLARE_EVENT_CLASS(btrfs_raid56_bio,
 		__entry->offset, __entry->opf, __entry->physical, __entry->len)
 );
 
-DEFINE_EVENT(btrfs_raid56_bio, raid56_read_partial,
+DEFINE_EVENT(btrfs_raid56_bio, raid56_read,
 	TP_PROTO(const struct btrfs_raid_bio *rbio,
 		 const struct bio *bio,
 		 const struct raid56_bio_trace_info *trace_info),
@@ -2489,32 +2497,7 @@ DEFINE_EVENT(btrfs_raid56_bio, raid56_read_partial,
 	TP_ARGS(rbio, bio, trace_info)
 );
 
-DEFINE_EVENT(btrfs_raid56_bio, raid56_write_stripe,
-	TP_PROTO(const struct btrfs_raid_bio *rbio,
-		 const struct bio *bio,
-		 const struct raid56_bio_trace_info *trace_info),
-
-	TP_ARGS(rbio, bio, trace_info)
-);
-
-
-DEFINE_EVENT(btrfs_raid56_bio, raid56_scrub_write_stripe,
-	TP_PROTO(const struct btrfs_raid_bio *rbio,
-		 const struct bio *bio,
-		 const struct raid56_bio_trace_info *trace_info),
-
-	TP_ARGS(rbio, bio, trace_info)
-);
-
-DEFINE_EVENT(btrfs_raid56_bio, raid56_scrub_read,
-	TP_PROTO(const struct btrfs_raid_bio *rbio,
-		 const struct bio *bio,
-		 const struct raid56_bio_trace_info *trace_info),
-
-	TP_ARGS(rbio, bio, trace_info)
-);
-
-DEFINE_EVENT(btrfs_raid56_bio, raid56_scrub_read_recover,
+DEFINE_EVENT(btrfs_raid56_bio, raid56_write,
 	TP_PROTO(const struct btrfs_raid_bio *rbio,
 		 const struct bio *bio,
 		 const struct raid56_bio_trace_info *trace_info),

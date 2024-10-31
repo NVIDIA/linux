@@ -169,7 +169,11 @@ armv8pmu_events_sysfs_show(struct device *dev,
 	PMU_EVENT_ATTR_ID(name, armv8pmu_events_sysfs_show, config)
 
 static struct attribute *armv8_pmuv3_event_attrs[] = {
-	ARMV8_EVENT_ATTR(sw_incr, ARMV8_PMUV3_PERFCTR_SW_INCR),
+	/*
+	 * Don't expose the sw_incr event in /sys. It's not usable as writes to
+	 * PMSWINC_EL0 will trap as PMUSERENR.{SW,EN}=={0,0} and event rotation
+	 * means we don't have a fixed event<->counter relationship regardless.
+	 */
 	ARMV8_EVENT_ATTR(l1i_cache_refill, ARMV8_PMUV3_PERFCTR_L1I_CACHE_REFILL),
 	ARMV8_EVENT_ATTR(l1i_tlb_refill, ARMV8_PMUV3_PERFCTR_L1I_TLB_REFILL),
 	ARMV8_EVENT_ATTR(l1d_cache_refill, ARMV8_PMUV3_PERFCTR_L1D_CACHE_REFILL),
@@ -428,12 +432,12 @@ static inline bool armv8pmu_event_is_chained(struct perf_event *event)
 #define	ARMV8_IDX_TO_COUNTER(x)	\
 	(((x) - ARMV8_IDX_COUNTER0) & ARMV8_PMU_COUNTER_MASK)
 
-static inline u32 armv8pmu_pmcr_read(void)
+static inline u64 armv8pmu_pmcr_read(void)
 {
 	return read_pmcr();
 }
 
-static inline void armv8pmu_pmcr_write(u32 val)
+static inline void armv8pmu_pmcr_write(u64 val)
 {
 	val &= ARMV8_PMU_PMCR_MASK;
 	isb();
@@ -721,38 +725,15 @@ static void armv8pmu_enable_event(struct perf_event *event)
 	 * Enable counter and interrupt, and set the counter to count
 	 * the event that we're interested in.
 	 */
-
-	/*
-	 * Disable counter
-	 */
 	armv8pmu_disable_event_counter(event);
-
-	/*
-	 * Set event.
-	 */
 	armv8pmu_write_event_type(event);
-
-	/*
-	 * Enable interrupt for this counter
-	 */
 	armv8pmu_enable_event_irq(event);
-
-	/*
-	 * Enable counter
-	 */
 	armv8pmu_enable_event_counter(event);
 }
 
 static void armv8pmu_disable_event(struct perf_event *event)
 {
-	/*
-	 * Disable counter
-	 */
 	armv8pmu_disable_event_counter(event);
-
-	/*
-	 * Disable interrupt for this counter
-	 */
 	armv8pmu_disable_event_irq(event);
 }
 
@@ -772,6 +753,8 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 
 	/* Enable all counters */
 	armv8pmu_pmcr_write(armv8pmu_pmcr_read() | ARMV8_PMU_PMCR_E);
+
+	kvm_vcpu_pmu_resync_el0();
 }
 
 static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
@@ -978,7 +961,7 @@ static int armv8pmu_set_event_filter(struct hw_perf_event *event,
 static void armv8pmu_reset(void *info)
 {
 	struct arm_pmu *cpu_pmu = (struct arm_pmu *)info;
-	u32 pmcr;
+	u64 pmcr;
 
 	/* The counter and interrupt enable registers are unknown at reset. */
 	armv8pmu_disable_counter(U32_MAX);
@@ -1266,9 +1249,14 @@ PMUV3_INIT_SIMPLE(armv8_cortex_a76)
 PMUV3_INIT_SIMPLE(armv8_cortex_a77)
 PMUV3_INIT_SIMPLE(armv8_cortex_a78)
 PMUV3_INIT_SIMPLE(armv9_cortex_a510)
+PMUV3_INIT_SIMPLE(armv9_cortex_a520)
 PMUV3_INIT_SIMPLE(armv9_cortex_a710)
+PMUV3_INIT_SIMPLE(armv9_cortex_a715)
+PMUV3_INIT_SIMPLE(armv9_cortex_a720)
 PMUV3_INIT_SIMPLE(armv8_cortex_x1)
 PMUV3_INIT_SIMPLE(armv9_cortex_x2)
+PMUV3_INIT_SIMPLE(armv9_cortex_x3)
+PMUV3_INIT_SIMPLE(armv9_cortex_x4)
 PMUV3_INIT_SIMPLE(armv8_neoverse_e1)
 PMUV3_INIT_SIMPLE(armv8_neoverse_n1)
 PMUV3_INIT_SIMPLE(armv9_neoverse_n2)
@@ -1334,9 +1322,14 @@ static const struct of_device_id armv8_pmu_of_device_ids[] = {
 	{.compatible = "arm,cortex-a77-pmu",	.data = armv8_cortex_a77_pmu_init},
 	{.compatible = "arm,cortex-a78-pmu",	.data = armv8_cortex_a78_pmu_init},
 	{.compatible = "arm,cortex-a510-pmu",	.data = armv9_cortex_a510_pmu_init},
+	{.compatible = "arm,cortex-a520-pmu",	.data = armv9_cortex_a520_pmu_init},
 	{.compatible = "arm,cortex-a710-pmu",	.data = armv9_cortex_a710_pmu_init},
+	{.compatible = "arm,cortex-a715-pmu",	.data = armv9_cortex_a715_pmu_init},
+	{.compatible = "arm,cortex-a720-pmu",	.data = armv9_cortex_a720_pmu_init},
 	{.compatible = "arm,cortex-x1-pmu",	.data = armv8_cortex_x1_pmu_init},
 	{.compatible = "arm,cortex-x2-pmu",	.data = armv9_cortex_x2_pmu_init},
+	{.compatible = "arm,cortex-x3-pmu",	.data = armv9_cortex_x3_pmu_init},
+	{.compatible = "arm,cortex-x4-pmu",	.data = armv9_cortex_x4_pmu_init},
 	{.compatible = "arm,neoverse-e1-pmu",	.data = armv8_neoverse_e1_pmu_init},
 	{.compatible = "arm,neoverse-n1-pmu",	.data = armv8_neoverse_n1_pmu_init},
 	{.compatible = "arm,neoverse-n2-pmu",	.data = armv9_neoverse_n2_pmu_init},

@@ -161,6 +161,11 @@ static int memblock_can_resize __initdata_memblock;
 static int memblock_memory_in_slab __initdata_memblock;
 static int memblock_reserved_in_slab __initdata_memblock;
 
+bool __init_memblock memblock_has_mirror(void)
+{
+	return system_has_some_mirror;
+}
+
 static enum memblock_flags __init_memblock choose_memblock_flags(void)
 {
 	return system_has_some_mirror ? MEMBLOCK_MIRROR : MEMBLOCK_NONE;
@@ -175,8 +180,9 @@ static inline phys_addr_t memblock_cap_size(phys_addr_t base, phys_addr_t *size)
 /*
  * Address comparison utilities
  */
-static unsigned long __init_memblock memblock_addrs_overlap(phys_addr_t base1, phys_addr_t size1,
-				       phys_addr_t base2, phys_addr_t size2)
+unsigned long __init_memblock
+memblock_addrs_overlap(phys_addr_t base1, phys_addr_t size1, phys_addr_t base2,
+		       phys_addr_t size2)
 {
 	return ((base1 < (base2 + size2)) && (base2 < (base1 + size1)));
 }
@@ -2113,6 +2119,9 @@ static void __init memmap_init_reserved_pages(void)
 		nid = memblock_get_region_node(region);
 		start = region->base;
 		end = start + region->size;
+
+		if (nid == NUMA_NO_NODE || nid >= MAX_NUMNODES)
+			nid = early_pfn_to_nid(PFN_DOWN(start));
 
 		reserve_bootmem_region(start, end, nid);
 	}

@@ -289,15 +289,13 @@ ivpu_create_job(struct ivpu_file_priv *file_priv, u32 engine_idx, u32 bo_count)
 {
 	struct ivpu_device *vdev = file_priv->vdev;
 	struct ivpu_job *job;
-	size_t buf_size;
 	int ret;
 
 	ret = ivpu_rpm_get(vdev);
 	if (ret < 0)
 		return NULL;
 
-	buf_size = sizeof(*job) + bo_count * sizeof(struct ivpu_bo *);
-	job = kzalloc(buf_size, GFP_KERNEL);
+	job = kzalloc(struct_size(job, bos, bo_count), GFP_KERNEL);
 	if (!job)
 		goto err_rpm_put;
 
@@ -620,6 +618,5 @@ int ivpu_job_done_thread_init(struct ivpu_device *vdev)
 
 void ivpu_job_done_thread_fini(struct ivpu_device *vdev)
 {
-	kthread_stop(vdev->job_done_thread);
-	put_task_struct(vdev->job_done_thread);
+	kthread_stop_put(vdev->job_done_thread);
 }

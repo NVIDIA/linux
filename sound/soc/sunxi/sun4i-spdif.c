@@ -508,6 +508,7 @@ static int sun4i_spdif_soc_dai_probe(struct snd_soc_dai *dai)
 }
 
 static const struct snd_soc_dai_ops sun4i_spdif_dai_ops = {
+	.probe		= sun4i_spdif_soc_dai_probe,
 	.startup	= sun4i_spdif_startup,
 	.trigger	= sun4i_spdif_trigger,
 	.hw_params	= sun4i_spdif_hw_params,
@@ -533,7 +534,6 @@ static struct snd_soc_dai_driver sun4i_spdif_dai = {
 		.rates = SUN4I_RATES,
 		.formats = SUN4I_FORMATS,
 	},
-	.probe = sun4i_spdif_soc_dai_probe,
 	.ops = &sun4i_spdif_dai_ops,
 	.name = "spdif",
 };
@@ -576,6 +576,11 @@ static const struct of_device_id sun4i_spdif_of_match[] = {
 	},
 	{
 		.compatible = "allwinner,sun50i-h6-spdif",
+		.data = &sun50i_h6_spdif_quirks,
+	},
+	{
+		.compatible = "allwinner,sun50i-h616-spdif",
+		/* Essentially the same as the H6, but without RX */
 		.data = &sun50i_h6_spdif_quirks,
 	},
 	{ /* sentinel */ }
@@ -718,7 +723,7 @@ static const struct dev_pm_ops sun4i_spdif_pm = {
 static struct platform_driver sun4i_spdif_driver = {
 	.driver		= {
 		.name	= "sun4i-spdif",
-		.of_match_table = of_match_ptr(sun4i_spdif_of_match),
+		.of_match_table = sun4i_spdif_of_match,
 		.pm	= &sun4i_spdif_pm,
 	},
 	.probe		= sun4i_spdif_probe,

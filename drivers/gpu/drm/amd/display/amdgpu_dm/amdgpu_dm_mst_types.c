@@ -246,7 +246,7 @@ static bool validate_dsc_caps_on_connector(struct amdgpu_dm_connector *aconnecto
 		aconnector->dsc_aux = &aconnector->mst_root->dm_dp_aux.aux;
 
 	/* synaptics cascaded MST hub case */
-	if (!aconnector->dsc_aux && is_synaptics_cascaded_panamera(aconnector->dc_link, port))
+	if (is_synaptics_cascaded_panamera(aconnector->dc_link, port))
 		aconnector->dsc_aux = port->mgr->aux;
 
 	if (!aconnector->dsc_aux)
@@ -296,6 +296,7 @@ static int dm_dp_mst_get_modes(struct drm_connector *connector)
 
 	if (!aconnector->edid) {
 		struct edid *edid;
+
 		edid = drm_dp_mst_get_edid(connector, &aconnector->mst_root->mst_mgr, aconnector->mst_output_port);
 
 		if (!edid) {
@@ -605,6 +606,9 @@ dm_dp_add_mst_connector(struct drm_dp_mst_topology_mgr *mgr,
 		&connector->base,
 		dev->mode_config.tile_property,
 		0);
+	connector->colorspace_property = master->base.colorspace_property;
+	if (connector->colorspace_property)
+		drm_connector_attach_colorspace_property(connector);
 
 	drm_connector_set_path_property(connector, pathprop);
 
@@ -827,6 +831,7 @@ static void set_dsc_configs_from_fairness_vars(struct dsc_mst_fairness_params *p
 					&dsc_options,
 					0,
 					params[i].timing,
+					dc_link_get_highest_encoding_format(params[i].aconnector->dc_link),
 					&params[i].timing->dsc_cfg)) {
 			params[i].timing->flags.DSC = 1;
 
@@ -877,7 +882,9 @@ static int bpp_x16_from_pbn(struct dsc_mst_fairness_params param, int pbn)
 			param.sink->ctx->dc->res_pool->dscs[0],
 			&param.sink->dsc_caps.dsc_dec_caps,
 			&dsc_options,
-			(int) kbps, param.timing, &dsc_config);
+			(int) kbps, param.timing,
+			dc_link_get_highest_encoding_format(param.aconnector->dc_link),
+			&dsc_config);
 
 	return dsc_config.bits_per_pixel;
 }
@@ -1108,15 +1115,18 @@ static int compute_mst_dsc_configs_for_link(struct drm_atomic_state *state,
 		params[count].num_slices_v = aconnector->dsc_settings.dsc_num_slices_v;
 		params[count].bpp_overwrite = aconnector->dsc_settings.dsc_bits_per_pixel;
 		params[count].compression_possible = stream->sink->dsc_caps.dsc_dec_caps.is_dsc_supported;
-		dc_dsc_get_policy_for_timing(params[count].timing, 0, &dsc_policy);
+		dc_dsc_get_policy_for_timing(params[count].timing, 0, &dsc_policy, dc_link_get_highest_encoding_format(stream->link));
 		if (!dc_dsc_compute_bandwidth_range(
 				stream->sink->ctx->dc->res_pool->dscs[0],
 				stream->sink->ctx->dc->debug.dsc_min_slice_height_override,
 				dsc_policy.min_target_bpp * 16,
 				dsc_policy.max_target_bpp * 16,
 				&stream->sink->dsc_caps.dsc_dec_caps,
-				&stream->timing, &params[count].bw_range))
-			params[count].bw_range.stream_kbps = dc_bandwidth_in_kbps_from_timing(&stream->timing);
+				&stream->timing,
+				dc_link_get_highest_encoding_format(dc_link),
+				&params[count].bw_range))
+			params[count].bw_range.stream_kbps = dc_bandwidth_in_kbps_from_timing(&stream->timing,
+					dc_link_get_highest_encoding_format(dc_link));
 
 		count++;
 	}
@@ -1255,6 +1265,9 @@ static bool is_dsc_need_re_compute(
 				return true;
 		}
 	}
+
+	if (new_stream_on_link_num == 0)
+		return false;
 
 	/* check current_state if there stream on link but it is not in
 	 * new request state
@@ -1570,13 +1583,13 @@ static bool is_dsc_common_config_possible(struct dc_stream_state *stream,
 {
 	struct dc_dsc_policy dsc_policy = {0};
 
-	dc_dsc_get_policy_for_timing(&stream->timing, 0, &dsc_policy);
+	dc_dsc_get_policy_for_timing(&stream->timing, 0, &dsc_policy, dc_link_get_highest_encoding_format(stream->link));
 	dc_dsc_compute_bandwidth_range(stream->sink->ctx->dc->res_pool->dscs[0],
 				       stream->sink->ctx->dc->debug.dsc_min_slice_height_override,
 				       dsc_policy.min_target_bpp * 16,
 				       dsc_policy.max_target_bpp * 16,
 				       &stream->sink->dsc_caps.dsc_dec_caps,
-				       &stream->timing, bw_range);
+				       &stream->timing, dc_link_get_highest_encoding_format(stream->link), bw_range);
 
 	return bw_range->max_target_bpp_x16 && bw_range->min_target_bpp_x16;
 }
@@ -1591,30 +1604,30 @@ enum dc_status dm_dp_mst_is_port_support_mode(
 	unsigned int upper_link_bw_in_kbps = 0, down_link_bw_in_kbps = 0;
 	unsigned int max_compressed_bw_in_kbps = 0;
 	struct dc_dsc_bw_range bw_range = {0};
-	struct drm_dp_mst_topology_mgr *mst_mgr;
+	uint16_t full_pbn = aconnector->mst_output_port->full_pbn;
 
 	/*
-	 * check if the mode could be supported if DSC pass-through is supported
-	 * AND check if there enough bandwidth available to support the mode
-	 * with DSC enabled.
+	 * Consider the case with the depth of the mst topology tree is equal or less than 2
+	 * A. When dsc bitstream can be transmitted along the entire path
+	 *    1. dsc is possible between source and branch/leaf device (common dsc params is possible), AND
+	 *    2. dsc passthrough supported at MST branch, or
+	 *    3. dsc decoding supported at leaf MST device
+	 *    Use maximum dsc compression as bw constraint
+	 * B. When dsc bitstream cannot be transmitted along the entire path
+	 *    Use native bw as bw constraint
 	 */
 	if (is_dsc_common_config_possible(stream, &bw_range) &&
-	    aconnector->mst_output_port->passthrough_aux) {
-		mst_mgr = aconnector->mst_output_port->mgr;
-		mutex_lock(&mst_mgr->lock);
-
+	   (aconnector->mst_output_port->passthrough_aux ||
+	    aconnector->dsc_aux == &aconnector->mst_output_port->aux)) {
 		cur_link_settings = stream->link->verified_link_cap;
 
 		upper_link_bw_in_kbps = dc_link_bandwidth_kbps(aconnector->dc_link,
-							       &cur_link_settings
-							       );
-		down_link_bw_in_kbps = kbps_from_pbn(aconnector->mst_output_port->full_pbn);
+							       &cur_link_settings);
+		down_link_bw_in_kbps = kbps_from_pbn(full_pbn);
 
 		/* pick the bottleneck */
 		end_to_end_bw_in_kbps = min(upper_link_bw_in_kbps,
 					    down_link_bw_in_kbps);
-
-		mutex_unlock(&mst_mgr->lock);
 
 		/*
 		 * use the maximum dsc compression bandwidth as the required
@@ -1629,9 +1642,8 @@ enum dc_status dm_dp_mst_is_port_support_mode(
 	} else {
 		/* check if mode could be supported within full_pbn */
 		bpp = convert_dc_color_depth_into_bpc(stream->timing.display_color_depth) * 3;
-		pbn = drm_dp_calc_pbn_mode(stream->timing.pix_clk_100hz / 10, bpp, false);
-
-		if (pbn > aconnector->mst_output_port->full_pbn)
+		pbn = drm_dp_calc_pbn_mode(stream->timing.pix_clk_100hz / 10, bpp << 4);
+		if (pbn > full_pbn)
 			return DC_FAIL_BANDWIDTH_VALIDATE;
 	}
 

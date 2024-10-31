@@ -289,9 +289,8 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
 	if (tw) {
 		struct tcp_timewait_sock *tcptw = tcp_twsk((struct sock *)tw);
 		const int rto = (icsk->icsk_rto << 2) - (icsk->icsk_rto >> 1);
-		struct inet_sock *inet = inet_sk(sk);
 
-		tw->tw_transparent	= inet->transparent;
+		tw->tw_transparent	= inet_test_bit(TRANSPARENT, sk);
 		tw->tw_mark		= sk->sk_mark;
 		tw->tw_priority		= sk->sk_priority;
 		tw->tw_rcv_wscale	= tp->rx_opt.rcv_wscale;
@@ -364,7 +363,7 @@ void tcp_twsk_destructor(struct sock *sk)
 }
 EXPORT_SYMBOL_GPL(tcp_twsk_destructor);
 
-void tcp_twsk_purge(struct list_head *net_exit_list, int family)
+void tcp_twsk_purge(struct list_head *net_exit_list)
 {
 	bool purged_once = false;
 	struct net *net;
@@ -372,14 +371,13 @@ void tcp_twsk_purge(struct list_head *net_exit_list, int family)
 	list_for_each_entry(net, net_exit_list, exit_list) {
 		if (net->ipv4.tcp_death_row.hashinfo->pernet) {
 			/* Even if tw_refcount == 1, we must clean up kernel reqsk */
-			inet_twsk_purge(net->ipv4.tcp_death_row.hashinfo, family);
+			inet_twsk_purge(net->ipv4.tcp_death_row.hashinfo);
 		} else if (!purged_once) {
-			inet_twsk_purge(&tcp_hashinfo, family);
+			inet_twsk_purge(&tcp_hashinfo);
 			purged_once = true;
 		}
 	}
 }
-EXPORT_SYMBOL_GPL(tcp_twsk_purge);
 
 /* Warning : This function is called without sk_listener being locked.
  * Be sure to read socket fields once, as their value could change under us.
@@ -562,12 +560,14 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
 		newtp->undo_marker = treq->snt_isn;
 		newtp->retrans_stamp = div_u64(treq->snt_synack,
 					       USEC_PER_SEC / TCP_TS_HZ);
+		newtp->total_rto = req->num_timeout;
+		newtp->total_rto_recoveries = 1;
+		newtp->total_rto_time = tcp_time_stamp_raw() -
+						newtp->retrans_stamp;
 	}
 	newtp->tsoffset = treq->ts_off;
 #ifdef CONFIG_TCP_MD5SIG
 	newtp->md5sig_info = NULL;	/*XXX*/
-	if (treq->af_specific->req_md5_lookup(sk, req_to_sk(req)))
-		newtp->tcp_header_len += TCPOLEN_MD5SIG_ALIGNED;
 #endif
 	if (skb->len >= TCP_MSS_DEFAULT + newtp->tcp_header_len)
 		newicsk->icsk_ack.last_seg_size = skb->len - newtp->tcp_header_len;
@@ -790,7 +790,7 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 		return sk;
 
 	/* While TCP_DEFER_ACCEPT is active, drop bare ACK. */
-	if (req->num_timeout < inet_csk(sk)->icsk_accept_queue.rskq_defer_accept &&
+	if (req->num_timeout < READ_ONCE(inet_csk(sk)->icsk_accept_queue.rskq_defer_accept) &&
 	    TCP_SKB_CB(skb)->end_seq == tcp_rsk(req)->rcv_isn + 1) {
 		inet_rsk(req)->acked = 1;
 		__NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPDEFERACCEPTDROP);

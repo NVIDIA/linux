@@ -164,6 +164,7 @@ struct cy8c95x0_pinctrl {
 	struct pinctrl_desc pinctrl_desc;
 	char name[32];
 	unsigned int tpin;
+	struct gpio_desc *gpio_reset;
 };
 
 static const struct pinctrl_pin_desc cy8c9560_pins[] = {
@@ -305,6 +306,9 @@ static const char * const cy8c95x0_groups[] = {
 	"gp76",
 	"gp77",
 };
+
+static int cy8c95x0_pinmux_direction(struct cy8c95x0_pinctrl *chip,
+				     unsigned int pin, bool input);
 
 static inline u8 cypress_get_port(struct cy8c95x0_pinctrl *chip, unsigned int pin)
 {
@@ -710,6 +714,8 @@ static int cy8c95x0_gpio_get_pincfg(struct cy8c95x0_pinctrl *chip,
 	ret = regmap_read(chip->regmap, reg, &reg_val);
 	if (reg_val & bit)
 		arg = 1;
+	if (param == PIN_CONFIG_OUTPUT_ENABLE)
+		arg = !arg;
 
 	*config = pinconf_to_config_packed(param, (u16)arg);
 out:
@@ -725,6 +731,7 @@ static int cy8c95x0_gpio_set_pincfg(struct cy8c95x0_pinctrl *chip,
 	u8 port = cypress_get_port(chip, off);
 	u8 bit = cypress_get_pin_mask(chip, off);
 	unsigned long param = pinconf_to_config_param(config);
+	unsigned long arg = pinconf_to_config_argument(config);
 	unsigned int reg;
 	int ret;
 
@@ -763,6 +770,12 @@ static int cy8c95x0_gpio_set_pincfg(struct cy8c95x0_pinctrl *chip,
 	case PIN_CONFIG_MODE_PWM:
 		reg = CY8C95X0_PWMSEL;
 		break;
+	case PIN_CONFIG_OUTPUT_ENABLE:
+		ret = cy8c95x0_pinmux_direction(chip, off, !arg);
+		goto out;
+	case PIN_CONFIG_INPUT_ENABLE:
+		ret = cy8c95x0_pinmux_direction(chip, off, arg);
+		goto out;
 	default:
 		ret = -ENOTSUPP;
 		goto out;
@@ -820,7 +833,7 @@ static int cy8c95x0_setup_gpiochip(struct cy8c95x0_pinctrl *chip)
 	gc->get_direction = cy8c95x0_gpio_get_direction;
 	gc->get_multiple = cy8c95x0_gpio_get_multiple;
 	gc->set_multiple = cy8c95x0_gpio_set_multiple;
-	gc->set_config = gpiochip_generic_config,
+	gc->set_config = gpiochip_generic_config;
 	gc->can_sleep = true;
 	gc->add_pin_ranges = cy8c95x0_add_pin_ranges;
 
@@ -1381,6 +1394,20 @@ static int cy8c95x0_probe(struct i2c_client *client)
 			return ret;
 		}
 		chip->regulator = reg;
+	}
+
+	/* bring the chip out of reset if reset pin is provided */
+	chip->gpio_reset = devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(chip->gpio_reset)) {
+		ret = dev_err_probe(chip->dev, PTR_ERR(chip->gpio_reset),
+				    "Failed to get GPIO 'reset'\n");
+		goto err_exit;
+	} else if (chip->gpio_reset) {
+		usleep_range(1000, 2000);
+		gpiod_set_value_cansleep(chip->gpio_reset, 0);
+		usleep_range(250000, 300000);
+
+		gpiod_set_consumer_name(chip->gpio_reset, "CY8C95X0 RESET");
 	}
 
 	chip->regmap = devm_regmap_init_i2c(client, &cy8c95x0_i2c_regmap);

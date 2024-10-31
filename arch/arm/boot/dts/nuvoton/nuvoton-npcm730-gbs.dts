@@ -552,7 +552,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@71 {
+	i2c-mux@71 {
 		compatible = "nxp,pca9546";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -693,7 +693,7 @@
 		reg = <0x50>;
 	};
 
-	i2c-switch@71 {
+	i2c-mux@71 {
 		compatible = "nxp,pca9546";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -754,7 +754,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@73 {
+	i2c-mux@73 {
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -790,7 +790,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@72 {
+	i2c-mux@72 {
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -839,7 +839,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@71 {
+	i2c-mux@71 {
 		compatible = "nxp,pca9546";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -893,7 +893,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@71 {
+	i2c-mux@71 {
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -929,7 +929,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@76 {
+	i2c-mux@76 {
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -988,7 +988,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	i2c-switch@70 {
+	i2c-mux@70 {
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
 		#size-cells = <0>;

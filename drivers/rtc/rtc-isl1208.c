@@ -9,7 +9,7 @@
 #include <linux/clk.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/rtc.h>
 
@@ -188,7 +188,7 @@ isl1208_i2c_validate_client(struct i2c_client *client)
 static int isl1208_set_xtoscb(struct i2c_client *client, int sr, int xtosb_val)
 {
 	/* Do nothing if bit is already set to desired value */
-	if ((sr & ISL1208_REG_SR_XTOSCB) == xtosb_val)
+	if (!!(sr & ISL1208_REG_SR_XTOSCB) == xtosb_val)
 		return 0;
 
 	if (xtosb_val)
@@ -775,14 +775,13 @@ static int isl1208_nvmem_read(void *priv, unsigned int off, void *buf,
 {
 	struct isl1208_state *isl1208 = priv;
 	struct i2c_client *client = to_i2c_client(isl1208->rtc->dev.parent);
-	int ret;
 
 	/* nvmem sanitizes offset/count for us, but count==0 is possible */
 	if (!count)
 		return count;
-	ret = isl1208_i2c_read_regs(client, ISL1208_REG_USR1 + off, buf,
+
+	return isl1208_i2c_read_regs(client, ISL1208_REG_USR1 + off, buf,
 				    count);
-	return ret == 0 ? count : ret;
 }
 
 static int isl1208_nvmem_write(void *priv, unsigned int off, void *buf,
@@ -790,15 +789,13 @@ static int isl1208_nvmem_write(void *priv, unsigned int off, void *buf,
 {
 	struct isl1208_state *isl1208 = priv;
 	struct i2c_client *client = to_i2c_client(isl1208->rtc->dev.parent);
-	int ret;
 
 	/* nvmem sanitizes off/count for us, but count==0 is possible */
 	if (!count)
 		return count;
-	ret = isl1208_i2c_set_regs(client, ISL1208_REG_USR1 + off, buf,
-				   count);
 
-	return ret == 0 ? count : ret;
+	return isl1208_i2c_set_regs(client, ISL1208_REG_USR1 + off, buf,
+				   count);
 }
 
 static const struct nvmem_config isl1208_nvmem_config = {
@@ -862,17 +859,9 @@ isl1208_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, isl1208);
 
 	/* Determine which chip we have */
-	if (client->dev.of_node) {
-		isl1208->config = of_device_get_match_data(&client->dev);
-		if (!isl1208->config)
-			return -ENODEV;
-	} else {
-		const struct i2c_device_id *id = i2c_match_id(isl1208_id, client);
-
-		if (!id)
-			return -ENODEV;
-		isl1208->config = (struct isl1208_config *)id->driver_data;
-	}
+	isl1208->config = i2c_get_match_data(client);
+	if (!isl1208->config)
+		return -ENODEV;
 
 	rc = isl1208_clk_present(client, "xin");
 	if (rc < 0)
@@ -952,7 +941,6 @@ isl1208_probe(struct i2c_client *client)
 		rc = isl1208_setup_irq(client, client->irq);
 		if (rc)
 			return rc;
-
 	} else {
 		clear_bit(RTC_FEATURE_UPDATE_INTERRUPT, isl1208->rtc->features);
 	}

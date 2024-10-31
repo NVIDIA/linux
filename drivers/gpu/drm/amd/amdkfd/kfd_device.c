@@ -29,7 +29,6 @@
 #include "kfd_pm4_headers_vi.h"
 #include "kfd_pm4_headers_aldebaran.h"
 #include "cwsr_trap_handler.h"
-#include "kfd_iommu.h"
 #include "amdgpu_amdkfd.h"
 #include "kfd_smi_events.h"
 #include "kfd_svm.h"
@@ -62,7 +61,6 @@ static int kfd_gtt_sa_init(struct kfd_dev *kfd, unsigned int buf_size,
 				unsigned int chunk_size);
 static void kfd_gtt_sa_fini(struct kfd_dev *kfd);
 
-static int kfd_resume_iommu(struct kfd_dev *kfd);
 static int kfd_resume(struct kfd_node *kfd);
 
 static void kfd_device_info_set_sdma_info(struct kfd_dev *kfd)
@@ -404,15 +402,8 @@ struct kfd_dev *kgd2kfd_probe(struct amdgpu_device *adev, bool vf)
 			f2g = &gfx_v11_kfd2kgd;
 			break;
 		case IP_VERSION(11, 0, 3):
-			if ((adev->pdev->device == 0x7460 &&
-			     adev->pdev->revision == 0x00) ||
-			    (adev->pdev->device == 0x7461 &&
-			     adev->pdev->revision == 0x00))
-				/* Note: Compiler version is 11.0.5 while HW version is 11.0.3 */
-				gfx_target_version = 110005;
-			else
-				/* Note: Compiler version is 11.0.1 while HW version is 11.0.3 */
-				gfx_target_version = 110001;
+			/* Note: Compiler version is 11.0.1 while HW version is 11.0.3 */
+			gfx_target_version = 110001;
 			f2g = &gfx_v11_kfd2kgd;
 			break;
 		default:
@@ -442,8 +433,6 @@ struct kfd_dev *kgd2kfd_probe(struct amdgpu_device *adev, bool vf)
 	atomic_set(&kfd->compute_profile, 0);
 
 	mutex_init(&kfd->doorbell_mutex);
-	memset(&kfd->doorbell_available_index, 0,
-		sizeof(kfd->doorbell_available_index));
 
 	ida_init(&kfd->doorbell_ida);
 
@@ -495,6 +484,7 @@ static int kfd_gws_init(struct kfd_node *node)
 {
 	int ret = 0;
 	struct kfd_dev *kfd = node->kfd;
+	uint32_t mes_rev = node->adev->mes.sched_version & AMDGPU_MES_VERSION_MASK;
 
 	if (node->dqm->sched_policy == KFD_SCHED_POLICY_NO_HWS)
 		return 0;
@@ -511,7 +501,10 @@ static int kfd_gws_init(struct kfd_node *node)
 		(KFD_GC_VERSION(node) == IP_VERSION(9, 4, 3)) ||
 		(KFD_GC_VERSION(node) >= IP_VERSION(10, 3, 0)
 			&& KFD_GC_VERSION(node) < IP_VERSION(11, 0, 0)
-			&& kfd->mec2_fw_version >= 0x6b))))
+			&& kfd->mec2_fw_version >= 0x6b) ||
+		(KFD_GC_VERSION(node) >= IP_VERSION(11, 0, 0)
+			&& KFD_GC_VERSION(node) < IP_VERSION(12, 0, 0)
+			&& mes_rev >= 68))))
 		ret = amdgpu_amdkfd_alloc_gws(node->adev,
 				node->adev->gds.gws_size, &node->gws);
 
@@ -753,15 +746,6 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 
 	kfd->noretry = kfd->adev->gmc.noretry;
 
-	/* If CRAT is broken, won't set iommu enabled */
-	kfd_double_confirm_iommu_support(kfd);
-
-	if (kfd_iommu_device_init(kfd)) {
-		kfd->use_iommu_v2 = false;
-		dev_err(kfd_device, "Error initializing iommuv2\n");
-		goto device_iommu_error;
-	}
-
 	kfd_cwsr_init(kfd);
 
 	dev_info(kfd_device, "Total number of KFD nodes to be created: %d\n",
@@ -836,9 +820,6 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 
 	svm_range_set_max_pages(kfd->adev);
 
-	if (kfd_resume_iommu(kfd))
-		goto kfd_resume_iommu_error;
-
 	spin_lock_init(&kfd->watch_points_lock);
 
 	kfd->init_complete = true;
@@ -850,16 +831,14 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 
 	goto out;
 
-kfd_resume_iommu_error:
 node_init_error:
 node_alloc_error:
 	kfd_cleanup_nodes(kfd, i);
-device_iommu_error:
 	kfd_doorbell_fini(kfd);
 kfd_doorbell_error:
 	kfd_gtt_sa_fini(kfd);
 kfd_gtt_sa_init_error:
-	amdgpu_amdkfd_free_gtt_mem(kfd->adev, kfd->gtt_mem);
+	amdgpu_amdkfd_free_gtt_mem(kfd->adev, &kfd->gtt_mem);
 alloc_gtt_mem_failure:
 	dev_err(kfd_device,
 		"device %x:%x NOT added due to errors\n",
@@ -877,7 +856,7 @@ void kgd2kfd_device_exit(struct kfd_dev *kfd)
 		kfd_doorbell_fini(kfd);
 		ida_destroy(&kfd->doorbell_ida);
 		kfd_gtt_sa_fini(kfd);
-		amdgpu_amdkfd_free_gtt_mem(kfd->adev, kfd->gtt_mem);
+		amdgpu_amdkfd_free_gtt_mem(kfd->adev, &kfd->gtt_mem);
 	}
 
 	kfree(kfd);
@@ -949,7 +928,6 @@ void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm)
 {
 	struct kfd_node *node;
 	int i;
-	int count;
 
 	if (!kfd->init_complete)
 		return;
@@ -957,24 +935,21 @@ void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm)
 	/* for runtime suspend, skip locking kfd */
 	if (!run_pm) {
 		mutex_lock(&kfd_processes_mutex);
-		count = ++kfd_locked;
-		mutex_unlock(&kfd_processes_mutex);
-
 		/* For first KFD device suspend all the KFD processes */
-		if (count == 1)
+		if (++kfd_locked == 1)
 			kfd_suspend_all_processes();
+		mutex_unlock(&kfd_processes_mutex);
 	}
 
 	for (i = 0; i < kfd->num_nodes; i++) {
 		node = kfd->nodes[i];
 		node->dqm->ops.stop(node->dqm);
 	}
-	kfd_iommu_suspend(kfd);
 }
 
 int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm)
 {
-	int ret, count, i;
+	int ret, i;
 
 	if (!kfd->init_complete)
 		return 0;
@@ -988,35 +963,13 @@ int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm)
 	/* for runtime resume, skip unlocking kfd */
 	if (!run_pm) {
 		mutex_lock(&kfd_processes_mutex);
-		count = --kfd_locked;
-		mutex_unlock(&kfd_processes_mutex);
-
-		WARN_ONCE(count < 0, "KFD suspend / resume ref. error");
-		if (count == 0)
+		if (--kfd_locked == 0)
 			ret = kfd_resume_all_processes();
+		WARN_ONCE(kfd_locked < 0, "KFD suspend / resume ref. error");
+		mutex_unlock(&kfd_processes_mutex);
 	}
 
 	return ret;
-}
-
-int kgd2kfd_resume_iommu(struct kfd_dev *kfd)
-{
-	if (!kfd->init_complete)
-		return 0;
-
-	return kfd_resume_iommu(kfd);
-}
-
-static int kfd_resume_iommu(struct kfd_dev *kfd)
-{
-	int err = 0;
-
-	err = kfd_iommu_resume(kfd);
-	if (err)
-		dev_err(kfd_device,
-			"Failed to resume IOMMU for device %x:%x\n",
-			kfd->adev->pdev->vendor, kfd->adev->pdev->device);
-	return err;
 }
 
 static int kfd_resume(struct kfd_node *node)

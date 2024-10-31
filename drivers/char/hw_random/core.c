@@ -15,14 +15,13 @@
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/hw_random.h>
-#include <linux/random.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
-#include <linux/sched/signal.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/sched.h>
+#include <linux/sched/signal.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
@@ -175,7 +174,6 @@ static int hwrng_init(struct hwrng *rng)
 	reinit_completion(&rng->cleanup_done);
 
 skip_init:
-	rng->quality = min_t(u16, min_t(u16, default_quality, 1024), rng->quality ?: 1024);
 	current_quality = rng->quality; /* obsolete */
 
 	return 0;
@@ -564,6 +562,9 @@ int hwrng_register(struct hwrng *rng)
 	complete(&rng->cleanup_done);
 	init_completion(&rng->dying);
 
+	/* Adjust quality field to always have a proper value */
+	rng->quality = min_t(u16, min_t(u16, default_quality, 1024), rng->quality ?: 1024);
+
 	if (!current_rng ||
 	    (!cur_rng_set_by_user && rng->quality > current_rng->quality)) {
 		/*
@@ -686,6 +687,12 @@ long hwrng_msleep(struct hwrng *rng, unsigned int msecs)
 	return wait_for_completion_interruptible_timeout(&rng->dying, timeout);
 }
 EXPORT_SYMBOL_GPL(hwrng_msleep);
+
+long hwrng_yield(struct hwrng *rng)
+{
+	return wait_for_completion_interruptible_timeout(&rng->dying, 1);
+}
+EXPORT_SYMBOL_GPL(hwrng_yield);
 
 static int __init hwrng_modinit(void)
 {

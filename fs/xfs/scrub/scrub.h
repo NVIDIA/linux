@@ -17,6 +17,13 @@ struct xfs_scrub;
 #define XCHK_GFP_FLAGS	((__force gfp_t)(GFP_KERNEL | __GFP_NOWARN | \
 					 __GFP_RETRY_MAYFAIL))
 
+/*
+ * For opening files by handle for fsck operations, we don't trust the inumber
+ * or the allocation state; therefore, perform an untrusted lookup.  We don't
+ * want these inodes to pollute the cache, so mark them for immediate removal.
+ */
+#define XCHK_IGET_FLAGS	(XFS_IGET_UNTRUSTED | XFS_IGET_DONTCACHE)
+
 /* Type info and names for the scrub types. */
 enum xchk_type {
 	ST_NONE = 1,	/* disabled */
@@ -88,6 +95,10 @@ struct xfs_scrub {
 	 */
 	void				(*buf_cleanup)(void *buf);
 
+	/* xfile used by the scrubbers; freed at teardown. */
+	struct xfile			*xfile;
+
+	/* Lock flags for @ip. */
 	uint				ilock_flags;
 
 	/* See the XCHK/XREP state flags below. */
@@ -106,6 +117,7 @@ struct xfs_scrub {
 
 /* XCHK state flags grow up from zero, XREP state flags grown down from 2^31 */
 #define XCHK_TRY_HARDER		(1U << 0)  /* can't get resources, try again */
+#define XCHK_HAVE_FREEZE_PROT	(1U << 1)  /* do we have freeze protection? */
 #define XCHK_FSGATES_DRAIN	(1U << 2)  /* defer ops draining enabled */
 #define XCHK_NEED_DRAIN		(1U << 3)  /* scrub needs to drain defer ops */
 #define XREP_ALREADY_FIXED	(1U << 31) /* checking our repair work */

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018-2022 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2023 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -55,6 +55,10 @@
  *
  *	6) Eventually, the free function will be called.
  */
+
+/* default preset 0 (start from bit 16)*/
+#define IWL_FW_DBG_DOMAIN_POS	16
+#define IWL_FW_DBG_DOMAIN	BIT(IWL_FW_DBG_DOMAIN_POS)
 
 #define IWL_TRANS_FW_DBG_DOMAIN(trans)	IWL_FW_INI_DOMAIN_ALWAYS_ON
 
@@ -274,7 +278,7 @@ static inline void iwl_free_rxb(struct iwl_rx_cmd_buffer *r)
 #define IWL_MGMT_TID		15
 #define IWL_FRAME_LIMIT	64
 #define IWL_MAX_RX_HW_QUEUES	16
-#define IWL_9000_MAX_RX_HW_QUEUES	6
+#define IWL_9000_MAX_RX_HW_QUEUES	1
 
 /**
  * enum iwl_wowlan_status - WoWLAN image/device status
@@ -584,7 +588,7 @@ struct iwl_trans_ops {
 	int (*tx)(struct iwl_trans *trans, struct sk_buff *skb,
 		  struct iwl_device_tx_cmd *dev_cmd, int queue);
 	void (*reclaim)(struct iwl_trans *trans, int queue, int ssn,
-			struct sk_buff_head *skbs);
+			struct sk_buff_head *skbs, bool is_flush);
 
 	void (*set_q_ptrs)(struct iwl_trans *trans, int queue, int ptr);
 
@@ -1069,6 +1073,7 @@ struct iwl_trans_txqs {
  * @mbx_addr_1_step: step address data 1
  * @pcie_link_speed: current PCIe link speed (%PCI_EXP_LNKSTA_CLS_*),
  *	only valid for discrete (not integrated) NICs
+ * @invalid_tx_cmd: invalid TX command buffer
  */
 struct iwl_trans {
 	bool csme_own;
@@ -1132,6 +1137,8 @@ struct iwl_trans {
 	u32 mbx_addr_1_step;
 
 	u8 pcie_link_speed;
+
+	struct iwl_dma_ptr invalid_tx_cmd;
 
 	/* pointer to trans specific struct */
 	/*Ensure that this pointer will always be aligned to sizeof pointer */
@@ -1266,14 +1273,15 @@ static inline int iwl_trans_tx(struct iwl_trans *trans, struct sk_buff *skb,
 }
 
 static inline void iwl_trans_reclaim(struct iwl_trans *trans, int queue,
-				     int ssn, struct sk_buff_head *skbs)
+				     int ssn, struct sk_buff_head *skbs,
+				     bool is_flush)
 {
 	if (WARN_ON_ONCE(trans->state != IWL_TRANS_FW_ALIVE)) {
 		IWL_ERR(trans, "%s bad state = %d\n", __func__, trans->state);
 		return;
 	}
 
-	trans->ops->reclaim(trans, queue, ssn, skbs);
+	trans->ops->reclaim(trans, queue, ssn, skbs, is_flush);
 }
 
 static inline void iwl_trans_set_q_ptrs(struct iwl_trans *trans, int queue,
@@ -1490,7 +1498,7 @@ static inline u32 iwl_trans_read_mem32(struct iwl_trans *trans, u32 addr)
 {
 	u32 value;
 
-	if (WARN_ON(iwl_trans_read_mem(trans, addr, &value, 1)))
+	if (iwl_trans_read_mem(trans, addr, &value, 1))
 		return 0xa5a5a5a5;
 
 	return value;
@@ -1546,8 +1554,8 @@ static inline void iwl_trans_fw_error(struct iwl_trans *trans, bool sync)
 
 	/* prevent double restarts due to the same erroneous FW */
 	if (!test_and_set_bit(STATUS_FW_ERROR, &trans->status)) {
-		iwl_op_mode_nic_error(trans->op_mode, sync);
 		trans->state = IWL_TRANS_NO_FW;
+		iwl_op_mode_nic_error(trans->op_mode, sync);
 	}
 }
 

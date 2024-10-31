@@ -309,8 +309,8 @@ static void bcm_uart_do_tx(struct uart_port *port)
 
 	val = bcm_uart_readl(port, UART_MCTL_REG);
 	val = (val & UART_MCTL_TXFIFOFILL_MASK) >> UART_MCTL_TXFIFOFILL_SHIFT;
-
-	pending = uart_port_tx_limited(port, ch, port->fifosize - val,
+	pending = uart_port_tx_limited_flags(port, ch, UART_TX_NOSTOP,
+		port->fifosize - val,
 		true,
 		bcm_uart_writel(port, ch, UART_FIFO_REG),
 		({}));
@@ -321,6 +321,9 @@ static void bcm_uart_do_tx(struct uart_port *port)
 	val = bcm_uart_readl(port, UART_IR_REG);
 	val &= ~UART_TX_INT_MASK;
 	bcm_uart_writel(port, val, UART_IR_REG);
+
+	if (uart_tx_stopped(port))
+		bcm_uart_stop_tx(port);
 }
 
 /*
@@ -832,14 +835,10 @@ static int bcm_uart_probe(struct platform_device *pdev)
 		return -EBUSY;
 	memset(port, 0, sizeof(*port));
 
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res_mem)
-		return -ENODEV;
-
-	port->mapbase = res_mem->start;
-	port->membase = devm_ioremap_resource(&pdev->dev, res_mem);
+	port->membase = devm_platform_get_and_ioremap_resource(pdev, 0, &res_mem);
 	if (IS_ERR(port->membase))
 		return PTR_ERR(port->membase);
+	port->mapbase = res_mem->start;
 
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0)

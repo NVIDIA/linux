@@ -46,8 +46,8 @@ COND_SYSCALL(io_getevents_time32);
 COND_SYSCALL(io_getevents);
 COND_SYSCALL(io_pgetevents_time32);
 COND_SYSCALL(io_pgetevents);
-COND_SYSCALL_COMPAT(io_pgetevents_time32);
 COND_SYSCALL_COMPAT(io_pgetevents);
+COND_SYSCALL_COMPAT(io_pgetevents_time64);
 COND_SYSCALL(io_uring_setup);
 COND_SYSCALL(io_uring_enter);
 COND_SYSCALL(io_uring_register);
@@ -200,6 +200,20 @@ COND_SYSCALL(recvmmsg_time32);
 COND_SYSCALL_COMPAT(recvmmsg_time32);
 COND_SYSCALL_COMPAT(recvmmsg_time64);
 
+/* Posix timer syscalls may be configured out */
+COND_SYSCALL(timer_create);
+COND_SYSCALL(timer_gettime);
+COND_SYSCALL(timer_getoverrun);
+COND_SYSCALL(timer_settime);
+COND_SYSCALL(timer_delete);
+COND_SYSCALL(clock_adjtime);
+COND_SYSCALL(getitimer);
+COND_SYSCALL(setitimer);
+COND_SYSCALL(alarm);
+COND_SYSCALL_COMPAT(timer_create);
+COND_SYSCALL_COMPAT(getitimer);
+COND_SYSCALL_COMPAT(setitimer);
+
 /*
  * Architecture specific syscalls: see further below
  */
@@ -274,6 +288,7 @@ COND_SYSCALL(vm86old);
 COND_SYSCALL(modify_ldt);
 COND_SYSCALL(vm86);
 COND_SYSCALL(kexec_file_load);
+COND_SYSCALL(map_shadow_stack);
 
 /* s390 */
 COND_SYSCALL(s390_pci_mmio_read);

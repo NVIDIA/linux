@@ -278,41 +278,33 @@
 			resets = <&syscon ASPEED_RESET_MII>;
 		};
 
-		mac0: ftgmac@1e660000 {
+		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>;
-			#address-cells = <1>;
-			#size-cells = <0>;
 			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC1CLK>;
 			status = "disabled";
 		};
 
-		mac1: ftgmac@1e680000 {
+		mac1: ethernet@1e680000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e680000 0x180>;
-			#address-cells = <1>;
-			#size-cells = <0>;
 			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC2CLK>;
 			status = "disabled";
 		};
 
-		mac2: ftgmac@1e670000 {
+		mac2: ethernet@1e670000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e670000 0x180>;
-			#address-cells = <1>;
-			#size-cells = <0>;
 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC3CLK>;
 			status = "disabled";
 		};
 
-		mac3: ftgmac@1e690000 {
+		mac3: ethernet@1e690000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
 			reg = <0x1e690000 0x180>;
-			#address-cells = <1>;
-			#size-cells = <0>;
 			interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC4CLK>;
 			status = "disabled";
@@ -373,19 +365,20 @@
 			status = "disabled";
 		};
 
-		apb {
+		hace: crypto@1e6d0000 {
+			compatible = "aspeed,ast2600-hace";
+			reg = <0x1e6d0000 0x200>;
+			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon ASPEED_CLK_GATE_YCLK>;
+			resets = <&syscon ASPEED_RESET_HACE>;
+		};
+
+		apb@1e6e0000 {
 			compatible = "simple-bus";
+			reg = <0x1e6e0000 0x00010000>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
-
-			hace: crypto@1e6d0000 {
-				compatible = "aspeed,ast2600-hace";
-				reg = <0x1e6d0000 0x200>;
-				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&syscon ASPEED_CLK_GATE_YCLK>;
-				resets = <&syscon ASPEED_RESET_HACE>;
-			};
 
 			syscon: syscon@1e6e2000 {
 				compatible = "aspeed,ast2600-scu", "syscon", "simple-mfd";
@@ -584,6 +577,14 @@
 				#io-channel-cells = <1>;
 				status = "disabled";
 			};
+		};
+
+		apb@1e6f0000 {
+			compatible = "simple-bus";
+			reg = <0x1e6f0000 0x00010000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
 
 			sbc: secure-boot-controller@1e6f2000 {
 				compatible = "aspeed,ast2600-sbc";
@@ -597,16 +598,72 @@
 				clocks = <&syscon ASPEED_CLK_GATE_RSACLK>;
 				aspeed,ahbc = <&ahbc>;
 			};
+		};
 
-			video: video@1e700000 {
-				compatible = "aspeed,ast2600-video-engine";
-				reg = <0x1e700000 0x1000>;
-				clocks = <&syscon ASPEED_CLK_GATE_VCLK>,
-					 <&syscon ASPEED_CLK_GATE_ECLK>;
-				clock-names = "vclk", "eclk";
-				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+		video: video@1e700000 {
+			compatible = "aspeed,ast2600-video-engine";
+			reg = <0x1e700000 0x1000>;
+			clocks = <&syscon ASPEED_CLK_GATE_VCLK>,
+				 <&syscon ASPEED_CLK_GATE_ECLK>;
+			clock-names = "vclk", "eclk";
+			interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		sdc: sdc@1e740000 {
+			compatible = "aspeed,ast2600-sd-controller";
+			reg = <0x1e740000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x1e740000 0x10000>;
+			clocks = <&syscon ASPEED_CLK_GATE_SDCLK>;
+			status = "disabled";
+
+			sdhci0: sdhci@1e740100 {
+				compatible = "aspeed,ast2600-sdhci", "sdhci";
+				reg = <0x100 0x100>;
+				interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
+				sdhci,auto-cmd12;
+				clocks = <&syscon ASPEED_CLK_SDIO>;
 				status = "disabled";
 			};
+
+			sdhci1: sdhci@1e740200 {
+				compatible = "aspeed,ast2600-sdhci", "sdhci";
+				reg = <0x200 0x100>;
+				interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
+				sdhci,auto-cmd12;
+				clocks = <&syscon ASPEED_CLK_SDIO>;
+				status = "disabled";
+			};
+		};
+
+		emmc_controller: sdc@1e750000 {
+			compatible = "aspeed,ast2600-sd-controller";
+			reg = <0x1e750000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x1e750000 0x10000>;
+			clocks = <&syscon ASPEED_CLK_GATE_EMMCCLK>;
+			status = "disabled";
+
+			emmc: sdhci@1e750100 {
+				compatible = "aspeed,ast2600-sdhci";
+				reg = <0x100 0x100>;
+				sdhci,auto-cmd12;
+				interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&syscon ASPEED_CLK_EMMC>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_emmc_default>;
+			};
+		};
+
+		apb@1e780000 {
+			compatible = "simple-bus";
+			reg = <0x1e780000 0x00010000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
 
 			gpio0: gpio@1e780000 {
 				#gpio-cells = <2>;
@@ -628,6 +685,7 @@
 				reg = <0x1e780500 0x100>;
 				interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&syscon ASPEED_CLK_APB2>;
+				#interrupt-cells = <2>;
 				interrupt-controller;
 				bus-frequency = <12000000>;
 				pinctrl-names = "default";
@@ -642,6 +700,7 @@
 				reg = <0x1e780600 0x100>;
 				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&syscon ASPEED_CLK_APB2>;
+				#interrupt-cells = <2>;
 				interrupt-controller;
 				bus-frequency = <12000000>;
 				pinctrl-names = "default";
@@ -855,29 +914,11 @@
 			sdc: sdc@1e740000 {
 				compatible = "aspeed,ast2600-sd-controller";
 				reg = <0x1e740000 0x100>;
+			i2c: bus@1e78a000 {
+				compatible = "simple-bus";
 				#address-cells = <1>;
 				#size-cells = <1>;
-				ranges = <0 0x1e740000 0x10000>;
-				clocks = <&syscon ASPEED_CLK_GATE_SDCLK>;
-				status = "disabled";
-
-				sdhci0: sdhci@1e740100 {
-					compatible = "aspeed,ast2600-sdhci", "sdhci";
-					reg = <0x100 0x100>;
-					interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
-					sdhci,auto-cmd12;
-					clocks = <&syscon ASPEED_CLK_SDIO>;
-					status = "disabled";
-				};
-
-				sdhci1: sdhci@1e740200 {
-					compatible = "aspeed,ast2600-sdhci", "sdhci";
-					reg = <0x200 0x100>;
-					interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
-					sdhci,auto-cmd12;
-					clocks = <&syscon ASPEED_CLK_SDIO>;
-					status = "disabled";
-				};
+				ranges = <0 0x1e78a000 0x1000>;
 			};
 
 			emmc_controller: sdc@1e750000 {
@@ -981,6 +1022,14 @@
 				pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
 				status = "disabled";
 			};
+		};
+
+		apb@1e790000 {
+			compatible = "simple-bus";
+			reg = <0x1e790000 0x00010000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
 
 			uart6: serial@1e790000 {
 				compatible = "ns16550a";
@@ -1038,30 +1087,27 @@
 				status = "disabled";
 			};
 
-			i2c: bus@1e78a000 {
-				compatible = "simple-bus";
-				#address-cells = <1>;
-				#size-cells = <1>;
-				ranges = <0 0x1e78a000 0x1000>;
-			};
-
 			fsim0: fsi@1e79b000 {
+				#interrupt-cells = <1>;
 				compatible = "aspeed,ast2600-fsi-master", "fsi-master";
 				reg = <0x1e79b000 0x94>;
 				interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_fsi1_default>;
 				clocks = <&syscon ASPEED_CLK_GATE_FSICLK>;
+				interrupt-controller;
 				status = "disabled";
 			};
 
 			fsim1: fsi@1e79b100 {
+				#interrupt-cells = <1>;
 				compatible = "aspeed,ast2600-fsi-master", "fsi-master";
 				reg = <0x1e79b100 0x94>;
 				interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_fsi2_default>;
 				clocks = <&syscon ASPEED_CLK_GATE_FSICLK>;
+				interrupt-controller;
 				status = "disabled";
 			};
 
@@ -1120,7 +1166,7 @@
 		status = "disabled";
 	};
 
-	i2c1: i2c-bus@100 {
+	i2c1: i2c@100 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1136,7 +1182,7 @@
 		status = "disabled";
 	};
 
-	i2c2: i2c-bus@180 {
+	i2c2: i2c@180 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1152,7 +1198,7 @@
 		status = "disabled";
 	};
 
-	i2c3: i2c-bus@200 {
+	i2c3: i2c@200 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1168,7 +1214,7 @@
 		status = "disabled";
 	};
 
-	i2c4: i2c-bus@280 {
+	i2c4: i2c@280 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1184,7 +1230,7 @@
 		status = "disabled";
 	};
 
-	i2c5: i2c-bus@300 {
+	i2c5: i2c@300 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1200,7 +1246,7 @@
 		status = "disabled";
 	};
 
-	i2c6: i2c-bus@380 {
+	i2c6: i2c@380 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1216,7 +1262,7 @@
 		status = "disabled";
 	};
 
-	i2c7: i2c-bus@400 {
+	i2c7: i2c@400 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1232,7 +1278,7 @@
 		status = "disabled";
 	};
 
-	i2c8: i2c-bus@480 {
+	i2c8: i2c@480 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1248,7 +1294,7 @@
 		status = "disabled";
 	};
 
-	i2c9: i2c-bus@500 {
+	i2c9: i2c@500 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1264,7 +1310,7 @@
 		status = "disabled";
 	};
 
-	i2c10: i2c-bus@580 {
+	i2c10: i2c@580 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1280,7 +1326,7 @@
 		status = "disabled";
 	};
 
-	i2c11: i2c-bus@600 {
+	i2c11: i2c@600 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1296,7 +1342,7 @@
 		status = "disabled";
 	};
 
-	i2c12: i2c-bus@680 {
+	i2c12: i2c@680 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1312,7 +1358,7 @@
 		status = "disabled";
 	};
 
-	i2c13: i2c-bus@700 {
+	i2c13: i2c@700 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1328,7 +1374,7 @@
 		status = "disabled";
 	};
 
-	i2c14: i2c-bus@780 {
+	i2c14: i2c@780 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1344,7 +1390,7 @@
 		status = "disabled";
 	};
 
-	i2c15: i2c-bus@800 {
+	i2c15: i2c@800 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;

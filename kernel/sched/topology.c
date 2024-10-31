@@ -722,8 +722,7 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 
 			if (parent->parent) {
 				parent->parent->child = tmp;
-				if (tmp->flags & SD_SHARE_CPUCAPACITY)
-					parent->parent->groups->flags |= SD_SHARE_CPUCAPACITY;
+				parent->parent->groups->flags = tmp->flags;
 			}
 
 			/*
@@ -1275,13 +1274,23 @@ build_sched_groups(struct sched_domain *sd, int cpu)
 static void init_sched_groups_capacity(int cpu, struct sched_domain *sd)
 {
 	struct sched_group *sg = sd->groups;
+	struct cpumask *mask = sched_domains_tmpmask2;
 
 	WARN_ON(!sg);
 
 	do {
-		int cpu, max_cpu = -1;
+		int cpu, cores = 0, max_cpu = -1;
 
 		sg->group_weight = cpumask_weight(sched_group_span(sg));
+
+		cpumask_copy(mask, sched_group_span(sg));
+		for_each_cpu(cpu, mask) {
+			cores++;
+#ifdef CONFIG_SCHED_SMT
+			cpumask_andnot(mask, mask, cpu_smt_mask(cpu));
+#endif
+		}
+		sg->cores = cores;
 
 		if (!(sd->flags & SD_ASYM_PACKING))
 			goto next;
@@ -1443,7 +1452,7 @@ static void set_domain_attribute(struct sched_domain *sd,
 	} else
 		request = attr->relax_domain_level;
 
-	if (sd->level > request) {
+	if (sd->level >= request) {
 		/* Turn off idle balance on this domain: */
 		sd->flags &= ~(SD_BALANCE_WAKE|SD_BALANCE_NEWIDLE);
 	}
@@ -2113,11 +2122,18 @@ static int hop_cmp(const void *a, const void *b)
  */
 int sched_numa_find_nth_cpu(const struct cpumask *cpus, int cpu, int node)
 {
-	struct __cmp_key k = { .cpus = cpus, .node = node, .cpu = cpu };
+	struct __cmp_key k = { .cpus = cpus, .cpu = cpu };
 	struct cpumask ***hop_masks;
 	int hop, ret = nr_cpu_ids;
 
+	if (node == NUMA_NO_NODE)
+		return cpumask_nth_and(cpu, cpus, cpu_online_mask);
+
 	rcu_read_lock();
+
+	/* CPU-less node entries are uninitialized in sched_domains_numa_masks */
+	node = numa_nearest_node(node, N_CPU);
+	k.node = node;
 
 	k.masks = rcu_dereference(sched_domains_numa_masks);
 	if (!k.masks)

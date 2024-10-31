@@ -421,7 +421,7 @@ static void __init hpet_legacy_clockevent_register(struct hpet_channel *hc)
 	 * the IO_APIC has been initialized.
 	 */
 	hc->cpu = boot_cpu_data.cpu_index;
-	strncpy(hc->name, "hpet", sizeof(hc->name));
+	strscpy(hc->name, "hpet", sizeof(hc->name));
 	hpet_init_clockevent(hc, 50);
 
 	hc->evt.tick_resume	= hpet_clkevt_legacy_resume;
@@ -1438,7 +1438,7 @@ irqreturn_t hpet_rtc_interrupt(int irq, void *dev_id)
 	memset(&curr_time, 0, sizeof(struct rtc_time));
 
 	if (hpet_rtc_flags & (RTC_UIE | RTC_AIE)) {
-		if (unlikely(mc146818_get_time(&curr_time) < 0)) {
+		if (unlikely(mc146818_get_time(&curr_time, 10) < 0)) {
 			pr_err_ratelimited("unable to read current time from RTC\n");
 			return IRQ_HANDLED;
 		}

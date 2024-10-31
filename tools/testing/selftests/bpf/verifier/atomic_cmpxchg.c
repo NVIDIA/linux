@@ -317,4 +317,5 @@
 	.result = REJECT,
 	.errstr = "R0 invalid mem access",
 	.errstr_unpriv = "R10 partial copy of pointer",
+	.flags = F_NEEDS_EFFICIENT_UNALIGNED_ACCESS,
 },

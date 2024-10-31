@@ -44,7 +44,6 @@ early_param(#param, ignore_decompressor_param_##param)
 decompressor_handled_param(mem);
 decompressor_handled_param(vmalloc);
 decompressor_handled_param(dfltcc);
-decompressor_handled_param(noexec);
 decompressor_handled_param(facilities);
 decompressor_handled_param(nokaslr);
 #if IS_ENABLED(CONFIG_KVM)
@@ -233,10 +232,8 @@ static __init void detect_machine_facilities(void)
 		S390_lowcore.machine_flags |= MACHINE_FLAG_VX;
 		__ctl_set_bit(0, 17);
 	}
-	if (test_facility(130) && !noexec_disabled) {
+	if (test_facility(130))
 		S390_lowcore.machine_flags |= MACHINE_FLAG_NX;
-		__ctl_set_bit(0, 20);
-	}
 	if (test_facility(133))
 		S390_lowcore.machine_flags |= MACHINE_FLAG_GS;
 	if (test_facility(139) && (tod_clock_base.tod >> 63)) {
@@ -261,15 +258,9 @@ static inline void save_vector_registers(void)
 #endif
 }
 
-static inline void setup_control_registers(void)
+static inline void setup_low_address_protection(void)
 {
-	unsigned long reg;
-
-	__ctl_store(reg, 0, 0);
-	reg |= CR0_LOW_ADDRESS_PROTECTION;
-	reg |= CR0_EMERGENCY_SIGNAL_SUBMASK;
-	reg |= CR0_EXTERNAL_CALL_SUBMASK;
-	__ctl_load(reg, 0, 0);
+	__ctl_set_bit(0, 28);
 }
 
 static inline void setup_access_registers(void)
@@ -317,7 +308,7 @@ void __init startup_init(void)
 	save_vector_registers();
 	setup_topology();
 	sclp_early_detect();
-	setup_control_registers();
+	setup_low_address_protection();
 	setup_access_registers();
 	lockdep_on();
 }
