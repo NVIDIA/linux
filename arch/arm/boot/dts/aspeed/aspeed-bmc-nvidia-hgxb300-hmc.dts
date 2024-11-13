@@ -174,6 +174,16 @@
     status = "okay";
 };
 
+// Host port USB 2.0
+&ehci0 {
+   status = "okay";
+};
+
+// USB 1.0
+&uhci {
+   status = "okay";
+};
+
 // Bring-up effort: Shall remove for Umbriel production?
 // I2C Master (non Umbriel HMC POR), though Vulcan keeps it
 &i2c0 {             
@@ -217,12 +227,27 @@
     };
 };
 
+// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+&i2c5 {
+    status = "okay";
+};
+
 // HMC - FPGA Bus
 &i2c6 {
     status = "okay";
 };
 
-// Ethernet SW
+// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+&i2c7 {
+    status = "okay";
+};
+
+// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+&i2c9 {
+    status = "okay";
+};
+
+// Ethernet SW, CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
 &i2c10 {
     status = "okay";
 };
