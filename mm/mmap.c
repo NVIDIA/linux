@@ -2880,7 +2880,7 @@ unmap_and_free_file_vma:
 	vma_iter_set(&vmi, vma->vm_end);
 	/* Undo any partial mapping done by a device driver. */
 	unmap_region(mm, &mm->mm_mt, vma, prev, next, vma->vm_start,
-		     vma->vm_end, vma->vm_end, true);
+		     vma->vm_end, true);
 free_iter_vma:
 	vma_iter_free(&vmi);
 free_vma:
