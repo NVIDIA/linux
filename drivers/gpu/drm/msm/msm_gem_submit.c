@@ -959,7 +959,6 @@ int msm_ioctl_gem_submit(struct drm_device *dev, void *data,
 	spin_unlock(&queue->idr_lock);
 	idr_preload_end();
 
->>>>>>> origin/linux_6.1.15_upstream
 	if (submit->fence_id < 0) {
 		ret = submit->fence_id;
 		submit->fence_id = 0;

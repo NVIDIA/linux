@@ -1965,7 +1965,6 @@ static int guest_session__copy_kcore_dir(struct guest_session *gs)
 	return ret;
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 static int output_fd(struct perf_inject *inject)
 {
 	return inject->in_place_update ? -1 : perf_data__fd(&inject->output);

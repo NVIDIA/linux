@@ -1615,65 +1615,6 @@ static inline struct timespec64 inode_set_ctime(struct inode *inode,
 
 struct timespec64 simple_inode_init_ts(struct inode *inode);
 
-static inline struct timespec64 inode_set_atime_to_ts(struct inode *inode,
-						      struct timespec64 ts)
-{
-	inode->i_atime = ts;
-	return ts;
-}
-
-static inline struct timespec64 inode_set_atime(struct inode *inode,
-						time64_t sec, long nsec)
-{
-	struct timespec64 ts = { .tv_sec  = sec,
-				 .tv_nsec = nsec };
-	return inode_set_atime_to_ts(inode, ts);
-}
-
-static inline time64_t inode_get_mtime_sec(const struct inode *inode)
-{
-	return inode->i_mtime.tv_sec;
-}
-
-static inline struct timespec64 inode_set_mtime_to_ts(struct inode *inode,
-						      struct timespec64 ts)
-{
-	inode->i_mtime = ts;
-	return ts;
-}
-
-static inline struct timespec64 inode_set_mtime(struct inode *inode,
-						time64_t sec, long nsec)
-{
-	struct timespec64 ts = { .tv_sec  = sec,
-				 .tv_nsec = nsec };
-	return inode_set_mtime_to_ts(inode, ts);
-}
-
-static inline struct timespec64 inode_set_ctime_to_ts(struct inode *inode,
-						      struct timespec64 ts)
-{
-	inode->i_ctime = ts;
-	return ts;
-}
-
-/**
- * inode_set_ctime - set the ctime in the inode
- * @inode: inode in which to set the ctime
- * @sec: tv_sec value to set
- * @nsec: tv_nsec value to set
- *
- * Set the ctime in @inode to { @sec, @nsec }
- */
-static inline struct timespec64 inode_set_ctime(struct inode *inode,
-						time64_t sec, long nsec)
-{
-	struct timespec64 ts = { .tv_sec  = sec,
-				 .tv_nsec = nsec };
-
-	return inode_set_ctime_to_ts(inode, ts);
-}
-
 /*
  * Snapshotting support.
  */

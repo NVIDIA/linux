@@ -7,18 +7,9 @@
 #include <linux/types.h>
 #include <media/v4l2-fwnode.h>
 
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-#include "ipu3/ipu3-cio2.h"
-
-struct i2c_client;
-
-#define IPU_HID				"INT343E"
-#define IPU_MAX_LANES				4
-========
 #define IPU_HID				"INT343E"
 #define IPU_MAX_LANES				4
 #define IPU_MAX_PORTS				4
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 #define MAX_NUM_LINK_FREQS			3
 
 /* Values are educated guesses as we don't have a spec */
@@ -62,16 +53,12 @@ enum ipu_sensor_swnodes {
 	SWNODE_SENSOR_ENDPOINT,
 	SWNODE_IPU_PORT,
 	SWNODE_IPU_ENDPOINT,
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-	/* Must be last because it is optional / maybe empty */
-========
 	/* below are optional / maybe empty */
 	SWNODE_IVSC_HID,
 	SWNODE_IVSC_SENSOR_PORT,
 	SWNODE_IVSC_SENSOR_ENDPOINT,
 	SWNODE_IVSC_IPU_PORT,
 	SWNODE_IVSC_IPU_ENDPOINT,
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 	SWNODE_VCM,
 	SWNODE_COUNT
 };
@@ -121,11 +108,7 @@ struct ipu_node_names {
 	char ivsc_sensor_port[7];
 	char ivsc_ipu_port[7];
 	char endpoint[11];
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-	char remote_port[7];
-========
 	char remote_port[9];
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 	char vcm[16];
 };
 
@@ -149,29 +132,21 @@ struct ipu_sensor {
 	struct software_node swnodes[SWNODE_COUNT];
 	struct ipu_node_names node_names;
 
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-	struct ipu_sensor_ssdb ssdb;
-	struct acpi_pld_info *pld;
-========
 	u8 link;
 	u8 lanes;
 	u32 mclkspeed;
 	u32 rotation;
 	enum v4l2_fwnode_orientation orientation;
 	const char *vcm_type;
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 
 	struct ipu_property_names prop_names;
 	struct property_entry ep_properties[5];
 	struct property_entry dev_properties[5];
 	struct property_entry ipu_properties[3];
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-========
 	struct property_entry ivsc_properties[1];
 	struct property_entry ivsc_sensor_ep_properties[4];
 	struct property_entry ivsc_ipu_ep_properties[4];
 
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 	struct software_node_ref_args local_ref[1];
 	struct software_node_ref_args remote_ref[1];
 	struct software_node_ref_args vcm_ref[1];
@@ -179,29 +154,16 @@ struct ipu_sensor {
 	struct software_node_ref_args ivsc_ipu_ref[1];
 };
 
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-struct ipu_bridge {
-========
 typedef int (*ipu_parse_sensor_fwnode_t)(struct acpi_device *adev,
 					 struct ipu_sensor *sensor);
 
 struct ipu_bridge {
 	struct device *dev;
 	ipu_parse_sensor_fwnode_t parse_sensor_fwnode;
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 	char ipu_node_name[ACPI_ID_LEN];
 	struct software_node ipu_hid_node;
 	u32 data_lanes[4];
 	unsigned int n_sensors;
-<<<<<<<< HEAD:drivers/media/pci/intel/ipu-bridge.h
-	struct ipu_sensor sensors[CIO2_NUM_PORTS];
-};
-
-#if IS_ENABLED(CONFIG_IPU_BRIDGE)
-int ipu_bridge_init(struct pci_dev *ipu);
-#else
-static inline int ipu_bridge_init(struct pci_dev *ipu) { return 0; }
-========
 	struct ipu_sensor sensors[IPU_MAX_PORTS];
 };
 
@@ -214,7 +176,6 @@ int ipu_bridge_instantiate_vcm(struct device *sensor);
 /* Use a define to avoid the @parse_sensor_fwnode argument getting evaluated */
 #define ipu_bridge_init(dev, parse_sensor_fwnode)	(0)
 static inline int ipu_bridge_instantiate_vcm(struct device *s) { return 0; }
->>>>>>>> dev-6.6:include/media/ipu-bridge.h
 #endif
 
 #endif

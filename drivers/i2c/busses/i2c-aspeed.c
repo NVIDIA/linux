@@ -441,19 +441,19 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	 */
 	if (irq_status & ASPEED_I2CD_INTR_NORMAL_STOP) {
 		irq_handled |= ASPEED_I2CD_INTR_NORMAL_STOP;
-		bus->slave_state = ASPEED_I2C_SLAVE_STOP;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
 
 	if (irq_status & ASPEED_I2CD_INTR_TX_NAK &&
-	    bus->slave_state == ASPEED_I2C_SLAVE_READ_PROCESSED) {
+	    bus->slave_state[idx] == ASPEED_I2C_SLAVE_READ_PROCESSED) {
 		irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
-		bus->slave_state = ASPEED_I2C_SLAVE_STOP;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
 
 	/* Propagate any stop conditions to the slave implementation. */
-	if (bus->slave_state == ASPEED_I2C_SLAVE_STOP) {
+	if (bus->slave_state[idx] == ASPEED_I2C_SLAVE_STOP) {
 		i2c_slave_event(slave, I2C_SLAVE_STOP, &value);
-		bus->slave_state = ASPEED_I2C_SLAVE_INACTIVE;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_INACTIVE;
 	}
 
 	/*
@@ -974,8 +974,6 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 	func_ctrl_reg_val = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
 	func_ctrl_reg_val |= ASPEED_I2CD_SLAVE_EN;
 	writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
-
-	bus->slave_state = ASPEED_I2C_SLAVE_INACTIVE;
 }
 
 static int aspeed_i2c_reg_slave(struct i2c_client *client)

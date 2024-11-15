@@ -356,12 +356,4 @@ static inline void inet_init_csk_locks(struct sock *sk)
 	spin_lock_init(&icsk->icsk_accept_queue.fastopenq.lock);
 }
 
-static inline void inet_init_csk_locks(struct sock *sk)
-{
-	struct inet_connection_sock *icsk = inet_csk(sk);
-
-	spin_lock_init(&icsk->icsk_accept_queue.rskq_lock);
-	spin_lock_init(&icsk->icsk_accept_queue.fastopenq.lock);
-}
-
 #endif /* _INET_CONNECTION_SOCK_H */

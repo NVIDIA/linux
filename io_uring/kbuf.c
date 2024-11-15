@@ -736,19 +736,3 @@ void io_kbuf_mmap_list_free(struct io_ring_ctx *ctx)
 		kfree(ibf);
 	}
 }
-
-/*
- * Called at or after ->release(), free the mmap'ed buffers that we used
- * for memory mapped provided buffer rings.
- */
-void io_kbuf_mmap_list_free(struct io_ring_ctx *ctx)
-{
-	struct io_buf_free *ibf;
-	struct hlist_node *tmp;
-
-	hlist_for_each_entry_safe(ibf, tmp, &ctx->io_buf_list, list) {
-		hlist_del(&ibf->list);
-		io_mem_free(ibf->mem);
-		kfree(ibf);
-	}
-}

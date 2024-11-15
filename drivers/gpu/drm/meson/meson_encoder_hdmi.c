@@ -475,5 +475,4 @@ void meson_encoder_hdmi_remove(struct meson_drm *priv)
 		meson_encoder_hdmi = priv->encoders[MESON_ENC_HDMI];
 		drm_bridge_remove(&meson_encoder_hdmi->bridge);
 	}
->>>>>>> origin/linux_6.1.15_upstream
 }

@@ -677,7 +677,6 @@ static int imx6_pcie_clk_enable(struct imx6_pcie *imx6_pcie)
 	/* allow the clocks to stabilize */
 	usleep_range(200, 500);
 	return 0;
->>>>>>> origin/linux_6.1.15_upstream
 
 err_ref_clk:
 	clk_disable_unprepare(imx6_pcie->pcie);

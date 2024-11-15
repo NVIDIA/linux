@@ -3058,7 +3058,6 @@ static void test_make_file(struct __test_metadata *const _metadata,
 	ASSERT_EQ(0, rename(file1_s1d3, file2_s1d3));
 }
 
->>>>>>> origin/linux_6.1.15_upstream
 TEST_F_FORK(layout1, make_char)
 {
 	/* Creates a /dev/null device. */

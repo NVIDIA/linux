@@ -1306,6 +1306,7 @@ static struct class fsi_master_class = {
 int fsi_master_register(struct fsi_master *master)
 {
 	int rc;
+	struct device_node *np;
 
 	mutex_init(&master->scan_lock);
 
