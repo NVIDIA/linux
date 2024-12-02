@@ -40,9 +40,7 @@ static int i2c_mux_hold(struct i2c_mux_core *muxc, u32 chan_id,
 			 unsigned long timeout)
 {
 	int ret;
-	ret = mutex_trylock(&muxc->hold_lock);
-	if(!ret)
-		return 0;
+	mutex_lock(&muxc->hold_lock);
 
 	muxc->holder_chan_id = chan_id;
 	schedule_delayed_work(&muxc->unhold_work, timeout);
@@ -88,16 +86,15 @@ static int __i2c_mux_master_xfer(struct i2c_adapter *adap,
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
 		if(i2c_mux_hold(muxc, priv->chan_id, timeout) == 0) {
-			return -EIO;
 		}
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-		if (mutex_trylock(&muxc->hold_lock) == 0) {
-			return -EIO;
-		}
+		mutex_lock(&muxc->hold_lock);
 	}
+
 	ret = muxc->select(muxc, priv->chan_id);
-	if (ret >= 0)
+	if (ret >= 0) {
 		ret = __i2c_transfer(parent, msgs, num);
+	}
 	if (hold_msg != I2C_HOLD_MSG_SET) {
 		if (muxc->deselect)
 			muxc->deselect(muxc, priv->chan_id);
@@ -130,17 +127,15 @@ static int i2c_mux_master_xfer(struct i2c_adapter *adap,
 
 	if (hold_msg == I2C_HOLD_MSG_SET) {
 		timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
-		if (i2c_mux_hold(muxc, priv->chan_id, timeout) == 0) {
-			return -EIO;
-		}
-	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-		if (mutex_trylock(&muxc->hold_lock) == 0) {
-			return -EIO;
-		}
+		i2c_mux_hold(muxc, priv->chan_id, timeout);
+	}
+	else if (hold_msg == I2C_HOLD_MSG_NONE) {
+		mutex_lock(&muxc->hold_lock);
 	}
 	ret = muxc->select(muxc, priv->chan_id);
-	if (ret >= 0)
+	if (ret >= 0) {
 		ret = i2c_transfer(parent, msgs, num);
+	}
 	if (hold_msg != I2C_HOLD_MSG_SET) {
 		if (muxc->deselect)
 			muxc->deselect(muxc, priv->chan_id);
@@ -177,9 +172,7 @@ static int __i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 			return -EIO;
 		}
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-		if (mutex_trylock(&muxc->hold_lock) == 0) {
-			return -EIO;
-		}
+		mutex_lock(&muxc->hold_lock);
 	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
@@ -220,9 +213,7 @@ static int i2c_mux_smbus_xfer(struct i2c_adapter *adap,
 			return -EAGAIN;
 		}
 	} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-		if (mutex_trylock(&muxc->hold_lock) == 0) {
-			return -EAGAIN;
-		}
+		mutex_lock(&muxc->hold_lock);
 	}
 	ret = muxc->select(muxc, priv->chan_id);
 	if (ret >= 0)
