@@ -1543,10 +1543,7 @@ EXPORT_SYMBOL_GPL(i2c_handle_smbus_host_notify);
 static int i2c_adapter_hold(struct i2c_adapter *adapter, unsigned long timeout)
 {
 	int ret;
-	ret = mutex_trylock(&adapter->hold_lock);
-	if (ret == 0) {
-		return 0;
-	}
+	mutex_lock(&adapter->hold_lock);
 
 	schedule_delayed_work(&adapter->unhold_work, timeout);
 	return 1;
@@ -2328,9 +2325,7 @@ int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 					  (u16 *)msgs[num - 1].buf);
 		if (hold_msg == I2C_HOLD_MSG_SET) {
 			timeout = msecs_to_jiffies(*(u16 *)msgs[num - 1].buf);
-			if (i2c_adapter_hold(adap, timeout) == 0) {
-				return -EIO;
-			}
+			i2c_adapter_hold(adap, timeout); 
 
 			if (--num == 0)
 				return 0;
@@ -2338,9 +2333,7 @@ int __i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 			i2c_adapter_unhold(adap);
 			return 0;
 		} else if (hold_msg == I2C_HOLD_MSG_NONE) {
-			if (mutex_trylock(&adap->hold_lock) == 0) {
-				return -EIO;
-			}
+			mutex_lock(&adap->hold_lock);
 		}
 	}
 
@@ -2428,11 +2421,13 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	 * Do not lock a bus for delivering an unhold msg to a mux
 	 * adpater. This is just for a single length unhold msg case.
 	 */
-	if (num == 1 && i2c_parent_is_i2c_adapter(adap) &&
+	if (num == 1 && 
 	    i2c_check_hold_msg(msgs[0].flags, msgs[0].len,
 			       (u16 *)msgs[0].buf) ==
 			       I2C_HOLD_MSG_RESET)
+	{
 		do_bus_lock = false;
+	}
 
 	if (do_bus_lock) {
 		ret = __i2c_lock_bus_helper(adap);
