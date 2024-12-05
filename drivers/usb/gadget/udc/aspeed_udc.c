@@ -1491,6 +1491,7 @@ static int ast_udc_probe(struct platform_device *pdev)
 	udc->gadget.ep0 = &udc->ep[0].ep;
 	udc->gadget.name = "aspeed-udc";
 	udc->gadget.dev.init_name = "gadget";
+	udc->gadget.quirk_zlp_not_supp = 1;
 
 	udc->reg = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(udc->reg)) {
