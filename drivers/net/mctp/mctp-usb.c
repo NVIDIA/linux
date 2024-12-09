@@ -31,27 +31,12 @@ static void mctp_usb_stat_tx_dropped(struct net_device *dev)
 {
 	dev->stats.tx_dropped++;
 	return;
-	/*
-	struct pcpu_dstats *dstats = this_cpu_ptr(dev->dstats);
-
-	u64_stats_update_begin(&dstats->syncp);
-	u64_stats_inc((u64_stats_t *)&dstats->tx_drops);
-	u64_stats_update_end(&dstats->syncp);
-    */
 }
 
 static void mctp_usb_stat_tx_done(struct net_device *dev, unsigned int len)
 {
 	dev->stats.tx_packets++;
 	dev->stats.tx_bytes += len;
-	/*
-	struct pcpu_dstats *dstats = this_cpu_ptr(dev->dstats);
-
-	u64_stats_update_begin(&dstats->syncp);
-	u64_stats_inc((u64_stats_t *)&dstats->tx_packets);
-	u64_stats_add((u64_stats_t *)&dstats->tx_bytes, len);
-	u64_stats_update_end(&dstats->syncp);
-    */
 }
 
 static void mctp_usb_out_complete(struct urb *urb)
@@ -157,7 +142,6 @@ static void mctp_usb_in_complete(struct urb *urb)
 {
 	struct sk_buff *skb = urb->context;
 	struct net_device *netdev = skb->dev;
-	/*struct pcpu_dstats *dstats = this_cpu_ptr(netdev->dstats);*/
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
 	struct mctp_skb_cb *cb;
 	unsigned int len;
@@ -234,12 +218,6 @@ static void mctp_usb_in_complete(struct urb *urb)
 
 		netdev->stats.rx_packets++;
 		netdev->stats.rx_bytes += skb->len;
-		/*
-		u64_stats_update_begin(&dstats->syncp);
-		u64_stats_inc((u64_stats_t *)&dstats->rx_packets);
-		u64_stats_add((u64_stats_t *)&dstats->rx_bytes, skb->len);
-		u64_stats_update_end(&dstats->syncp);
-        */
 
 		skb = skb2;
 	}
@@ -282,7 +260,7 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->flags = IFF_NOARP;
 	dev->netdev_ops = &mctp_usb_netdev_ops;
 	dev->needs_free_netdev = true;
-	/*dev->pcpu_stat_type = NETDEV_PCPU_STAT_DSTATS;*/
+	dev->tx_queue_len=1100;
 }
 
 static int mctp_usb_probe(struct usb_interface *intf,
