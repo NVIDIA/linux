@@ -236,8 +236,8 @@
         reg = <0x32>;
     };
 
-    exp0: pca9555@20 {
-        compatible = "nxp,pca9555";
+    exp0: pca9535@20 {
+        compatible = "nxp,pca9535";
         reg = <0x20>;
         gpio-controller;
         #gpio-cells = <2>;
@@ -270,8 +270,8 @@
             "SXM_8_MCU_RECOV_N-O";
     };
 
-    exp1: pca9555@21 {
-        compatible = "nxp,pca9555";
+    exp1: pca9535@21 {
+        compatible = "nxp,pca9535";
         reg = <0x21>;
         gpio-controller;
         #gpio-cells = <2>;
@@ -288,7 +288,7 @@
         gpio-line-names =
             "HMC_RESET_CX8_2_L-O",
             "HMC_RESET_CX8_4_L-O",
-            "HMC_USB_MUX_SEL-O",
+            "CX8_2_IB_RECOV_EN-O",
             "SNN_HMC_IOEXP1_0_3-I", //What is this??
             "CX8_2_BOOT_CMPLT-I",
             "CX8_4_BOOT_CMPLT-I",
@@ -298,14 +298,14 @@
             "CX8_4_OVER_TEMP_L-I",
             "HMC_CX8_2_FNP_N-O",
             "HMC_CX8_4_FNP_N-O",
-            "CX8_2_4_IB_RECOV_EN-O",
+            "CX8_4_IB_RECOV_EN-O",
             "MCU1_RSVD_GPIO-O",
             "MCU1_RST_N-O",
             "MCU1_RECOV_N-O";
     };
 
-    exp2: pca9555@22 {
-        compatible = "nxp,pca9555";
+    exp2: pca9535@22 {
+        compatible = "nxp,pca9535";
         reg = <0x22>;
         gpio-controller;
         #gpio-cells = <2>;
@@ -322,7 +322,7 @@
         gpio-line-names =
             "HMC_RESET_CX8_3_L-O",
             "HMC_RESET_CX8_1_L-O",
-            "SNN_HMC_IOEXP2_0_3-I", //What is this??
+            "CX8_3_IB_RECOV_EN-O",
             "SNN_HMC_IOEXP2_0_4-I", //What is this??
             "CX8_3_BOOT_CMPLT-I",
             "CX8_1_BOOT_CMPLT-I",
@@ -332,14 +332,14 @@
             "CX8_1_OVER_TEMP_L-I",
             "HMC_CX8_3_FNP_N-O",
             "HMC_CX8_1_FNP_N-O",
-            "CX8_3_1_IB_RECOV_EN-O",
+            "CX8_1_IB_RECOV_EN-O",
             "MCU2_RSVD_GPIO-O",
             "MCU2_RST_N-O",
             "MCU2_RECOV_N-O";
     };
 
-    exp3: pca9555@23 {
-        compatible = "nxp,pca9555";
+    exp3: pca9535@23 {
+        compatible = "nxp,pca9535";
         reg = <0x23>;
         gpio-controller;
         #gpio-cells = <2>;
@@ -356,7 +356,7 @@
         gpio-line-names =
             "HMC_RESET_CX8_8_L-O",
             "HMC_RESET_CX8_6_L-O",
-            "SNN_HMC_IOEXP3_0_3-I", //What is this??
+            "CX8_8_IB_RECOV_EN-O",
             "SNN_HMC_IOEXP3_0_4-I", //What is this??
             "CX8_8_BOOT_CMPLT-I",
             "CX8_6_BOOT_CMPLT-I",
@@ -366,14 +366,14 @@
             "CX8_6_OVER_TEMP_L-I",
             "HMC_CX8_8_FNP_N-O",
             "HMC_CX8_6_FNP_N-O",
-            "CX8_8_6_IB_RECOV_EN-O",
+            "CX8_6_IB_RECOV_EN-O",
             "MCU3_RSVD_GPIO-O",
             "MCU3_RST_N-O",
             "MCU3_RECOV_N-O";
     };
 
-    exp4: pca9555@24 {
-        compatible = "nxp,pca9555";
+    exp4: pca9535@24 {
+        compatible = "nxp,pca9535";
         reg = <0x24>;
         gpio-controller;
         #gpio-cells = <2>;
@@ -390,7 +390,7 @@
         gpio-line-names =
             "HMC_RESET_CX8_5_L-O",
             "HMC_RESET_CX8_7_L-O",
-            "SNN_HMC_IOEXP4_0_3-I", //What is this??
+            "CX8_5_IB_RECOV_EN-O",
             "SNN_HMC_IOEXP4_0_4-I", //What is this??
             "CX8_5_BOOT_CMPLT-I",
             "CX8_7_BOOT_CMPLT-I",
@@ -400,7 +400,7 @@
             "CX8_7_OVER_TEMP_L-I",
             "HMC_CX8_5_FNP_N-O",
             "HMC_CX8_7_FNP_N-O",
-            "CX8_5_7_IB_RECOV_EN-O",
+            "CX8_7_IB_RECOV_EN-O",
             "MCU4_RSVD_GPIO-O",
             "MCU4_RST_N-O",
             "MCU4_RECOV_N-O";
