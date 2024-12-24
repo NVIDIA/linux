@@ -7,11 +7,27 @@
 #include <dt-bindings/i2c/i2c.h>
 
 / {
-	model = "AST2600 HGXB300 HMC";
-	compatible = "aspeed,ast2600";
+    model = "AST2600 HGXB300 HMC";
+    compatible = "aspeed,ast2600";
 
-	aliases {
-		serial4 = &uart5;
+    aliases {
+        serial4 = &uart5;
+        i2c20 = &i2c5_mux71_0;
+        i2c21 = &i2c5_mux71_1;
+        i2c22 = &i2c5_mux71_2;
+        i2c23 = &i2c5_mux71_3;
+        i2c24 = &i2c7_mux71_0;
+        i2c25 = &i2c7_mux71_1;
+        i2c26 = &i2c7_mux71_2;
+        i2c27 = &i2c7_mux71_3;
+        i2c28 = &i2c9_mux71_0;
+        i2c29 = &i2c9_mux71_1;
+        i2c30 = &i2c9_mux71_2;
+        i2c31 = &i2c9_mux71_3;
+        i2c32 = &i2c10_mux71_0;
+        i2c33 = &i2c10_mux71_1;
+        i2c34 = &i2c10_mux71_2;
+        i2c35 = &i2c10_mux71_3;
 	};
 
 	chosen {
@@ -409,9 +425,45 @@
     };
 };
 
-// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+// CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update
 &i2c5 {
     status = "okay";
+
+    i2c-switch@71 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+
+        i2c5_mux71_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
 };
 
 // HMC - FPGA Bus
@@ -419,19 +471,127 @@
     status = "okay";
 };
 
-// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+// CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update
 &i2c7 {
     status = "okay";
+
+    i2c-switch@71 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+
+        i2c7_mux71_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux71_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux71_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux71_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
 };
 
-// CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+// CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update
 &i2c9 {
     status = "okay";
+
+    i2c-switch@71 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+
+        i2c9_mux71_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c9_mux71_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c9_mux71_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c9_mux71_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
 };
 
-// Ethernet SW, CX8_0 / CX8_1 DBG I2C, CX8_0 / CX8_1 I2C_2 FW update
+// Ethernet SW, CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update
 &i2c10 {
     status = "okay";
+
+    i2c-switch@71 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+
+        i2c10_mux71_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c10_mux71_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c10_mux71_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c10_mux71_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
 };
 
 &i2c12 {
