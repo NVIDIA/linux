@@ -9857,10 +9857,7 @@ struct nft_trans_gc *nft_trans_gc_catchall_async(struct nft_trans_gc *gc,
 
 		nft_set_elem_dead(ext);
 dead_elem:
-		if (sync)
-			gc = nft_trans_gc_queue_sync(gc, GFP_ATOMIC);
-		else
-			gc = nft_trans_gc_queue_async(gc, gc_seq, GFP_ATOMIC);
+		gc = nft_trans_gc_queue_async(gc, gc_seq, GFP_ATOMIC);
 
 		if (!gc)
 			return NULL;
