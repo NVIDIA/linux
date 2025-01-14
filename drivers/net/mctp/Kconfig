@@ -42,6 +42,11 @@ config MCTP_TRANSPORT_I3C
 	  A MCTP protocol network device is created for each I3C bus
 	  having a "mctp-controller" devicetree property.
 
+config MCTP_TRANSPORT_SPI
+	tristate "MCTP Over SPI Transprt"
+	help
+	  This is in Kernel mode Mctp Over Spi Driver.
+
 endmenu
 
 endif
