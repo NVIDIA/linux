@@ -65,6 +65,11 @@ config MCTP_TRANSPORT_PCIE_VDM
 	  Provides a driver to access MCTP devices over PCIe VDM transport,
 	  from DMTF specification DSP0238.
 
+config MCTP_TRANSPORT_SPI
+	tristate "MCTP Over SPI Transprt"
+	help
+	  This is in Kernel mode Mctp Over Spi Driver.
+
 endmenu
 
 endif
