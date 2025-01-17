@@ -185,7 +185,6 @@ static int aspeed_clk_is_enabled(struct clk_hw *hw)
 {
 	struct aspeed_clk_gate *gate = to_aspeed_clk_gate(hw);
 	u32 clk = BIT(gate->clock_idx);
-	u32 rst = BIT(gate->reset_idx);
 	u32 enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? 0 : clk;
 	u32 reg;
 
@@ -196,6 +195,8 @@ static int aspeed_clk_is_enabled(struct clk_hw *hw)
 	 * will fail to lift the reset.
 	 */
 	if (gate->reset_idx >= 0) {
+		u32 rst = BIT(gate->reset_idx);
+
 		regmap_read(gate->map, ASPEED_RESET_CTRL, &reg);
 		if (reg & rst)
 			return 0;
@@ -211,8 +212,8 @@ static int aspeed_clk_enable(struct clk_hw *hw)
 	struct aspeed_clk_gate *gate = to_aspeed_clk_gate(hw);
 	unsigned long flags;
 	u32 clk = BIT(gate->clock_idx);
-	u32 rst = BIT(gate->reset_idx);
 	u32 enval;
+	u32 rst;
 
 	spin_lock_irqsave(gate->lock, flags);
 
@@ -222,6 +223,7 @@ static int aspeed_clk_enable(struct clk_hw *hw)
 	}
 
 	if (gate->reset_idx >= 0) {
+		rst = BIT(gate->reset_idx);
 		/* Put IP in reset */
 		regmap_update_bits(gate->map, ASPEED_RESET_CTRL, rst, rst);
 
