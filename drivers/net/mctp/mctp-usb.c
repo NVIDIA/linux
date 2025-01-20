@@ -302,6 +302,8 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		goto err_free_urbs;
 	}
 
+    SET_NETDEV_DEV(netdev, &intf->dev);
+
 	rc = register_netdev(netdev);
 	if (rc)
 		goto err_free_urbs;
