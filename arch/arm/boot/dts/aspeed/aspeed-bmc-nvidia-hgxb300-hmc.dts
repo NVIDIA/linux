@@ -12,22 +12,22 @@
 
     aliases {
         serial4 = &uart5;
-        i2c20 = &i2c5_mux71_0;
-        i2c21 = &i2c5_mux71_1;
-        i2c22 = &i2c5_mux71_2;
-        i2c23 = &i2c5_mux71_3;
-        i2c24 = &i2c7_mux71_0;
-        i2c25 = &i2c7_mux71_1;
-        i2c26 = &i2c7_mux71_2;
-        i2c27 = &i2c7_mux71_3;
-        i2c28 = &i2c9_mux71_0;
-        i2c29 = &i2c9_mux71_1;
-        i2c30 = &i2c9_mux71_2;
-        i2c31 = &i2c9_mux71_3;
-        i2c32 = &i2c10_mux71_0;
-        i2c33 = &i2c10_mux71_1;
-        i2c34 = &i2c10_mux71_2;
-        i2c35 = &i2c10_mux71_3;
+        i2c19 = &i2c5_mux71_0;
+        i2c20 = &i2c5_mux71_1;
+        i2c21 = &i2c5_mux71_2;
+        i2c22 = &i2c5_mux71_3;
+        i2c23 = &i2c7_mux71_0;
+        i2c24 = &i2c7_mux71_1;
+        i2c25 = &i2c7_mux71_2;
+        i2c26 = &i2c7_mux71_3;
+        i2c27 = &i2c9_mux71_0;
+        i2c28 = &i2c9_mux71_1;
+        i2c29 = &i2c9_mux71_2;
+        i2c30 = &i2c9_mux71_3;
+        i2c31 = &i2c10_mux71_0;
+        i2c32 = &i2c10_mux71_1;
+        i2c33 = &i2c10_mux71_2;
+        i2c34 = &i2c10_mux71_3;
 	};
 
 	chosen {
