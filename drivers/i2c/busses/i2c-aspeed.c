@@ -63,10 +63,11 @@
 #define ASPEED_I2CD_TIME_SCL_HIGH_MASK			GENMASK(19, 16)
 #define ASPEED_I2CD_TIME_SCL_LOW_SHIFT			12
 #define ASPEED_I2CD_TIME_SCL_LOW_MASK			GENMASK(15, 12)
+#define ASPEED_I2CD_TIMEOUT_SHIFT				8
 #define ASPEED_I2CD_TIME_BASE_DIVISOR_MASK		GENMASK(3, 0)
 #define ASPEED_I2CD_TIME_SCL_REG_MAX			GENMASK(3, 0)
 /* 0x08 : I2CD Clock and AC Timing Control Register #2 */
-#define ASPEED_NO_TIMEOUT_CTRL				0
+#define ASPEED_NO_TIMEOUT_CTRL				10
 
 /* 0x0c : I2CD Interrupt Control Register &
  * 0x10 : I2CD Interrupt Status Register
@@ -79,7 +80,8 @@
 #define ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_MASK 0x3
 #define ASPEED_2600_I2CD_SLAVE_ADDR_MATCH_INDICATOR_OFFESET 30
 
-#define ASPEED_I2CD_INTR_RECV_MASK			0xf000efff
+#define ASPEED_I2CD_INTR_RECV_MASK			0xf000bfbf
+#define ASPEED_I2CD_INTR_SLAVE_TIMEOUT			BIT(15)
 #define ASPEED_I2CD_INTR_SDA_DL_TIMEOUT			BIT(14)
 #define ASPEED_I2CD_INTR_BUS_RECOVER_DONE		BIT(13)
 #define ASPEED_I2CD_INTR_SLAVE_MATCH			BIT(7)
@@ -96,9 +98,8 @@
 		 ASPEED_I2CD_INTR_ABNORMAL |				       \
 		 ASPEED_I2CD_INTR_ARBIT_LOSS)
 #define ASPEED_I2CD_INTR_ALL						       \
-		(ASPEED_I2CD_INTR_SDA_DL_TIMEOUT |			       \
-		 ASPEED_I2CD_INTR_BUS_RECOVER_DONE |			       \
-		 ASPEED_I2CD_INTR_SCL_TIMEOUT |				       \
+		(ASPEED_I2CD_INTR_BUS_RECOVER_DONE |			   \
+		 ASPEED_I2CD_INTR_SLAVE_TIMEOUT |					\
 		 ASPEED_I2CD_INTR_ABNORMAL |				       \
 		 ASPEED_I2CD_INTR_NORMAL_STOP |				       \
 		 ASPEED_I2CD_INTR_ARBIT_LOSS |				       \
@@ -226,10 +227,11 @@ struct aspeed_i2c_bus {
 #define ASPEED_I2CD_TIME_SCL_HIGH_MASK			GENMASK(19, 16)
 #define ASPEED_I2CD_TIME_SCL_LOW_SHIFT			12
 #define ASPEED_I2CD_TIME_SCL_LOW_MASK			GENMASK(15, 12)
+#define ASPEED_I2CD_TIMEOUT_SHIFT				8
 #define ASPEED_I2CD_TIME_BASE_DIVISOR_MASK		GENMASK(3, 0)
 #define ASPEED_I2CD_TIME_SCL_REG_MAX			GENMASK(3, 0)
 /* 0x08 : I2CD Clock and AC Timing Control Register #2 */
-#define ASPEED_NO_TIMEOUT_CTRL				0
+#define ASPEED_NO_TIMEOUT_CTRL				10
 
 /* 0x0c : I2CD Interrupt Control Register &
  * 0x10 : I2CD Interrupt Status Register
@@ -237,7 +239,8 @@ struct aspeed_i2c_bus {
  * These share bit definitions, so use the same values for the enable &
  * status bits.
  */
-#define ASPEED_I2CD_INTR_RECV_MASK			0xf000efff
+#define ASPEED_I2CD_INTR_RECV_MASK			0xf000ffff
+#define ASPEED_I2CD_INTR_SLAVE_TIMEOUT			BIT(15)
 #define ASPEED_I2CD_INTR_SDA_DL_TIMEOUT			BIT(14)
 #define ASPEED_I2CD_INTR_BUS_RECOVER_DONE		BIT(13)
 #define ASPEED_I2CD_INTR_SLAVE_MATCH			BIT(7)
@@ -412,7 +415,7 @@ reset_out:
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 {
-	u32 command, irq_handled = 0;
+	u32 command, func_ctrl_reg_val, func_ctrl_reg_val_keep, irq_handled = 0;
 	struct i2c_client *slave;
 	int idx;
 	u8 value;
@@ -425,6 +428,33 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 
 	if (!slave)
 		return 0;
+
+	/*
+	 * Handle slave timeout condition.
+	 */
+	if (irq_status & ASPEED_I2CD_INTR_SLAVE_TIMEOUT) {
+		dev_dbg(bus->dev, "Slave TO: 0x%x\n", irq_status);
+		/* abnormal case */
+		irq_handled |= ASPEED_I2CD_INTR_SLAVE_TIMEOUT;
+		writel(ASPEED_I2CD_INTR_SLAVE_TIMEOUT, bus->base + ASPEED_I2C_INTR_STS_REG);
+		readl(bus->base + ASPEED_I2C_INTR_STS_REG);
+
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_INACTIVE;
+
+		dev_dbg(bus->dev, "slave active timeout.\n");
+
+		/* Turn off controller. */
+		func_ctrl_reg_val_keep = readl(bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		func_ctrl_reg_val = func_ctrl_reg_val_keep & ~(ASPEED_I2CD_SLAVE_EN | ASPEED_I2CD_MASTER_EN);
+		writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		writel(0, bus->base + ASPEED_I2C_AC_TIMING_REG2);
+
+		/* Turn on controller. */
+		writel(func_ctrl_reg_val_keep, bus->base + ASPEED_I2C_FUN_CTRL_REG);
+		writel(ASPEED_NO_TIMEOUT_CTRL, bus->base + ASPEED_I2C_AC_TIMING_REG2);
+
+		return irq_handled;
+	}
 	command = readl(bus->base + ASPEED_I2C_CMD_REG);
 
 	/* Slave was requested, restart state machine. */
@@ -618,6 +648,25 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	/* Ack all interrupt bits. */
 	writel(irq_status, bus->base + ASPEED_I2C_INTR_STS_REG);
 	readl(bus->base + ASPEED_I2C_INTR_STS_REG);
+
+	/* handle off the timeout to slave irq */
+	if (irq_status & ASPEED_I2CD_INTR_SLAVE_TIMEOUT) {
+		dev_info(bus->dev, "mirq slave TO: 0x%08x\n", irq_status);
+		irq_handled |= ASPEED_I2CD_INTR_SLAVE_TIMEOUT;
+		goto out_complete;
+	}
+
+	if (irq_status & ASPEED_I2CD_INTR_SDA_DL_TIMEOUT) {
+		dev_info(bus->dev, "mirq SDA TO: 0x%08x\n", irq_status);
+		irq_handled |= ASPEED_I2CD_INTR_SDA_DL_TIMEOUT;
+		goto out_complete;
+	}
+
+	if (irq_status & ASPEED_I2CD_INTR_SCL_TIMEOUT) {
+		dev_info(bus->dev, "mirq SCL TO: 0x%08x\n", irq_status);
+		irq_handled |= ASPEED_I2CD_INTR_SCL_TIMEOUT;
+		goto out_complete;
+	}
 
 	if (irq_status & ASPEED_I2CD_INTR_BUS_RECOVER_DONE) {
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
@@ -908,7 +957,7 @@ static int aspeed_i2c_get_free_slave_id(struct aspeed_i2c_bus *bus,
 {
 	int i;
 
-	for (i = (bus->max_slaves_enable - 1); i >= 0;  i--) {
+	for (i = 0; i < bus->max_slaves_enable; i++) {
 		if (!bus->slave[i]) {
 			*id = i;
 			return 0;
@@ -1128,7 +1177,7 @@ static u32 aspeed_i2c_25xx_get_clk_reg_val(struct device *dev, u32 divisor)
 /* precondition: bus.lock has been acquired. */
 static int aspeed_i2c_init_clk(struct aspeed_i2c_bus *bus)
 {
-	u32 divisor, clk_reg_val;
+	u32 divisor, clk_reg_val, timeout_divsor = 0x2;
 
 	divisor = DIV_ROUND_UP(bus->parent_clk_frequency, bus->bus_frequency);
 	clk_reg_val = readl(bus->base + ASPEED_I2C_AC_TIMING_REG1);
@@ -1136,6 +1185,9 @@ static int aspeed_i2c_init_clk(struct aspeed_i2c_bus *bus)
 			ASPEED_I2CD_TIME_THDSTA_MASK |
 			ASPEED_I2CD_TIME_TACST_MASK);
 	clk_reg_val |= bus->get_clk_reg_val(bus->dev, divisor);
+
+	clk_reg_val |= timeout_divsor << ASPEED_I2CD_TIMEOUT_SHIFT;
+
 	writel(clk_reg_val, bus->base + ASPEED_I2C_AC_TIMING_REG1);
 	writel(ASPEED_NO_TIMEOUT_CTRL, bus->base + ASPEED_I2C_AC_TIMING_REG2);
 
@@ -1157,7 +1209,7 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 		return ret;
 
 	if (!of_property_read_bool(pdev->dev.of_node, "disable-master")) {
-		u32 fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
+		fun_ctrl_reg = ASPEED_I2CD_MASTER_EN;
 		if (of_property_read_bool(pdev->dev.of_node, "multi-master"))
 			bus->multi_master = true;
 		else
