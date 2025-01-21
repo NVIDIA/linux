@@ -505,7 +505,7 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 			ccc->err = I3C_ERROR_M2;
 			fallthrough;
 		default:
-			dev_dbg(&hci->master.dev, "resp status = %lx",
+			dev_err(&hci->master.dev, "resp status = %lx",
 				RESP_STATUS(xfer[i].response));
 			ret = -EIO;
 			goto out;
@@ -671,7 +671,7 @@ static int i3c_hci_i2c_xfers(struct i2c_dev_desc *dev,
 		return -ENOMEM;
 
 	for (i = 0; i < nxfers; i++) {
-		xfer[i].data = i2c_xfers[i].buf;
+		xfer[i].data = i2c_get_dma_safe_msg_buf(&i2c_xfers[i], 1);
 		xfer[i].data_len = i2c_xfers[i].len;
 		xfer[i].rnw = i2c_xfers[i].flags & I2C_M_RD;
 		hci->cmd->prep_i2c_xfer(hci, dev, &xfer[i]);
@@ -699,6 +699,10 @@ static int i3c_hci_i2c_xfers(struct i2c_dev_desc *dev,
 	}
 
 out:
+	for (i = 0; i < nxfers; i++)
+		i2c_put_dma_safe_msg_buf(xfer[i].data, &i2c_xfers[i],
+					 ret ? false : true);
+
 	hci_free_xfer(xfer, nxfers);
 	return ret;
 }
