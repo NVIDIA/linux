@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * mctp-usb.c - MCTP-over-USB (DMTF DSP0283) transport binding driver.
  *
- * Copyright (C) 2024 Code Construct Pty Ltd
+ * DSP0283 is available at:
+ * https://www.dmtf.org/sites/default/files/standards/documents/DSP0283_1.0.1.pdf
+ *
+ * Copyright (C) 2024-2025 Code Construct Pty Ltd
  */
 
 #include <linux/module.h>
@@ -11,39 +14,31 @@
 #include <linux/usb/mctp-usb.h>
 
 #include <net/mctp.h>
+#include <net/mctpdevice.h>
+#include <net/pkt_sched.h>
 
 #include <uapi/linux/if_arp.h>
 
 struct mctp_usb {
 	struct usb_device *usbdev;
 	struct usb_interface *intf;
+	bool stopped;
 
 	struct net_device *netdev;
 
-	__u8 ep_in;
-	__u8 ep_out;
+	u8 ep_in;
+	u8 ep_out;
 
 	struct urb *tx_urb;
 	struct urb *rx_urb;
+
+	struct delayed_work rx_retry_work;
 };
-
-static void mctp_usb_stat_tx_dropped(struct net_device *dev)
-{
-	dev->stats.tx_dropped++;
-	return;
-}
-
-static void mctp_usb_stat_tx_done(struct net_device *dev, unsigned int len)
-{
-	dev->stats.tx_packets++;
-	dev->stats.tx_bytes += len;
-}
 
 static void mctp_usb_out_complete(struct urb *urb)
 {
 	struct sk_buff *skb = urb->context;
 	struct net_device *netdev = skb->dev;
-	struct mctp_usb *mctp_usb = netdev_priv(netdev);
 	int status;
 
 	status = urb->status;
@@ -53,17 +48,17 @@ static void mctp_usb_out_complete(struct urb *urb)
 	case -ECONNRESET:
 	case -ESHUTDOWN:
 	case -EPROTO:
-		mctp_usb_stat_tx_dropped(netdev);
+		netdev->stats.tx_dropped++;
 		break;
 	case 0:
-		mctp_usb_stat_tx_done(netdev, skb->len);
+		netdev->stats.tx_packets++;
+		netdev->stats.tx_bytes += skb->len;
 		netif_wake_queue(netdev);
 		consume_skb(skb);
 		return;
 	default:
-		dev_err(&mctp_usb->usbdev->dev, "%s: urb status: %d\n",
-			__func__, status);
-		mctp_usb_stat_tx_dropped(netdev);
+		netdev_dbg(netdev, "unexpected tx urb status: %d\n", status);
+		netdev->stats.tx_dropped++;
 	}
 
 	kfree_skb(skb);
@@ -81,6 +76,10 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	plen = skb->len;
 
 	if (plen + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
+		goto err_drop;
+
+	rc = skb_cow_head(skb, sizeof(*hdr));
+	if (rc)
 		goto err_drop;
 
 	hdr = skb_push(skb, sizeof(*hdr));
@@ -107,34 +106,47 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;
 
 err_drop:
-	mctp_usb_stat_tx_dropped(dev);
+	dev->stats.tx_dropped++;
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
 
 static void mctp_usb_in_complete(struct urb *urb);
 
-static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb)
+/* If we fail to queue an in urb atomically (either due to skb allocation or
+ * urb submission), we will schedule a rx queue in nonatomic context
+ * after a delay, specified in jiffies
+ */
+static const unsigned long RX_RETRY_DELAY = HZ / 4;
+
+static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, gfp_t gfp)
 {
 	struct sk_buff *skb;
 	int rc;
 
-	skb = netdev_alloc_skb(mctp_usb->netdev, MCTP_USB_XFER_SIZE);
-	if (!skb)
-		return -ENOMEM;
+	skb = __netdev_alloc_skb(mctp_usb->netdev, MCTP_USB_XFER_SIZE, gfp);
+	if (!skb) {
+		rc = -ENOMEM;
+		goto err_retry;
+	}
 
 	usb_fill_bulk_urb(mctp_usb->rx_urb, mctp_usb->usbdev,
 			  usb_rcvbulkpipe(mctp_usb->usbdev, mctp_usb->ep_in),
 			  skb->data, MCTP_USB_XFER_SIZE,
 			  mctp_usb_in_complete, skb);
 
-	rc = usb_submit_urb(mctp_usb->rx_urb, GFP_ATOMIC);
+	rc = usb_submit_urb(mctp_usb->rx_urb, gfp);
 	if (rc) {
-		dev_err(&mctp_usb->usbdev->dev, "%s: usb_submit_urb: %d\n",
-			__func__, rc);
+		netdev_dbg(mctp_usb->netdev, "rx urb submit failure: %d\n", rc);
 		kfree_skb(skb);
+		if (rc == -ENOMEM)
+			goto err_retry;
 	}
 
+	return rc;
+
+err_retry:
+	schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
 	return rc;
 }
 
@@ -159,8 +171,7 @@ static void mctp_usb_in_complete(struct urb *urb)
 	case 0:
 		break;
 	default:
-		dev_err(&mctp_usb->usbdev->dev, "%s: urb status: %d\n",
-			__func__, status);
+		netdev_dbg(netdev, "unexpected rx urb status: %d\n", status);
 		kfree_skb(skb);
 		return;
 	}
@@ -170,45 +181,51 @@ static void mctp_usb_in_complete(struct urb *urb)
 
 	while (skb) {
 		struct sk_buff *skb2 = NULL;
-		struct mctp_usb_hdr *hdr = (struct mctp_usb_hdr *)skb->data;
+		struct mctp_usb_hdr *hdr;
+		u8 pkt_len; /* length of MCTP packet, no USB header */
+
+		hdr = skb_pull_data(skb, sizeof(*hdr));
+		if (!hdr)
+			break;
 
 		if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
-			dev_dbg(&mctp_usb->usbdev->dev, "%s: invalid id %04x\n",
-				__func__, be16_to_cpu(hdr->id));
+			netdev_dbg(netdev, "rx: invalid id %04x\n",
+				   be16_to_cpu(hdr->id));
 			break;
 		}
 
 		if (hdr->len <
 		    sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
-			dev_dbg(&mctp_usb->usbdev->dev,
-				"%s: short packet (hdr) %d\n",
-				__func__, hdr->len);
+			netdev_dbg(netdev, "rx: short packet (hdr) %d\n",
+				   hdr->len);
 			break;
 		}
 
-		if (hdr->len > skb->len) {
-			dev_dbg(&mctp_usb->usbdev->dev,
-				"%s: short packet (xfer) %d, actual %d\n",
-				__func__, hdr->len, skb->len);
+		/* we know we have at least sizeof(struct mctp_usb_hdr) here */
+		pkt_len = hdr->len - sizeof(struct mctp_usb_hdr);
+		if (pkt_len > skb->len) {
+			netdev_dbg(netdev,
+				   "rx: short packet (xfer) %d, actual %d\n",
+				   hdr->len, skb->len);
 			break;
 		}
 
-		if (hdr->len < skb->len) {
+		if (pkt_len < skb->len) {
 			/* more packets may follow - clone to a new
 			 * skb to use on the next iteration
 			 */
 			skb2 = skb_clone(skb, GFP_ATOMIC);
 			if (skb2) {
-				if (!skb_pull(skb2, hdr->len)) {
+				if (!skb_pull(skb2, pkt_len)) {
 					kfree_skb(skb2);
 					skb2 = NULL;
 				}
 			}
-			skb_trim(skb, hdr->len);
+			skb_trim(skb, pkt_len);
 		}
-        
-        if (!skb_pull(skb, sizeof(*hdr)))
-			break;
+
+		netdev->stats.rx_packets++;
+		netdev->stats.rx_bytes += skb->len;
 
 		skb->protocol = htons(ETH_P_MCTP);
 		skb_reset_network_header(skb);
@@ -216,29 +233,49 @@ static void mctp_usb_in_complete(struct urb *urb)
 		cb->halen = 0;
 		netif_rx(skb);
 
-		netdev->stats.rx_packets++;
-		netdev->stats.rx_bytes += skb->len;
-
 		skb = skb2;
 	}
 
 	if (skb)
 		kfree_skb(skb);
 
-	mctp_usb_rx_queue(mctp_usb);
+	mctp_usb_rx_queue(mctp_usb, GFP_ATOMIC);
+}
+
+static void mctp_usb_rx_retry_work(struct work_struct *work)
+{
+	struct mctp_usb *mctp_usb = container_of(work, struct mctp_usb,
+						 rx_retry_work.work);
+
+	if (READ_ONCE(mctp_usb->stopped))
+		return;
+
+	mctp_usb_rx_queue(mctp_usb, GFP_KERNEL);
 }
 
 static int mctp_usb_open(struct net_device *dev)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
-	int rc = mctp_usb_rx_queue(mctp_usb);
-	netif_start_queue(dev);
-	return rc;
+
+	WRITE_ONCE(mctp_usb->stopped, false);
+
+	return mctp_usb_rx_queue(mctp_usb, GFP_KERNEL);
 }
 
 static int mctp_usb_stop(struct net_device *dev)
 {
+	struct mctp_usb *mctp_usb = netdev_priv(dev);
+
 	netif_stop_queue(dev);
+
+	/* prevent RX submission retry */
+	WRITE_ONCE(mctp_usb->stopped, true);
+
+	usb_kill_urb(mctp_usb->rx_urb);
+	usb_kill_urb(mctp_usb->tx_urb);
+
+	cancel_delayed_work_sync(&mctp_usb->rx_retry_work);
+
 	return 0;
 }
 
@@ -257,11 +294,9 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->max_mtu = MCTP_USB_MTU_MAX;
 
 	dev->hard_header_len = sizeof(struct mctp_usb_hdr);
-	dev->addr_len = 0;
+	dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN;
 	dev->flags = IFF_NOARP;
 	dev->netdev_ops = &mctp_usb_netdev_ops;
-	dev->needs_free_netdev = true;
-	dev->tx_queue_len=1100;
 }
 
 static int mctp_usb_probe(struct usb_interface *intf,
@@ -287,6 +322,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	if (!netdev)
 		return -ENOMEM;
 
+	SET_NETDEV_DEV(netdev, &intf->dev);
 	dev = netdev_priv(netdev);
 	dev->netdev = netdev;
 	dev->usbdev = usb_get_dev(interface_to_usbdev(intf));
@@ -303,9 +339,9 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		goto err_free_urbs;
 	}
 
-    SET_NETDEV_DEV(netdev, &intf->dev);
+	INIT_DELAYED_WORK(&dev->rx_retry_work, mctp_usb_rx_retry_work);
 
-	rc = register_netdev(netdev);
+	rc = mctp_register_netdev(netdev, NULL, MCTP_PHYS_BINDING_USB);
 	if (rc)
 		goto err_free_urbs;
 
@@ -322,7 +358,11 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 {
 	struct mctp_usb *dev = usb_get_intfdata(intf);
 
-	unregister_netdev(dev->netdev);
+	mctp_unregister_netdev(dev->netdev);
+	usb_free_urb(dev->tx_urb);
+	usb_free_urb(dev->rx_urb);
+	usb_put_dev(dev->usbdev);
+	free_netdev(dev->netdev);
 }
 
 static const struct usb_device_id mctp_usb_devices[] = {
@@ -331,8 +371,10 @@ static const struct usb_device_id mctp_usb_devices[] = {
 	{ 0 },
 };
 
+MODULE_DEVICE_TABLE(usb, mctp_usb_devices);
+
 static struct usb_driver mctp_usb_driver = {
-	.name		= "mctp",
+	.name		= "mctp-usb",
 	.id_table	= mctp_usb_devices,
 	.probe		= mctp_usb_probe,
 	.disconnect	= mctp_usb_disconnect,
@@ -341,3 +383,5 @@ static struct usb_driver mctp_usb_driver = {
 module_usb_driver(mctp_usb_driver)
 
 MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Jeremy Kerr <jk@codeconstruct.com.au>");
+MODULE_DESCRIPTION("MCTP USB transport");

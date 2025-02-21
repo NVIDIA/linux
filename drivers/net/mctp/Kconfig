@@ -53,14 +53,14 @@ config MCTP_TRANSPORT_SPI
 	  This is in Kernel mode Mctp Over Spi Driver.
 
 config MCTP_TRANSPORT_USB
-	tristate "MCTP USB transport (EXPERIMENTAL)"
+	tristate "MCTP USB transport"
 	depends on USB
 	help
 	  Provides a driver to access MCTP devices over USB transport,
 	  defined by DMTF specification DSP0283.
 
-	  This driver is current experimental: it has not been verified against
-	  other MCTP-over-USB implementations.
+	  MCTP-over-USB interfaces are peer-to-peer, so each interface
+	  represents a physical connection to one remote MCTP endpoint.
 
 endmenu
 
