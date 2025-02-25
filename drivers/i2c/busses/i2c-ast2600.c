@@ -797,9 +797,25 @@ static void ast2600_i2c_slave_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, u
 		break;
 	/* workaround : trigger the cmd twice to fix next state keep 1000000 */
 	case AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_RX_DONE:
+#ifndef CONFIG_I2C_AST2600_SLAVE_RX_WORKAROUND
 		i2c_slave_event(i2c_bus->slave[idx], I2C_SLAVE_WRITE_REQUESTED, &value);
 		cmd = SLAVE_TRIGGER_CMD | AST2600_I2CS_RX_BUFF_EN;
 		writel(cmd, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
+#else
+		//workaround : check tx or rx
+		u32 tx_dir = readl(i2c_bus->reg_base + AST2600_I2CC_STS_AND_BUFF) >> 29;
+		if (tx_dir == 0x6) {
+			i2c_slave_event(i2c_bus->slave[idx], I2C_SLAVE_READ_REQUESTED, &value);
+			writeb(value, i2c_bus->buf_base);
+			writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
+			       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
+			cmd = SLAVE_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+		} else {
+			i2c_slave_event(i2c_bus->slave[idx], I2C_SLAVE_WRITE_REQUESTED, &value);
+			cmd = SLAVE_TRIGGER_CMD | AST2600_I2CS_RX_BUFF_EN;
+			writel(cmd, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
+		}
+#endif
 		break;
 
 	case AST2600_I2CS_TX_NAK | AST2600_I2CS_STOP:
