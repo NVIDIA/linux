@@ -230,25 +230,16 @@
 // I2C Master (non Umbriel HMC POR), though Vulcan keeps it
 &i2c0 {             
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 };                  
 
 // Bring-up effort: Shall remove for Umbriel production?
 // I2C Master (non Umbriel HMC POR), though Vulcan keeps it
 &i2c1 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 };
 
 &i2c2 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
     i2c-slave-mqueue@18 {
         compatible = "slave-mqueue";
         reg = <(I2C_OWN_SLAVE_ADDRESS | 0x18)>;
@@ -257,9 +248,6 @@
 
 &i2c3 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
     // GPU Baseboard FRU
     eeprom@53 {
     compatible = "atmel,24c256";
@@ -275,9 +263,6 @@
 
 &i2c4 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
     rtc@32 {
         compatible = "epson,rx8130";
         reg = <0x32>;
@@ -456,9 +441,6 @@
 
 &i2c5 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 
     // CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update (C00/C01)
     i2c-switch@71 {
@@ -538,17 +520,11 @@
 // HMC - FPGA Bus
 &i2c6 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 };
 
 
 &i2c7 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 
     // CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update (C00)
     i2c-switch@71 {
@@ -665,9 +641,6 @@
 
 &i2c9 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 
     // CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update (C00)
     i2c-switch@71 {
@@ -710,9 +683,6 @@
 // Ethernet SW
 &i2c10 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 
     // CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update (C00)
     i2c-switch@71 {
@@ -762,9 +732,6 @@
 
 &i2c14 {
     status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
     lm75@48 {
         compatible = "ti,tmp75";
         reg = <0x48>;
