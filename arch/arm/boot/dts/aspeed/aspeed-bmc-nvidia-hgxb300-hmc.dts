@@ -262,12 +262,6 @@
 
         #address-cells = <1>;
         #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio0>;
-        interrupts = <ASPEED_GPIO(U, 7) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-controller;
-        // interrupt-parent = <&gpio0>;
 
         gpio-line-names =
             "SXM_1_MCU_RESET_N-O",
@@ -296,12 +290,6 @@
 
         #address-cells = <1>;
         #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio0>;
-        interrupts = <ASPEED_GPIO(P, 0) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-controller;
-        // interrupt-parent = <&gpio0>;
 
         gpio-line-names =
             "HMC_RESET_CX8_2_L-O",
@@ -330,12 +318,6 @@
 
         #address-cells = <1>;
         #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio0>;
-        interrupts = <ASPEED_GPIO(R, 0) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-controller;
-        // interrupt-parent = <&gpio0>;
 
         gpio-line-names =
             "HMC_RESET_CX8_3_L-O",
@@ -364,12 +346,6 @@
 
         #address-cells = <1>;
         #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio0>;
-        interrupts = <ASPEED_GPIO(P, 1) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-controller;
-        // interrupt-parent = <&gpio0>;
 
         gpio-line-names =
             "HMC_RESET_CX8_8_L-O",
@@ -398,12 +374,6 @@
 
         #address-cells = <1>;
         #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio0>;
-        interrupts = <ASPEED_GPIO(R, 1) IRQ_TYPE_LEVEL_LOW>;
-        // interrupt-controller;
-        // interrupt-parent = <&gpio0>;
 
         gpio-line-names =
             "HMC_RESET_CX8_5_L-O",
