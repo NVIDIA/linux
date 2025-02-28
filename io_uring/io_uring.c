@@ -1031,8 +1031,6 @@ void io_req_defer_failed(struct io_kiocb *req, s32 res)
 
 	lockdep_assert_held(&req->ctx->uring_lock);
 
-	lockdep_assert_held(&req->ctx->uring_lock);
-
 	req_set_fail(req);
 	io_req_set_res(req, res, io_put_kbuf(req, IO_URING_F_UNLOCKED));
 	if (def->fail)
@@ -2068,8 +2066,12 @@ static void io_queue_sqe_fallback(struct io_kiocb *req)
 
 		if (unlikely(ret)) {
 			io_req_defer_failed(req, ret);
+			return;
+		}
+
+		if (unlikely(req->ctx->drain_active))
 			io_drain_req(req);
-		} else
+		else
 			io_queue_iowq(req, NULL);
 	}
 }
