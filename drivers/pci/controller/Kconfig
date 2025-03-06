@@ -3,6 +3,20 @@
 menu "PCI controller drivers"
 	depends on PCI
 
+config PCIE_ASPEED
+	bool "ASPEED PCIe controller"
+	depends on ARCH_ASPEED
+	help
+	 Enables support for the PCIe controller in the ASPEED BMC SoC.
+
+config PCI_MVEBU
+	bool "Marvell EBU PCIe controller"
+	depends on ARCH_MVEBU || ARCH_DOVE || COMPILE_TEST
+	depends on MVEBU_MBUS
+	depends on ARM
+	depends on OF
+	select PCI_BRIDGE_EMUL
+
 config PCI_AARDVARK
 	tristate "Aardvark PCIe controller"
 	depends on (ARCH_MVEBU && ARM64) || COMPILE_TEST
