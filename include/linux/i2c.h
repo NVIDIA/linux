@@ -302,6 +302,7 @@ struct i2c_driver {
 	struct list_head clients;
 
 	u32 flags;
+	bool disable_i2c_core_irq_mapping;
 };
 #define to_i2c_driver(d) container_of_const(d, struct i2c_driver, driver)
 
@@ -382,6 +383,7 @@ enum i2c_slave_event {
 	I2C_SLAVE_WRITE_REQUESTED,
 	I2C_SLAVE_READ_PROCESSED,
 	I2C_SLAVE_WRITE_RECEIVED,
+	I2C_SLAVE_GCALL_REQUESTED,
 	I2C_SLAVE_STOP,
 };
 
@@ -764,6 +766,13 @@ struct i2c_adapter {
 
 	/* 7bit address space */
 	DECLARE_BITMAP(addrs_in_instantiation, 1 << 7);
+
+	/*
+	 * These will be used by root adpaters only. For muxes, each mux core
+	 * has these individually.
+	 */
+	struct mutex hold_lock; /* mutex for bus holding */
+	struct timer_list hold_timer;
 };
 #define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
 
@@ -1114,6 +1123,24 @@ static inline struct i2c_client *i2c_acpi_new_device(struct device *dev,
 						     struct i2c_board_info *info)
 {
 	return i2c_acpi_new_device_by_fwnode(dev_fwnode(dev), index, info);
+}
+
+enum i2c_hold_msg_type {
+	I2C_HOLD_MSG_NONE,
+	I2C_HOLD_MSG_SET,
+	I2C_HOLD_MSG_RESET
+};
+
+static inline enum i2c_hold_msg_type i2c_check_hold_msg(u16 flags, u16 len, u16 *buf)
+{
+	if (flags & I2C_M_HOLD && len == sizeof(u16)) {
+		if (*buf)
+			return I2C_HOLD_MSG_SET;
+
+		return I2C_HOLD_MSG_RESET;
+	}
+
+	return I2C_HOLD_MSG_NONE;
 }
 
 #endif /* _LINUX_I2C_H */
