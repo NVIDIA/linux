@@ -27,6 +27,22 @@
                 n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
         };
 
+        leds {
+            compatible = "gpio-leds";
+            // Non-LEDs:
+            //   HMC_READY-O GPIO pin (not an LED) is being bound to the GPIO LED driver.
+            // Notes:
+            // * This a workaround and leverages the GPIO LED driver to enable control of
+            //   reset tolerance and still allow the GPIO to be controlled from user space.
+            // * The standard Linux GPIO driver allows control of reset tolerance, however
+            //   does not expose user space APIs for user space control of the GPIO pin.
+            // * GPIO_TRANSITORY = reset tolerance is disabled
+            // * Any non-leds should be added below this line.
+            hmc_ready_noled {
+                gpios = <&gpio0 ASPEED_GPIO(Y, 3) (GPIO_ACTIVE_HIGH|GPIO_TRANSITORY)>;
+            };
+        };
+
 	reserved-memory {
         #address-cells = <2>;
         #size-cells = <2>;
