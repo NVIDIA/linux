@@ -416,7 +416,8 @@ static int mctp_spi_probe(struct spi_device *spi)
 	if (idx < 0)
 		return idx;
 
-	snprintf(name, sizeof(name), "mctpspi%d", idx);
+	snprintf(name, sizeof(name), "mctpspi%u_%u", spi->controller->bus_num,
+		 spi_get_chipselect(spi, 0));
 	ndev = alloc_netdev(sizeof(*mctp_spi_dev), name, NET_NAME_ENUM,
 			    mctp_spi_net_setup);
 	if (!ndev) {
