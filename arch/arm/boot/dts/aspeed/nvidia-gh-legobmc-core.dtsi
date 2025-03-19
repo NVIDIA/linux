@@ -1,0 +1,232 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+
+&gpio0 {
+    gpio-line-names =
+
+    /* gpio-line-names are the combination of <signal>-<I/O> , "" is the placeholder for the unused pins*/
+
+    /* 204 (26*8) 3.3V GPIOs */
+
+    /*A0-A7*/
+    "", "", "", "", "", "", "", "",
+
+    /*B0-B7*/
+    "", //Remove BMC_I2C_SSIF_ALERT_L-O, behind expander
+    "", // Remove BMC_I2C0_FPGA_ALERT_L, behind expander
+    "", // Remove BMC_I2C1_FPGA_ALERT_L-I, behind expander
+    "I2C_3P3V_BR_ALERT_L-I",
+    "", //Removed SHDN_OK_L-I, behind expander
+    "", //REmoved SHDN_REQ_L-O behind expander
+    "", 
+    "",
+
+    /*C0-C7*/
+    "", "", "", "", "", "", 
+    "",
+    "",
+
+    /*D0-D7*/
+    "", "", "", "", "", "", "", "",
+
+    /*E0-E7*/
+    "", "", "", "", "", "", "", "",
+
+    /*F0-F7*/
+    "", //Removed IOM0_MOD_ID0-O
+    "", //Removed IOM0_MOD_ID1-O
+    "", //Removed IOM0_MOD_ID2-O
+    "", //Removed IOM0_MOD_ID3-O
+    "", //Removed IOM_PWR_EN-O
+    "", //Removed IOM_PWR_SYS_GOOD-I
+    "", //Removed IOM0_OVT_SHTDN-I
+    "", //Removed IOM0_OVT_WARN_L-I
+
+    /*G0-G7*/
+    "", "", "", "", "", "", "", "",
+
+    /*H0-H7*/
+    "FPGA_RSVD_FFU4-I/O",
+    "FPGA_RSVD_FFU3-I/O",
+    "FPGA_RSVD_FFU2-I/O",
+    "FPGA_RSVD_FFU5-I/O",
+    "", "", "", "",
+
+    /*I0-I7*/
+    "", "", "", "", "", /* I0-I4 Skipped */
+    "QSPI2_RST_SP-O", 
+    "GLOBAL_WP-O", //Remains the same on Lego
+    "BMC_DDR4_TEN_SP-O",
+
+    /*J0-J7*/
+    "", "", "", "", "", "", "", "",
+
+    /*K0-K7*/
+    "", "", "", "", "", "", "", "",
+
+    /*L0-L7*/
+    "", "", "", "", "", "", "", "",
+
+    /*M0-M7*/
+    "BMC_EP_PERST_EN-O", "BMC_FRU_WP", "FPGA_RST_L-O", 
+    "HPM_STBY_EN-O", //New
+    "STBY_POWER_PG-I",  //New
+    "", "", "",
+
+    /*N0-N7*/
+    "", //Removed L2_RST_REQ_OUT_L-I, behind expander
+    "", //Removed L0L1_RST_REQ_OUT_L-I,  behind expander
+    "", //Removed SYS_RST_OUT_L-I, behind expander
+    "", //Removed SYS_RST_IN_L-O behind expander
+    "RSVD_PARTNER0-I/O",
+    "RSVD_PARTNER1-I/O",
+    "RSVD_PARTNER3-I/O",
+    "RSVD_PARTNER4-I/O",
+
+    /*O0-O7*/
+    "LOCAL_RUN_PWR_EN-O",
+    "", //Removed RUN_POWER_PG-I, behind expander
+    "", //Removed PWR_BRAKE_L-O behind expander
+    "", //Removed RUN_POWER_EN-O, behind expander
+    "", //Removed RUN_POWER_FAULT_L-I, behind expander
+    "", //Rmoved THERM_BB_OVERT_L-I, behind expander
+    "", //Removed THERM_BB_WARN_L-I, behind expander
+    "THERM_FPGA_OVERT_L-I",
+
+    /*P0-P7*/
+    "IOM1_PRSNT_L-I",
+    "IOM0_PRSNT_L-I",
+    "I2C_RTC_ALERT_L-I",
+    "RTC_CLR_L-O",
+    "BB_PRSNT_L-I",
+    "", // Moved to V4
+    "JTAG_MUX_SELECT-O",
+    "BMC_HBLED-O",
+
+    /*Q0-Q7*/
+    "IOM1_MOD_ID0-O",
+    "IOM1_MOD_ID1-O",
+    "IOM1_MOD_ID2-O",
+    "IOM1_MOD_ID3-O",
+    "", //Removed SHDN_FORCE_L-O behind expander
+    "IOM1_PGOOD-I",
+    "", //Removed IOM1_OVT_SHTDN_LATCH-I, does not exist on Lego
+    "", //Removed IOM1_OVT_WARN_L-I, does not exist on Lego
+
+    /*R0-R7*/
+    "", //FPGA_READY goes to expander
+    "SP0_AP_INTR_N-I",
+    "",//Removed BMC_EP_PERST_EN-O
+    "BMC_SPI_EROT_FPGA_INT_L-I",
+    "",//"BMC_EROT_FPGA_SPI_MUX_SEL-O",
+    "", // Removed EROT_FPGA_RST_L and put in C7
+    "FPGA_EROT_RECOVERY_L-O",
+    "FPGA_EROT_FATAL_ERROR_L-I",
+
+    /*S0-S7*/
+    "PCI_SWITCH_SPI_MUX_SEL-O",
+    "SPI_BMC_FPGA_INT_L-I",
+    "PCIE_WAKE_L-I",
+    "I2C_CHASSIS_INT_L-I",
+    "PSU_SMB_ALERT_L-I",
+    "FAN_FAIL_IN_L-I",
+    "SLOT_PWR_CYCLE_BTN-I",
+    "ATX_PGOOD_ISO-I",
+
+    /*T0-T7*/
+    "SLOT1_PRSNT_L-I",
+    "SLOT2_PRSNT_L-I",
+    "SLOT3_PRSNT_L-I",
+    "SLOT4_PRSNT_L-I",
+    "SLOT5_PRSNT_L-I",
+    "", "", "",
+
+    /*U0-U7*/
+    "I2C_M20_ALERT_L-I",
+    "I2C_M21_ALERT_L-I",
+    "10GBE_SMBALRT_L-I",
+    "PWR_BTN_L-I",
+    "RST_BTN_L-I",
+    "M2_0_PRSNT_L-I", 
+    "M2_1_PRSNT_L-I", 
+    "IPEX_CABLE_PRSNT_L-I",
+
+    /*V0-V7*/
+    "AP_EROT_REQ-O",
+    "EROT_AP_GNT-I",
+    "", //Removed BMC_READY-O, behind expander
+    "FPGA_RSVD_FFU1-I/O",
+    "PCB_TEMP_ALERT_L-I", //Removed LOC_PCB_TEMP_ALERT_L
+    "I2C_BUS8_MUX_RESET_L-I/O",
+    "I2C_BUS7_MUX_RESET_L-I/O",
+    "I2C_BUS6_MUX_RESET_L-I/O",
+
+    /*W0-W7*/
+    "HMC_PRESENT_L-I",
+    "HMC_READY-I",
+    "3V3_M21_PG-I",
+    "3V3_M20_PG-I",
+    "PS_VDD_1P05V_PGOOD-I",
+    "", //Removed FPGA_RST_L and put in M2
+    "",
+    "", //Removed STBY_POWER_EN-O and replaced with HPM
+
+    /*X0-X7*/
+    "", "", "", "", "", "", "", "",
+
+    /*Y0-Y7*/
+    "FPGA_WATCH_DOG_TIMER0_L-I",
+    "FPGA_WATCH_DOG_TIMER1_L-I",
+    "FPGA_WATCH_DOG_TIMER2_L-I",
+    "", /* Y3 Skipped */
+    "BMC_EMMC_RST_L-O",
+    "", "", "",
+
+    /*Z0-Z7*/
+    "", "", "", "", "", "", "", "";
+};
+
+&gpio1 {
+    /* 36 1.8V GPIOs */
+    gpio-line-names =
+    /*AA0-AA7*/
+    "PS_VDD_3P3V_PGOOD-I",
+    "PS_VDD_5P0V_PGOOD-I",
+    "", //Removed ID_BTN_N-I
+    "ID_LED_N-O",
+    "SYS_FAULT_LED_N-O",
+    "PWR_LED_N-O",
+    "CHASSIS_CPLD_LATCH_N-O",
+    "CPLD_REFRESH_DONE-I",
+
+    /*AB0-AB7*/
+    /* Dragon Support */
+    "PMBUS_REQ_N-O",
+    "PMBUS_GNT_N-I",
+    "PSU_FW_UPDATE_REQ_N-O",
+    "PSU_FW_UPDATING_N-I",
+    "NODE_LOC_ID3-I",
+    "NODE_LOC_ID2-I",
+    "NODE_LOC_ID1-I",
+    "EROT_FPGA_RST_L-O",
+
+    /*AC0-AC7*/
+    "FAN0_PRESENT_L-I", 
+    "WP_HW_EXT_CTRL_L",
+    "FAN2_PRESENT_L-I", 
+    "FAN3_PRESENT_L-I", 
+    "FAN4_PRESENT_L-I", 
+    "FAN5_PRESENT_L-I", 
+    "BMC_EROT_FPGA_SPI_MUX_SEL-O",
+    "EROT_FPGA_RST_L-O",
+
+    /*AD0-AD7*/
+    "", "", "", "", "", "", "", "",
+
+    /*AE0-AE7*/
+    "", "", "", "", "", "", "", "";
+};
+
