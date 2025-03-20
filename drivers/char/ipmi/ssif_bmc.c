@@ -971,7 +971,7 @@ static void retry_timeout(struct timer_list *t)
 	enable_ast2600_slave(ssif_bmc->client);
 }
 
-static int ssif_bmc_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int ssif_bmc_probe(struct i2c_client *client)
 {
 	struct ssif_bmc_ctx *ssif_bmc;
 	int ret;
@@ -1064,7 +1064,6 @@ static void ssif_bmc_remove(struct i2c_client *client)
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 
 	device_remove_file(&client->dev, &dev_attr_ssif_timeout);
-	return 0;
 }
 
 static const struct of_device_id ssif_bmc_match[] = {

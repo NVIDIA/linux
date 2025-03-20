@@ -17,6 +17,7 @@
 #include <linux/mutex.h>
 #include <linux/of_platform.h>
 #include <linux/pci.h>
+#include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/ptr_ring.h>
 #include <linux/regmap.h>
@@ -2491,7 +2492,7 @@ out:
 	return ret;
 }
 
-static int aspeed_mctp_remove(struct platform_device *pdev)
+static void aspeed_mctp_remove(struct platform_device *pdev)
 {
 	struct aspeed_mctp *priv = platform_get_drvdata(pdev);
 
@@ -2518,8 +2519,6 @@ static int aspeed_mctp_remove(struct platform_device *pdev)
 		reset_control_assert(priv->reset_dma);
 
 	reset_control_assert(priv->reset);
-
-	return 0;
 }
 
 static const struct aspeed_mctp_match_data ast2500_mctp_match_data = {

@@ -1886,7 +1886,7 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ast2600_i2c_remove(struct platform_device *pdev)
+static void ast2600_i2c_remove(struct platform_device *pdev)
 {
 	struct ast2600_i2c_bus *i2c_bus = platform_get_drvdata(pdev);
 	unsigned long flags;
@@ -1894,8 +1894,6 @@ static int ast2600_i2c_remove(struct platform_device *pdev)
 	/* Disable everything. */
 	writel(0, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 	writel(0, i2c_bus->reg_base + AST2600_I2CM_IER);
-
-	return 0;
 }
 
 static struct platform_driver ast2600_i2c_bus_driver = {

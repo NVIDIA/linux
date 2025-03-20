@@ -225,11 +225,11 @@ static int ads7142_read_raw(struct iio_dev *indio_dev,
 	return ret;
 }
 
-static int ads7142_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int ads7142_probe(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev;
 	struct ads7142_state *state;
+	struct device *dev = &client->dev;
 	int ret;
 
 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*state));
@@ -243,11 +243,11 @@ static int ads7142_probe(struct i2c_client *client,
 
 	state->chip = device_get_match_data(&client->dev);
 	if (!state->chip)
-		state->chip = (const struct ads7142_chip_data *)id->driver_data;
+		state->chip = (const struct ads7142_chip_data *)dev->driver_data;
 	if (!state->chip)
 		return dev_err_probe(&client->dev, -EINVAL, "Unknown chip.\n");
 
-	indio_dev->name = id->name;
+	indio_dev->name = "ads7142";
 	indio_dev->channels = state->chip->channels;
 	indio_dev->num_channels = state->chip->num_channels;
 	indio_dev->info = state->chip->info;

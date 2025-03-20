@@ -1069,7 +1069,7 @@ out:
 	return ret;
 }
 
-static int aspeed_jtag_remove(struct platform_device *pdev)
+static void aspeed_jtag_remove(struct platform_device *pdev)
 {
 	struct jtag *jtag = platform_get_drvdata(pdev);
 	struct aspeed_jtag_info *aspeed_jtag;
@@ -1077,7 +1077,6 @@ static int aspeed_jtag_remove(struct platform_device *pdev)
 	aspeed_jtag = jtag_priv(jtag);
 	reset_control_assert(aspeed_jtag->reset);
 	jtag_free(jtag);
-	return 0;
 }
 
 static struct platform_driver aspeed_jtag_driver = {

@@ -575,14 +575,12 @@ static int aspeed_otp_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int aspeed_otp_remove(struct platform_device *pdev)
+static void aspeed_otp_remove(struct platform_device *pdev)
 {
 	struct aspeed_otp *ctx = dev_get_drvdata(&pdev->dev);
 
 	kfree(ctx->data);
 	misc_deregister(&ctx->miscdev);
-
-	return 0;
 }
 
 static struct platform_driver aspeed_otp_driver = {

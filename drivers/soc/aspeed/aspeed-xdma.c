@@ -1134,7 +1134,7 @@ err_nomap:
 	return rc;
 }
 
-static int aspeed_xdma_remove(struct platform_device *pdev)
+static void aspeed_xdma_remove(struct platform_device *pdev)
 {
 	struct aspeed_xdma *ctx = platform_get_drvdata(pdev);
 
@@ -1147,8 +1147,6 @@ static int aspeed_xdma_remove(struct platform_device *pdev)
 
 	misc_deregister(&ctx->misc);
 	kobject_put(&ctx->kobj);
-
-	return 0;
 }
 
 static const struct aspeed_xdma_chip aspeed_ast2500_xdma_chip = {

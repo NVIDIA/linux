@@ -213,13 +213,11 @@ err_register:
 	return ret;
 }
 
-static int aspeed_trng_remove(struct platform_device *pdev)
+static void aspeed_trng_remove(struct platform_device *pdev)
 {
 	struct aspeed_trng *priv = platform_get_drvdata(pdev);
 
 	aspeed_trng_disable(priv);
-
-	return 0;
 }
 
 static const struct of_device_id aspeed_trng_dt_ids[] = {
