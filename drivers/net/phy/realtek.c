@@ -523,45 +523,6 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	return 0;
 }
 
-
-static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
-{
-	int ret;
-
-	/* RTL8211F SGMII to RGMII MODE verification - NVIDIA BMC */
-	ret = phy_read_paged(phydev, 0xd40, 0x10);
-	if(ret < 0) {
-		dev_err(&phydev->mdio.dev, "Failed to read Mode Selection\n");
-		return ret;
-	}
-
-	ret = ret & RTL8211F_MODE_SEL;
-
-	if (ret == RTL8211F_SGMII_RGMII_PM || ret == RTL8211F_SGMII_RGMII_MP) {
-
-		/* Check Link status */
-		ret = phy_read_paged(phydev, 0xdcf, 0x15);
-		if (ret < 0) {
-			dev_err(&phydev->mdio.dev,"failed to read  link status \n");
-			return ret;
-		}
-		/* Link is Up */
-		if (ret &  BIT(4)) {
-			phydev->link = 1;
-			phydev->speed = 1000;
-			phydev->duplex=DUPLEX_FULL;
-		}
-	} else {
-		ret = genphy_read_status(phydev);
-		if (ret < 0)
-			return ret;
-
-		return rtlgen_get_speed(phydev);
-	}
-
-	return 0;
-}
-
 static int rtl821x_suspend(struct phy_device *phydev)
 {
 	struct rtl821x_priv *priv = phydev->priv;

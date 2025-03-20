@@ -1478,7 +1478,7 @@ static int ftgmac100_mii_probe(struct net_device *netdev)
 #if IS_ENABLED(CONFIG_FIXED_PHY_APPLY)
 	char phy_id[IFNAMSIZ];
 	snprintf(phy_id, sizeof(phy_id), PHY_ID_FMT, "fixed-0", 0);
-	phydev = phy_connect(netdev, phy_id, &ftgmac100_adjust_link, intf);
+	phydev = phy_connect(netdev, phy_id, &ftgmac100_adjust_link, phy_intf);
 #else
 	phydev = phy_find_first(priv->mii_bus);
 	if (!phydev) {
