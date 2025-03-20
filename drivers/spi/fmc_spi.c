@@ -28,6 +28,7 @@
 #include <linux/spi/flash.h>
 
 #include <linux/of_address.h>
+#include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
@@ -119,7 +120,7 @@ struct fmc_spi_host {
 	void __iomem		*base;
 	void __iomem		*ctrl_reg;
 	u32		buff[5];
-	struct spi_master *master;
+	struct spi_controller *master;
 	struct spi_device *spi_dev;
 	struct device *dev;
 	u32					ahb_clk;
@@ -176,15 +177,15 @@ static u32 ast_spi_calculate_divisor(struct fmc_spi_host *host, u32 max_speed_hz
 
 static int fmc_spi_setup(struct spi_device *spi)
 {
-	struct fmc_spi_host *host = (struct fmc_spi_host *)spi_master_get_devdata(spi->master);
+	struct fmc_spi_host *host = (struct fmc_spi_host *)spi_controller_get_devdata(spi->controller);
 	unsigned int bits = spi->bits_per_word;
 	u32 fmc_config = 0;
 	u32 spi_ctrl = 0;
 	u32 divisor;
 	fmc_config  = readl(host->base);
-	dev_dbg(host->dev, "fmc_spi_setup() cs: %d, spi->mode %d \n", spi->chip_select, spi->mode);
+	dev_dbg(host->dev, "fmc_spi_setup() cs: %d, spi->mode %d \n", spi->chip_select[0], spi->mode);
 
-	switch(spi->chip_select) {
+	switch(spi->chip_select[0]) {
 		case 0:
 			fmc_config |= FMC_CONF_CE0_WEN | FMC_CONF_CE0_SPI;
 			host->ctrl_reg = host->base + FMC_SPI_CE0_CTRL;
@@ -200,7 +201,7 @@ static int fmc_spi_setup(struct spi_device *spi)
 		default:
 			dev_dbg(&spi->dev,
 					"setup: invalid chipselect %u (%u defined)\n",
-					spi->chip_select, spi->master->num_chipselect);
+					spi->chip_select[0], spi->controller->num_chipselect);
 			return -EINVAL;
 			break;
 	}
@@ -224,7 +225,7 @@ static int fmc_spi_setup(struct spi_device *spi)
 	}
 
 	/* see notes above re chipselect */
-	if((spi->chip_select == 0) && (spi->mode & SPI_CS_HIGH)) {
+	if((spi->chip_select[0] == 0) && (spi->mode & SPI_CS_HIGH)) {
 			dev_dbg(&spi->dev, "setup: can't be active-high\n");
 			return -EINVAL;
 	}
@@ -265,7 +266,7 @@ static int fmc_spi_setup(struct spi_device *spi)
 
 static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 {
-	struct fmc_spi_host *host = (struct fmc_spi_host *)spi_master_get_devdata(spi->master);
+	struct fmc_spi_host *host = (struct fmc_spi_host *)spi_controller_get_devdata(spi->controller);
 	struct spi_transfer *xfer;
 	const u8 *tx_buf;
 	u8 *rx_buf;
@@ -274,12 +275,12 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	int i = 0;
 	int j = 0;
 
-	dev_dbg(host->dev, "xfer chip_select %d, mode: 0x%x\n", spi->chip_select, spi->mode);
+	dev_dbg(host->dev, "xfer chip_select %d, mode: 0x%x\n", spi->chip_select[0], spi->mode);
 	host->spi_dev = spi;
 	spin_lock_irqsave(&host->lock, flags);
 
 	ctrl_reg = (u32 *)(host->base + FMC_SPI_CE0_CTRL + \
-						host->spi_dev->chip_select * 4);
+						host->spi_dev->chip_select[0] * 4);
 
 	// Skip it if it is enabled already
 	if (!host->cs_enabled) {
@@ -313,13 +314,13 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 					dev_dbg(host->dev, "%x ",tx_buf[i]);
 			}
 			for(i = 0; i < (xfer->len - xfer->delay.value); i++)
-				writeb(tx_buf[i], (void *)host->buff[host->spi_dev->chip_select]);
+				writeb(tx_buf[i], (void *)host->buff[host->spi_dev->chip_select[0]]);
 		}
 		/* Issue need clarify */
 		udelay(1);
 		if(rx_buf != 0) {
 			for(i = 0; i < xfer->delay.value; i++)
-				rx_buf[i] = readb((void *)host->buff[host->spi_dev->chip_select]);
+				rx_buf[i] = readb((void *)host->buff[host->spi_dev->chip_select[0]]);
 			dev_dbg(host->dev, "rx : ");
 			if(xfer->len > 10) {
 				for(i = 0; i < 10; i++)
@@ -361,7 +362,7 @@ static int fmc_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 
 static void fmc_spi_cleanup(struct spi_device *spi)
 {
-	struct fmc_spi_host *host = spi_master_get_devdata(spi->master);
+	struct fmc_spi_host *host = spi_controller_get_devdata(spi->controller);
 	unsigned long flags;
 	dev_dbg(host->dev, "fmc_spi_cleanup() \n");
 
@@ -381,7 +382,7 @@ static int fmc_spi_probe(struct platform_device *pdev)
 {
 	struct resource	*res;
 	struct fmc_spi_host *host;
-	struct spi_master *master;
+	struct spi_controller *master;
 	struct clk *clk;
 	const struct of_device_id *match;
 	const struct aspeed_spi_info *spi_info;
@@ -407,7 +408,7 @@ static int fmc_spi_probe(struct platform_device *pdev)
 	master->bus_num = pdev->id;
 	platform_set_drvdata(pdev, master);
 
-	host = spi_master_get_devdata(master);
+	host = spi_controller_get_devdata(master);
 	memset(host, 0, sizeof(struct fmc_spi_host));
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -433,7 +434,7 @@ static int fmc_spi_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "remap phy %x, virt %x hclk : %d\n",(u32)res->start, (u32)host->base, host->ahb_clk);
 
-	host->master = spi_master_get(master);
+	host->master = spi_controller_get(master);
 
 	match = of_match_device(fmc_spi_of_match, &pdev->dev);
 	if (!match || !match->data)
@@ -481,7 +482,7 @@ static int fmc_spi_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, host);
 
 	/* Register our spi controller */
-	err = devm_spi_register_master(&pdev->dev, host->master);
+	err = devm_spi_register_controller(&pdev->dev, host->master);
 	if (err) {
 			dev_err(&pdev->dev, "failed to register SPI master\n");
 			goto err_register;
@@ -492,7 +493,7 @@ static int fmc_spi_probe(struct platform_device *pdev)
 	return 0;
 
 err_register:
-	spi_master_put(host->master);
+	spi_controller_put(host->master);
 	iounmap(host->base);
 	for(cs_num = 0; cs_num < host->master->num_chipselect; cs_num++) {
 		iounmap((void *)host->buff[cs_num]);
@@ -507,10 +508,9 @@ err_nomem:
 
 }
 
-static int fmc_spi_remove(struct platform_device *pdev)
+static void fmc_spi_remove(struct platform_device *pdev)
 {
 	platform_set_drvdata(pdev, NULL);
-	return 0;
 }
 
 static struct platform_driver fmc_spi_driver = {
