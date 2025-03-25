@@ -541,9 +541,6 @@ static void set_singlepart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
 	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	part->length = (u8)ssif_bmc->response.header.len;
-	//it is not valid to have length of 0 in smbus read command
-	if (part->length == 0)
-		part->length = 1;
 	/* Clear the rest to 0 */
 	memset(part->payload + part->length, 0, MAX_PAYLOAD_PER_TRANSACTION - part->length);
 	memcpy(&part->payload[0], &ssif_bmc->response.payload[0], part->length);
@@ -621,6 +618,8 @@ static void set_multipart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 		/* Do not expect to go to this case */
 		dev_err(&ssif_bmc->client->dev, "%s: Unexpected SMBus command 0x%x\n",
 			__func__, part->smbus_cmd);
+		part->length = 1;
+		part->payload[0] = 0;
 		break;
 	}
 
@@ -789,6 +788,13 @@ static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
+	/*
+	 * In SMBUS spec, the byte-count cannot be 0.
+	 * Send byte-count = 1 if there is nothing to send.
+	 */
+
+	*val = 1;
+
 	if (ssif_bmc->state == SSIF_READY ||
 	    ssif_bmc->state == SSIF_START ||
 	    ssif_bmc->state == SSIF_REQ_RECVING ||
@@ -797,7 +803,6 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ REQUESTED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		*val = 0;
 		return;
 
 	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
@@ -815,9 +820,7 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	ssif_bmc->msg_idx = 0;
 
-	/* Send 0 if there is nothing to send */
 	if (ssif_bmc->state == SSIF_ABORTING) {
-		*val = 0;
 		return;
 	}
 
@@ -828,7 +831,10 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	calculate_response_part_pec(&ssif_bmc->part_buf);
 	ssif_bmc->part_buf.index = 0;
-	*val = ssif_bmc->part_buf.length;
+
+	if (ssif_bmc->part_buf.length > 0)
+		*val = ssif_bmc->part_buf.length;
+
 	if (!IS_ERR(ssif_bmc->alert))
 		gpiod_set_value(ssif_bmc->alert, 0);
 }
