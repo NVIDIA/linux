@@ -99,7 +99,7 @@
 			};
 
 		ahbc: bus@1e600000 {
-			compatible = "aspeed,ast2600-ahbc", "syscon";
+			compatible = "aspeed,aspeed-ahbc", "syscon";
 			reg = <0x1e600000 0x100>;
 		};
 
@@ -426,38 +426,38 @@
 				status = "disabled";
 			};
 
-			pcie: pcie@1e6ed200 {
+			pcie: pcie@1e7700C0 {
 				compatible = "aspeed,ast2600-pcie";
-				reg = <0x1e6ed200 0x100>;
 				device_type = "pci";
-				bus-range = <0x00 0xff>;
-
+				reg = <0x1e7700C0 0x80>;
+				linux,pci-domain = <1>;
 				#address-cells = <3>;
 				#size-cells = <2>;
-				ranges = <0x01000000 0 0x00010000 0x00010000 0x0 0x10000   /* I/O */
-					  0x02000000 0x0 0x70000000 0x70000000 0 0x0fffffff>; /* memory */
-				#interrupt-cells = <1>;
+				interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+				bus-range = <0x00 0x80>;
 
-				interrupt-map-mask = <0 0 0 7>;
-				interrupt-map = <0 0 0 1 &pcie_intc0 0>, /* INT A */
-						<0 0 0 2 &pcie_intc0 1>, /* INT B */
-						<0 0 0 3 &pcie_intc0 2>, /* INT C */
-						<0 0 0 4 &pcie_intc0 3>; /* INT D */
+				ranges = <0x01000000 0 0x00018000 0x00018000 0x0 0x08000
+					0x02000000 0x0 0x70000000 0x70000000 0 0x10000000>; /* memory */
 
-				resets = <&syscon ASPEED_RESET_PCIE_RC_O>;
-				rc_offset = <0xC0>;
-				msi_address = <0x1e77005C>;
-#if 0
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_pcie1rc_default>;
-#endif
-				aspeed,ahbc = <&ahbc>;
 				status = "disabled";
 
-				pcie_intc0: legacy-interrupt-controller {
+				resets = <&syscon ASPEED_RESET_PCIE_RC_O>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_pcierc1_default>;
+
+				#interrupt-cells = <1>;
+				msi-parent = <&pcie>;
+				msi_address = <0x1e77005C>;
+				pciephy = <&pcie_phy1>;
+				interrupt-map-mask = <0 0 0 7>;
+				interrupt-map = <0 0 0 1 &pcie_intc1 0>,
+						<0 0 0 2 &pcie_intc1 1>,
+						<0 0 0 3 &pcie_intc1 2>,
+						<0 0 0 4 &pcie_intc1 3>;
+				pcie_intc1: interrupt-controller {
 					interrupt-controller;
+					#address-cells = <0>;
 					#interrupt-cells = <1>;
-					interrupt-parent = <&gic>;
 				};
 			};
 
@@ -528,6 +528,17 @@
 			pcie_phy1: rc_bridge@1e6ed200 {
 				compatible = "aspeed,ast2600-pcie-phy", "syscon";
 				reg = <0x1e6ed200 0x100>;
+			};
+
+			pciecfg: pciecfg@1e770000 {
+				compatible = "aspeed,ast2600-pciecfg", "syscon";
+				reg = <0x1e770000 0x80>;
+				resets = <&syscon ASPEED_RESET_H2X>, <&syscon ASPEED_RESET_PCIE_DEV_O>, <&syscon ASPEED_RESET_PCIE_RC_O>;
+				reset-names = "h2x", "rc_low", "rc_high";
+				aspeed,ahbc = <&ahbc>;
+				aspeed,pcie = <&pcie>;
+
+				status = "disabled";
 			};
 
 			mctp: mctp@1e6f9000 {
