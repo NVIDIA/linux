@@ -103,6 +103,17 @@ config ASPEED_SBC
 config ASPEED_OTP
 	tristate "Aspeed OTP Driver"
 	depends on MACH_ASPEED_G6
+	
+config ASPEED_MCTP_CTRL
+	tristate "Aspeed MCTP Controller driver"
+	select REGMAP
+	select MFD_SYSCON
+	default n
+	depends on MCTP
+	help
+	  Enable support for Aspeed MCTP Controller.
+	  The MCTP controller allows the BMC to communicate with devices on
+	  the host PCIe network.
 
 config ASPEED_LPC_PCC
 	tristate "Aspeed Post Code Capture support"
