@@ -42,6 +42,9 @@
 #define SELECT_FROM_PARALLEL_IN 1
 #define SELECT_FROM_SERIAL_IN 1
 
+#define BMC_CONTROL_START_INDEX 128
+#define BMC_CONTROL_END_INDEX 143
+
 static inline u32 field_get(u32 _mask, u32 _val)
 {
 	return (((_val) & (_mask)) >> (ffs(_mask) - 1));
@@ -213,6 +216,14 @@ static bool aspeed_sgpio_is_input(unsigned int offset)
 	return !(offset % 2);
 }
 
+static bool aspeed_sgpios_ctrl_by_csr(unsigned int offset)
+{
+	if (offset >= BMC_CONTROL_START_INDEX &&
+	    offset <= BMC_CONTROL_END_INDEX)
+		return true;
+	return false;
+}
+
 static int aspeed_sgpio_get(struct gpio_chip *gc, unsigned int offset)
 {
 	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
@@ -224,7 +235,7 @@ static int aspeed_sgpio_get(struct gpio_chip *gc, unsigned int offset)
 	guard(raw_spinlock_irqsave)(&gpio->lock);
 
 	if (gpio->version == 7) {
-		if (gpio->pdata->slave)
+		if (gpio->pdata->slave && !aspeed_sgpios_ctrl_by_csr(offset))
 			reg = aspeed_sgpio_is_input(offset) ?
 				      SGPIO_G7_PARALLEL_IN_DATA :
 				      SGPIO_G7_PARALLEL_OUT_DATA;
@@ -278,7 +289,7 @@ static int sgpio_g7_set_value(struct gpio_chip *gc, unsigned int offset,
 	if (aspeed_sgpio_is_input(offset))
 		return -EINVAL;
 
-	if (gpio->pdata->slave) {
+	if (gpio->pdata->slave && !aspeed_sgpios_ctrl_by_csr(offset)) {
 		// Ensure the parallel out value control by the software.
 		ast_write_bits(addr, SGPIO_G7_PARALLEL_OUT_SEL,
 			       SELECT_FROM_CSR);
