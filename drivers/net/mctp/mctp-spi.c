@@ -250,7 +250,7 @@ static void mctp_spi_net_setup(struct net_device *dev)
 	dev->tx_queue_len = MCTP_SPI_TX_QUEUE_LEN;
 
 	dev->hard_header_len = sizeof(struct mctp_spi_hdr);
-	dev->addr_len = 1;
+	dev->addr_len = 0;
 
 	dev->netdev_ops		= &mctp_spi_ops;
 	dev->header_ops		= &mctp_spi_headops;
