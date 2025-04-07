@@ -427,6 +427,7 @@ static int mctp_spi_probe(struct spi_device *spi)
 
 	mctp_spi_dev->rx_alert = devm_gpiod_get(&spi->dev, "alert", GPIOD_IN);
 
+        SET_NETDEV_DEV(ndev, &spi->dev);
 	if(IS_ERR(mctp_spi_dev->rx_alert)) {
 		goto err_netdev;
 	}
