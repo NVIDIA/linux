@@ -271,7 +271,18 @@
 #define MASTER_TRIGGER_LAST_STOP	(AST2600_I2CM_RX_CMD_LAST | AST2600_I2CM_STOP_CMD)
 #define SLAVE_TRIGGER_CMD	(AST2600_I2CS_ACTIVE_ALL | AST2600_I2CS_PKT_MODE_EN)
 
-#define AST_I2C_TIMEOUT_CLK		0x1
+/*
+ * Timeout base clk divisor, ICC04[9:8]
+ * tout_baseclk_0 (0x0 = 00'b): base-clk4 /  256
+ * tout_baseclk_1 (0x1 = 01'b): base-clk4 / 1024
+ * tout_baseclk_2 (0x2 = 10'b): base-clk4 / 4096
+ * tout_baseclk_3 (0x3 = 11'b): base-clk4 / 8192
+ */
+#define AST_I2C_TIMEOUT_CLK_DIV256	0x0
+#define AST_I2C_TIMEOUT_CLK_DIV1024	0x1
+#define AST_I2C_TIMEOUT_CLK_DIV4096	0x2
+#define AST_I2C_TIMEOUT_CLK_DIV8192	0x3
+
 
 enum xfer_mode {
 	BYTE_MODE,
@@ -333,7 +344,48 @@ struct ast2600_i2c_bus {
 	 * ICC04[23:20]: tCkHighMin
 	 */
 	u32 tck_thddat;
+	u32 tout_baseclk_div;
 };
+
+static u32 ast2600_fix_tout_baseclk_div(struct ast2600_i2c_bus *i2c_bus) {
+	u32 div_val;
+
+	switch(i2c_bus->tout_baseclk_div) {
+		case 256:
+			div_val = AST_I2C_TIMEOUT_CLK_DIV256;
+			break;
+		case 1024:
+			div_val = AST_I2C_TIMEOUT_CLK_DIV1024;
+			break;
+		case 4096:
+			div_val = AST_I2C_TIMEOUT_CLK_DIV4096;
+			break;
+		case 8192:
+			div_val = AST_I2C_TIMEOUT_CLK_DIV8192;
+			break;
+		default:
+			dev_dbg(i2c_bus->dev,
+					"Unexpected tout-baseclk-div value: %u. Fix to default (1024)",
+					i2c_bus->tout_baseclk_div);
+
+			div_val = AST_I2C_TIMEOUT_CLK_DIV1024;
+			i2c_bus->tout_baseclk_div = 1024;
+	}
+
+	dev_info(i2c_bus->dev, "tout_baseclk_div: %u", div_val);
+
+	return div_val;
+}
+
+static u32 ast2600_calc_timeout_timer(struct ast2600_i2c_bus *i2c_bus) {
+	u32 timeout_val;
+
+	timeout_val = i2c_bus->timeout / i2c_bus->tout_baseclk_div;
+
+	dev_dbg(i2c_bus->dev, "timeout ticks: %#x", timeout_val);
+
+	return timeout_val;
+}
 
 static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 {
@@ -344,6 +396,7 @@ static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 	u32 scl_high;
 	int divisor;
 	u32 data;
+	u32 tout_clkdiv, tout_ticks;
 
 	regmap_read(i2c_bus->global_regs, AST2600_I2CG_CLK_DIV_CTRL, &clk_div_reg);
 
@@ -373,16 +426,19 @@ static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 	}
 
 	if (i2c_bus->timeout) {
+		tout_clkdiv = ast2600_fix_tout_baseclk_div(i2c_bus);
+		tout_ticks = ast2600_calc_timeout_timer(i2c_bus);
+
 #ifdef CONFIG_MACH_ASPEED_G7
-		writel(MSIC_I2C_SET_TIMEOUT(i2c_bus->timeout, i2c_bus->timeout),
+		writel(MSIC_I2C_SET_TIMEOUT(tout_ticks, tout_ticks),
 		       i2c_bus->reg_base + MSIC_CONFIG_ACTIMING1);
 #else
 		/* ast2600 only have [4:0] range */
-		if (i2c_bus->timeout > 31)
-			i2c_bus->timeout = 31;
-		data |= AST2600_I2CC_TTIMEOUT(i2c_bus->timeout);
+		if (tout_ticks > 31)
+			tout_ticks = 31;
+		data |= AST2600_I2CC_TTIMEOUT(tout_ticks);
 #endif
-		data |= AST2600_I2CC_TOUTBASECLK(AST_I2C_TIMEOUT_CLK);
+		data |= AST2600_I2CC_TOUTBASECLK(tout_clkdiv);
 	}
 
 	return data;
@@ -1822,19 +1878,16 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 
 	/*
 	 * i2c timeout counter: use base clk4 1Mhz,
-	 * per unit: 1/(1000/1024) = 1024us
+	 * per unit: 1/(1000/tout-baseclk-div)
+	 * Example of divisor 1024: 1/(1000/1024) = 1024us
 	 */
 	ret = device_property_read_u32(dev, "i2c-scl-clk-low-timeout-us", &i2c_bus->timeout);
-	if (!ret)
-		i2c_bus->timeout /= 1024;
 
-	/*
-	 * i2c timeout counter: use base clk4 1Mhz,
-	 * per unit: 1/(1000/1024) = 1024us
-	 */
 	ret = device_property_read_u32(dev, "i2c-tck-thddat-config", &i2c_bus->tck_thddat);
 	if (!ret)
 		dev_info(&pdev->dev, "Manual tCLK* & tHDDAT settings: %#08x", i2c_bus->tck_thddat);
+
+	ret = device_property_read_u32(dev, "tout-baseclk-div", &i2c_bus->tout_baseclk_div);
 
 	init_completion(&i2c_bus->cmd_complete);
 
