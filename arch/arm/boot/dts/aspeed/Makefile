@@ -74,4 +74,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-ufispace-ncplite.dtb \
 	aspeed-bmc-vegman-n110.dtb \
 	aspeed-bmc-vegman-rx20.dtb \
-	aspeed-bmc-vegman-sx20.dtb
+	aspeed-bmc-vegman-sx20.dtb \
+	aspeed-bmc-nvidia-moonraker.dtb \
+	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb
