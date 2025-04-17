@@ -76,4 +76,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-vegman-rx20.dtb \
 	aspeed-bmc-vegman-sx20.dtb \
 	aspeed-bmc-nvidia-moonraker.dtb \
-	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb
+	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb\
+	aspeed-bmc-nvidia-bluesphere.dtb \
+	aspeed-bmc-nvidia-bluesphere-dual-dpu.dtb
