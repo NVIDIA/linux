@@ -894,6 +894,15 @@ static const struct i3c_master_controller_ops i3c_hci_ops = {
 	.disable_hotjoin	= i3c_hci_disable_hotjoin,
 };
 
+static void i3c_hci_halt_rst_work(struct work_struct *work)
+{
+	struct i3c_hci *hci;
+
+	hci = container_of(work, struct i3c_hci, halt_rst_work);
+	hci->io->dequeue_xfer(hci, NULL, 0);
+	reg_write(INTR_SIGNAL_ENABLE, INTR_HC_INTERNAL_ERR);
+}
+
 static int ast2700_i3c_target_bus_init(struct i3c_master_controller *m)
 {
 	struct i3c_hci *hci = to_i3c_hci(m);
@@ -943,6 +952,10 @@ static int ast2700_i3c_target_bus_init(struct i3c_master_controller *m)
 	ret = hci->io->init(hci);
 	if (ret)
 		return ret;
+
+	/* Enable internal error interrupt to detect the i3c halt caused by the hardware error */
+	reg_write(INTR_SIGNAL_ENABLE, INTR_HC_INTERNAL_ERR);
+	INIT_WORK(&hci->halt_rst_work, i3c_hci_halt_rst_work);
 
 	reg_set(HC_CONTROL, HC_CONTROL_BUS_ENABLE);
 	dev_dbg(&hci->master.dev, "HC_CONTROL = %#x", reg_read(HC_CONTROL));
@@ -1169,10 +1182,12 @@ static irqreturn_t i3c_hci_irq_handler(int irq, void *dev_id)
 		val &= ~INTR_HC_SEQ_CANCEL;
 	}
 	if (val & INTR_HC_INTERNAL_ERR) {
-		/* Disable the signal enable to avoid the interrupt storm */
-		reg_write(INTR_SIGNAL_ENABLE, 0x0);
-		reg_write(INTR_STATUS, INTR_HC_INTERNAL_ERR);
-		queue_work(hci->master.wq, &hci->halt_rst_work);
+		if (hci->master.target) {
+			/* Disable the signal enable to avoid the interrupt storm */
+			reg_write(INTR_SIGNAL_ENABLE, 0x0);
+			reg_write(INTR_STATUS, INTR_HC_INTERNAL_ERR);
+			queue_work(hci->master.wq, &hci->halt_rst_work);
+		}
 		val &= ~INTR_HC_INTERNAL_ERR;
 	}
 	if (val)
@@ -1328,8 +1343,6 @@ static int i3c_hci_init(struct i3c_hci *hci)
 	 */
 	reg_write(INTR_STATUS_ENABLE, GENMASK(31, 10));
 #ifdef CONFIG_ARCH_ASPEED
-	/* Enable internal error interrupt to detect the i3c halt caused by the hardware error */
-	reg_write(INTR_SIGNAL_ENABLE, INTR_HC_INTERNAL_ERR);
 	ast_inhouse_write(ASPEED_I3C_INTR_SIGNAL_ENABLE, 0);
 	ast_inhouse_write(ASPEED_I3C_INTR_STATUS_ENABLE, 0xffffffff);
 #endif
@@ -1434,15 +1447,6 @@ static void i3c_hci_hj_work(struct work_struct *work)
 	i3c_master_do_daa(&hci->master);
 }
 
-static void i3c_hci_halt_rst_work(struct work_struct *work)
-{
-	struct i3c_hci *hci;
-
-	hci = container_of(work, struct i3c_hci, halt_rst_work);
-	hci->io->dequeue_xfer(hci, NULL, 0);
-	reg_write(INTR_SIGNAL_ENABLE, INTR_HC_INTERNAL_ERR);
-}
-
 static int i3c_hci_probe(struct platform_device *pdev)
 {
 	struct i3c_hci *hci;
@@ -1497,7 +1501,6 @@ static int i3c_hci_probe(struct platform_device *pdev)
 		return ret;
 
 	INIT_WORK(&hci->hj_work, i3c_hci_hj_work);
-	INIT_WORK(&hci->halt_rst_work, i3c_hci_halt_rst_work);
 	ret = i3c_register(&hci->master, &pdev->dev, &i3c_hci_ops,
 			   &ast2700_i3c_target_ops, false);
 	if (ret)
