@@ -223,10 +223,12 @@
    status = "okay";
 };
 
+/*
 // USB 1.0
 &uhci {
    status = "okay";
 };
+*/
 
 // Bring-up effort: Shall remove for Umbriel production?
 // I2C Master (non Umbriel HMC POR), though Vulcan keeps it
