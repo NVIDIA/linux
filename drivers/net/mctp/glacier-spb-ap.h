@@ -362,9 +362,15 @@ SpbApStatus spb_ap_wait_for_intr(SpbAp *ap, int timeout_ms, bool polling)
 SpbApStatus wait_for_ack(SpbAp *ap)
 {
 	SpbApStatus status = SPB_AP_OK;
+	uint64_t start = clock_msecs();
 
-	if (spb_ap_wait_for_intr(ap, 1000, true) == SPB_AP_ERROR_TIMEOUT)
-		return (SPB_AP_ERROR_TIMEOUT);
+	while (ap->ec2spimb != EC_ACK) {
+		/* Check for interrupts */
+		if (clock_msecs() - start > POLL_INT_TIMEOUT_MSECS)
+			return (SPB_AP_ERROR_TIMEOUT);
+
+		spb_ap_wait_for_intr(ap, POLL_INT_TIMEOUT_MSECS, true);
+	}
 
 	ap->ec2spimb = 0;
 	return (status);
@@ -373,9 +379,15 @@ SpbApStatus wait_for_ack(SpbAp *ap)
 SpbApStatus wait_for_length(SpbAp *ap, uint32_t *bytes)
 {
 	SpbApStatus status = SPB_AP_OK;
+	uint64_t start = clock_msecs();
 
-	if (spb_ap_wait_for_intr(ap, 1000, true) == SPB_AP_ERROR_TIMEOUT)
-		return (SPB_AP_ERROR_TIMEOUT);
+	while ((ap->ec2spimb & 0xFF) == 0) {
+		if (clock_msecs() - start > POLL_INT_TIMEOUT_MSECS)
+			return (SPB_AP_ERROR_TIMEOUT);
+
+		/* Check for interrupts */
+		spb_ap_wait_for_intr(ap, POLL_INT_TIMEOUT_MSECS, true);
+	}
 
 	*bytes = ap->ec2spimb & 0xFF;
 	ap->ec2spimb = 0;
