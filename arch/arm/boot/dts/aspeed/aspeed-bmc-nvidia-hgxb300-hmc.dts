@@ -206,6 +206,14 @@
 };
 */
 
+/* Enable emmc */
+&pinctrl {
+	pinctrl_emmcg8_default: emmcg8_default {
+		function = "EMMC";
+		groups = "EMMCG8";
+	};
+};
+
 // Enable emmc
 &emmc_controller {
         status = "okay";
@@ -215,6 +223,8 @@
         non-removable;
         bus-width = <4>;
         max-frequency = <52000000>;
+	pinctrl-0 = <&pinctrl_emmcg8_default>;
+	clk-phase-mmc-hs200 = <9>, <225>;
 };
 
 /*
