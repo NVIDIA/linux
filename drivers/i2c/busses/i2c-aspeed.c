@@ -38,7 +38,6 @@ static void aspeed_i2c_do_stop(struct aspeed_i2c_bus *bus)
 static int aspeed_i2c_recover_bus(struct aspeed_i2c_bus *bus)
 {
 	unsigned long time_left, flags;
-	int ret = 0;
 	u32 command;
 
 	spin_lock_irqsave(&bus->lock, flags);
@@ -95,7 +94,7 @@ static int aspeed_i2c_recover_bus(struct aspeed_i2c_bus *bus)
 out:
 	spin_unlock_irqrestore(&bus->lock, flags);
 
-	return ret;
+	return 0;
 
 reset_out:
 	spin_unlock_irqrestore(&bus->lock, flags);
@@ -133,19 +132,19 @@ static u32 aspeed_i2c_slave_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	 */
 	if (irq_status & ASPEED_I2CD_INTR_NORMAL_STOP) {
 		irq_handled |= ASPEED_I2CD_INTR_NORMAL_STOP;
-		bus->slave_state = ASPEED_I2C_SLAVE_STOP;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
 
 	if (irq_status & ASPEED_I2CD_INTR_TX_NAK &&
-	    bus->slave_state == ASPEED_I2C_SLAVE_READ_PROCESSED) {
+	    bus->slave_state[idx] == ASPEED_I2C_SLAVE_READ_PROCESSED) {
 		irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
-		bus->slave_state = ASPEED_I2C_SLAVE_STOP;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_STOP;
 	}
 
 	/* Propagate any stop conditions to the slave implementation. */
-	if (bus->slave_state == ASPEED_I2C_SLAVE_STOP) {
+	if (bus->slave_state[idx] == ASPEED_I2C_SLAVE_STOP) {
 		i2c_slave_event(slave, I2C_SLAVE_STOP, &value);
-		bus->slave_state = ASPEED_I2C_SLAVE_INACTIVE;
+		bus->slave_state[idx] = ASPEED_I2C_SLAVE_INACTIVE;
 	}
 
 	/*
@@ -715,7 +714,7 @@ static int aspeed_i2c_get_free_slave_id(struct aspeed_i2c_bus *bus,
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 /* precondition: bus.lock has been acquired. */
 static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
-				u32 dev_add_mask, u32 en_slave_dev_add)
+				u32 dev_add_mask, u32 en_slave_dev_add, int idx)
 {
 	u32 addr_reg_val, func_ctrl_reg_val;
 	u8 shift;
@@ -737,7 +736,7 @@ static void __aspeed_i2c_reg_slave(struct aspeed_i2c_bus *bus, u16 slave_addr,
 	func_ctrl_reg_val |= ASPEED_I2CD_SLAVE_EN;
 	writel(func_ctrl_reg_val, bus->base + ASPEED_I2C_FUN_CTRL_REG);
 
-	bus->slave_state = ASPEED_I2C_SLAVE_INACTIVE;
+	bus->slave_state[idx] = ASPEED_I2C_SLAVE_INACTIVE;
 }
 
 static int aspeed_i2c_reg_slave(struct i2c_client *client)
@@ -774,7 +773,7 @@ static int aspeed_i2c_reg_slave(struct i2c_client *client)
 	bus->slave[id] = client;
 	bus->slave_state[id] = ASPEED_I2C_SLAVE_INACTIVE;
 	__aspeed_i2c_reg_slave(bus, client->addr, dev_add_mask,
-				en_slave_dev_add);
+				en_slave_dev_add, id);
 
 	spin_unlock_irqrestore(&bus->lock, flags);
 
@@ -830,7 +829,11 @@ static int aspeed_i2c_unreg_slave(struct i2c_client *client)
 	return 0;
 }
 #endif /* CONFIG_I2C_SLAVE */
+
+static const struct i2c_algorithm aspeed_i2c_algo = {
+	.master_xfer	= aspeed_i2c_master_xfer,
 	.functionality	= aspeed_i2c_functionality,
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
 	.reg_slave	= aspeed_i2c_reg_slave,
 	.unreg_slave	= aspeed_i2c_unreg_slave,
 #endif /* CONFIG_I2C_SLAVE */
@@ -942,7 +945,6 @@ static int aspeed_i2c_init_clk(struct aspeed_i2c_bus *bus)
 static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 			     struct platform_device *pdev)
 {
-	u32 fun_ctrl_reg = 0;
 	int ret;
 
 	/* Disable everything. */
@@ -968,21 +970,17 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 	/* If slave has already been registered, re-enable it. */
 	if (bus->slave[0])
 		__aspeed_i2c_reg_slave(bus, bus->slave[0]->addr,
-				ASPEED_I2CD_DEV_ADDR1_MASK, 0);
+				ASPEED_I2CD_DEV_ADDR1_MASK,
+				ASPEED_I2CD_EN_SLAVE_DEV_ADDR1, 0);
 
 	if (bus->slave[1])
 		__aspeed_i2c_reg_slave(bus, bus->slave[1]->addr,
 				ASPEED_I2CD_DEV_ADDR2_MASK,
-				ASPEED_I2CD_EN_SLAVE_DEV_ADDR2);
+				ASPEED_I2CD_EN_SLAVE_DEV_ADDR2, 1);
 	if (bus->slave[2])
 		__aspeed_i2c_reg_slave(bus, bus->slave[2]->addr,
 				ASPEED_I2CD_DEV_ADDR3_MASK,
-				ASPEED_I2CD_EN_SLAVE_DEV_ADDR3);
-
-<<<<<<< HEAD
-
-=======
->>>>>>> 90eee9be0412 (adding support for aspeed2600 multi slave mode)
+				ASPEED_I2CD_EN_SLAVE_DEV_ADDR3, 2);
 #endif /* CONFIG_I2C_SLAVE */
 
 	/* Set interrupt generation of I2C controller */
