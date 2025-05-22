@@ -90,6 +90,13 @@ config ASPEED_OTP
 	tristate "Aspeed OTP Driver"
 	depends on MACH_ASPEED_G6
 
+config ASPEED_MBOX
+	bool "Enable support for the ASPEED MBOX driver"
+	depends on ARCH_ASPEED
+	help
+	  Enable support for the ASPEED MBOX driver. This driver
+	  provides a mailbox client to the ASPEED BMC SoC IPC.
+
 endmenu
 
 endif
