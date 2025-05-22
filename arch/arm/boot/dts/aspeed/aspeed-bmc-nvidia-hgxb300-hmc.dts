@@ -12,23 +12,23 @@
 
     aliases {
         serial4 = &uart5;
-        i2c19 = &i2c5_mux71_0;
-        i2c20 = &i2c5_mux71_1;
-        i2c21 = &i2c5_mux71_2;
-        i2c22 = &i2c5_mux71_3;
+        i2c19 = &i2c5_mux75_0;
+        i2c20 = &i2c5_mux75_1;
+        i2c21 = &i2c5_mux75_2;
+        i2c22 = &i2c5_mux75_3;
 
-        i2c23 = &i2c5_mux72_0;
-        i2c24 = &i2c5_mux72_1;
-        i2c25 = &i2c5_mux72_2;
-        i2c26 = &i2c5_mux72_3;
-        i2c27 = &i2c7_mux73_0;
-        i2c28 = &i2c7_mux73_1;
-        i2c29 = &i2c7_mux73_2;
-        i2c30 = &i2c7_mux73_3;
-        i2c31 = &i2c7_mux74_0;
-        i2c32 = &i2c7_mux74_1;
-        i2c33 = &i2c7_mux74_2;
-        i2c34 = &i2c7_mux74_3;
+        i2c23 = &i2c5_mux76_0;
+        i2c24 = &i2c5_mux76_1;
+        i2c25 = &i2c5_mux76_2;
+        i2c26 = &i2c5_mux76_3;
+        i2c27 = &i2c7_mux77_0;
+        i2c28 = &i2c7_mux77_1;
+        i2c29 = &i2c7_mux77_2;
+        i2c30 = &i2c7_mux77_3;
+        i2c31 = &i2c7_mux70_0;
+        i2c32 = &i2c7_mux70_1;
+        i2c33 = &i2c7_mux70_2;
+        i2c34 = &i2c7_mux70_3;
 
         i2c35 = &i2c7_mux71_0;
         i2c36 = &i2c7_mux71_1;
@@ -458,74 +458,76 @@
     i2c-scl-clk-low-timeout-us = <32000>;
     i2c-tck-thddat-config = <0x0099EC00>;
 
-    // CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update (C00/C01)
-    i2c-switch@71 {
+    // CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update (E00)
+    // Note: 0x71 (C00/C01) is not supported, will add back later
+    i2c-switch@75 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        reg = <0x71>;
+        reg = <0x75>;
 
         // interrupt-parent = <&ipic>;
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
 
-        i2c5_mux71_0: i2c@0 {
+        i2c5_mux75_0: i2c@0 {
             reg = <0>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux71_1: i2c@1 {
+        i2c5_mux75_1: i2c@1 {
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux71_2: i2c@2 {
+        i2c5_mux75_2: i2c@2 {
             reg = <2>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux71_3: i2c@3 {
+        i2c5_mux75_3: i2c@3 {
             reg = <3>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
     };
 
-    // CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update (C01)
-    i2c-switch@72 {
+    // CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update (E00)
+    // Note: 0x72 (C01) is not supported, will add back later
+    i2c-switch@76 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        reg = <0x72>;
+        reg = <0x76>;
 
         // interrupt-parent = <&ipic>;
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
 
-        i2c5_mux72_0: i2c@0 {
+        i2c5_mux76_0: i2c@0 {
             reg = <0>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux72_1: i2c@1 {
+        i2c5_mux76_1: i2c@1 {
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux72_2: i2c@2 {
+        i2c5_mux76_2: i2c@2 {
             reg = <2>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c5_mux72_3: i2c@3 {
+        i2c5_mux76_3: i2c@3 {
             reg = <3>;
             #address-cells = <1>;
             #size-cells = <0>;
@@ -585,74 +587,76 @@
         };
     };
 
-    // CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update (C01)
-    i2c-switch@73 {
+    // CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update (E00)
+    // Note: 0x73 (C01) is not supported, will add back later
+    i2c-switch@77 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        reg = <0x73>;
+        reg = <0x77>;
 
         // interrupt-parent = <&ipic>;
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
 
-        i2c7_mux73_0: i2c@0 {
+        i2c7_mux77_0: i2c@0 {
             reg = <0>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux73_1: i2c@1 {
+        i2c7_mux77_1: i2c@1 {
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux73_2: i2c@2 {
+        i2c7_mux77_2: i2c@2 {
             reg = <2>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux73_3: i2c@3 {
+        i2c7_mux77_3: i2c@3 {
             reg = <3>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
     };
 
-    // CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update (C01)
-    i2c-switch@74 {
+    // CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update (E00)
+    // Note: 0x74 (C01) is not supported, will add back later
+    i2c-switch@70 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        reg = <0x74>;
+        reg = <0x70>;
 
         // interrupt-parent = <&ipic>;
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
 
-        i2c7_mux74_0: i2c@0 {
+        i2c7_mux70_0: i2c@0 {
             reg = <0>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux74_1: i2c@1 {
+        i2c7_mux70_1: i2c@1 {
             reg = <1>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux74_2: i2c@2 {
+        i2c7_mux70_2: i2c@2 {
             reg = <2>;
             #address-cells = <1>;
             #size-cells = <0>;
         };
 
-        i2c7_mux74_3: i2c@3 {
+        i2c7_mux70_3: i2c@3 {
             reg = <3>;
             #address-cells = <1>;
             #size-cells = <0>;
