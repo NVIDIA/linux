@@ -345,6 +345,7 @@ struct ast2600_i2c_bus {
 	 */
 	u32 tck_thddat;
 	u32 tout_baseclk_div;
+	u32 tout_ticks;
 };
 
 static u32 ast2600_fix_tout_baseclk_div(struct ast2600_i2c_bus *i2c_bus) {
@@ -396,7 +397,7 @@ static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 	u32 scl_high;
 	int divisor;
 	u32 data;
-	u32 tout_clkdiv, tout_ticks;
+	u32 tout_clkdiv;
 
 	regmap_read(i2c_bus->global_regs, AST2600_I2CG_CLK_DIV_CTRL, &clk_div_reg);
 
@@ -427,16 +428,16 @@ static u32 ast2600_select_i2c_clock(struct ast2600_i2c_bus *i2c_bus)
 
 	if (i2c_bus->timeout) {
 		tout_clkdiv = ast2600_fix_tout_baseclk_div(i2c_bus);
-		tout_ticks = ast2600_calc_timeout_timer(i2c_bus);
+		i2c_bus->tout_ticks = ast2600_calc_timeout_timer(i2c_bus);
 
 #ifdef CONFIG_MACH_ASPEED_G7
-		writel(MSIC_I2C_SET_TIMEOUT(tout_ticks, tout_ticks),
+		writel(MSIC_I2C_SET_TIMEOUT(i2c_bus->tout_ticks, i2c_bus->tout_ticks),
 		       i2c_bus->reg_base + MSIC_CONFIG_ACTIMING1);
 #else
 		/* ast2600 only have [4:0] range */
-		if (tout_ticks > 31)
-			tout_ticks = 31;
-		data |= AST2600_I2CC_TTIMEOUT(tout_ticks);
+		if (i2c_bus->tout_ticks > 31)
+			i2c_bus->tout_ticks = 31;
+		data |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 #endif
 		data |= AST2600_I2CC_TOUTBASECLK(tout_clkdiv);
 	}
@@ -685,7 +686,7 @@ static void ast2600_i2c_slave_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, u
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		ac_timing = readl(i2c_bus->reg_base + AST2600_I2CC_AC_TIMING) & AST2600_I2CC_AC_TIMING_MASK;
-		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		/* Clear irq and re-send slave trigger command */
 		writel(SLAVE_TRIGGER_CMD, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
