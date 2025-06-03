@@ -311,6 +311,11 @@
         reg = <0x32>;
     };
 
+    rtc@6F {
+        compatible = "isil,isl1208";
+        reg = <0x6f>;
+    };
+
     exp0: pca9535@20 {
         compatible = "nxp,pca9535";
         reg = <0x20>;
