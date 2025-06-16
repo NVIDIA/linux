@@ -466,7 +466,7 @@ static int mctp_spi_probe(struct spi_device *spi)
 	mctp_spi_dev->tx_thread = kthread_create(mctp_spi_tx_thread, mctp_spi_dev,
 					  "%s/tx", ndev->name);
 	if (IS_ERR(mctp_spi_dev->tx_thread))
-		return ERR_CAST(mctp_spi_dev->tx_thread); //warning: returning 'void *' from a function with return type 'int'
+		return PTR_ERR(mctp_spi_dev->tx_thread);
 
 	/* Init SPB */
 	ap = kzalloc(sizeof(*ap), GFP_KERNEL);
