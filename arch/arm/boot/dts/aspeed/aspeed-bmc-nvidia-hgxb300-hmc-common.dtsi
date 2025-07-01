@@ -464,7 +464,6 @@
     i2c-tck-thddat-config = <0x0099EC00>;
 
     // CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update (E00)
-    // Note: 0x71 (C00/C01) is not supported, will add back later
     i2c-switch@75 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
@@ -475,6 +474,7 @@
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
 
         i2c5_mux75_0: i2c@0 {
             reg = <0>;
@@ -502,7 +502,6 @@
     };
 
     // CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update (E00)
-    // Note: 0x72 (C01) is not supported, will add back later
     i2c-switch@76 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
@@ -513,6 +512,7 @@
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
 
         i2c5_mux76_0: i2c@0 {
             reg = <0>;
@@ -593,7 +593,6 @@
     };
 
     // CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update (E00)
-    // Note: 0x73 (C01) is not supported, will add back later
     i2c-switch@77 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
@@ -604,6 +603,7 @@
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
 
         i2c7_mux77_0: i2c@0 {
             reg = <0>;
@@ -631,7 +631,6 @@
     };
 
     // CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update (E00)
-    // Note: 0x74 (C01) is not supported, will add back later
     i2c-switch@70 {
         compatible = "nxp,pca9546";
         #address-cells = <1>;
@@ -642,6 +641,7 @@
         // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
         // interrupt-controller;
         // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
 
         i2c7_mux70_0: i2c@0 {
             reg = <0>;
