@@ -757,6 +757,8 @@ static void rtlgen_decode_speed(struct phy_device *phydev, int val)
 }
 
 #ifdef CONFIG_RTL_RGMII_SGMII_3809
+static int rtlgen_read_status(struct phy_device *phydev);
+
 static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
 {
 	int ret;
@@ -785,11 +787,7 @@ static int rtl8211f_rtlgen_read_status(struct phy_device *phydev)
 			phydev->duplex=DUPLEX_FULL;
 		}
 	} else {
-		ret = genphy_read_status(phydev);
-		if (ret < 0)
-			return ret;
-
-		return rtlgen_get_speed(phydev);
+		return rtlgen_read_status(phydev);
 	}
 
 	return 0;
