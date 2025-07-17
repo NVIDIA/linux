@@ -13,6 +13,7 @@
 
 extern const struct bus_type i3c_bus_type;
 extern const struct device_type i3c_masterdev_type;
+#include <linux/io.h>
 
 void i3c_bus_normaluse_lock(struct i3c_bus *bus);
 void i3c_bus_normaluse_unlock(struct i3c_bus *bus);
