@@ -228,6 +228,7 @@ static int ads7142_read_raw(struct iio_dev *indio_dev,
 static int ads7142_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
+	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 	struct iio_dev *indio_dev;
 	struct ads7142_state *state;
 	int ret;
