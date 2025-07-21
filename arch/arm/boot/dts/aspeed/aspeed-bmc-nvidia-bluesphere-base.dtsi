@@ -66,13 +66,13 @@
 	flash@0 {
 		status = "okay";
 		label = "bmc";
-                compatible = "sst,w25q256", "jedec,spi-nor";
+                compatible = "jedec,spi-nor";
 #include "aspeed-bmc-nvidia-secureboot-flash-layout-64.dtsi"
 	};
 	flash@1 {
 		status = "okay";
 		label = "alt-bmc";
-                compatible = "sst,w25q256", "jedec,spi-nor";
+                compatible = "jedec,spi-nor";
 #include "aspeed-bmc-nvidia-secureboot-alt-flash-layout-64.dtsi"
 	};
 };
@@ -88,7 +88,7 @@
 	flash@0 {
 		status = "okay";
 		label = "staging";
-		compatible = "sst,w25q256", "jedec,spi-nor";
+		compatible = "jedec,spi-nor";
 #include "aspeed-bmc-nvidia-config-flash-layout-64.dtsi"
 	};
 };
