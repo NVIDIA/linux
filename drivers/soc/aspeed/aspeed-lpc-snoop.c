@@ -173,7 +173,8 @@ static irqreturn_t aspeed_lpc_snoop_irq(int irq, void *arg)
 		return IRQ_NONE;
 
 	/* Ack pending IRQs */
-	regmap_write(lpc_snoop->regmap, HICR6, reg);
+	regmap_update_bits(lpc_snoop->regmap, HICR6,
+			   (HICR6_STR_SNP0W | HICR6_STR_SNP1W), reg);
 
 	/* Read and save most recent snoop'ed data byte to FIFO */
 	regmap_read(lpc_snoop->regmap, SNPWDR, &data);
