@@ -453,7 +453,7 @@ static int mctp_spi_probe(struct spi_device *spi)
 	spin_lock_init(&mctp_spi_dev->lock);
 	init_waitqueue_head(&mctp_spi_dev->main_thread_wq);
 	skb_queue_head_init(&mctp_spi_dev->tx_queue);
-	rc = mctp_register_netdev(ndev, NULL);
+	rc = mctp_register_netdev(ndev, NULL, MCTP_PHYS_BINDING_SERIAL);
 	if (rc)
 		goto err_netdev;
 	init_completion(&mctp_spi_dev->rx_done);
