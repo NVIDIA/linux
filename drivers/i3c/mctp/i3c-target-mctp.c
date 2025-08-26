@@ -1,0 +1,485 @@
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (C) 2022 Intel Corporation.*/
+
+#include <linux/cdev.h>
+#include <linux/idr.h>
+#include <linux/module.h>
+#include <linux/poll.h>
+#include <linux/ptr_ring.h>
+#include <linux/workqueue.h>
+#include <linux/crc8.h>
+
+#include <linux/i3c/device.h>
+
+#define I3C_CRC8_POLYNOMIAL	0x07
+DECLARE_CRC8_TABLE(i3c_crc8_table);
+
+#define I3C_TARGET_MCTP_MINORS	32
+#define RX_RING_COUNT		16
+
+/*
+ * IBI Mandatory Data Byte
+ * https://www.mipi.org/mipi_i3c_mandatory_data_byte_values_public
+ *
+ * MCTP:
+ * bit[7:5] = 3'b101
+ * bit[4:0] = 5'h0E
+ */
+#define I3C_MCTP_MDB		0xae
+
+static struct class *i3c_target_mctp_class;
+static dev_t i3c_target_mctp_devt;
+static DEFINE_IDA(i3c_target_mctp_ida);
+
+struct mctp_client;
+
+struct i3c_target_mctp {
+	struct i3c_device *i3cdev;
+	struct cdev cdev;
+	int id;
+	struct mctp_client *client;
+	spinlock_t client_lock; /* to protect client access */
+	bool mdb_append_pec;
+};
+
+struct mctp_client {
+	struct kref ref;
+	struct i3c_target_mctp *priv;
+	struct ptr_ring rx_queue;
+	wait_queue_head_t wait_queue;
+};
+
+struct mctp_packet {
+	u8 *data;
+	u16 count;
+};
+
+static void *i3c_target_mctp_packet_alloc(u16 count)
+{
+	struct mctp_packet *packet;
+	u8 *data;
+
+	packet = kzalloc(sizeof(*packet), GFP_ATOMIC);
+	if (!packet)
+		return NULL;
+
+	data = kzalloc(count, GFP_ATOMIC);
+	if (!data) {
+		kfree(packet);
+		return NULL;
+	}
+
+	packet->data = data;
+	packet->count = count;
+
+	return packet;
+}
+
+static void i3c_target_mctp_packet_free(void *data)
+{
+	struct mctp_packet *packet = data;
+
+	kfree(packet->data);
+	kfree(packet);
+}
+
+static struct mctp_client *i3c_target_mctp_client_alloc(struct i3c_target_mctp *priv)
+{
+	struct mctp_client *client;
+
+	client = kzalloc(sizeof(*client), GFP_KERNEL);
+	if (!client)
+		goto out;
+
+	kref_init(&client->ref);
+	client->priv = priv;
+	ptr_ring_init(&client->rx_queue, RX_RING_COUNT, GFP_KERNEL);
+out:
+	return client;
+}
+
+static void i3c_target_mctp_client_free(struct kref *ref)
+{
+	struct mctp_client *client = container_of(ref, typeof(*client), ref);
+
+	ptr_ring_cleanup(&client->rx_queue, &i3c_target_mctp_packet_free);
+
+	kfree(client);
+}
+
+static void i3c_target_mctp_client_get(struct mctp_client *client)
+{
+	kref_get(&client->ref);
+}
+
+static void i3c_target_mctp_client_put(struct mctp_client *client)
+{
+	kref_put(&client->ref, &i3c_target_mctp_client_free);
+}
+
+static void
+i3c_target_mctp_rx_packet_enqueue(struct i3c_device *i3cdev, const u8 *data, size_t count)
+{
+	struct i3c_target_mctp *priv = dev_get_drvdata(i3cdev_to_dev(i3cdev));
+	struct mctp_client *client;
+	struct mctp_packet *packet;
+	int ret;
+
+	spin_lock(&priv->client_lock);
+	client = priv->client;
+	if (client)
+		i3c_target_mctp_client_get(client);
+	spin_unlock(&priv->client_lock);
+
+	if (!client)
+		return;
+
+	packet = i3c_target_mctp_packet_alloc(count);
+	if (!packet)
+		goto err;
+
+	memcpy(packet->data, data, count);
+
+	ret = ptr_ring_produce(&client->rx_queue, packet);
+	if (ret)
+		i3c_target_mctp_packet_free(packet);
+	else
+		wake_up_all(&client->wait_queue);
+err:
+	i3c_target_mctp_client_put(client);
+}
+
+static struct mctp_client *i3c_target_mctp_create_client(struct i3c_target_mctp *priv)
+{
+	struct mctp_client *client;
+	int ret;
+
+	/* Currently, we support just one client. */
+	spin_lock_irq(&priv->client_lock);
+	ret = priv->client ? -EBUSY : 0;
+	spin_unlock_irq(&priv->client_lock);
+
+	if (ret)
+		return ERR_PTR(ret);
+
+	client = i3c_target_mctp_client_alloc(priv);
+	if (!client)
+		return ERR_PTR(-ENOMEM);
+
+	init_waitqueue_head(&client->wait_queue);
+
+	spin_lock_irq(&priv->client_lock);
+	priv->client = client;
+	spin_unlock_irq(&priv->client_lock);
+
+	return client;
+}
+
+static void i3c_target_mctp_delete_client(struct mctp_client *client)
+{
+	struct i3c_target_mctp *priv = client->priv;
+
+	spin_lock_irq(&priv->client_lock);
+	priv->client = NULL;
+	spin_unlock_irq(&priv->client_lock);
+
+	i3c_target_mctp_client_put(client);
+}
+
+static int i3c_target_mctp_open(struct inode *inode, struct file *file)
+{
+	struct i3c_target_mctp *priv = container_of(inode->i_cdev, struct i3c_target_mctp, cdev);
+	struct mctp_client *client;
+
+	client = i3c_target_mctp_create_client(priv);
+	if (IS_ERR(client))
+		return PTR_ERR(client);
+
+	file->private_data = client;
+
+	return 0;
+}
+
+static int i3c_target_mctp_release(struct inode *inode, struct file *file)
+{
+	struct mctp_client *client = file->private_data;
+
+	i3c_target_mctp_delete_client(client);
+
+	return 0;
+}
+
+static ssize_t i3c_target_mctp_read(struct file *file, char __user *buf,
+				    size_t count, loff_t *ppos)
+{
+	struct mctp_client *client = file->private_data;
+	struct mctp_packet *rx_packet;
+
+	rx_packet = ptr_ring_consume_irq(&client->rx_queue);
+	if (!rx_packet)
+		return -EAGAIN;
+
+	if (count < rx_packet->count) {
+		count = -EINVAL;
+		goto err_free;
+	}
+	if (count > rx_packet->count)
+		count = rx_packet->count;
+
+	if (copy_to_user(buf, rx_packet->data, count))
+		count = -EFAULT;
+err_free:
+	i3c_target_mctp_packet_free(rx_packet);
+
+	return count;
+}
+
+static u8 *pec_append(u8 addr_rnw, u8 *buf, u8 len)
+{
+	u8 pec_v;
+
+	pec_v = crc8(i3c_crc8_table, &addr_rnw, 1, 0);
+	pec_v = crc8(i3c_crc8_table, buf, len, pec_v);
+	buf[len] = pec_v;
+
+	return buf;
+}
+
+static ssize_t i3c_target_mctp_write(struct file *file, const char __user *buf,
+				     size_t count, loff_t *ppos)
+{
+	struct mctp_client *client = file->private_data;
+	struct i3c_target_mctp *priv = client->priv;
+	struct i3c_priv_xfer xfers[2] = {};
+	struct i3c_device_info info;
+	u8 *tx_data;
+	u8 *ibi_data;
+	int ret;
+	bool ibi_enabled = i3c_device_is_ibi_enabled(priv->i3cdev);
+
+	if (!ibi_enabled) {
+		dev_warn(i3cdev_to_dev(priv->i3cdev), "IBI not enabled\n");
+		return count;
+	}
+	if (priv->mdb_append_pec)
+		ibi_data = kzalloc(2, GFP_KERNEL);
+	else
+		ibi_data = kzalloc(1, GFP_KERNEL);
+	if (!ibi_data)
+		return -ENOMEM;
+	ibi_data[0] = I3C_MCTP_MDB;
+
+	tx_data = kzalloc(count, GFP_KERNEL);
+	if (!tx_data) {
+		ret = -ENOMEM;
+		goto free_ibi;
+	}
+
+	if (copy_from_user(tx_data, buf, count)) {
+		ret = -EFAULT;
+		goto out_packet;
+	}
+
+	i3c_device_get_info(priv->i3cdev, &info);
+	if (priv->mdb_append_pec) {
+		pec_append(info.dyn_addr << 1 | 0x1, ibi_data, 1);
+		xfers[0].len = 2;
+	} else {
+		xfers[0].len = 1;
+	}
+	xfers[0].data.out = ibi_data;
+
+	xfers[1].data.out = tx_data;
+	xfers[1].len = count;
+
+	ret = i3c_device_pending_read_notify(priv->i3cdev, &xfers[1],
+					     &xfers[0]);
+	if (ret)
+		goto out_packet;
+	ret = count;
+
+out_packet:
+	kfree(tx_data);
+free_ibi:
+	kfree(ibi_data);
+	return ret;
+}
+
+static __poll_t i3c_target_mctp_poll(struct file *file, struct poll_table_struct *pt)
+{
+	struct mctp_client *client = file->private_data;
+	__poll_t ret = 0;
+
+	poll_wait(file, &client->wait_queue, pt);
+
+	if (__ptr_ring_peek(&client->rx_queue))
+		ret |= EPOLLIN;
+
+	/*
+	 * TODO: Add support for "write" readiness.
+	 * DW-I3C has a hardware queue that has finite number of entries.
+	 * If we try to issue more writes that space in this queue allows for,
+	 * we're in trouble. This should be handled by error from write() and
+	 * poll() blocking for write events.
+	 */
+	return ret;
+}
+
+static const struct file_operations i3c_target_mctp_fops = {
+	.owner = THIS_MODULE,
+	.open = i3c_target_mctp_open,
+	.release = i3c_target_mctp_release,
+	.read = i3c_target_mctp_read,
+	.write = i3c_target_mctp_write,
+	.poll = i3c_target_mctp_poll,
+};
+
+static struct i3c_target_read_setup i3c_target_mctp_rx_packet_setup = {
+	.handler = i3c_target_mctp_rx_packet_enqueue,
+};
+
+static ssize_t mdb_append_pec_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct i3c_device *i3cdev = dev_get_drvdata(dev);
+	struct i3c_target_mctp *priv = i3cdev_get_drvdata(i3cdev);
+	ssize_t ret;
+
+	ret = sysfs_emit(buf, "%d\n", priv->mdb_append_pec);
+
+	return ret;
+}
+
+static ssize_t mdb_append_pec_store(struct device *dev, struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct i3c_device *i3cdev = dev_get_drvdata(dev);
+	struct i3c_target_mctp *priv = i3cdev_get_drvdata(i3cdev);
+	bool res;
+	int ret;
+
+	ret = kstrtobool(buf, &res);
+	if (ret)
+		return ret;
+
+	priv->mdb_append_pec = res;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(mdb_append_pec);
+
+static int i3c_target_mctp_probe(struct i3c_device *i3cdev)
+{
+	struct device *parent = i3cdev_to_dev(i3cdev);
+	struct i3c_target_mctp *priv;
+	struct device *dev;
+	int ret;
+
+	priv = devm_kzalloc(parent, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	ret = ida_alloc(&i3c_target_mctp_ida, GFP_KERNEL);
+	if (ret < 0)
+		return ret;
+	priv->id = ret;
+
+	priv->i3cdev = i3cdev;
+	spin_lock_init(&priv->client_lock);
+
+	cdev_init(&priv->cdev, &i3c_target_mctp_fops);
+	priv->cdev.owner = THIS_MODULE;
+
+	ret = cdev_add(&priv->cdev,
+		       MKDEV(MAJOR(i3c_target_mctp_devt), priv->id), 1);
+	if (ret) {
+		ida_free(&i3c_target_mctp_ida, priv->id);
+		return ret;
+	}
+
+	dev = device_create(i3c_target_mctp_class, parent,
+			    MKDEV(MAJOR(i3c_target_mctp_devt), priv->id), i3cdev,
+			    "i3c-mctp-target-%d", priv->id);
+	if (IS_ERR(dev)) {
+		ret = PTR_ERR(dev);
+		goto err;
+	}
+
+	/*
+	 * By default, the PEC is appended to the MDB as a hardware workaround for the AST2600 I3C
+	 * controller as primary controller.
+	 */
+	priv->mdb_append_pec = 1;
+
+	ret = device_create_file(dev, &dev_attr_mdb_append_pec);
+	if (unlikely(ret)) {
+		dev_err(dev, "Failed creating device attrs\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	i3cdev_set_drvdata(i3cdev, priv);
+
+	i3c_target_read_register(i3cdev, &i3c_target_mctp_rx_packet_setup);
+
+	crc8_populate_msb(i3c_crc8_table, I3C_CRC8_POLYNOMIAL);
+
+	return 0;
+err:
+	cdev_del(&priv->cdev);
+	ida_free(&i3c_target_mctp_ida, priv->id);
+
+	return ret;
+}
+
+static void i3c_target_mctp_remove(struct i3c_device *i3cdev)
+{
+	struct i3c_target_mctp *priv = dev_get_drvdata(i3cdev_to_dev(i3cdev));
+
+	device_destroy(i3c_target_mctp_class, i3c_target_mctp_devt);
+	cdev_del(&priv->cdev);
+	ida_free(&i3c_target_mctp_ida, priv->id);
+}
+
+static const struct i3c_device_id i3c_target_mctp_ids[] = {
+	I3C_CLASS(0xcc, 0x0),
+	{ },
+};
+
+static struct i3c_driver i3c_target_mctp_drv = {
+	.driver.name = "i3c-target-mctp",
+	.id_table = i3c_target_mctp_ids,
+	.probe = i3c_target_mctp_probe,
+	.remove = i3c_target_mctp_remove,
+	.target = true,
+};
+
+static int i3c_target_mctp_init(struct i3c_driver *drv)
+{
+	int ret;
+
+	ret = alloc_chrdev_region(&i3c_target_mctp_devt, 0,
+				  I3C_TARGET_MCTP_MINORS, "i3c-target-mctp");
+	if (ret)
+		return ret;
+
+	i3c_target_mctp_class = class_create("i3c-target-mctp");
+	if (IS_ERR(i3c_target_mctp_class)) {
+		unregister_chrdev_region(i3c_target_mctp_devt, I3C_TARGET_MCTP_MINORS);
+		return PTR_ERR(i3c_target_mctp_class);
+	}
+
+	return i3c_driver_register(drv);
+}
+
+static void i3c_target_mctp_fini(struct i3c_driver *drv)
+{
+	i3c_driver_unregister(drv);
+	class_destroy(i3c_target_mctp_class);
+	unregister_chrdev_region(i3c_target_mctp_devt, I3C_TARGET_MCTP_MINORS);
+}
+
+module_driver(i3c_target_mctp_drv, i3c_target_mctp_init, i3c_target_mctp_fini);
+MODULE_AUTHOR("Iwona Winiarska <iwona.winiarska@intel.com>");
+MODULE_DESCRIPTION("I3C Target MCTP driver");
+MODULE_LICENSE("GPL");

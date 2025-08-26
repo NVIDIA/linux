@@ -13,4 +13,8 @@
 #define I2C_NO_FILTER_HIGH_FREQUENCY    (1 << 5)
 #define I2C_NO_FILTER_LOW_FREQUENCY     (2 << 5)
 
+/* I3C bus context definitions */
+#define I3C_BUS_CONTEXT_MIPI_BASIC_V1_0_0    0
+#define I3C_BUS_CONTEXT_JESD403               1
+
 #endif

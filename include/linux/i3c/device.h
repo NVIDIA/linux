@@ -43,11 +43,32 @@ enum i3c_error_code {
  * @I3C_HDR_DDR: DDR mode
  * @I3C_HDR_TSP: TSP mode
  * @I3C_HDR_TSL: TSL mode
+ * @I3C_HDR_BT: BT mode
  */
 enum i3c_hdr_mode {
 	I3C_HDR_DDR,
 	I3C_HDR_TSP,
 	I3C_HDR_TSL,
+	I3C_HDR_BT,
+};
+
+/**
+ * struct i3c_hdr_cmd - I3C HDR command
+ * @mode: HDR mode selected for this command
+ * @code: command opcode
+ * @ndatawords: number of data words (a word is 16bits wide)
+ * @data: input/output buffer
+ * @err: I3C error code
+ */
+struct i3c_hdr_cmd {
+	enum i3c_hdr_mode mode;
+	u8 code;
+	int ndatawords;
+	union {
+		void *in;
+		const void *out;
+	} data;
+	enum i3c_error_code err;
 };
 
 /**
@@ -77,6 +98,17 @@ struct i3c_priv_xfer {
  */
 enum i3c_dcr {
 	I3C_DCR_GENERIC_DEVICE = 0,
+	I3C_DCR_HUB = 194,
+	I3C_DCR_JESD403_BEGIN = 208,
+	I3C_DCR_THERMAL_SENSOR_FIRST = 210,
+	I3C_DCR_THERMAL_SENSOR_SECOND = 214,
+	I3C_DCR_PMIC_SECOND = 216,
+	I3C_DCR_PMIC_FIRST = 217,
+	I3C_DCR_SPD_HUB = 218,
+	I3C_DCR_RCD = 219,
+	I3C_DCR_PMIC_THIRD = 220,
+	I3C_DCR_JESD403_END = 223,
+	I3C_DCR_MAX = 228,
 };
 
 #define I3C_PID_MANUF_ID(pid)		(((pid) & GENMASK_ULL(47, 33)) >> 33)
@@ -110,6 +142,8 @@ enum i3c_dcr {
  * @max_read_turnaround: max read turn-around time in micro-seconds
  * @max_read_len: max private SDR read length in bytes
  * @max_write_len: max private SDR write length in bytes
+ * @pec: flag telling whether PEC (Packet Error Check) generation and verification for read
+ *       and write transaction is enabled
  *
  * These are all basic information that should be advertised by an I3C device.
  * Some of them are optional depending on the device type and device
@@ -131,6 +165,8 @@ struct i3c_device_info {
 	u32 max_read_turnaround;
 	u16 max_read_len;
 	u16 max_write_len;
+	u8 pec;
+	__be16 status;
 };
 
 /*
@@ -181,9 +217,13 @@ struct i3c_driver {
 	int (*probe)(struct i3c_device *dev);
 	void (*remove)(struct i3c_device *dev);
 	const struct i3c_device_id *id_table;
+	bool target;
 };
 
-#define drv_to_i3cdrv(__drv)	container_of_const(__drv, struct i3c_driver, driver)
+static inline struct i3c_driver *drv_to_i3cdrv(struct device_driver *drv)
+{
+	return container_of(drv, struct i3c_driver, driver);
+}
 
 struct device *i3cdev_to_dev(struct i3c_device *i3cdev);
 
@@ -303,6 +343,19 @@ int i3c_device_do_priv_xfers(struct i3c_device *dev,
 
 int i3c_device_do_setdasa(struct i3c_device *dev);
 
+int i3c_device_getstatus_ccc(struct i3c_device *dev, struct i3c_device_info *info);
+
+int i3c_device_send_hdr_cmds(struct i3c_device *dev, struct i3c_hdr_cmd *cmds,
+			     int ncmds);
+
+int i3c_device_generate_ibi(struct i3c_device *dev, const u8 *data, int len);
+
+int i3c_device_pending_read_notify(struct i3c_device *dev,
+				   struct i3c_priv_xfer *pending_read,
+				   struct i3c_priv_xfer *ibi_notify);
+
+bool i3c_device_is_ibi_enabled(struct i3c_device *dev);
+
 void i3c_device_get_info(const struct i3c_device *dev, struct i3c_device_info *info);
 
 struct i3c_ibi_payload {
@@ -341,5 +394,48 @@ int i3c_device_request_ibi(struct i3c_device *dev,
 void i3c_device_free_ibi(struct i3c_device *dev);
 int i3c_device_enable_ibi(struct i3c_device *dev);
 int i3c_device_disable_ibi(struct i3c_device *dev);
+int i3c_device_setmrl_ccc(struct i3c_device *dev, struct i3c_device_info *info, u16 read_len,
+			  u8 ibi_len);
+int i3c_device_setmwl_ccc(struct i3c_device *dev, struct i3c_device_info *info, u16 write_len);
+int i3c_device_getmrl_ccc(struct i3c_device *dev, struct i3c_device_info *info);
+int i3c_device_getmwl_ccc(struct i3c_device *dev, struct i3c_device_info *info);
+int i3c_device_setaasa_ccc(struct i3c_device *dev);
+int i3c_device_sethid_ccc(struct i3c_device *dev);
+
+int i3c_device_dbgaction_wr_ccc(struct i3c_device *dev, struct i3c_device_info *info,
+				u8 *data, u8 len);
+int i3c_device_dbgopcode_wr_ccc(struct i3c_device *dev, struct i3c_device_info *info,
+				u8 *data, u8 len);
+int i3c_device_dbgopcode_rd_ccc(struct i3c_device *dev, struct i3c_device_info *info,
+				u8 *data, u8 len);
+
+struct i3c_target_read_setup {
+	void (*handler)(struct i3c_device *dev, const u8 *data, size_t len);
+};
+
+int i3c_target_read_register(struct i3c_device *dev, const struct i3c_target_read_setup *setup);
+
+int i3c_device_control_pec(struct i3c_device *dev, bool pec);
+
+/**
+ * enum i3c_event - List of possible events could be send/published to
+ *		    registered devices.
+ * @i3c_event_prepare_for_rescan: Event send when controller driver is going to
+ *				  run bus discovery again.
+ * @i3c_event_rescan_done: Event send when controller driver run bus discovery
+ *			   again.
+ */
+enum i3c_event {
+	i3c_event_prepare_for_rescan = 0,
+	i3c_event_rescan_done,
+};
+
+/**
+ * i3c_event_cb - callback registered by device driver and used by controller
+ *		  driver to publish event.
+ */
+typedef void (*i3c_event_cb)(struct i3c_device *dev, enum i3c_event event);
+
+void i3c_device_register_event_cb(struct i3c_device *dev, i3c_event_cb cb);
 
 #endif /* I3C_DEV_H */
