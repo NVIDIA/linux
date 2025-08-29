@@ -349,17 +349,21 @@ static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key) {}
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev) {}
 #endif
 
+/* takes ownership of skb, both in success and failure cases */
 static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 {
 	struct mctp_hdr *hdr = mctp_hdr(skb);
 	u8 exp_seq, this_seq;
+	int rc = 0;
 
 	this_seq = (hdr->flags_seq_tag >> MCTP_HDR_SEQ_SHIFT)
 		& MCTP_HDR_SEQ_MASK;
 
 	if (!key->reasm_head) {
-		/* Since we're manipulating the shared frag_list, ensure it isn't
-		 * shared with any other SKBs.
+		/* Since we're manipulating the shared frag_list, ensure it
+		 * isn't shared with any other SKBs. In the cloned case,
+		 * this will free the skb; callers can no longer access it
+		 * safely.
 		 */
 		key->reasm_head = skb_unshare(skb, GFP_ATOMIC);
 		if (!key->reasm_head)
@@ -372,11 +376,15 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 
 	exp_seq = (key->last_seq + 1) & MCTP_HDR_SEQ_MASK;
 
-	if (this_seq != exp_seq)
-		return -EINVAL;
+	if (this_seq != exp_seq) {
+		rc = -EINVAL;
+		goto err_free;
+	}
 
-	if (key->reasm_head->len + skb->len > mctp_message_maxlen)
-		return -EMSGSIZE;
+	if (key->reasm_head->len + skb->len > mctp_message_maxlen) {
+		rc = -EMSGSIZE;
+		goto err_free;
+	}
 
 	skb->next = NULL;
 	skb->sk = NULL;
@@ -389,7 +397,11 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 	key->reasm_head->len += skb->len;
 	key->reasm_head->truesize += skb->truesize;
 
-	return 0;
+	return rc;
+
+err_free:
+	kfree_skb(skb);
+	return rc;
 }
 
 /*
@@ -616,44 +628,43 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				goto out_unlock;
 			}
 
-		/* we can queue without the key lock here, as the
-		 * key isn't observable yet
-		 */
-		mctp_frag_queue(key, skb);
-		
-		/* Cache message type and payload from first fragment (SOM) for error reporting.
-		 * If middle/end fragments are missing (timeout), we can still report
-		 * the correct message headers to the application.
-		 * Use skb_network_header() not skb->data for consistency.
-		 */
-		if (skb && skb->len > sizeof(struct mctp_hdr)) {
-			u8 *msg_start = (u8 *)skb_network_header(skb);
-			size_t payload_offset, available, capture_len;
+			/* we can queue without the key lock here, as the
+			* key isn't observable yet
+			*/
+			mctp_frag_queue(key, skb);
 			
-			/* Capture message type (first byte after MCTP header) */
-			key->orig_msg_type = *(msg_start + sizeof(struct mctp_hdr));
-			
-			/* Capture first 32 bytes of payload (after message type) for RX timeout errors */
-			payload_offset = sizeof(struct mctp_hdr) + 1;
-			if (skb->len > payload_offset) {
-				available = skb->len - payload_offset;
-				capture_len = min_t(size_t, available, sizeof(key->orig_payload));
-				memcpy(key->orig_payload, msg_start + payload_offset, capture_len);
-				key->orig_payload_len = capture_len;
+			/* Cache message type and payload from first fragment (SOM) for error reporting.
+			* If middle/end fragments are missing (timeout), we can still report
+			* the correct message headers to the application.
+			* Use skb_network_header() not skb->data for consistency.
+			*/
+			if (skb && skb->len > sizeof(struct mctp_hdr)) {
+				u8 *msg_start = (u8 *)skb_network_header(skb);
+				size_t payload_offset, available, capture_len;
+				
+				/* Capture message type (first byte after MCTP header) */
+				key->orig_msg_type = *(msg_start + sizeof(struct mctp_hdr));
+				
+				/* Capture first 32 bytes of payload (after message type) for RX timeout errors */
+				payload_offset = sizeof(struct mctp_hdr) + 1;
+				if (skb->len > payload_offset) {
+					available = skb->len - payload_offset;
+					capture_len = min_t(size_t, available, sizeof(key->orig_payload));
+					memcpy(key->orig_payload, msg_start + payload_offset, capture_len);
+					key->orig_payload_len = capture_len;
+				}
 			}
-		}
+
+			skb = NULL;
 
 			/* if the key_add fails, we've raced with another
 			 * SOM packet with the same src, dest and tag. There's
 			 * no way to distinguish future packets, so all we
-			 * can do is drop; we'll free the skb on exit from
-			 * this function.
+			 * can do is drop.
 			 */
 			rc = mctp_key_add(key, msk);
-			if (!rc) {
+			if (!rc)
 				trace_mctp_key_acquire(key);
-				skb = NULL;
-			}
 
 			/* we don't need to release key->lock on exit, so
 			 * clean up here and suppress the unlock via
@@ -671,8 +682,7 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				key = NULL;
 			} else {
 				rc = mctp_frag_queue(key, skb);
-				if (!rc)
-					skb = NULL;
+				skb = NULL;
 			}
 		}
 
@@ -681,24 +691,23 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 		 * using the message-specific key
 		 */
 
-	/* we need to be continuing an existing reassembly... */
-	if (!key->reasm_head) {
-		rc = -EINVAL;
-		mctp_report_rx_missing_som(key, skb, mh, tag, &f);
-	} else {
-		rc = mctp_frag_queue(key, skb);
-		
-		if (rc == -EINVAL || rc == -EMSGSIZE) {
-			/* Reassembly failure: sequence error (-EINVAL) or message too large (-EMSGSIZE) */
-			mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
+		/* we need to be continuing an existing reassembly... */
+		if (!key->reasm_head) {
+			rc = -EINVAL;
+			mctp_report_rx_missing_som(key, skb, mh, tag, &f);
+		} else {
+			rc = mctp_frag_queue(key, skb);
+			
+			if (rc == -EINVAL || rc == -EMSGSIZE) {
+				/* Reassembly failure: sequence error (-EINVAL) or message too large (-EMSGSIZE) */
+				mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
+			}
+
+			skb = NULL;
 		}
-	}
 
 		if (rc)
 			goto out_unlock;
-
-		/* we've queued; the queue owns the skb now */
-		skb = NULL;
 
 		/* end of message? deliver to socket, and we're done with
 		 * the reassembly/response key
