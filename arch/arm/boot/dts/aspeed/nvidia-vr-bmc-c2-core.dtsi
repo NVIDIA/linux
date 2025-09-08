@@ -1,0 +1,641 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+
+&gpio0 {
+    gpio-line-names =
+
+    /* gpio-line-names are the combination of <signal>-<I/O> , "" is the placeholder for the unused pins*/
+
+    /* 208 (26*8) 3.3V GPIOs */
+
+    /*A0-A7*/
+    "", "", "", "", "", "", "", "",
+
+    /*B0-B7*/
+    "", "", "", "", "", "", "", "",
+
+    /*C0-C7*/
+    "SGPIO_I2C_MUX_SEL-O",
+    "", "", "", "", "", "", "",
+
+    /*D0-D7*/
+    "", "", "",
+    "UART1_MUX_SEL-O",
+    "",
+    "FPGA_PEX_RST_L-O",
+    "", "",
+
+    /*E0-E7*/
+    "RTL8221_PHY_RST_L-O",
+    "RTL8211_PHY_INT_L-I",
+    "",
+    "UART3_MUX_SEL-O",
+    "", "", "",
+    "SGPIO_BMC_EN-O",
+
+    /*F0-F7*/
+    "", "", "", "", "", "", "", "",
+
+    /*G0-G7*/
+    "", "", "", "", "", "", "", "",
+
+    /*H0-H7*/
+    "", "", "", "", "", "", "", "",
+
+    /*I0-I7*/
+    "", "", "", "", "",
+    "QSPI2_RST_L-O",
+    "GLOBAL_WP_BMC-O",
+    "BMC_DDR4_TEN-O",
+
+    /*J0-J7*/
+    "", "", "", "", "", "", "", "",
+
+    /*K0-K7*/
+    "", "", "", "", "", "", "", "",
+
+    /*L0-L7*/
+    "", "", "", "", "", "", "", "",
+
+    /*M0-M7*/
+    "PCIE_EP_RST_EN-O",
+    "BMC_FRU_WP-O",
+    "HMC_RESET_L-O",
+    "STBY_POWER_EN-O",
+    "STBY_POWER_PG-I",
+    "PCIE_EP_RST_L-O",
+    "", "",
+
+    /*N0-N7*/
+    "", "", "", "", "", "", "", "",
+
+    /*O0-O7*/
+    "", "", "", "", "", "", "", "",
+
+    /*P0-P7*/
+    "", "", "", "", "", "", "", "",
+
+    /*Q0-Q7*/
+    "", "", "", "", "", "", "", "",
+
+    /*R0-R7*/
+    "", "", "", "", "", "", "", "",
+
+    /*S0-S7*/
+    "", "", "", "", "", "", "", "",
+
+    /*T0-T7*/
+    "", "", "", "", "", "", "", "",
+
+    /*U0-U7*/
+    "", "", "", "", "", "", "", "",
+
+    /*V0-V7*/
+    "AP_EROT_REQ-O",
+    "EROT_AP_GNT-I",
+    "",
+    "",
+    "PCB_TEMP_ALERT-I",
+    "", "", "",
+
+    /*W0-W7*/
+    "", "", "", "", "", "", "", "",
+
+    /*X0-X7*/
+    "", "",
+    "TPM_MUX_SEL-O",
+    "", "", "", "", "",
+
+    /*Y0-Y7*/
+    "", "", "",
+    "EMMC_RST-O",
+    "","", "", "",
+
+    /*Z0-Z7*/
+    "","", "", "", "", "", "", "";
+};
+
+// I2C2 GPIO Expander
+&i2c1 {
+    // MGMT1 BOARD0, Expander @0x20
+    exp0: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        startup-delay-ms = <2000>;
+        gpio-line-names =
+            "B0_M1_MCU_RESET_L-O",
+            "B0_M1_MCU_RECOVERY_L-O",
+            "B0_M1_SNN_GPU0_MCU_RESET_L",
+            "B0_M1_SNN_GPU0_MCU_REC_L",
+            "B0_M1_CPU_OVERT_N-I",
+            "B0_M1_CPU_THERM_WARN_L-I",
+            "B0_M1_SNN_GPU_THERM_OVERT_L",
+            "B0_M1_SNN_GPU_THERM_WARN_L",
+            "B0_M1_MODULE_PWR_GOOD-I",
+            "B0_M1_MCU_HMC_ALERT_L-I",
+            "B0_M1_USB1_HUB_RST_L-O",
+            "B0_M1_HPM_MCU_OK_I",
+            "B0_M1_IST_BOOT_MODE-I",
+            "B0_M1_BOARD_LOC_STRAP",
+            "B0_M1_IST_SYS_RST_L-O",
+            "B0_M1_HMC_PRSNT_L-O";
+    };
+
+    // MGMT1 BOARD0, Expander @0x21
+    exp1: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        startup-delay-ms = <2000>;
+        gpio-line-names =
+            "B0_M1_CPU_FORCED_RECOVERY_L-O",
+            "B0_M1_CPU_BOOT_DEV_SEL0-O",
+            "B0_M1_CPU_BOOT_DEV_SEL1-O",
+            "B0_M1_CPU_BOOT_DEV_SEL2-O",
+            "B0_M1_SNN_CPU_BOOT_DEV_SEL3",
+            "B0_M1_CPU_RECOVERY_TYPE0-O",
+            "B0_M1_CPU_RECOVERY_TYPE1-O",
+            "B0_M1_CPU_IST_BOOT_HMC-O",
+            "B0_M1_CPU_BOOT_CHAIN0-O",
+            "B0_M1_SNN_CPU_BOOT_CHAIN1",
+            "B0_M1_SNN_CPU_BOOT_CHAIN2",
+            "B0_M1_CPU_DIE_SEL0-O",
+            "B0_M1_CPU_DIE_SEL1-O",
+            "B0_M1_CPU_DIE_SEL2-O",
+            "B0_M1_CPU_BOOT_COMPLETE-O",
+            "B0_M1_IOX_NVJTAG_SEL-O";
+    };
+};
+
+
+// I2C3 GPIO Expander
+&i2c2 {
+    // MGMT0 BOARD0, Expander @0x20
+    exp2: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+
+        gpio-line-names =
+            "B0_M0_SNN_IOX_STBY_PWR_EN",
+            "B0_M0_STBY_POWER_PG-I",
+            "B0_M0_THERM_OVERT_L-I",
+            "B0_M0_THERM_WARN_L-I",
+            "B0_M0_GLOBAL_WP-O",
+            "B0_M0_USB_HUB0_RST_L-O",
+            "B0_M0_IOX_PRE_SYS_RST_L-O",
+            "B0_M0_WATER_ALERT_L-I",
+            "B0_M0_RUN_PWR_EN-O",
+            "B0_M0_MODULE_PWR_GOOD-I",
+            "B0_M0_CPU_CHIPTHROT_L_3V3-I",
+            "B0_M0_SHDN_REQ_L_3V3-O",
+            "B0_M0_CPU0_SHDN_OK_L_3V3-I",
+            "B0_M0_CPU1_SHDN_OK_L_3V3-I",
+            "B0_M0_PWR_BRAKE_L_3V3-O",
+            "B0_M0_PDB_PWR_BRAKE_L";
+    };
+
+    // MGMT0 BOARD0, Expander @0x21
+    exp3: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+
+        gpio-line-names =
+            "B0_M0_I2C_BUS_MUX_RST_L-O",
+            "B0_M0_SLOT_PWR_BRAKE_L-O",
+            "B0_M0_SNN_SOCAMM_SPD_WP",
+            "B0_M0_C0_SOCAMM_DAC_I2C_SEL_R-O",
+            "B0_M0_C1_SOCAMM_DAC_I2C_SEL_R-O",
+            "B0_M0_C0_SOCAMM_I2C_SEL_R-O",
+            "B0_M0_C1_SOCAMM_I2C_SEL_R-O",
+            "B0_M0_CPU_IST_BOOT_BMC-O",
+            "B0_M0_CPU_L0L1_RST_L_3V3-I",
+            "B0_M0_CPU_L2_RST_L_3V3-I",
+            "B0_M0_FAN_BRD_PRSNT_L",
+            "B0_M0_FAN_FAIL_L",
+            "B0_M0_BMC_LEAK_TEST_L-O",
+            "B0_M0_MCU_BMC_ALERT_L-I",
+            "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
+            "B0_M0_HSC_POWER_CYCLE";
+    };
+
+    // MGMT0 BOARD0, Expander @0x22
+    exp4: pca9555@22 {
+        compatible = "nxp,pca9555";
+        reg = <0x22>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B0_M0_C0_UPHY0_PRSNT0_L-I",
+            "B0_M0_C0_UPHY0_PRSNT1_L-I",
+            "B0_M0_C0_UPHY0_PRSNT2_L-I",
+            "B0_M0_C0_UPHY0_PRSNT3_L-I",
+            "B0_M0_C0_UPHY1_PRSNT0_L-I",
+            "B0_M0_C0_UPHY1_PRSNT1_L-I",
+            "B0_M0_SNN_C0_UPHY1_PRSNT2_L",
+            "B0_M0_SNN_C0_UPHY1_PRSNT3_L",
+            "B0_M0_C0_UPHY2_PRSNT0_L-I",
+            "B0_M0_C0_UPHY2_PRSNT1_L-I",
+            "B0_M0_C0_UPHY2_PRSNT2_L-I",
+            "B0_M0_C0_UPHY2_PRSNT3_L-I",
+            "B0_M0_C0_UPHY3_PRSNT0_L-I",
+            "B0_M0_C0_UPHY3_PRSNT1_L-I",
+            "B0_M0_SNN_C0_UPHY3_PRSNT2_L",
+            "B0_M0_SNN_C0_UPHY3_PRSNT3_L";
+    };
+
+    // MGMT0 BOARD0, Expander @0x23
+    exp5: pca9555@23 {
+        compatible = "nxp,pca9555";
+        reg = <0x23>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B0_M0_C1_UPHY0_PRSNT0_L-I",
+            "B0_M0_C1_UPHY0_PRSNT1_L-I",
+            "B0_M0_C1_UPHY0_PRSNT2_L-I",
+            "B0_M0_C1_UPHY0_PRSNT3_L-I",
+            "B0_M0_SNN_C1_UPHY1_PRSNT0_L",
+            "B0_M0_C1_UPHY1_PRSNT1_L-I",
+            "B0_M0_SNN_C1_UPHY1_PRSNT2_L",
+            "B0_M0_SNN_C1_UPHY1_PRSNT3_L",
+            "B0_M0_C1_UPHY2_PRSNT0_L-I",
+            "B0_M0_C1_UPHY2_PRSNT1_L-I",
+            "B0_M0_C1_UPHY2_PRSNT2_L-I",
+            "B0_M0_C1_UPHY2_PRSNT3_L-I",
+            "B0_M0_C1_UPHY3_PRSNT0_L-I",
+            "B0_M0_C1_UPHY3_PRSNT1_L-I",
+            "B0_M0_SNN_C1_UPHY3_PRSNT2_L",
+            "B0_M0_SNN_C1_UPHY3_PRSNT3_L";
+    };
+};
+
+// I2C6 GPIO Expander
+&i2c5 {
+    // MGMT1 BOARD0, Expander @0x20
+    exp7: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "HMC_RST_R_L-O",
+            "HMC_RECOVERY_R-O",
+            "HMC_SPI_MUX_R_SEL-O",
+            "GLOBAL_WP-O",
+            "HMC_READY_R-I",
+            "HMC_PRSNT_R-I",
+            "BMC_SELF_PWR_CYCLE-O",
+            "EEDO_LED2-O",
+            "PWR_LED_L-O",
+            "PWR_BTN_L-I",
+            "UID_LED_L-O",
+            "UID_BTN_L-I",
+            "FAULT_LED_L-O",
+            "USB2_HUB_RST_L-O",
+            "USB2_HUB1_RST_L-O",
+            "WARN_LED_L-O";
+    };
+
+    // MGMT1 BOARD0, Expander @0x21
+    exp8: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "BMC_HMC_MUX_SEL-O",
+            "BMC_TPM_MUX_SEL-O",
+            "BMC_USB2_MUX_SEL-O",
+            "HMC_PGOOD_3V3-I",
+            "BF3_AOC_NCSI_PRSNT_L-I",
+            "HDR_SPI_PRSNT_L-I",
+            "SW_NRESET_R_L-O",
+            "SPI_HOST_TPM_RST_3V3_L-I",
+            "I2C_BUS_MUX_RESET_L-O",
+            "USB_MUX_EN-O",
+            "PDB_TRAY_RST-O",
+            "USB_PWR_EN-O",
+            "RTC_CLR_L-O",
+            "I2C_RTC_ALERT_L-I",
+            "I2C_PDB_ALERT_L-I",
+            "BMC_MUX_PI3DP_SEL-O";
+    };
+};
+
+// I2C8 GPIO Expander
+&i2c7 {
+    // MGMT0 BOARD1, Expander @0x20
+    exp9: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M0_I2C_MCIO_MUX_RESET_L-O",
+            "B1_M0_SLOT_PWR_BRAKE_L-O",
+            "B1_M0_SOCAMM_SPD_WP-O",
+            "B1_M0_SOCAMM_UNLOCK_1V8-O",
+            "B1_M0_SNN_C1_SOCAMM_UNLOCK_BMC",
+            "B1_M0_C0_SOCAMM_I2C_SEL_R-O",
+            "B1_M0_SNN_C1_SOCAMM_I2C_SEL_R",
+            "B1_M0_CPU_IST_MODE_EN-O",
+            "B1_M0_L0L1_RST_L-O",
+            "B1_M0_L2_RST_L-O",
+            "B1_M0_SNN_FAN_BRD_PRSNT_L",
+            "B1_M0_SNN_FAN_FAIL_L",
+            "B1_M0_SNN_IST_BOOT_MODE0",
+            "B1_M0_BMC_SSIF_ALERT_L-I",
+            "B1_M0_SHDN_FORCE_L-O",
+            "B1_M0_PEX_WAKE_L-O";
+    };
+
+    // MGMT0 BOARD1, Expander @0x21
+    exp10: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M0_PS_3V3_STBY_EN-O",
+            "B1_M0_PS_1V8_STBY_PGOOD-I",
+            "B1_M0_THERM_OVERT_L-I",
+            "B1_M0_THERM_WARN_L-I",
+            "B1_M0_GLOBAL_WP_MCU-O",
+            "B1_M0_USB_HUB0_RST_L-O",
+            "B1_M0_PRE_SYS_RST_IOX_L-O",
+            "B1_M0_SNN_LEAK_DETECT_ALERT_L",
+            "B1_M0_IOX_RUN_POWER_EN-O",
+            "B1_M0_IOX_RUN_POWER_PG-I",
+            "B1_M0_C0_CHIPTHROT_L-O",
+            "B1_M0_GP01_SHDN_REQ_L-O",
+            "B1_M0_CPU0_SHDN_OK_L-I",
+            "B1_M0_SNN_CPU1_SHDN_OK_L",
+            "B1_M0_PWR_BRAKE_IOX_L-O",
+            "B1_M0_PDB_PWR_BRAKE_L";
+    };
+
+    // extra IOX for E5010
+    exp11: pca9555@22 {
+        compatible = "nxp,pca9555";
+        reg = <0x22>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M0_C0_UART0_MUX_SEL0-O",
+            "B1_M0_C0_UART0_MUX_SEL1-O",
+            "B1_M0_C0_UART1_MUX_SEL0-O",
+            "B1_M0_C0_UART1_MUX_SEL1-O",
+            "B1_M0_QSPI_LB_EN-O",
+            "B1_M0_QSPI_LB_MUX_SEL-O",
+            "B1_M0_QSPI0_MUX_EN-O",
+            "B1_M0_SNN_IOX0_P8",
+            "B1_M0_SNN_IOX0_P10",
+            "B1_M0_I2C1_2_MUX_SEL-O",
+            "B1_M0_I2C3_4_MUX_SEL-O",
+            "B1_M0_IXC0_MUX_SEL-O",
+            "B1_M0_I2C_PU_MUX1_SEL0-O",
+            "B1_M0_I2C_PU_MUX1_SEL1-O",
+            "B1_M0_I2C_PU_MUX2_SEL0-O",
+            "B1_M0_I2C_PU_MUX2_SEL1-O";
+    };
+
+    exp12: pca9555@23 {
+        compatible = "nxp,pca9555";
+        reg = <0x23>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M0_I2C1_MUX2_SEL0- O",
+            "B1_M0_I2C1_MUX2_SEL1- O",
+            "B1_M0_USB_MGMT0_MUX_SEL0-O",
+            "B1_M0_MCU_CPU_CLOCK_EN-O",
+            "B1_M0_QSPI1_MUX_EN-O",
+            "B1_M0_QSPI1_MUX1_SEL-O",
+            "B1_M0_USB2_P1_MUX_SEL-O",
+            "B1_M0_USB_MGMT0_MUX_SEL1-O",
+            "B1_M0_UPHY2_REFCLK_MUX_SEL-O",
+            "B1_M0_UPHY0_REFCLK_MUX_SEL-O",
+            "B1_M0_TPM_HDR_SPI_PRSNT_IOX_N-O",
+            "B1_M0_UPHY3_REFCLK_MUX_SEL-O",
+            "B1_M0_RTC_CLR_IOX_L-O",
+            "B1_M0_HPM_SCM_INTRUSION_N-O",
+            "B1_M0_SPI_HOST_TPM_RST_L-O",
+            "B1_M0_MCIO012_VPP_MUX_SEL-O";
+    };
+
+    exp13: pca9555@24 {
+        compatible = "nxp,pca9555";
+        reg = <0x24>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;    
+        gpio-line-names =
+            "B1_M0_I3C_MUX_SEL0-O",
+            "B1_M0_I3C_MUX_SEL1-O",
+            "B1_M0_SNN_IOX2_P3",
+            "B1_M0_I2C_PU_MUX3_SEL0-O",
+            "B1_M0_I2C_PU_MUX3_SEL1-O",
+            "B1_M0_I2C_PU_MUX4_SEL0-O",
+            "B1_M0_I2C_PU_MUX4_SEL1-O",
+            "B1_M0_SNN_IOX2_P8",
+            "B1_M0_SNN_IOX2_P10",
+            "B1_M0_SNN_IOX2_P11",
+            "B1_M0_SNN_IOX2_P12",
+            "B1_M0_SNN_IOX2_P13",
+            "B1_M0_SNN_IOX2_P14",
+            "B1_M0_SNN_IOX2_P15",
+            "B1_M0_SNN_IOX2_P16",
+            "B1_M0_SNN_IOX2_P17";
+    };
+};
+
+// I2C4 GPIO Expander
+&i2c3 {
+    // MGMT1 BOARD1, Expander @0x20
+    exp14: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M1_MCU_RESET_L-O",
+            "B1_M1_MCU_RECOVERY_L-O",
+            "B1_M1_SNN_U98A_P3",
+            "B1_M1_SNN_U98A_P4",
+            "B1_M1_SNN_U98A_P5",
+            "B1_M1_SNN_U98A_P6",
+            "B1_M1_SNN_U98A_P7",
+            "B1_M1_SNN_U98A_P8",
+            "B1_M1_SNN_U98A_P10",
+            "B1_M1_SNN_U98A_P11",
+            "B1_M1_USB_HMC_HUB_RST_L-O",
+            "B1_M1_HPM_MCU_OK-I",
+            "B1_M1_SNN_IST_BOOT_MODE1",
+            "B1_M1_IST_COMPLETE_L-I",
+            "B1_M1_IST_SYS_RST_L-O",
+            "B1_M1_HMC_PRESENT_L-O";
+    };
+
+    // MGMT1 BOARD1, Expander @0x21
+    exp15: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "B1_M1_CPU_FORCED_RECOVERY_L-B",
+            "B1_M1_CPU_BOOT_DEV_SEL0-B",
+            "B1_M1_CPU_BOOT_DEV_SEL1-B",
+            "B1_M1_CPU_BOOT_DEV_SEL2-B",
+            "B1_M1_SNN_CPU_BOOT_DEV_SEL3",
+            "B1_M1_CPU_RECOVERY_TYPE0-B",
+            "B1_M1_CPU_RECOVERY_TYPE1-B",
+            "B1_M1_CPU_IST_BOOT-B",
+            "B1_M1_CPU_BOOT_CHAIN0-B",
+            "B1_M1_SNN_CPU_BOOT_CHAIN1",
+            "B1_M1_SNN_CPU_BOOT_CHAIN2",
+            "B1_M1_CPU_DIE_SEL0-B",
+            "B1_M1_CPU_DIE_SEL1-B",
+            "B1_M1_CPU_DIE_SEL2-B",
+            "B1_M1_CPU_BOOT_COMPLETE-B",
+            "B1_M1_NVJTAG_SEL_S-B";
+    };
+};
+
+// EMMC group that excludes WP pin
+&pinctrl {
+    pinctrl_emmcg5_default: emmcg5_default {
+        function = "EMMC";
+        groups = "EMMCG5";
+    };
+};
+

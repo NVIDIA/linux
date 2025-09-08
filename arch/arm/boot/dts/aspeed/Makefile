@@ -78,4 +78,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-moonraker.dtb \
 	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb\
 	aspeed-bmc-nvidia-bluesphere.dtb \
-	aspeed-bmc-nvidia-bluesphere-dual-dpu.dtb
+	aspeed-bmc-nvidia-bluesphere-dual-dpu.dtb \
+	aspeed-bmc-nvidia-vr-bmc-c2.dts.dtb \
+	aspeed-bmc-nvidia-vr-bmc-e5010.dtb \
+	aspeed-bmc-nvidia-vr-bmc-nvl144.dtb
