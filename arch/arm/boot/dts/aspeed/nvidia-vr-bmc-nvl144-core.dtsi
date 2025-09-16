@@ -48,7 +48,7 @@
     /*I0-I7*/
     "", "", "", "", "",
     "QSPI2_RST_L-O",
-    "GLOBAL_WP_BMC-O",
+    "GLOBAL_WP_BMC-I",
     "BMC_DDR4_TEN-O",
 
     /*J0-J7*/
