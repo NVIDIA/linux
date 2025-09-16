@@ -18,23 +18,23 @@
     "", "", "", "", "", "", "", "",
 
     /*C0-C7*/
-    "SGPIO_I2C_MUX_SEL-O",
+    "",
     "", "", "", "", "", "", "",
 
     /*D0-D7*/
     "", "", "",
-    "UART1_MUX_SEL-O",
     "",
-    "FPGA_PEX_RST_L-O",
+    "",
+    "FPGA_PEX_RST_L",
     "", "",
 
     /*E0-E7*/
     "RTL8221_PHY_RST_L-O",
     "RTL8211_PHY_INT_L-I",
     "",
-    "UART3_MUX_SEL-O",
+    "",
     "", "", "",
-    "SGPIO_BMC_EN-O",
+    "MUX_SGPIO_SEL-O",
 
     /*F0-F7*/
     "", "", "", "", "", "", "", "",
@@ -61,9 +61,9 @@
     "", "", "", "", "", "", "", "",
 
     /*M0-M7*/
-    "PCIE_EP_RST_EN-O",
+    "USB_HUB_RST_N-O",
     "BMC_FRU_WP-O",
-    "HMC_RESET_L-O",
+    "",
     "STBY_POWER_EN-O",
     "STBY_POWER_PG-I",
     "PCIE_EP_RST_L-O",
@@ -82,7 +82,8 @@
     "", "", "", "", "", "", "", "",
 
     /*R0-R7*/
-    "", "", "", "", "", "", "", "",
+    "", "SP0_AP_INTR_N-I",
+    "", "", "", "", "", "",
 
     /*S0-S7*/
     "", "", "", "", "", "", "", "",
@@ -96,7 +97,7 @@
     /*V0-V7*/
     "", "", "", "", "",
     "PCB_TEMP_ALERT-I",
-    "", "", "",
+    "", "",
 
     /*W0-W7*/
     "", "", "", "", "", "", "",
@@ -104,7 +105,7 @@
 
     /*X0-X7*/
     "", "",
-    "TPM_MUX_SEL-O",
+    "",
     "", "", "", "", "",
 
     /*Y0-Y7*/
@@ -283,37 +284,6 @@
 
 // I2C5 SMM Carrier GPIO Expander
 &i2c5 {
-    exp4: pca9555@20 {
-        compatible = "nxp,pca9555";
-        reg = <0x20>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        gpio-line-names =
-            "HMC_RST_R_L-O",
-            "HMC_RECOVERY_R-O",
-            "HMC_SPI_MUX_R_SEL-O",
-            "GLOBAL_WP-O",
-            "HMC_READY_R-I",
-            "HMC_PRSNT_R-I",
-            "BMC_SELF_PWR_CYCLE-O",
-            "RTL8153_DISABLE_L-O",
-            "PWR_LED_L-O",
-            "PWR_BTN_L-I",
-            "UID_LED_L-O",
-            "UID_BTN_L-I",
-            "FAULT_LED_L-O",
-            "USB2_HUB_RST_L-O",
-            "BMC_M2_RST_L-O",
-            "WARN_LED_L-O";
-    };
-
     exp5: pca9555@21 {
         compatible = "nxp,pca9555";
         reg = <0x21>;
@@ -329,7 +299,7 @@
         gpio-line-names =
             "BMC_HMC_MUX_SEL-O",
             "BMC_TPM_MUX_SEL-O",
-            "BMC_USB2_MUX_SEL-I",
+            "BMC_USB2_MUX_SEL-O",
             "HMC_PGOOD-I",
             "M2_PRSNT_L-I",
             "TPM_PRSNT_L-I",
@@ -340,7 +310,7 @@
             "PDB_TRAY_RST-O",
             "USB_PWR_EN-O",
             "RTC_CLR_L-O",
-            "I2C_RTC_ALERT_L-O",
+            "I2C_RTC_ALERT_L-I",
             "I2C_PDB_ALERT_L-I",
             "PD_CONTROL_MUX_SEL-O";
     };
@@ -366,10 +336,10 @@
             "PWBY_PWR_OK-I",
             "",
             "",
-            "MAIN_PWR_EN-O",
-            "MAIN_PWR_OK-I",
+            "MAIN_PWR_EN-I",
+            "MAIN_PWR_OK-O",
             "GLOBAL_WP-O",
-            "PDB_PWR_BRK_L-i",
+            "PDB_PWR_BRK_L-I",
             "FAN_PRSNT-I",
             "",
             "",
