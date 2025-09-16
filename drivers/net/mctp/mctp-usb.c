@@ -234,8 +234,9 @@ static void mctp_usb_in_complete(struct urb *urb)
 static int mctp_usb_open(struct net_device *dev)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
-
-	return mctp_usb_rx_queue(mctp_usb);
+	int rc = mctp_usb_rx_queue(mctp_usb);
+	netif_start_queue(dev);
+	return rc;
 }
 
 static int mctp_usb_stop(struct net_device *dev)
