@@ -64,7 +64,7 @@
     "USB_HUB_RST_N-O",
     "BMC_FRU_WP-O",
     "",
-    "STBY_POWER_EN-O",
+    "HMC_STBY_POWER_EN-O",
     "STBY_POWER_PG-I",
     "PCIE_EP_RST_L-O",
     "", "",
