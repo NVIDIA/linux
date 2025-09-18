@@ -192,20 +192,12 @@
 
 };
 
-&mdio3 {
-    status = "okay";
-    ethphy3: ethernet-phy@2 {
-        compatible = "ethernet-phy-ieee802.3-c22";
-        reg = <2>;
-    };
-};
-
 &mac0 {
     status = "okay";
     pinctrl-names = "default";
     phy-mode = "rgmii-rxid";
     max-speed = <1000>;
-    phy-handle = <&ethphy3>;
+    phy-handle = <&ethphy0>;
     pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
