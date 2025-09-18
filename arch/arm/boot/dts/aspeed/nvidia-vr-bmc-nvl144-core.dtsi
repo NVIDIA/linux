@@ -284,6 +284,37 @@
 
 // I2C5 SMM Carrier GPIO Expander
 &i2c5 {
+    exp4: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "HMC_RST_R_L-O",
+            "HMC_RECOVERY_R-O",
+            "HMC_SPI_MUX_R_SEL-O",
+            "GLOBAL_WP-O",
+            "HMC_READY_R-I",
+            "HMC_PRSNT_R-I",
+            "BMC_SELF_PWR_CYCLE-O",
+            "RTL8153_DISABLE_L-O",
+            "PWR_LED_L-O",
+            "PWR_BTN_L-I",
+            "UID_LED_L-O",
+            "UID_BTN_L-I",
+            "FAULT_LED_L-O",
+            "USB2_HUB_RST_L-O",
+            "BMC_M2_RST_L-O",
+            "WARN_LED_L-O";
+    };
+
     exp5: pca9555@21 {
         compatible = "nxp,pca9555";
         reg = <0x21>;
