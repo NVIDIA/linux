@@ -347,8 +347,8 @@
     };
 };
 
-// I2C10 PDB GPIO Expander
-&i2c10 {
+// I2C9 PDB GPIO Expander
+&i2c9 {
     exp6: pca9555@20 {
         compatible = "nxp,pca9555";
         reg = <0x20>;
