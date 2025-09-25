@@ -12,6 +12,7 @@
 		serial2 = &uart3;
 		serial4 = &uart5;
 		i2c70	= &i2c70;
+		i2c71	= &i2c71;
 	};
 
 	chosen {
@@ -254,7 +255,7 @@
                 reg = <1>;
                 device@1 {
                     reg = <1>;
-                    cp2112: interface@1 {
+                    cp2112a: interface@1 {
                         reg = <1 1>;
 
                         gpio-controller;
@@ -276,7 +277,7 @@
                                 #size-cells = <0>;
                                 interrupt-controller;
                                 #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112>;
+                                interrupt-parent = <&cp2112a>;
                                 interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
@@ -307,7 +308,7 @@
                                 #size-cells = <0>;
                                 interrupt-controller;
                                 #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112>;
+                                interrupt-parent = <&cp2112a>;
                                 interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
@@ -338,7 +339,7 @@
                                 #size-cells = <0>;
                                 interrupt-controller;
                                 #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112>;
+                                interrupt-parent = <&cp2112a>;
                                 interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
@@ -369,7 +370,7 @@
                                 #size-cells = <0>;
                                 interrupt-controller;
                                 #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112>;
+                                interrupt-parent = <&cp2112a>;
                                 interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
@@ -400,7 +401,7 @@
                                 #size-cells = <0>;
                                 interrupt-controller;
                                 #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112>;
+                                interrupt-parent = <&cp2112a>;
                                 interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
@@ -411,6 +412,181 @@
                                     "MCU_HEARTBEAT",
                                     "TRAY_FAST_SHDN_L",
                                     "LEAK_DETECT_L",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "";
+                            };
+                        };
+                    };
+                };
+            };
+            hub@2 {
+                reg = <2>;
+                device@1 {
+                    reg = <1>;
+                    cp2112b: interface@1 {
+                        reg = <1 1>;
+
+                        gpio-controller;
+                        interrupt-controller;
+                        #gpio-cells = <2>;
+                        #interrupt-cells = <2>;
+
+                        i2c71: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+
+                            exp12: pca9555@51 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x51>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112b>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "SEC_C0_UPHY0_PRSNT0_L",
+                                    "SEC_C0_UPHY0_PRSNT2_L",
+                                    "SEC_C0_UPHY2_PRSNT0_L",
+                                    "SEC_C0_UPHY2_PRSNT2_L",
+                                    "SEC_C0_UPHY3_PRSNT0_L",
+                                    "SEC_C0_UPHY3_PRSNT1_L",
+                                    "SEC_CPLD_PSEQ_FAULT",
+                                    "SEC_CPLD_READY",
+                                    "SEC_BMC_IOX_INT_L",
+                                    "SEC_RUN_PWR_EN",
+                                    "SEC_PRIMARY_NODE_L",
+                                    "SEC_C0_WAKE_L",
+                                    "SEC_MCU_RECOVERY_L",
+                                    "SEC_GLOBAL_WP",
+                                    "SEC_MCU_USER_STRAP",
+                                    "SEC_JTAG_TDO_MCU";
+                            };
+                            exp13: pca9555@52 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x52>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112b>;
+                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "SEC_C0_5V_SOCAMM_PGOOD",
+                                    "SEC_DDR_VDDQ_PGOOD",
+                                    "SEC_C2CVDD_PGOOD",
+                                    "SEC_VDD_1V8_PGOOD",
+                                    "SEC_MCU_12V_HSCC_PGOOD",
+                                    "SEC_VDD_3V3_PGOOD",
+                                    "SEC_MODULE_PWR_GOOD",
+                                    "SEC_C0_ALL_SOCAMM_PGOOD",
+                                    "SEC_CPU0_OVERT_L",
+                                    "SEC_C0_THERM_WARN_N",
+                                    "SEC_GPU_THERM_WARN_N",
+                                    "SEC_MCU_THERM_WARN_N",
+                                    "SEC_C0_SOC_THERM_OVERT_N",
+                                    "SEC_MCU_THERM_OVERT_N",
+                                    "SEC_CPU0_IROT_RECOVERY_L_3V3",
+                                    "SEC_CPU0_IROT_FATAL_ERR_L_3V3";
+                            };
+                            exp14: pca9555@53 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x53>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112b>;
+                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "SEC_JTAG_SEL_MCU",
+                                    "SEC_JTAG_TCK_MCU",
+                                    "SEC_JTAG_TMS_MCU",
+                                    "SEC_JTAG_TDI_MCU",
+                                    "SEC_JTAG_TRST_L_MCU",
+                                    "SEC_JTAG_BYPASS_GPU1",
+                                    "SEC_JTAG_BYPASS_CPU0_C_DIE",
+                                    "SEC_JTAG_BYPASS_CPU0_S_DIE",
+                                    "SEC_JTAG_BYPASS_GPU2",
+                                    "SEC_CPU0_OOB_CS1_L",
+                                    "SEC_CPU0_OOB_CS0_L",
+                                    "SEC_OOB_MUX_CTRL1",
+                                    "SEC_OOB_MUX_CTRL0",
+                                    "SEC_MCU_BMC_ALERT_L",
+                                    "SEC_MCU_HMC_ALERT_L",
+                                    "SEC_HPM_MCU_OK";
+                            };
+                            exp15: pca9555@54 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x54>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112b>;
+                                interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "SEC_C0_SOCAMM_0_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_1_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_2_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_3_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_4_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_5_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_6_ID_PRSNT_N",
+                                    "SEC_C0_SOCAMM_7_ID_PRSNT_N",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "";
+                            };
+                            exp16: pca9555@55 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x55>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112b>;
+                                interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "SEC_SLOT_PWR_BRAKE_EN_L",
+                                    "SEC_CPLD_RESET_L",
+                                    "SEC_LEAK_SELF_TEST_L",
+                                    "SEC_CPLD_PROGRAM",
+                                    "SEC_MCU_HEARTBEAT",
+                                    "SEC_TRAY_FAST_SHDN_L",
+                                    "SEC_LEAK_DETECT_L",
                                     "",
                                     "",
                                     "",
