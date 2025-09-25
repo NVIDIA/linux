@@ -379,6 +379,38 @@
             "",
             "";
     };
+
+    exp7: pca9555@75 {
+        compatible = "nxp,pca9555";
+        reg = <0x75>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "SNN_PDB_RUN_IO0_A_R_PG-I",
+            "RST_STBY_R_L-O",
+            "SNN_PDB_RUN_IO0_B_R_EN-O",
+            "PSU1_PRSNT_R_N-O",
+            "PSU2_PRSNT_R_N-O",
+            "PSU3_PRSNT_R_N-O",
+            "PSU4_PRSNT_R_N-O",
+            "PDB_12V_PG_R-I",
+            "PDB_12V_2_PG_R-I",
+            "PDB_12V_2_EN_R-O",
+            "PDB_12V_EN_N_R-O",
+            "",
+            "HSC_PG_VIN_PG_R-I",
+            "PDB_PSU_SMB_ALERT_L_R-O",
+            "SNN_JSB2_17_R-I",
+            "TRAY_RST_L_R-I";
+    };
+
 };
 
 // EMMC group that excludes WP pin
