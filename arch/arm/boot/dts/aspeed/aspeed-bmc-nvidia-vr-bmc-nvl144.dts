@@ -11,6 +11,10 @@
 	aliases {
 		serial2 = &uart3;
 		serial4 = &uart5;
+		i2c16	= &i2c_usbhub;
+		i2c17	= &i2c_tpm;
+		i2c18	= &i2c_dp;
+		i2c19	= &i2c_rtc;
 		i2c70	= &i2c70;
 		i2c71	= &i2c71;
 	};
@@ -675,9 +679,41 @@
 // Module 0/1 Leak Sensors
 // Module 0/1 Fan Controllers
 &i2c6 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
+	status = "okay";
+	clock-frequency = <400000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
+
+	i2c-mux@70 {
+		compatible = "nxp,pca9546";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		i2c-mux-idle-disconnect;
+
+		i2c_usbhub: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_tpm: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_dp: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_rtc: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
 };
 
 // I2C8
