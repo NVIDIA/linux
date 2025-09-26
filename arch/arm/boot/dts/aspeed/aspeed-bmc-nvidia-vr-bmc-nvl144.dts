@@ -267,7 +267,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp7: pca9555@51 {
+                            exp8: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -298,7 +298,7 @@
                                     "MCU_USER_STRAP",
                                     "JTAG_TDO_MCU";
                             };
-                            exp8: pca9555@52 {
+                            exp9: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -329,7 +329,7 @@
                                     "CPU0_IROT_RECOVERY_L_3V3",
                                     "CPU0_IROT_FATAL_ERR_L_3V3";
                             };
-                            exp9: pca9555@53 {
+                            exp10: pca9555@53 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x53>;
                                 gpio-controller;
@@ -360,7 +360,7 @@
                                     "MCU_HMC_ALERT_L",
                                     "HPM_MCU_OK";
                             };
-                            exp10: pca9555@54 {
+                            exp11: pca9555@54 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x54>;
                                 gpio-controller;
@@ -391,7 +391,7 @@
                                     "",
                                     "";
                             };
-                            exp11: pca9555@55 {
+                            exp12: pca9555@55 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x55>;
                                 gpio-controller;
@@ -442,7 +442,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp12: pca9555@51 {
+                            exp13: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -473,7 +473,7 @@
                                     "SEC_MCU_USER_STRAP",
                                     "SEC_JTAG_TDO_MCU";
                             };
-                            exp13: pca9555@52 {
+                            exp14: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -504,7 +504,7 @@
                                     "SEC_CPU0_IROT_RECOVERY_L_3V3",
                                     "SEC_CPU0_IROT_FATAL_ERR_L_3V3";
                             };
-                            exp14: pca9555@53 {
+                            exp15: pca9555@53 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x53>;
                                 gpio-controller;
@@ -535,7 +535,7 @@
                                     "SEC_MCU_HMC_ALERT_L",
                                     "SEC_HPM_MCU_OK";
                             };
-                            exp15: pca9555@54 {
+                            exp16: pca9555@54 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x54>;
                                 gpio-controller;
@@ -566,7 +566,7 @@
                                     "",
                                     "";
                             };
-                            exp16: pca9555@55 {
+                            exp17: pca9555@55 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x55>;
                                 gpio-controller;
