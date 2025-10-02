@@ -340,7 +340,6 @@ SpbApStatus spb_ap_check_ack(SpbAp *ap)
 	 */
 
 	if (mb & EC_MSG_AVAILABLE) {
-		mb |= EC_ACK;
 		ap->msgs_available++;
 	}
 
@@ -366,8 +365,12 @@ SpbApStatus wait_for_ack(SpbAp *ap)
 
 	while (ap->ec2spimb != EC_ACK) {
 		/* Check for interrupts */
-		if (clock_msecs() - start > POLL_INT_TIMEOUT_MSECS)
-			return (SPB_AP_ERROR_TIMEOUT);
+		if (clock_msecs() - start > POLL_INT_TIMEOUT_MSECS) {
+			if (ap->msgs_available > 0)
+				break;
+			else
+				return (SPB_AP_ERROR_TIMEOUT);
+		}
 
 		spb_ap_wait_for_intr(ap, POLL_INT_TIMEOUT_MSECS, true);
 	}
