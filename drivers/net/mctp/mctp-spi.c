@@ -342,19 +342,12 @@ static int mctp_spi_tx_thread(void *data)
 			else
 				midev->ndev->stats.rx_dropped++;
 			kfree_skb(skb);
-			if (spb_ap_msgs_available(midev->ap) > 0) {
-				/* We can't rely on msg_avaiable counts to issues read transactions
-				* becasue we only have one mailbox status which can't tell how many
-				* response pending in glaicer sides. The solution is to read from
-				* glacier and read all pending responses once.
-				*/
-				while (1) {
-					status = mctp_spi_rx(midev);
-					if (status == ERR_SPI_RX_NO_DATA)
-						break;
-				}
-				midev->ap->msgs_available = 0;
+			while (midev->ap->msgs_available > 0) {
+				status = mctp_spi_rx(midev);
+				if (status == ERR_SPI_RX_NO_DATA)
+					break;
 			}
+			midev->ap->msgs_available = 0;
 		}
 		wait_event_idle(midev->main_thread_wq,
 				!is_skb_queue_empty(midev) ||
