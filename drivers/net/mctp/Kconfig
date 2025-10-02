@@ -67,6 +67,14 @@ config MCTP_TRANSPORT_USB
 	  Batching reduces USB overhead by packing multiple packets into
 	  a single USB bulk transfer (up to 512 bytes).
 
+config MCTP_TRANSPORT_PCIE_VDM
+	tristate "MCTP PCIe VDM transport"
+	depends on PCI
+	select MCTP_FLOWS
+	help
+	  Provides a driver to access MCTP devices over PCIe VDM transport,
+	  from DMTF specification DSP0238.
+
 endmenu
 
 endif
