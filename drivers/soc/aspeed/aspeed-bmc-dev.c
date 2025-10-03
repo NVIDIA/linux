@@ -96,10 +96,10 @@ enum queue_index {
 
 struct aspeed_platform {
 	int (*init)(struct platform_device *pdev);
-	ssize_t (*queue_rx)(struct file *filp, struct kobject *kobj, struct bin_attribute *attr,
-			    char *buf, loff_t off, size_t count);
-	ssize_t (*queue_tx)(struct file *filp, struct kobject *kobj, struct bin_attribute *attr,
-			    char *buf, loff_t off, size_t count);
+	ssize_t (*queue_rx)(struct file *filp, struct kobject *kobj,
+			    const struct bin_attribute *attr, char *buf, loff_t off, size_t count);
+	ssize_t (*queue_tx)(struct file *filp, struct kobject *kobj,
+			    const struct bin_attribute *attr, char *buf, loff_t off, size_t count);
 };
 
 struct aspeed_queue_message {
@@ -166,7 +166,7 @@ static const struct file_operations aspeed_bmc_device_fops = {
 };
 
 static ssize_t aspeed_ast2600_queue_rx(struct file *filp, struct kobject *kobj,
-				       struct bin_attribute *attr, char *buf, loff_t off,
+				       const struct bin_attribute *attr, char *buf, loff_t off,
 				       size_t count)
 {
 	struct aspeed_queue_message *queue = attr->private;
@@ -199,7 +199,7 @@ static ssize_t aspeed_ast2600_queue_rx(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t aspeed_ast2600_queue_tx(struct file *filp, struct kobject *kobj,
-				       struct bin_attribute *attr, char *buf, loff_t off,
+				       const struct bin_attribute *attr, char *buf, loff_t off,
 				       size_t count)
 {
 	struct aspeed_queue_message *queue = attr->private;
@@ -239,7 +239,7 @@ static ssize_t aspeed_ast2600_queue_tx(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t aspeed_ast2700_queue_rx(struct file *filp, struct kobject *kobj,
-				       struct bin_attribute *attr, char *buf, loff_t off,
+				       const struct bin_attribute *attr, char *buf, loff_t off,
 				       size_t count)
 {
 	struct aspeed_queue_message *queue = attr->private;
@@ -264,7 +264,7 @@ static ssize_t aspeed_ast2700_queue_rx(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t aspeed_ast2700_queue_tx(struct file *filp, struct kobject *kobj,
-				       struct bin_attribute *attr, char *buf, loff_t off,
+				       const struct bin_attribute *attr, char *buf, loff_t off,
 				       size_t count)
 {
 	struct aspeed_queue_message *queue = attr->private;
@@ -685,7 +685,7 @@ static void aspeed_bmc_device_remove(struct platform_device *pdev)
 
 static struct platform_driver aspeed_bmc_device_driver = {
 	.probe		= aspeed_bmc_device_probe,
-	.remove_new	= aspeed_bmc_device_remove,
+	.remove		= aspeed_bmc_device_remove,
 	.driver		= {
 		.name	= KBUILD_MODNAME,
 		.of_match_table = aspeed_bmc_device_of_matches,
