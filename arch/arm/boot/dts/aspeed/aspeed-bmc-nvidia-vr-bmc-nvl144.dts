@@ -743,6 +743,11 @@
     status = "okay";
     clock-frequency = <400000>;
     i2c-tck-thddat-config = <0x0099EC00>;
+    eeprom@50 {
+        compatible = "atmel,24c02";
+        reg = <0x50>;
+        pagesize = <8>;
+    };
 };
 
 // I2C11
