@@ -31,12 +31,22 @@ struct mctp_dev {
 	size_t			num_addrs;
 	spinlock_t		addrs_lock;
 
+	/* TX batching support - set by transport drivers */
+	bool tx_batching_enabled;
+	unsigned int tx_batch_hdr_len; /* per-packet header overhead */
+	unsigned int tx_batch_max_xfer; /* max batch transfer size */
+
 	struct rcu_head		rcu;
 };
 
 struct mctp_netdev_ops {
 	void			(*release_flow)(struct mctp_dev *dev,
 						struct mctp_sk_key *key);
+	/* Called during batch packing to fill in the transport header.
+	 * @hdr: pointer to reserved space where header should be written
+	 * @pkt_len: total packet length (including this header)
+	 */
+	void (*fill_batch_hdr)(void *hdr, unsigned int pkt_len);
 };
 
 #define MCTP_INITIAL_DEFAULT_NET	1

@@ -39,13 +39,24 @@ struct mctp_usb {
 	atomic_t rx_qlen, tx_qlen;
 
 	struct delayed_work rx_retry_work;
+
+	/* TX batching support - controlled via sysfs */
+	bool tx_batching_enabled;
+};
+
+/* Structure to track batched packets in URB context */
+struct mctp_usb_batch_ctx {
+	struct net_device *netdev;
+	struct sk_buff_head skbs;
+	unsigned int num_packets;
 };
 
 static void mctp_usb_out_complete(struct urb *urb)
 {
-	struct sk_buff *skb = urb->context;
-	struct net_device *netdev = skb->dev;
+	struct mctp_usb_batch_ctx *ctx = urb->context;
+	struct net_device *netdev = ctx->netdev;
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+	struct sk_buff *skb;
 	int status;
 
 	usb_unanchor_urb(urb);
@@ -53,26 +64,185 @@ static void mctp_usb_out_complete(struct urb *urb)
 		netif_wake_queue(netdev);
 
 	status = urb->status;
-	usb_free_urb(urb);
 
 	switch (status) {
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
 	case -EPROTO:
-		netdev->stats.tx_dropped++;
+		netdev->stats.tx_dropped += ctx->num_packets;
 		break;
 	case 0:
-		netdev->stats.tx_packets++;
-		netdev->stats.tx_bytes += skb->len;
-		consume_skb(skb);
-		return;
+		netdev->stats.tx_packets += ctx->num_packets;
+		/* tx_bytes already updated per packet during batching */
+		break;
 	default:
 		netdev_dbg(netdev, "unexpected tx urb status: %d\n", status);
-		netdev->stats.tx_dropped++;
+		netdev->stats.tx_dropped += ctx->num_packets;
 	}
 
+	/* Free all batched skbs */
+	while ((skb = skb_dequeue(&ctx->skbs)) != NULL) {
+		if (status == 0)
+			consume_skb(skb);
+		else
+			kfree_skb(skb);
+	}
+
+	kfree(ctx);
+	usb_free_urb(urb);
+}
+/* Fast path: send a single packet without batching.
+ * This avoids lock overhead when batching is disabled.
+ */
+static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
+					struct sk_buff *skb)
+{
+	struct net_device *netdev = mctp_usb->netdev;
+	struct mctp_usb_batch_ctx *ctx;
+	struct urb *urb;
+	u8 *buf;
+	unsigned int pkt_len = skb->len;
+	int rc;
+
+	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
+		netif_stop_queue(netdev);
+		return NETDEV_TX_BUSY;
+	}
+
+	/* Allocate minimal context for single packet */
+	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
+	if (!ctx)
+		goto err_drop;
+
+	skb_queue_head_init(&ctx->skbs);
+	ctx->netdev = netdev;
+	ctx->num_packets = 1;
+
+	/* Allocate URB and buffer */
+	urb = usb_alloc_urb(0, GFP_ATOMIC);
+	if (!urb)
+		goto err_free_ctx;
+
+	buf = kmalloc(pkt_len, GFP_ATOMIC);
+	if (!buf)
+		goto err_free_urb;
+
+	/* Copy packet data */
+	skb_copy_bits(skb, 0, buf, pkt_len);
+	skb_queue_tail(&ctx->skbs, skb);
+
+	netdev->stats.tx_bytes += pkt_len - sizeof(struct mctp_usb_hdr);
+
+	/* Submit URB */
+	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
+			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
+			  buf, pkt_len, mctp_usb_out_complete, ctx);
+	urb->transfer_flags |= URB_FREE_BUFFER;
+
+	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
+	rc = usb_submit_urb(urb, GFP_ATOMIC);
+	if (rc) {
+		usb_unanchor_urb(urb);
+		goto err_free_buf;
+	}
+
+	atomic_inc(&mctp_usb->tx_qlen);
+	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue)
+		netif_stop_queue(netdev);
+
+	return NETDEV_TX_OK;
+
+err_free_buf:
+	kfree(buf);
+err_free_urb:
+	usb_free_urb(urb);
+err_free_ctx:
+	skb_dequeue(&ctx->skbs);
+	kfree(ctx);
+err_drop:
+	netdev->stats.tx_dropped++;
 	kfree_skb(skb);
+	return NETDEV_TX_OK;
+}
+
+/* Callback invoked by route.c to fill in USB transport header during batching.
+ * This is called once per packet in the batch, with the exact location and size.
+ */
+static void mctp_usb_fill_batch_hdr(void *hdr, unsigned int pkt_len)
+{
+	struct mctp_usb_hdr *usb_hdr = (struct mctp_usb_hdr *)hdr;
+
+	usb_hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
+	usb_hdr->rsvd = 0;
+	usb_hdr->len = pkt_len;
+}
+
+static const struct mctp_netdev_ops mctp_usb_ops = {
+	.fill_batch_hdr = mctp_usb_fill_batch_hdr,
+};
+
+/* Send a pre-batched SKB (from route.c) with multiple MCTP packets.
+ * The SKB data has headers pre-filled by route.c via our callback.
+ */
+static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
+				       struct sk_buff *skb)
+{
+	struct net_device *netdev = mctp_usb->netdev;
+	struct mctp_usb_batch_ctx *ctx;
+	struct urb *urb;
+	int rc;
+
+	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
+		netif_stop_queue(netdev);
+		return NETDEV_TX_BUSY;
+	}
+
+	/* Allocate context */
+	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
+	if (!ctx)
+		goto err_drop;
+
+	skb_queue_head_init(&ctx->skbs);
+	ctx->netdev = netdev;
+	ctx->num_packets = 1; /* We'll count on completion */
+
+	/* Allocate URB */
+	urb = usb_alloc_urb(0, GFP_ATOMIC);
+	if (!urb)
+		goto err_free_ctx;
+
+	skb_queue_tail(&ctx->skbs, skb);
+
+	netdev_dbg(netdev, "Sending batched SKB: %u bytes\n", skb->len);
+
+	/* Submit URB with pre-filled SKB data directly - headers already done by route.c! */
+	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
+			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
+			  skb->data, skb->len, mctp_usb_out_complete, ctx);
+
+	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
+	rc = usb_submit_urb(urb, GFP_ATOMIC);
+	if (rc) {
+		usb_unanchor_urb(urb);
+		goto err_free_urb;
+	}
+
+	atomic_inc(&mctp_usb->tx_qlen);
+	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue)
+		netif_stop_queue(netdev);
+
+	return NETDEV_TX_OK;
+
+err_free_urb:
+	usb_free_urb(urb);
+err_free_ctx:
+	skb_dequeue(&ctx->skbs);
+	kfree(ctx);
+err_drop:
+	netdev->stats.tx_dropped++;
+	kfree_skb(skb);
+	return NETDEV_TX_OK;
 }
 
 static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
@@ -80,13 +250,26 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
 	struct mctp_usb_hdr *hdr;
-	unsigned int plen;
-	struct urb *urb;
+	unsigned int plen, pkt_len;
 	int rc;
 
-	plen = skb->len;
+	/* Detect batched SKBs: route.c sets a special protocol marker
+	 * (ETH_P_MCTP | 0x8000) to indicate a pre-batched multi-packet SKB.
+	 * This avoids relying on skb->cb which may not be initialized.
+	 */
+	if (skb->protocol == htons(ETH_P_MCTP | 0x8000)) {
+		/* This is a batched SKB - restore the correct protocol */
+		skb->protocol = htons(ETH_P_MCTP);
+		netdev_dbg(dev, "Detected batched SKB: len=%u\n", skb->len);
+		return mctp_usb_send_batch(mctp_usb, skb);
+	}
 
-	if (plen + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
+	/* Single packet path */
+	plen = skb->len;
+	pkt_len = plen + sizeof(*hdr);
+
+	/* Single packet larger than max transfer size - can't send */
+	if (pkt_len > MCTP_USB_XFER_SIZE)
 		goto err_drop;
 
 	rc = skb_cow_head(skb, sizeof(*hdr));
@@ -99,29 +282,11 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 
 	hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
 	hdr->rsvd = 0;
-	hdr->len = plen + sizeof(*hdr);
+	hdr->len = pkt_len;
 
-	urb = usb_alloc_urb(0, GFP_ATOMIC);
+	/* Send single packet */
+	return mctp_usb_send_single(mctp_usb, skb);
 
-	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
-			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
-			  skb->data, skb->len,
-			  mctp_usb_out_complete, skb);
-
-	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
-
-	rc = usb_submit_urb(urb, GFP_ATOMIC);
-	if (rc)
-		goto err_free_urb;
-
-	if (atomic_inc_return(&mctp_usb->tx_qlen) >= n_tx_queue)
-		netif_stop_queue(dev);
-
-	return NETDEV_TX_OK;
-
-err_free_urb:
-	usb_unanchor_urb(urb);
-	usb_free_urb(urb);
 err_drop:
 	dev->stats.tx_dropped++;
 	kfree_skb(skb);
@@ -339,6 +504,60 @@ static int mctp_usb_stop(struct net_device *dev)
 	return 0;
 }
 
+/* sysfs attribute for runtime control of TX batching */
+static ssize_t tx_batching_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct net_device *netdev = to_net_dev(dev);
+	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+
+	return sprintf(buf, "%d\n", mctp_usb->tx_batching_enabled ? 1 : 0);
+}
+
+static ssize_t tx_batching_store(struct device *dev,
+				 struct device_attribute *attr, const char *buf,
+				 size_t count)
+{
+	struct net_device *netdev = to_net_dev(dev);
+	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+	struct mctp_dev *mdev;
+	bool enabled;
+	int rc;
+
+	rc = kstrtobool(buf, &enabled);
+	if (rc)
+		return rc;
+
+	mctp_usb->tx_batching_enabled = enabled;
+
+	/* Also update the mctp_dev flag for use in route.c */
+	rcu_read_lock();
+	mdev = __mctp_dev_get(netdev);
+	if (mdev) {
+		mdev->tx_batching_enabled = enabled;
+		netdev_info(netdev,
+			    "TX batching %s (hdr_len=%u, max_xfer=%u)\n",
+			    enabled ? "enabled" : "disabled",
+			    mdev->tx_batch_hdr_len, mdev->tx_batch_max_xfer);
+	} else {
+		netdev_err(netdev, "Failed to get mctp_dev!\n");
+	}
+	rcu_read_unlock();
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(tx_batching);
+
+static struct attribute *mctp_usb_attrs[] = {
+	&dev_attr_tx_batching.attr,
+	NULL,
+};
+
+static const struct attribute_group mctp_usb_attr_group = {
+	.attrs = mctp_usb_attrs,
+};
+
 static const struct net_device_ops mctp_usb_netdev_ops = {
 	.ndo_start_xmit = mctp_usb_start_xmit,
 	.ndo_open = mctp_usb_open,
@@ -397,13 +616,39 @@ static int mctp_usb_probe(struct usb_interface *intf,
 
 	INIT_DELAYED_WORK(&dev->rx_retry_work, mctp_usb_rx_retry_work);
 
-	rc = mctp_register_netdev(netdev, NULL, MCTP_PHYS_BINDING_USB);
+	/* Enable TX batching by default */
+	dev->tx_batching_enabled = true;
+
+	rc = mctp_register_netdev(netdev, &mctp_usb_ops, MCTP_PHYS_BINDING_USB);
 	if (rc)
-		goto err_free_tx_urb;
+		goto err_free_netdev;
+
+	/* Set the mctp_dev batching parameters for use in route.c */
+	{
+		struct mctp_dev *mdev;
+
+		rcu_read_lock();
+		mdev = __mctp_dev_get(netdev);
+		if (mdev) {
+			mdev->tx_batching_enabled = true;
+			mdev->tx_batch_hdr_len = sizeof(struct mctp_usb_hdr);
+			mdev->tx_batch_max_xfer = MCTP_USB_XFER_SIZE;
+		}
+		rcu_read_unlock();
+	}
+
+	/* Register sysfs attribute for runtime control */
+	rc = sysfs_create_group(&netdev->dev.kobj, &mctp_usb_attr_group);
+	if (rc) {
+		netdev_err(netdev, "failed to create sysfs group: %d\n", rc);
+		goto err_unregister_netdev;
+	}
 
 	return 0;
 
-err_free_tx_urb:
+err_unregister_netdev:
+	mctp_unregister_netdev(netdev);
+err_free_netdev:
 	free_netdev(netdev);
 	return rc;
 }
@@ -412,6 +657,7 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 {
 	struct mctp_usb *dev = usb_get_intfdata(intf);
 
+	sysfs_remove_group(&dev->netdev->dev.kobj, &mctp_usb_attr_group);
 	mctp_unregister_netdev(dev->netdev);
 	usb_put_dev(dev->usbdev);
 	free_netdev(dev->netdev);

@@ -186,7 +186,7 @@ struct mctp_skb_cb {
 	int		ifindex; /* extended/direct addressing if set */
 	mctp_eid_t	src;
 	unsigned char	halen;
-	unsigned char	haddr[MAX_ADDR_LEN];
+	unsigned char haddr[MAX_ADDR_LEN];
 };
 
 /* skb control-block accessors with a little extra debugging for initial

@@ -562,13 +562,22 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 	unsigned int mtu;
 	int rc;
 
-	skb->protocol = htons(ETH_P_MCTP);
+	/* Check if this is a batched SKB (marked by protocol field with high bit set).
+	 * Batched SKBs are intentionally larger than MTU as they contain multiple
+	 * MCTP packets packed together. The driver will clear this marker.
+	 */
+	bool is_batched = (skb->protocol == htons(ETH_P_MCTP | 0x8000));
 
-	mtu = READ_ONCE(skb->dev->mtu);
-	if (skb->len > mtu) {
-		kfree_skb(skb);
-		return -EMSGSIZE;
+	if (!is_batched) {
+		/* Normal packet - set protocol and check MTU */
+		skb->protocol = htons(ETH_P_MCTP);
+		mtu = READ_ONCE(skb->dev->mtu);
+		if (skb->len > mtu) {
+			kfree_skb(skb);
+			return -EMSGSIZE;
+		}
 	}
+	/* else: batched SKB keeps the marked protocol for the driver to detect */
 
 	if (cb->ifindex) {
 		/* direct route; use the hwaddr we stashed in sendmsg */
@@ -852,6 +861,157 @@ static struct mctp_route *mctp_route_lookup_null(struct net *net,
 	return rt;
 }
 
+/* Fragment and batch: pack multiple fragments into a single SKB with space
+ * for transport headers. The transport driver will fill in headers and send.
+ * This function may send multiple batches if the message is large.
+ */
+static int mctp_do_fragment_route_batch(struct mctp_route *rt,
+					struct sk_buff *skb, unsigned int mtu,
+					u8 tag, unsigned int batch_hdr_len,
+					unsigned int batch_max_xfer)
+{
+	const unsigned int hlen = sizeof(struct mctp_hdr);
+	struct mctp_hdr *hdr, *hdr2;
+	struct mctp_skb_cb *cb;
+	struct sk_buff *batch_skb;
+	unsigned int pos, size, headroom;
+	unsigned int total_len, num_frags;
+	unsigned int skb_pos; /* Position in original SKB across all batches */
+	u8 *batch_data;
+	u8 seq;
+	int rc;
+
+	hdr = mctp_hdr(skb);
+	seq = 0;
+	headroom = skb_headroom(skb);
+
+	/* we've got the header */
+	skb_pull(skb, hlen);
+
+	skb_pos = 0; /* Track position across the entire message */
+	rc = 0;
+
+	/* Loop to send multiple batches if the message is large */
+	while (skb_pos < skb->len) {
+		/* Calculate total size needed for this batch:
+		 * Each fragment needs: batch_hdr_len + mctp_hdr + payload
+		 */
+		total_len = 0;
+		num_frags = 0;
+		for (pos = skb_pos; pos < skb->len;) {
+			size = min(mtu - hlen, skb->len - pos);
+			total_len += batch_hdr_len + hlen + size;
+			num_frags++;
+			pos += size;
+
+			/* Check if we've hit the batch size limit */
+			if (total_len + batch_hdr_len + hlen + 1 >
+			    batch_max_xfer)
+				break;
+		}
+
+		pr_debug(
+			"mctp: Batching %u fragments (pos=%u/%u), total_len=%u, batch_max_xfer=%u\n",
+			num_frags, skb_pos, skb->len, total_len,
+			batch_max_xfer);
+
+		/* Allocate a single large SKB to hold all fragments */
+		batch_skb = alloc_skb(headroom + total_len, GFP_KERNEL);
+		if (!batch_skb) {
+			kfree_skb(skb);
+			return -ENOMEM;
+		}
+
+	/* Copy generic SKB properties */
+	batch_skb->protocol = htons(ETH_P_MCTP | 0x8000); /* Mark as batched */
+	batch_skb->priority = skb->priority;
+	batch_skb->dev = skb->dev;
+	memcpy(batch_skb->cb, skb->cb, sizeof(batch_skb->cb));
+
+	if (skb->sk)
+		skb_set_owner_w(batch_skb, skb->sk);
+
+	skb_reserve(batch_skb, headroom);
+	skb_reset_network_header(batch_skb);
+	batch_data = skb_put(batch_skb, total_len);
+
+	/* Store MCTP metadata in CB (safe because we copied from original SKB) */
+	cb = mctp_cb(batch_skb);
+	cb->net = mctp_cb(skb)->net;
+
+	/* Copy extensions for MCTP flow data */
+	skb_ext_copy(batch_skb, skb);
+
+	/* Pack fragments into this batch SKB */
+	pos = skb_pos;
+	while (num_frags--) {
+		unsigned int pkt_len;
+		bool is_last_fragment_in_message;
+		void *transport_hdr;
+
+		size = min(mtu - hlen, skb->len - pos);
+		/* EOM should only be set if this is the last fragment of the entire message,
+			 * not just the last fragment in this batch!
+			 */
+		is_last_fragment_in_message = (pos + size >= skb->len);
+		pkt_len = batch_hdr_len + hlen + size;
+
+		/* Save pointer to transport header space */
+		transport_hdr = batch_data;
+
+		/* Reserve space for transport header (will be filled by callback) */
+		batch_data += batch_hdr_len;
+
+		/* Build MCTP header */
+		hdr2 = (struct mctp_hdr *)batch_data;
+		hdr2->ver = hdr->ver;
+		hdr2->dest = hdr->dest;
+		hdr2->src = hdr->src;
+		hdr2->flags_seq_tag = tag &
+				      (MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
+
+		if (skb_pos == 0 && pos == 0)
+			hdr2->flags_seq_tag |= MCTP_HDR_FLAG_SOM;
+		if (is_last_fragment_in_message)
+			hdr2->flags_seq_tag |= MCTP_HDR_FLAG_EOM;
+
+		hdr2->flags_seq_tag |= seq << MCTP_HDR_SEQ_SHIFT;
+
+		/* Copy payload */
+		skb_copy_bits(skb, pos, batch_data + hlen, size);
+
+		/* Let the binding fill in its transport header */
+		if (rt->dev->ops && rt->dev->ops->fill_batch_hdr)
+			rt->dev->ops->fill_batch_hdr(transport_hdr, pkt_len);
+
+		batch_data += hlen + size;
+		seq = (seq + 1) & MCTP_HDR_SEQ_MASK;
+		pos += size;
+	}
+
+	/* Update position for next batch */
+	skb_pos = pos;
+
+	pr_debug("mctp: Sending batched SKB, len=%u, dev=%s, remaining=%u\n",
+		 batch_skb->len, batch_skb->dev ? batch_skb->dev->name : "null",
+		 skb->len - skb_pos);
+
+	/* Send the batched SKB through normal output path.
+	 * The batched SKB will have the protocol field set to ETH_P_MCTP | 0x8000.
+	 * This will tell mctp_route_output() to skip MTU check.
+	 */
+	rc = rt->output(rt, batch_skb);
+	if (rc) {
+		pr_err("mctp: Batched send failed: %d\n", rc);
+		rc = net_xmit_errno(rc);
+		break;
+	}
+	} /* end while (skb_pos < skb->len) */
+
+	consume_skb(skb);
+	return rc;
+}
+
 static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 				  unsigned int mtu, u8 tag)
 {
@@ -861,6 +1021,8 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 	struct sk_buff *skb2;
 	int rc;
 	u8 seq;
+	unsigned int batch_hdr_len;
+	unsigned int batch_max_xfer;
 
 	hdr = mctp_hdr(skb);
 	seq = 0;
@@ -871,6 +1033,27 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 		return -EMSGSIZE;
 	}
 
+	/* Get batching parameters from the device if batching is enabled */
+	if (rt->dev && rt->dev->tx_batching_enabled) {
+		batch_hdr_len = rt->dev->tx_batch_hdr_len;
+		batch_max_xfer = rt->dev->tx_batch_max_xfer;
+
+		pr_debug(
+			"mctp: Fragmentation: batching enabled, hdr_len=%u, max_xfer=%u\n",
+			batch_hdr_len, batch_max_xfer);
+
+		/* If batching is supported, use the batch path */
+		if (batch_hdr_len && batch_max_xfer) {
+			pr_debug("mctp: Taking batch path for fragmentation\n");
+			return mctp_do_fragment_route_batch(rt, skb, mtu, tag,
+							    batch_hdr_len,
+							    batch_max_xfer);
+		} else {
+			pr_warn("mctp: Batching enabled but params invalid (hdr_len=%u, max_xfer=%u)\n",
+				batch_hdr_len, batch_max_xfer);
+		}
+	}
+
 	/* keep same headroom as the original skb */
 	headroom = skb_headroom(skb);
 
@@ -878,8 +1061,11 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 	skb_pull(skb, hlen);
 
 	for (pos = 0; pos < skb->len;) {
+		bool is_last_fragment;
+
 		/* size of message payload */
 		size = min(mtu - hlen, skb->len - pos);
+		is_last_fragment = (pos + size >= skb->len);
 
 		skb2 = alloc_skb(headroom + hlen + size, GFP_KERNEL);
 		if (!skb2) {
@@ -913,7 +1099,7 @@ static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
 		if (pos == 0)
 			hdr2->flags_seq_tag |= MCTP_HDR_FLAG_SOM;
 
-		if (pos + size == skb->len)
+		if (is_last_fragment)
 			hdr2->flags_seq_tag |= MCTP_HDR_FLAG_EOM;
 
 		hdr2->flags_seq_tag |= seq << MCTP_HDR_SEQ_SHIFT;
