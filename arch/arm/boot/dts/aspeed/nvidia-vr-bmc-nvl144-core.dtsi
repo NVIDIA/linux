@@ -301,17 +301,17 @@
             "HMC_RECOVERY_R-O",
             "HMC_SPI_MUX_R_SEL-O",
             "GLOBAL_WP-O",
-            "HMC_READY_R-I",
+            "HMC_READY-I",
             "HMC_PRSNT_R-I",
             "BMC_SELF_PWR_CYCLE-O",
-            "RTL8153_DISABLE_L-O",
+            "EEDO_LED2-O",
             "PWR_LED_L-O",
             "PWR_BTN_L-I",
             "UID_LED_L-O",
             "UID_BTN_L-I",
             "FAULT_LED_L-O",
             "USB2_HUB_RST_L-O",
-            "BMC_M2_RST_L-O",
+            "IOX_GPIO_P16_TP",
             "WARN_LED_L-O";
     };
 
@@ -331,10 +331,10 @@
             "BMC_HMC_MUX_SEL-O",
             "BMC_TPM_MUX_SEL-O",
             "BMC_USB2_MUX_SEL-O",
-            "HMC_PGOOD-I",
-            "M2_PRSNT_L-I",
-            "TPM_PRSNT_L-I",
-            "ETH_SWITCH_RESET_L-O",
+            "HMC_PGOOD_3V3-I",
+            "BF3_AOC_NCSI_PRSNT_L-I",
+            "HDR_SPI_PRSNT_L-I",
+            "SW_NRESET_R_L-O",
             "MUX_I2C_ESPI_SEL-O",
             "I2C_BUS_MUX_RESET_L-O",
             "USB_MUX_EN-O",
@@ -343,7 +343,7 @@
             "RTC_CLR_L-O",
             "I2C_RTC_ALERT_L-I",
             "I2C_PDB_ALERT_L-I",
-            "PD_CONTROL_MUX_SEL-O";
+            "BMC_MUX_PI3DP_SEL-O";
     };
 };
 
