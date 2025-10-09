@@ -12,6 +12,24 @@
 	#size-cells = <1>;
 	interrupt-parent = <&gic>;
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		mctp0_reserved: mctp0_reserved@b1000000 {
+			reg = <0xb1000000 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		mctp1_reserved: mctp1_reserved@b1010000 {
+			reg = <0xb1010000 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+	};
+
 	aliases {
 		i3c0 = &i3c0;
 		i3c1 = &i3c1;
@@ -604,46 +622,17 @@
 					};
 			};
 
-			pcie_phy0: pcie-phy@1e6ed000 {
-				compatible = "aspeed,ast2600-pcie-phy", "syscon";
-				reg = <0x1e6ed000 0x100>;
-			};
-
-			pcie_phy1: rc_bridge@1e6ed200 {
-				compatible = "aspeed,ast2600-pcie-phy", "syscon";
-				reg = <0x1e6ed200 0x100>;
-			};
-
-			pciecfg: pciecfg@1e770000 {
-				compatible = "aspeed,ast2600-pciecfg", "syscon";
-				reg = <0x1e770000 0x80>;
-				resets = <&syscon ASPEED_RESET_H2X>, <&syscon ASPEED_RESET_PCIE_DEV_O>, <&syscon ASPEED_RESET_PCIE_RC_O>;
-				reset-names = "h2x", "rc_low", "rc_high";
-				aspeed,ahbc = <&ahbc>;
-				aspeed,pcie = <&pcie>;
-
-				status = "disabled";
-			};
-
 			mctp0: mctp@1e6e8000 {
-    			compatible = "aspeed,ast2600-mctp";
-    			reg = <0x1e6e8000 0x30>;
-    			interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>, <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
-    			interrupt-names = "mctp", "pcie";
-    			resets = <&syscon ASPEED_RESET_DEV_MCTP>;
-    			aspeed,scu = <&syscon>;
-   				aspeed,pcieh = <&pcie_phy0>;
-    			status = "disabled";
-			};
-
-			mctp1: mctp@1e6f9000 {
 				compatible = "aspeed,ast2600-mctp";
-				reg = <0x1e6e8000 0x30>;
-				interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>, <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
-				interrupt-names = "mctp", "pcie";
+				reg = <0x1e6e8000 0x1000>;
+				interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
+						      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_HI_TO_LO>,
+						      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
+				interrupt-names = "mctp", "perst-lo", "perst-hi";
 				resets = <&syscon ASPEED_RESET_DEV_MCTP>;
 				aspeed,scu = <&syscon>;
 				aspeed,pcieh = <&pcie_phy0>;
+				memory-region = <&mctp0_reserved>;
 				status = "disabled";
 			};
 

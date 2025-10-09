@@ -1159,7 +1159,7 @@ static int aspeed_mctp_ctrl_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "Aspeed MCTP controller driver");
 
-	ndev = alloc_netdev(sizeof(struct aspeed_mctp_ctrl *), "mctppcie%d",
+	ndev = alloc_netdev(sizeof(struct aspeed_mctp_ctrl), "mctppcie%d",
 			    NET_NAME_ENUM, aspeed_mctp_ctrl_setup);
 	if (!ndev)
 		return dev_err_probe(&pdev->dev, -ENOMEM,
@@ -1233,15 +1233,18 @@ static int aspeed_mctp_ctrl_probe(struct platform_device *pdev)
 	}
 
 	ret = of_reserved_mem_device_init(&pdev->dev);
-	if (ret) {
+	if (ret && ret != -ENODEV) {
 		return dev_err_probe(&pdev->dev, ret,
 				     "Cannot initialize reserved memory");
 	}
 
-	ret = devm_add_action_or_reset(
-		&pdev->dev, aspeed_mctp_ctrl_release_reserved_mem, &pdev->dev);
-	if (ret)
-		return ret;
+	if (!ret) {
+		ret = devm_add_action_or_reset(
+			&pdev->dev, aspeed_mctp_ctrl_release_reserved_mem,
+			&pdev->dev);
+		if (ret)
+			return ret;
+	}
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
 	if (ret) {

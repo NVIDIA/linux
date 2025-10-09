@@ -1098,7 +1098,7 @@
     interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
 };
 
-&mctp1 {
+&mctp0 {
     status = "okay";
 };
 
