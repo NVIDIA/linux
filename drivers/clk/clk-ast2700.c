@@ -14,6 +14,8 @@
 
 #include <dt-bindings/clock/aspeed,ast2700-scu.h>
 
+#define REVISION_ID		GENMASK(23, 16)
+
 /* SOC0 */
 #define SCU0_HWSTRAP1		0x010
 #define SCU0_CLK_STOP		0x240
@@ -31,9 +33,8 @@
 #define SCU0_MPHYCLK_PARAM	0x360
 
 /* SOC1 */
-#define SCU1_REVISION_ID	0x0
-#define REVISION_ID		GENMASK(23, 16)
 #define SCU1_CLK_STOP		0x240
+#define AST2755_SCU1_CLK_STOP		0x248
 #define SCU1_CLK_STOP2		0x260
 #define SCU1_CLK_SEL1		0x280
 #define SCU1_CLK_SEL2		0x284
@@ -97,11 +98,11 @@ enum ast2700_clk_type {
 	CLK_GATE,
 	CLK_MISC,
 	CLK_FIXED,
+	CLK_FIXED_DISPLAY,
 	CLK_DIVIDER,
 	CLK_UART_PLL,
-	CLK_GATE_ASPEED,
 	CLK_FIXED_FACTOR,
-	CLK_FIXED_DISPLAY,
+	CLK_GATE_ASPEED,
 };
 
 struct ast2700_clk_fixed_factor_data {
@@ -148,8 +149,8 @@ struct ast2700_clk_display_fixed_data {
 };
 
 struct ast2700_clk_info {
-	const char *name;
 	u32 id;
+	const char *name;
 	u32 reg;
 	u32 type;
 	union {
@@ -659,6 +660,172 @@ static const struct ast2700_clk_info ast2700_scu1_clk_info[] __initconst = {
 		 SCU1_CLK_STOP2, 19, 0),
 };
 
+static const struct ast2700_clk_info ast2755_scu1_clk_info[] __initconst = {
+	FIXED_CLK(SCU1_CLKIN, "soc1-clkin", 25 * HZ_PER_MHZ),
+	PLL_CLK(SCU1_CLK_HPLL, CLK_PLL, "soc1-hpll", SCU1_CLKIN, SCU1_HPLL_PARAM),
+	PLL_CLK(SCU1_CLK_APLL, CLK_PLL, "soc1-apll", SCU1_CLKIN, SCU1_APLL_PARAM),
+	PLL_CLK(SCU1_CLK_DPLL, CLK_PLL, "soc1-dpll", SCU1_CLKIN, SCU1_DPLL_PARAM),
+	FIXED_FACTOR_CLK(SCU1_CLK_APLL_DIV2, "soc1-apll_div2", SCU1_CLK_APLL, 1, 2),
+	FIXED_FACTOR_CLK(SCU1_CLK_APLL_DIV4, "soc1-apll_div4", SCU1_CLK_APLL, 1, 4),
+	FIXED_FACTOR_CLK(SCU1_CLK_CAN, "canclk", SCU1_CLK_APLL, 1, 10),
+	DIVIDER_CLK(SCU1_CLK_APB, "soc1-apb", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL1, 18, 3, ast2700_clk_div_table2),
+	DIVIDER_CLK(SCU1_CLK_RMII, "rmii", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL1, 21, 3, ast2700_rmii_div_table),
+	DIVIDER_CLK(SCU1_CLK_RGMII, "rgmii", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL1, 25, 3, ast2700_rgmii_div_table),
+	DIVIDER_CLK(SCU1_CLK_MACHCLK, "machclk", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL1, 29, 3, ast2700_clk_div_table),
+	DIVIDER_CLK(SCU1_CLK_APLL_DIVN, "soc1-apll_divn",
+		    SCU1_CLK_APLL, SCU1_CLK_SEL2, 8, 3, ast2700_clk_div_table),
+	DIVIDER_CLK(SCU1_CLK_AHB, "soc1-ahb", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL2, 20, 3, ast2700_clk_div_table),
+	DIVIDER_CLK(SCU1_CLK_I3C, "soc1-i3c", SCU1_CLK_HPLL,
+		    SCU1_CLK_SEL2, 23, 3, ast2700_clk_div_table),
+	MUX_CLK(SCU1_CLK_SDMUX, "sdclk-mux", sdclk_parent_ids, ARRAY_SIZE(sdclk_parent_ids),
+		sdclk_parent_hws, SCU1_CLK_SEL1, 13, 1),
+	MUX_CLK(SCU1_CLK_UXCLK, "uxclk", uxclk_parent_ids, ARRAY_SIZE(uxclk_parent_ids),
+		uxclk_parent_hws, SCU1_CLK_SEL2, 0, 2),
+	MUX_CLK(SCU1_CLK_HUXCLK, "huxclk", uxclk_parent_ids, ARRAY_SIZE(uxclk_parent_ids),
+		uxclk_parent_hws, SCU1_CLK_SEL2, 3, 2),
+	DIVIDER_CLK(SCU1_CLK_SDCLK, "sdclk", SCU1_CLK_SDMUX,
+		    SCU1_CLK_SEL1, 14, 3, ast2700_clk_div_table),
+	PLL_CLK(SCU1_CLK_UARTX, CLK_UART_PLL, "uartxclk", SCU1_CLK_UXCLK, SCU1_UXCLK_CTRL),
+	PLL_CLK(SCU1_CLK_HUARTX, CLK_UART_PLL, "huartxclk", SCU1_CLK_HUXCLK, SCU1_HUXCLK_CTRL),
+	MUX_CLK(SCU1_CLK_UART0, "uart0clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 0, 1),
+	MUX_CLK(SCU1_CLK_UART1, "uart1clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 1, 1),
+	MUX_CLK(SCU1_CLK_UART2, "uart2clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 2, 1),
+	MUX_CLK(SCU1_CLK_UART3, "uart3clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 3, 1),
+	MUX_CLK(SCU1_CLK_UART5, "uart5clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 5, 1),
+	MUX_CLK(SCU1_CLK_UART6, "uart6clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 6, 1),
+	MUX_CLK(SCU1_CLK_UART7, "uart7clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 7, 1),
+	MUX_CLK(SCU1_CLK_UART8, "uart8clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 8, 1),
+	MUX_CLK(SCU1_CLK_UART9, "uart9clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 9, 1),
+	MUX_CLK(SCU1_CLK_UART10, "uart10clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 10, 1),
+	MUX_CLK(SCU1_CLK_UART11, "uart11clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 11, 1),
+	MUX_CLK(SCU1_CLK_UART12, "uart12clk", uartx_parent_ids, ARRAY_SIZE(uartx_parent_ids),
+		uartx_parent_hws, SCU1_CLK_SEL1, 12, 1),
+	FIXED_FACTOR_CLK(SCU1_CLK_UART13, "uart13clk", SCU1_CLK_HUARTX, 1, 1),
+	FIXED_FACTOR_CLK(SCU1_CLK_UART14, "uart14clk", SCU1_CLK_HUARTX, 1, 1),
+	GATE_CLK(SCU1_CLK_MAC0RCLK, CLK_GATE, "mac0rclk-gate", SCU1_CLK_RMII,
+		 SCU1_MAC12_CLK_DLY, 29, 0),
+	GATE_CLK(SCU1_CLK_MAC1RCLK, CLK_GATE, "mac1rclk-gate", SCU1_CLK_RMII,
+		 SCU1_MAC12_CLK_DLY, 30, 0),
+	GATE_CLK(SCU1_CLK_GATE_LCLK0, CLK_GATE_ASPEED, "lclk0-gate", -1,
+		 SCU1_CLK_STOP, 0, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_LCLK1, CLK_GATE_ASPEED, "lclk1-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 1, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_ESPI0CLK, CLK_GATE_ASPEED, "espi0clk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 2, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_ESPI1CLK, CLK_GATE_ASPEED, "espi1clk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 3, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_SDCLK, CLK_GATE_ASPEED, "sdclk-gate", SCU1_CLK_SDCLK,
+		 AST2755_SCU1_CLK_STOP, 4, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_IPEREFCLK, CLK_GATE_ASPEED, "soc1-iperefclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 5, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_REFCLK, CLK_GATE_ASPEED, "soc1-refclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 6, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_LPCHCLK, CLK_GATE_ASPEED, "lpchclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 7, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_MAC0CLK, CLK_GATE_ASPEED, "mac0clk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 8, 0),
+	GATE_CLK(SCU1_CLK_GATE_MAC1CLK, CLK_GATE_ASPEED, "mac1clk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 9, 0),
+	GATE_CLK(SCU1_CLK_GATE_MAC2CLK, CLK_GATE_ASPEED, "mac2clk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 10, 0),
+	GATE_CLK(SCU1_CLK_GATE_UART0CLK, CLK_GATE_ASPEED, "uart0clk-gate", SCU1_CLK_UART0,
+		 AST2755_SCU1_CLK_STOP, 11, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART1CLK, CLK_GATE_ASPEED, "uart1clk-gate", SCU1_CLK_UART1,
+		 AST2755_SCU1_CLK_STOP, 12, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART2CLK, CLK_GATE_ASPEED, "uart2clk-gate", SCU1_CLK_UART2,
+		 AST2755_SCU1_CLK_STOP, 13, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART3CLK, CLK_GATE_ASPEED, "uart3clk-gate", SCU1_CLK_UART3,
+		 AST2755_SCU1_CLK_STOP, 14, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_I2CCLK, CLK_GATE_ASPEED, "i2cclk-gate", -1, SCU1_CLK_STOP, 15, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C0CLK, CLK_GATE_ASPEED, "i3c0clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 16, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C1CLK, CLK_GATE_ASPEED, "i3c1clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 17, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C2CLK, CLK_GATE_ASPEED, "i3c2clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 18, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C3CLK, CLK_GATE_ASPEED, "i3c3clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 19, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C4CLK, CLK_GATE_ASPEED, "i3c4clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 20, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C5CLK, CLK_GATE_ASPEED, "i3c5clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 21, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C6CLK, CLK_GATE_ASPEED, "i3c6clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 22, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C7CLK, CLK_GATE_ASPEED, "i3c7clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 23, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C8CLK, CLK_GATE_ASPEED, "i3c8clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 24, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C9CLK, CLK_GATE_ASPEED, "i3c9clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 25, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C10CLK, CLK_GATE_ASPEED, "i3c10clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 26, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C11CLK, CLK_GATE_ASPEED, "i3c11clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 27, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C12CLK, CLK_GATE_ASPEED, "i3c12clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 28, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C13CLK, CLK_GATE_ASPEED, "i3c13clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 29, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C14CLK, CLK_GATE_ASPEED, "i3c14clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 30, 0),
+	GATE_CLK(SCU1_CLK_GATE_I3C15CLK, CLK_GATE_ASPEED, "i3c15clk-gate", SCU1_CLK_I3C,
+		 AST2755_SCU1_CLK_STOP, 31, 0),
+	GATE_CLK(SCU1_CLK_GATE_UART5CLK, CLK_GATE_ASPEED, "uart5clk-gate", SCU1_CLK_UART5,
+		 AST2755_SCU1_CLK_STOP, 0, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART6CLK, CLK_GATE_ASPEED, "uart6clk-gate", SCU1_CLK_UART6,
+		 AST2755_SCU1_CLK_STOP, 1, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART7CLK, CLK_GATE_ASPEED, "uart7clk-gate", SCU1_CLK_UART7,
+		 AST2755_SCU1_CLK_STOP, 2, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART8CLK, CLK_GATE_ASPEED, "uart8clk-gate", SCU1_CLK_UART8,
+		 AST2755_SCU1_CLK_STOP, 3, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UART9CLK, CLK_GATE_ASPEED, "uart9clk-gate", SCU1_CLK_UART9,
+		 AST2755_SCU1_CLK_STOP, 4, 0),
+	GATE_CLK(SCU1_CLK_GATE_UART10CLK, CLK_GATE_ASPEED, "uart10clk-gate", SCU1_CLK_UART10,
+		 AST2755_SCU1_CLK_STOP, 5, 0),
+	GATE_CLK(SCU1_CLK_GATE_UART11CLK, CLK_GATE_ASPEED, "uart11clk-gate", SCU1_CLK_UART11,
+		 AST2755_SCU1_CLK_STOP, 6, 0),
+	GATE_CLK(SCU1_CLK_GATE_UART12CLK, CLK_GATE_ASPEED, "uart12clk-gate", SCU1_CLK_UART12,
+		 AST2755_SCU1_CLK_STOP, 7, 0),
+	GATE_CLK(SCU1_CLK_GATE_FSICLK, CLK_GATE_ASPEED, "fsiclk-gate", -1, SCU1_CLK_STOP2, 8, 0),
+	GATE_CLK(SCU1_CLK_GATE_LTPIPHYCLK, CLK_GATE_ASPEED, "ltpiphyclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 9, 0),
+	GATE_CLK(SCU1_CLK_GATE_LTPICLK, CLK_GATE_ASPEED, "ltpiclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 10, 0),
+	GATE_CLK(SCU1_CLK_GATE_VGALCLK, CLK_GATE_ASPEED, "vgalclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 11, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_UHCICLK, CLK_GATE_ASPEED, "usbuartclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 12, 0),
+	GATE_CLK(SCU1_CLK_GATE_CANCLK, CLK_GATE_ASPEED, "canclk-gate", SCU1_CLK_CAN,
+		 AST2755_SCU1_CLK_STOP, 13, 0),
+	GATE_CLK(SCU1_CLK_GATE_PCICLK, CLK_GATE_ASPEED, "pciclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 14, 0),
+	GATE_CLK(SCU1_CLK_GATE_SLICLK, CLK_GATE_ASPEED, "soc1-sliclk-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 15, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_E2MCLK, CLK_GATE_ASPEED, "soc1-e2m-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 16, CLK_IS_CRITICAL),
+	GATE_CLK(SCU1_CLK_GATE_PORTCUSB2CLK, CLK_GATE_ASPEED, "portcusb2-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 17, 0),
+	GATE_CLK(SCU1_CLK_GATE_PORTDUSB2CLK, CLK_GATE_ASPEED, "portdusb2-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 18, 0),
+	GATE_CLK(SCU1_CLK_GATE_LTPI1TXCLK, CLK_GATE_ASPEED, "ltp1tx-gate", -1,
+		 AST2755_SCU1_CLK_STOP, 19, 0),
+};
+
 static struct clk_hw *ast2700_clk_hw_register_fixed_display(void __iomem *reg, const char *name,
 							    struct ast2700_clk_ctrl *clk_ctrl)
 {
@@ -895,7 +1062,7 @@ static void ast2700_soc1_configure_mac01_clk(struct ast2700_clk_ctrl *clk_ctrl)
 	u32 reg[3];
 	int ret;
 
-	if (readl(clk_ctrl->base + SCU1_REVISION_ID) & REVISION_ID) {
+	if (readl(clk_ctrl->base) & REVISION_ID) {
 		if ((readl(clk_ctrl->base + SCU1_MAC12_CLK_DLY) & GENMASK(25, 0)) == 0)
 			reg[0] = AST2700_DEF_MAC12_DELAY_1G_A1;
 		else
@@ -1133,19 +1300,26 @@ static int ast2700_soc_clk_probe(struct platform_device *pdev)
 
 static const struct ast2700_clk_data ast2700_clk0_data = {
 	.scu = 0,
-	.nr_clks = ARRAY_SIZE(ast2700_scu0_clk_info),
 	.clk_info = ast2700_scu0_clk_info,
+	.nr_clks  = ARRAY_SIZE(ast2700_scu0_clk_info),
 };
 
 static const struct ast2700_clk_data ast2700_clk1_data = {
 	.scu = 1,
-	.nr_clks = ARRAY_SIZE(ast2700_scu1_clk_info),
 	.clk_info = ast2700_scu1_clk_info,
+	.nr_clks  = ARRAY_SIZE(ast2700_scu1_clk_info),
+};
+
+static const struct ast2700_clk_data ast2755_clk1_data = {
+	.scu = 2,
+	.clk_info = ast2755_scu1_clk_info,
+	.nr_clks = ARRAY_SIZE(ast2755_scu1_clk_info),
 };
 
 static const struct of_device_id ast2700_scu_match[] = {
 	{ .compatible = "aspeed,ast2700-scu0", .data = &ast2700_clk0_data },
 	{ .compatible = "aspeed,ast2700-scu1", .data = &ast2700_clk1_data },
+	{ .compatible = "aspeed,ast2755-scu1", .data = &ast2755_clk1_data },
 	{ /* sentinel */ }
 };
 
