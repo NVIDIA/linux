@@ -14,6 +14,7 @@
 #include <linux/netdevice.h>
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
 #include <linux/timer.h>
@@ -1301,7 +1302,8 @@ static int aspeed_mctp_ctrl_probe(struct platform_device *pdev)
 		return ret;
 
 	netif_carrier_off(priv->ndev);
-	ret = mctp_register_netdev(priv->ndev, &aspeed_mctp_ctrl_mctpdev_ops);
+	ret = mctp_register_netdev(priv->ndev, &aspeed_mctp_ctrl_mctpdev_ops,
+				   MCTP_PHYS_BINDING_PCIE_VDM);
 	if (ret) {
 		return dev_err_probe(&pdev->dev, ret,
 				     "Cannot register MCTP net device");
@@ -1357,7 +1359,7 @@ static struct platform_driver aspeed_mctp_ctrl_driver = {
 		.of_match_table	= of_match_ptr(aspeed_mctp_ctrl_match_table),
 	},
 	.probe		= aspeed_mctp_ctrl_probe,
-	.remove_new	= aspeed_mctp_ctrl_remove,
+	.remove		= aspeed_mctp_ctrl_remove,
 };
 
 static int __init aspeed_mctp_ctrl_init(void)
