@@ -11,6 +11,7 @@
 	aliases {
 		serial2 = &uart3;
 		serial4 = &uart5;
+        i2c70   = &i2c70;
 	};
 
 	chosen {
@@ -243,7 +244,190 @@
 
 // USB 2.0 to HMC, on USB Port B
 &ehci1 {
-   status = "okay";
+    status = "okay";
+
+    hub@1 {
+        reg = <1>;
+        hub@2 {
+            reg = <2>;
+            hub@1 {
+                reg = <1>;
+                device@1 {
+                    reg = <1>;
+                    cp2112: interface@1 {
+                        reg = <1 1>;
+
+                        gpio-controller;
+                        interrupt-controller;
+                        #gpio-cells = <2>;
+                        #interrupt-cells = <2>;
+
+                        i2c70: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+
+                            exp16: pca9555@50 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x50>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "C0_CVDD_PGOOD",
+                                    "C0_5V_SOCAMM_PGOOD",
+                                    "C0_HVDD_PGOOD",
+                                    "C0_CPUVDD_PGOOD",
+                                    "C0_SOCVDD_PGOOD",
+                                    "C0_MSVDD_PGOOD",
+                                    "C0_C2LPI_PGOOD",
+                                    "C0_C2LLI_PGOOD",
+                                    "C0_VDDP_PGOOD",
+                                    "C0_DVDD_PGOOD",
+                                    "C0_THERM_WARN_N",
+                                    "C0_S0_THERM_OVERT_L",
+                                    "CPU0_IROT_RECOVERY_L_3V3",
+                                    "CPU0_IROT_FATAL_ERR_L_3V3",
+                                    "CPU0_OVERT_L",
+                                    "CPU0_CHIPTHROT_L";
+                            };
+                            exp17: pca9555@51 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x51>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "C1_CVDD_PGOOD",
+                                    "C1_5V_SOCAMM_PGOOD",
+                                    "C1_HVDD_PGOOD",
+                                    "C1_CPUVDD_PGOOD",
+                                    "C1_SOCVDD_PGOOD",
+                                    "C1_MSVDD_PGOOD",
+                                    "C1_C2CLPI_PGOOD",
+                                    "C1_C2CLLI_PGOOD",
+                                    "C1_VDDP_PGOOD",
+                                    "C1_DVDD_PGOOD",
+                                    "C1_THERM_WARN_N",
+                                    "C1_S0_THERM_OVERT_L",
+                                    "CPU1_IROT_RECOVERY_L_3V3",
+                                    "CPU1_IROT_FATAL_ERR_L_3V3",
+                                    "CPU1_OVERT_L",
+                                    "CPU1_CHIPTHROT_L";
+                            };
+                            exp18: pca9555@52 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x52>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "VDD_1V1_PGOOD",
+                                    "VR_VCC_PGOOD",
+                                    "DDR_VDDQ_PGOOD",
+                                    "C2CVDD_PGOOD",
+                                    "VDD_1V8_PGOOD",
+                                    "VDD_3V3_PGOOD",
+                                    "MODULE_PWR_GOOD_1V8",
+                                    "INPUT_12V_VALID",
+                                    "RUN_PWR_EN_1V8",
+                                    "COMBINED_CPU_CEM_WAKE_L",
+                                    "BMC_IOX_INT_L",
+                                    "PCB_T_SENSOR_ALERT_L",
+                                    "NVBUF_LOS_L",
+                                    "GLOBAL_WP_1V8",
+                                    "MCU_THERM_WARN_N",
+                                    "MCU_THERM_OVERT_N";
+                            };
+                            exp19: pca9555@53 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x53>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "C0_SOCAMM_0_ID_PRSNT_N_1V8",
+                                    "C0_SOCAMM_1_ID_PRSNT_N",
+                                    "C0_SOCAMM_2_ID_PRSNT_N",
+                                    "C0_SOCAMM_3_ID_PRSNT_N",
+                                    "C0_SOCAMM_4_ID_PRSNT_N",
+                                    "C0_SOCAMM_5_ID_PRSNT_N",
+                                    "C0_SOCAMM_6_ID_PRSNT_N",
+                                    "C0_SOCAMM_7_ID_PRSNT_N",
+                                    "C1_SOCAMM_0_ID_PRSNT_N",
+                                    "C1_SOCAMM_1_ID_PRSNT_N",
+                                    "C1_SOCAMM_2_ID_PRSNT_N",
+                                    "C1_SOCAMM_3_ID_PRSNT_N",
+                                    "C1_SOCAMM_4_ID_PRSNT_N",
+                                    "C1_SOCAMM_5_ID_PRSNT_N",
+                                    "C1_SOCAMM_6_ID_PRSNT_N",
+                                    "C1_SOCAMM_7_ID_PRSNT_N";
+                            };
+                            exp20: pca9555@54 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x54>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "LEAK_DETECT_L",
+                                    "LEAK_SELF_TEST_L_1V8",
+                                    "CPU0_SSIF_ALERT_L_3V3",
+                                    "CPU1_SSIF_ALERT_L_1V8",
+                                    "MCU_I2C_RTC_ALERT_L",
+                                    "MCU_BMC_ALERT_L",
+                                    "MCU_HMC_ALERT_L",
+                                    "HPM_MCU_OK",
+                                    "MCU_USER_STRAP",
+                                    "OOB_MUX_CTRL0",
+                                    "OOB_MUX_CTRL1",
+                                    "MCU_JTAG_BYPASS_CPU0",
+                                    "MCU_JTAG_BYPASS_CPU1",
+                                    "MCU_JTAG_BYPASS_CPU0_S",
+                                    "MCU_JTAG_BYPASS_CPU1_S",
+                                    "";
+                            };
+                        };
+                    };
+                };
+            
+            };
+        };
+    };
 };
 
 // USB 1.0
