@@ -631,6 +631,42 @@
     };
 };
 
+// PDB GPIO Expander
+&i2c9 {
+    // PDB, Expander @0x24
+    exp16: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x24>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "PDB_TYPE-I",
+            "PDB_STBY_PWR_EN-O",
+            "PDB_STBY_PWR_OK-I",
+            "PDB_MCU_RECOVERY_L-O",
+            "PDB_MCU_RST_L-O",
+            "PDB_MAIN_PWR_EN-O",
+            "PDB_MAIN_PWR_OK-I",
+            "PDB_GLB_WP-O",
+            "PDB_PWR_BRK_L-I",
+            "PDB_FAN_CTL_PRSNT_L-I",
+            "PDB_P12V_HPM_EN-O",
+            "PDB_P12V_AIC_EN-O",
+            "PDB_P12V_GPU1_EN-O",
+            "PDB_P12V_GPU2_EN-O",
+            "PDB_PSU_PWOK-I",
+            "PDB_PS_ON_L-O";
+    };
+};
+
 // EMMC group that excludes WP pin
 &pinctrl {
     pinctrl_emmcg5_default: emmcg5_default {
