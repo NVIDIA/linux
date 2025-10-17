@@ -634,7 +634,7 @@
 // PDB GPIO Expander
 &i2c9 {
     // PDB, Expander @0x24
-    exp16: pca9555@20 {
+    exp21: pca9555@24 {
         compatible = "nxp,pca9555";
         reg = <0x24>;
         gpio-controller;
