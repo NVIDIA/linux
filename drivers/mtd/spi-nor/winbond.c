@@ -4,7 +4,10 @@
  * Copyright (C) 2014, Freescale Semiconductor, Inc.
  */
 
+#include <linux/device.h>
+#include <linux/mtd/mtd.h>
 #include <linux/mtd/spi-nor.h>
+#include <linux/spi/flash.h>
 
 #include "core.h"
 
@@ -64,6 +67,131 @@ w25q256_post_bfpt_fixups(struct spi_nor *nor,
 
 static const struct spi_nor_fixups w25q256_fixups = {
 	.post_bfpt = w25q256_post_bfpt_fixups,
+};
+
+static int spi_nor_read_w25q02gjv(struct mtd_info *mtd, loff_t from, size_t len,
+				  size_t *retlen, u_char *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	loff_t from_lock = from;
+	size_t len_lock = len;
+	ssize_t ret;
+	loff_t addr = from;
+	size_t read_len;
+	u32 die_sz = 0x04000000;
+
+	dev_dbg(nor->dev, "from 0x%08x, len %zd\n", (u32)from, len);
+
+	ret = spi_nor_prep_and_lock_rd(nor, from_lock, len_lock);
+	if (ret)
+		return ret;
+
+	while (len) {
+		read_len = len;
+		if (read_len > die_sz - ((u32)addr % die_sz))
+			read_len = die_sz - ((u32)addr % die_sz);
+
+		ret = spi_nor_read_data(nor, addr, read_len, buf);
+		if (ret == 0) {
+			/* We shouldn't see 0-length reads */
+			ret = -EIO;
+			goto read_err;
+		}
+		if (ret < 0)
+			goto read_err;
+
+		WARN_ON(ret > len);
+		*retlen += ret;
+		buf += ret;
+		addr += ret;
+		len -= ret;
+	}
+	ret = 0;
+
+read_err:
+	spi_nor_unlock_and_unprep(nor);
+	return ret;
+}
+
+static void w25q02gjv_post_fixups(struct spi_nor *nor)
+{
+	struct mtd_info *mtd = &nor->mtd;
+
+	mtd->_read = spi_nor_read_w25q02gjv;
+}
+
+/**
+ * winbond_nor_select_die() - Set active die.
+ * @nor:	pointer to 'struct spi_nor'.
+ * @die:	die to set active.
+ *
+ * Certain Winbond chips feature more than a single die. This is mostly hidden
+ * to the user, except that some chips may experience time deviation when
+ * modifying the status bits between dies, which in some corner cases may
+ * produce problematic races. Being able to explicitly select a die to check its
+ * state in this case may be useful.
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int winbond_nor_select_die(struct spi_nor *nor, u8 die)
+{
+	int ret;
+
+	nor->bouncebuf[0] = die;
+
+	if (nor->spimem) {
+		struct spi_mem_op op = WINBOND_NOR_SELDIE_OP(nor->bouncebuf);
+
+		spi_nor_spimem_setup_op(nor, &op, nor->reg_proto);
+
+		ret = spi_mem_exec_op(nor->spimem, &op);
+	} else {
+		ret = spi_nor_controller_ops_write_reg(nor,
+						       WINBOND_NOR_OP_SELDIE,
+						       nor->bouncebuf, 1);
+	}
+
+	if (ret)
+		dev_dbg(nor->dev, "error %d selecting die %d\n", ret, die);
+
+	return ret;
+}
+
+static int winbond_nor_multi_die_ready(struct spi_nor *nor)
+{
+	int ret, i;
+
+	for (i = 0; i < nor->params->n_dice; i++) {
+		ret = winbond_nor_select_die(nor, i);
+		if (ret)
+			return ret;
+
+		ret = spi_nor_sr_ready(nor);
+		if (ret <= 0)
+			return ret;
+	}
+
+	return 1;
+}
+
+static int
+winbond_nor_multi_die_post_sfdp_fixups(struct spi_nor *nor)
+{
+	/*
+	 * SFDP supports dice numbers, but this information is only available in
+	 * optional additional tables which are not provided by these chips.
+	 * Dice number has an impact though, because these devices need extra
+	 * care when reading the busy bit.
+	 */
+	nor->params->n_dice = nor->params->size / SZ_64M;
+	nor->params->ready = winbond_nor_multi_die_ready;
+
+	return 0;
+}
+
+static const struct spi_nor_fixups winbond_nor_multi_die_fixups = {
+	.post_sfdp = winbond_nor_multi_die_post_sfdp_fixups,
+	.post_fixups = w25q02gjv_post_fixups,
 };
 
 static const struct flash_info winbond_nor_parts[] = {
