@@ -140,18 +140,18 @@
             "B0_M1_MCU_RECOVERY_L-O",
             "B0_M1_SNN_GPU0_MCU_RESET_L",
             "B0_M1_SNN_GPU0_MCU_REC_L",
-            "B0_M1_CPU_OVERT_N-I",
-            "B0_M1_CPU_THERM_WARN_L-I",
-            "B0_M1_SNN_GPU_THERM_OVERT_L",
-            "B0_M1_SNN_GPU_THERM_WARN_L",
+            "B0_M1_THERM_OVERT_L-I",
+            "B0_M1_THERM_WARN_L-I",
+            "B0_M1_HMC_IST_PRE_RST_L-O",
+            "B0_M1_CPLD_READY-I",
             "B0_M1_MODULE_PWR_GOOD-I",
             "B0_M1_MCU_HMC_ALERT_L-I",
             "B0_M1_USB1_HUB_RST_L-O",
-            "B0_M1_HPM_MCU_OK_I",
-            "B0_M1_IST_BOOT_MODE-I",
-            "B0_M1_BOARD_LOC_STRAP",
+            "B0_M1_HPM_MCU_OK-I",
+            "B0_M1_CPU_SHDN_OK_L_3V3-I",
+            "B0_M1_SNN_BOARD_LOC_STRAP",
             "B0_M1_IST_SYS_RST_L-O",
-            "B0_M1_HMC_PRSNT_L-O";
+            "B0_M1_PWR_BRAKE_L_STATUS-I";
     };
 
     // MGMT1 BOARD0, Expander @0x21
@@ -174,18 +174,18 @@
             "B0_M1_CPU_BOOT_DEV_SEL0-O",
             "B0_M1_CPU_BOOT_DEV_SEL1-O",
             "B0_M1_CPU_BOOT_DEV_SEL2-O",
-            "B0_M1_SNN_CPU_BOOT_DEV_SEL3",
+            "B0_M1_HMC_BRD_ID0",
             "B0_M1_CPU_RECOVERY_TYPE0-O",
             "B0_M1_CPU_RECOVERY_TYPE1-O",
             "B0_M1_CPU_IST_BOOT_HMC-O",
             "B0_M1_CPU_BOOT_CHAIN0-O",
-            "B0_M1_SNN_CPU_BOOT_CHAIN1",
-            "B0_M1_SNN_CPU_BOOT_CHAIN2",
+            "B0_M1_HMC_BRD_ID1",
+            "B0_M1_HMC_BRD_ID2",
             "B0_M1_CPU_DIE_SEL0-O",
             "B0_M1_CPU_DIE_SEL1-O",
             "B0_M1_CPU_DIE_SEL2-O",
             "B0_M1_CPU_BOOT_COMPLETE-O",
-            "B0_M1_IOX_NVJTAG_SEL-O";
+            "B0_M1_IOX_JTAG_NVSEL-O";
     };
 };
 
@@ -208,22 +208,22 @@
         vcc-supply = <&standby_power_regulator>;
 
         gpio-line-names =
-            "B0_M0_SNN_IOX_STBY_PWR_EN",
-            "B0_M0_STBY_POWER_PG-I",
+            "B0_M0_SHDN_FORCE_L-O",
+            "B0_M0_STBY_PWR_PG-I",
             "B0_M0_THERM_OVERT_L-I",
             "B0_M0_THERM_WARN_L-I",
             "B0_M0_GLOBAL_WP-O",
-            "B0_M0_USB_HUB0_RST_L-O",
-            "B0_M0_IOX_PRE_SYS_RST_L-O",
-            "B0_M0_WATER_ALERT_L-I",
+            "B0_M0_USB0_HUB_RST_L-O",
+            "B0_M0_IOX_PRE_SYS_RST_N-O",
+            "B0_M0_LEAK_DETECT_ALERT_L-I",
             "B0_M0_RUN_PWR_EN-O",
             "B0_M0_MODULE_PWR_GOOD-I",
             "B0_M0_CPU_CHIPTHROT_L_3V3-I",
             "B0_M0_SHDN_REQ_L_3V3-O",
-            "B0_M0_CPU0_SHDN_OK_L_3V3-I",
-            "B0_M0_CPU1_SHDN_OK_L_3V3-I",
+            "B0_M0_CPU_SHDN_OK_L_3V3-I",
+            "B0_M0_CPLD_READY-I",
             "B0_M0_PWR_BRAKE_L_3V3-O",
-            "B0_M0_PDB_PWR_BRAKE_L";
+            "B0_M0_PWR_BRAKE_L_STATUS-I";
     };
 
     // MGMT0 BOARD0, Expander @0x21
@@ -243,21 +243,21 @@
 
         gpio-line-names =
             "B0_M0_I2C_BUS_MUX_RST_L-O",
-            "B0_M0_SLOT_PWR_BRAKE_L-O",
-            "B0_M0_SNN_SOCAMM_SPD_WP",
+            "B0_M0_HPM_MCU_OK-I",
+            "B0_M0_RSVD_AIC_USB_EN",
             "B0_M0_C0_SOCAMM_DAC_I2C_SEL_R-O",
             "B0_M0_C1_SOCAMM_DAC_I2C_SEL_R-O",
-            "B0_M0_C0_SOCAMM_I2C_SEL_R-O",
-            "B0_M0_C1_SOCAMM_I2C_SEL_R-O",
-            "B0_M0_CPU_IST_BOOT_BMC-O",
+            "B0_M0_C0_SOCAMM_I2C_SEL-O",
+            "B0_M0_C1_SOCAMM_I2C_SEL-O",
+            "B0_M0_EEPROM_POWER_DISABLE-O",
             "B0_M0_CPU_L0L1_RST_L_3V3-I",
             "B0_M0_CPU_L2_RST_L_3V3-I",
-            "B0_M0_FAN_BRD_PRSNT_L",
-            "B0_M0_FAN_FAIL_L",
+            "B0_M0_BRD_ID_0",
+            "B0_M0_BRD_ID_1",
             "B0_M0_BMC_LEAK_TEST_L-O",
             "B0_M0_MCU_BMC_ALERT_L-I",
             "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
-            "B0_M0_HSC_POWER_CYCLE";
+            "B0_M0_BRD_ID_2";
     };
 
     // MGMT0 BOARD0, Expander @0x22
@@ -281,16 +281,16 @@
             "B0_M0_C0_UPHY0_PRSNT3_L-I",
             "B0_M0_C0_UPHY1_PRSNT0_L-I",
             "B0_M0_C0_UPHY1_PRSNT1_L-I",
-            "B0_M0_SNN_C0_UPHY1_PRSNT2_L",
-            "B0_M0_SNN_C0_UPHY1_PRSNT3_L",
+            "B0_M0_RSVD_C0_UPHY1_PRSNT2_L",
+            "B0_M0_RSVD_C0_UPHY1_PRSNT3_L",
             "B0_M0_C0_UPHY2_PRSNT0_L-I",
             "B0_M0_C0_UPHY2_PRSNT1_L-I",
             "B0_M0_C0_UPHY2_PRSNT2_L-I",
             "B0_M0_C0_UPHY2_PRSNT3_L-I",
             "B0_M0_C0_UPHY3_PRSNT0_L-I",
             "B0_M0_C0_UPHY3_PRSNT1_L-I",
-            "B0_M0_SNN_C0_UPHY3_PRSNT2_L",
-            "B0_M0_SNN_C0_UPHY3_PRSNT3_L";
+            "B0_M0_RSVD_C0_UPHY3_PRSNT2_L",
+            "B0_M0_RSVD_C0_UPHY3_PRSNT3_L";
     };
 
     // MGMT0 BOARD0, Expander @0x23
@@ -312,24 +312,24 @@
             "B0_M0_C1_UPHY0_PRSNT1_L-I",
             "B0_M0_C1_UPHY0_PRSNT2_L-I",
             "B0_M0_C1_UPHY0_PRSNT3_L-I",
-            "B0_M0_SNN_C1_UPHY1_PRSNT0_L",
+            "B0_M0_RSVD_C1_UPHY1_PRSNT0_L",
             "B0_M0_C1_UPHY1_PRSNT1_L-I",
-            "B0_M0_SNN_C1_UPHY1_PRSNT2_L",
-            "B0_M0_SNN_C1_UPHY1_PRSNT3_L",
+            "B0_M0_RSVD_C1_UPHY1_PRSNT2_L",
+            "B0_M0_RSVD_C1_UPHY1_PRSNT3_L",
             "B0_M0_C1_UPHY2_PRSNT0_L-I",
             "B0_M0_C1_UPHY2_PRSNT1_L-I",
             "B0_M0_C1_UPHY2_PRSNT2_L-I",
             "B0_M0_C1_UPHY2_PRSNT3_L-I",
             "B0_M0_C1_UPHY3_PRSNT0_L-I",
             "B0_M0_C1_UPHY3_PRSNT1_L-I",
-            "B0_M0_SNN_C1_UPHY3_PRSNT2_L",
-            "B0_M0_SNN_C1_UPHY3_PRSNT3_L";
+            "B0_M0_RSVD_C1_UPHY3_PRSNT2_L",
+            "B0_M0_RSVD_C1_UPHY3_PRSNT3_L";
     };
 };
 
-// I2C6 GPIO Expander
+// I2C5 SMM Carrier GPIO Expander
 &i2c5 {
-    // MGMT1 BOARD0, Expander @0x20
+    // SMM Carrier, Expander @0x20
     exp7: pca9555@20 {
         compatible = "nxp,pca9555";
         reg = <0x20>;
@@ -362,7 +362,7 @@
             "WARN_LED_L-O";
     };
 
-    // MGMT1 BOARD0, Expander @0x21
+    // SMM Carrier, Expander @0x21
     exp8: pca9555@21 {
         compatible = "nxp,pca9555";
         reg = <0x21>;
