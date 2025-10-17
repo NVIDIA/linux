@@ -1411,7 +1411,7 @@ static void spi_nor_rww_end_rd(struct spi_nor *nor, loff_t start, size_t len)
 	rww->ongoing_rd = false;
 }
 
-static int spi_nor_prep_and_lock_rd(struct spi_nor *nor, loff_t start, size_t len)
+int spi_nor_prep_and_lock_rd(struct spi_nor *nor, loff_t start, size_t len)
 {
 	int ret;
 
@@ -3611,6 +3611,9 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	ret = spi_nor_set_mtd_info(nor);
 	if (ret)
 		return ret;
+
+	if (info->fixups && info->fixups->post_fixups)
+		info->fixups->post_fixups(nor);
 
 	dev_dbg(dev, "Manufacturer and device ID: %*phN\n",
 		SPI_NOR_MAX_ID_LEN, nor->id);
