@@ -280,22 +280,22 @@
                                 interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
-                                    "C0_CVDD_PGOOD",
-                                    "C0_5V_SOCAMM_PGOOD",
-                                    "C0_HVDD_PGOOD",
-                                    "C0_CPUVDD_PGOOD",
-                                    "C0_SOCVDD_PGOOD",
-                                    "C0_MSVDD_PGOOD",
-                                    "C0_C2LPI_PGOOD",
-                                    "C0_C2LLI_PGOOD",
-                                    "C0_VDDP_PGOOD",
-                                    "C0_DVDD_PGOOD",
-                                    "C0_THERM_WARN_N",
-                                    "C0_S0_THERM_OVERT_L",
-                                    "CPU0_IROT_RECOVERY_L_3V3",
-                                    "CPU0_IROT_FATAL_ERR_L_3V3",
-                                    "CPU0_OVERT_L",
-                                    "CPU0_CHIPTHROT_L";
+                                    "CPU0_IROT_RECOVERY_L-I",
+                                    "CPU0_IROT_FATAL_ERR_L-I",
+                                    "CPU0_OVERT_L-I",
+                                    "CPU0_SOC_THERM_WARN_L-I",
+                                    "SOC_OVERT_L-I",
+                                    "MCU_CPU0_CHIPTHROT_L-I",
+                                    "CPU0_SOCAMM0_PRSNT_L-I",
+                                    "CPU0_SOCAMM1_PRSNT_L-I",
+                                    "CPU0_SOCAMM2_PRSNT_L-I",
+                                    "CPU0_SOCAMM3_PRSNT_L-I",
+                                    "CPU0_SOCAMM4_PRSNT_L-I",
+                                    "CPU0_SOCAMM5_PRSNT_L-I",
+                                    "CPU0_SOCAMM6_PRSNT_L-I",
+                                    "CPU0_SOCAMM7_PRSNT_L-I",
+                                    "MCU_HPM_CPU0_SSIF_ALERT_L-I",
+                                    "MCU_RECOVERY_L-I";
                             };
                             exp17: pca9555@51 {
                                 compatible = "nxp,pca9555";
@@ -311,22 +311,22 @@
                                 interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
-                                    "C1_CVDD_PGOOD",
-                                    "C1_5V_SOCAMM_PGOOD",
-                                    "C1_HVDD_PGOOD",
-                                    "C1_CPUVDD_PGOOD",
-                                    "C1_SOCVDD_PGOOD",
-                                    "C1_MSVDD_PGOOD",
-                                    "C1_C2CLPI_PGOOD",
-                                    "C1_C2CLLI_PGOOD",
-                                    "C1_VDDP_PGOOD",
-                                    "C1_DVDD_PGOOD",
-                                    "C1_THERM_WARN_N",
-                                    "C1_S0_THERM_OVERT_L",
-                                    "CPU1_IROT_RECOVERY_L_3V3",
-                                    "CPU1_IROT_FATAL_ERR_L_3V3",
-                                    "CPU1_OVERT_L",
-                                    "CPU1_CHIPTHROT_L";
+                                    "CPU0_UPHY_PRSNT0_L-I",
+                                    "CPU0_UPHY_PRSNT1_L-I",
+                                    "CPU0_UPHY_PRSNT2_L-I",
+                                    "UPHY1_MCIO0_PERST_R_L-I",
+                                    "UPHY2_MCIO0_PERST_R_L-I",
+                                    "UPHY2_MCIO2_PERST_R_L-I",
+                                    "UPHY0_MCIO2_PERST_R_L-I",
+                                    "UPHY3_MCIO1_PERST_R_L-I",
+                                    "T_SENSOR_ALERT_L-I",
+                                    "MCU_GLOBAL_WP_FRU-O",
+                                    "OOB_MUX_CTRL0-O",
+                                    "OOB_MUX_CTRL1-O",
+                                    "HPM_CPU0_OOB_SPI_CS0_L-O",
+                                    "HPM_CPU0_OOB_SPI_CS1_L-O",
+                                    "WP_MCU_IN-I",
+                                    "MCU_I2C_RTC_ALERT_L-I";
                             };
                             exp18: pca9555@52 {
                                 compatible = "nxp,pca9555";
@@ -342,22 +342,22 @@
                                 interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
-                                    "VDD_1V1_PGOOD",
-                                    "VR_VCC_PGOOD",
-                                    "DDR_VDDQ_PGOOD",
-                                    "C2CVDD_PGOOD",
-                                    "VDD_1V8_PGOOD",
-                                    "VDD_3V3_PGOOD",
-                                    "MODULE_PWR_GOOD_1V8",
-                                    "INPUT_12V_VALID",
-                                    "RUN_PWR_EN_1V8",
-                                    "COMBINED_CPU_CEM_WAKE_L",
-                                    "BMC_IOX_INT_L",
-                                    "PCB_T_SENSOR_ALERT_L",
-                                    "NVBUF_LOS_L",
-                                    "GLOBAL_WP_1V8",
-                                    "MCU_THERM_WARN_N",
-                                    "MCU_THERM_OVERT_N";
+                                    "CPU_CEM_WAKE_L-I",
+                                    "MCU_THERM_OVERT_L-I",
+                                    "MCU_THERM_WARN_L-I",
+                                    "MCU_HEARTBEAT-I",
+                                    "MCU_GLOBAL_WP_CPU01-I",
+                                    "NVBUF_LOS_L-I",
+                                    "LEAK_DETECT_L-I",
+                                    "vLeakDetect1Status0-I",
+                                    "vLeakDetect1Status1-I",
+                                    "vLeakDetect2Status0-I",
+                                    "vLeakDetect2Status1-I",
+                                    "HPM_IOX_ALERT_L-I",
+                                    "MCU_BMC_ALERT-I",
+                                    "MCU_USER_STRAP-I",
+                                    "HPM_MCU_OK-I",
+                                    "MCU_HMC_ALERT_L-I";
                             };
                             exp19: pca9555@53 {
                                 compatible = "nxp,pca9555";
@@ -373,22 +373,22 @@
                                 interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
-                                    "C0_SOCAMM_0_ID_PRSNT_N_1V8",
-                                    "C0_SOCAMM_1_ID_PRSNT_N",
-                                    "C0_SOCAMM_2_ID_PRSNT_N",
-                                    "C0_SOCAMM_3_ID_PRSNT_N",
-                                    "C0_SOCAMM_4_ID_PRSNT_N",
-                                    "C0_SOCAMM_5_ID_PRSNT_N",
-                                    "C0_SOCAMM_6_ID_PRSNT_N",
-                                    "C0_SOCAMM_7_ID_PRSNT_N",
-                                    "C1_SOCAMM_0_ID_PRSNT_N",
-                                    "C1_SOCAMM_1_ID_PRSNT_N",
-                                    "C1_SOCAMM_2_ID_PRSNT_N",
-                                    "C1_SOCAMM_3_ID_PRSNT_N",
-                                    "C1_SOCAMM_4_ID_PRSNT_N",
-                                    "C1_SOCAMM_5_ID_PRSNT_N",
-                                    "C1_SOCAMM_6_ID_PRSNT_N",
-                                    "C1_SOCAMM_7_ID_PRSNT_N";
+                                    "PS_DDR_VDDP_PG_CPLD_RST_L-I",
+                                    "PS_DVDD_PG_CPLD_PSEQ_FAULT_R-I",
+                                    "VR_VCC_PG_CPLD_READY-I",
+                                    "CPLD_PROGRAM-I",
+                                    "INPUT_12V_VALID_IN-I",
+                                    "IOX_RUN_POWER_EN-I",
+                                    "MODULE_PWR_GOOD-I",
+                                    "PS_1V8_PGOOD-I",
+                                    "PS_3V3_PGOOD-I",
+                                    "PS_UPHY_CVDD_PGOOD-I",
+                                    "PS_C2CLLI_PGOOD-I",
+                                    "PS_DDR_VDDQ_PGOOD-I",
+                                    "PS_C2CVDD_PGOOD-I",
+                                    "MOD0_PEX_RESET_L-I",
+                                    "M2_ALERT_L-I",
+                                    "TRAY_FAST_SHDN_L-I";
                             };
                             exp20: pca9555@54 {
                                 compatible = "nxp,pca9555";
@@ -404,21 +404,21 @@
                                 interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
 
                                 gpio-line-names =
-                                    "LEAK_DETECT_L",
-                                    "LEAK_SELF_TEST_L_1V8",
-                                    "CPU0_SSIF_ALERT_L_3V3",
-                                    "CPU1_SSIF_ALERT_L_1V8",
-                                    "MCU_I2C_RTC_ALERT_L",
-                                    "MCU_BMC_ALERT_L",
-                                    "MCU_HMC_ALERT_L",
-                                    "HPM_MCU_OK",
-                                    "MCU_USER_STRAP",
-                                    "OOB_MUX_CTRL0",
-                                    "OOB_MUX_CTRL1",
-                                    "MCU_JTAG_BYPASS_CPU0",
-                                    "MCU_JTAG_BYPASS_CPU1",
-                                    "MCU_JTAG_BYPASS_CPU0_S",
-                                    "MCU_JTAG_BYPASS_CPU1_S",
+                                    "PS_HVDD_1V2_PG_JTAG-I",
+                                    "PS_CPU_PG_JTAG_TMS-I",
+                                    "PS_SOC_PG_JTAG_TDO-I",
+                                    "PS_MSS_PG_JTAG_TDI-I",
+                                    "PS_C2CLPI_PG_JTAG_TRST-I",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
                                     "";
                             };
                         };
