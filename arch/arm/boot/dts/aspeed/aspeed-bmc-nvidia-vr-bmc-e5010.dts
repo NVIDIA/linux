@@ -68,10 +68,10 @@
                 gpios = <&exp7 10 GPIO_ACTIVE_LOW>;
         };
         fault_led {
-                gpios = <&exp7 11 GPIO_ACTIVE_LOW>;
+                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
         };
         power_led {
-                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
+                gpios = <&exp7 8 GPIO_ACTIVE_LOW>;
         };
     };
 
@@ -442,13 +442,6 @@
     disable-master = <1>;
     i2c-scl-clk-low-timeout-us = <32000>;
     i2c-tck-thddat-config = <0x0099EC00>;
-    ssif-bmc@10 {
-        compatible = "ssif-bmc";
-        alert-gpio = <&gpio1 ASPEED_GPIO(D, 7) GPIO_ACTIVE_LOW>;
-        pulse_width_us = <5>;
-        timeout_ms = <4995>;
-        reg = <0x10>;
-    };
 };
 
 // I2C2
