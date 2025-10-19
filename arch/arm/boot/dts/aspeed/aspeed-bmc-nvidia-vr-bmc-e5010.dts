@@ -68,10 +68,10 @@
                 gpios = <&exp7 10 GPIO_ACTIVE_LOW>;
         };
         fault_led {
-                gpios = <&exp7 11 GPIO_ACTIVE_LOW>;
+                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
         };
         power_led {
-                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
+                gpios = <&exp7 8 GPIO_ACTIVE_LOW>;
         };
     };
 
