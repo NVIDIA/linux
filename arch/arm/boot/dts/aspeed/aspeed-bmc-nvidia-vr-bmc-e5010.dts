@@ -2,6 +2,7 @@
 /dts-v1/;
 
 #include "nvidia-vr-bmc-e5010-core.dtsi"
+#include <dt-bindings/i2c/i2c.h>
 #include <dt-bindings/leds/common.h>
 
 / {
