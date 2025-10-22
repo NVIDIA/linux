@@ -311,6 +311,7 @@ void mctp_dev_put(struct mctp_dev *mdev)
 		kfree_rcu(mdev, rcu);
 	}
 }
+EXPORT_SYMBOL_GPL(mctp_dev_put);
 
 void mctp_dev_release_key(struct mctp_dev *dev, struct mctp_sk_key *key)
 	__must_hold(&key->lock)

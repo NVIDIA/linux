@@ -539,6 +539,8 @@ static ssize_t tx_batching_store(struct device *dev,
 			    "TX batching %s (hdr_len=%u, max_xfer=%u)\n",
 			    enabled ? "enabled" : "disabled",
 			    mdev->tx_batch_hdr_len, mdev->tx_batch_max_xfer);
+		mctp_dev_put(
+			mdev); /* Release reference taken by __mctp_dev_get() */
 	} else {
 		netdev_err(netdev, "Failed to get mctp_dev!\n");
 	}
@@ -633,6 +635,8 @@ static int mctp_usb_probe(struct usb_interface *intf,
 			mdev->tx_batching_enabled = true;
 			mdev->tx_batch_hdr_len = sizeof(struct mctp_usb_hdr);
 			mdev->tx_batch_max_xfer = MCTP_USB_XFER_SIZE;
+			mctp_dev_put(
+				mdev); /* Release reference taken by __mctp_dev_get() */
 		}
 		rcu_read_unlock();
 	}
