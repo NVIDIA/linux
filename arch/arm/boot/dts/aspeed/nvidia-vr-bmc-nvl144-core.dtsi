@@ -413,6 +413,26 @@
 
 };
 
+// I2C13 E1S/SSD  GPIO Expander
+&i2c13 {
+    exp18: pca9554@38 {
+        compatible = "nxp,pca9554";
+        reg = <0x38>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        gpio-line-names =
+            "SSD0_PRSNT_L",
+            "E1S_PWR_EN",
+            "SSD0_PWRDIS",
+            "SMB_SSD0_RST",
+            "BMC_SSD0_RST_L",
+            "V_SSD0_FLT",
+            "GPIO_P6_TP",
+            "GPIO_P7_TP";
+    };
+};
+
 // EMMC group that excludes WP pin
 &pinctrl {
     pinctrl_emmcg5_default: emmcg5_default {
