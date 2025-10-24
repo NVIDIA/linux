@@ -129,12 +129,14 @@ static int mctp_usbg_bind(struct usb_configuration *c, struct usb_function *f)
 		ERROR(cdev, "%s in_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
+	hs_mctp_source_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_XFER_SIZE);
 
 	mctp->out_ep = usb_ep_autoconfig(cdev->gadget, &hs_mctp_sink_desc);
 	if (!mctp->out_ep) {
 		ERROR(cdev, "%s out_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
+	hs_mctp_sink_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_XFER_SIZE);
 
 	rc = usb_assign_descriptors(f, NULL, hs_mctp_descs, NULL, NULL);
 	if (rc) {
@@ -164,11 +166,19 @@ static void mctp_usbg_prealloc(struct f_mctp *mctp)
 	list_replace_init(&mctp->rx_reqs, &reqs);
 	spin_unlock_irqrestore(&mctp->lock, flags);
 
-	list_for_each_entry(req, &reqs, list) {
+	while (!list_empty(&reqs)) {
+		req = list_first_entry(&reqs, struct usb_request, list);
+		list_del(&req->list);
+
 		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_XFER_SIZE,
 					 GFP_KERNEL);
-		if (!skb)
+		if (!skb) {
+			/* Put it back for next time */
+			spin_lock_irqsave(&mctp->lock, flags);
+			list_add(&req->list, &mctp->rx_reqs);
+			spin_unlock_irqrestore(&mctp->lock, flags);
 			break;
+		}
 
 		req->buf = skb->data;
 		req->context = skb;
@@ -235,6 +245,7 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 				    struct usb_request *req)
 {
 	struct device *dev = &mctp->function.config->cdev->gadget->dev;
+	struct net_device *netdev = mctp->dev;
 	struct sk_buff *skb = req->context;
 	struct mctp_usb_hdr *hdr;
 	struct mctp_skb_cb *cb;
@@ -271,7 +282,8 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	skb_reset_network_header(skb);
 	cb = __mctp_cb(skb);
 	cb->halen = 0;
-	dev_dstats_rx_add(mctp->dev, skb->len);
+	netdev->stats.rx_packets++;
+	netdev->stats.rx_bytes += skb->len;
 	netif_rx(skb);
 
 	return;
@@ -280,7 +292,6 @@ err:
 	/* todo: return to free list */
 	kfree_skb(skb);
 }
-
 static void mctp_usbg_out_ep_complete(struct usb_ep *ep,
 				      struct usb_request *req)
 {
@@ -320,6 +331,7 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 {
 	struct f_mctp *mctp = ep->driver_data;
 	struct usb_composite_dev *cdev = mctp->function.config->cdev;
+	struct net_device *netdev = mctp->dev;
 	struct sk_buff *skb = req->context;
 	unsigned long flags;
 
@@ -331,7 +343,8 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 
 	switch (req->status) {
 	case 0:
-		dev_dstats_tx_add(mctp->dev, skb->len);
+		netdev->stats.tx_bytes += skb->len;
+		netdev->stats.tx_packets++;
 		spin_lock_irqsave(&mctp->lock, flags);
 		if (list_empty(&mctp->tx_reqs))
 			netif_wake_queue(mctp->dev);
@@ -344,7 +357,7 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 	case -ECONNABORTED:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
-		dev_dstats_tx_dropped(mctp->dev);
+		netdev->stats.tx_dropped++;
 		usb_ep_free_request(ep, req);
 		break;
 	}
@@ -445,6 +458,7 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 					struct net_device *dev)
 {
 	struct f_mctp *mctp = netdev_priv(dev);
+	struct net_device *netdev = mctp->dev;
 	struct mctp_usb_hdr *hdr;
 	struct usb_request *req;
 	unsigned long flags;
@@ -482,13 +496,14 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 
 	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
 
-	dev_dstats_tx_add(dev, skb->len);
+	netdev->stats.tx_bytes += skb->len;
+	netdev->stats.tx_packets++;
 
 	return NETDEV_TX_OK;
 
 drop:
 	kfree_skb(skb);
-	dev_dstats_tx_dropped(dev);
+	netdev->stats.tx_dropped++;
 	return NETDEV_TX_OK;
 }
 
@@ -552,7 +567,6 @@ static void mctp_usbg_netdev_setup(struct net_device *dev)
 	dev->flags = IFF_NOARP;
 	dev->netdev_ops = &mctp_usbg_netdev_ops;
 	dev->needs_free_netdev = true;
-	dev->pcpu_stat_type = NETDEV_PCPU_STAT_DSTATS;
 }
 
 static struct usb_function
