@@ -3,6 +3,7 @@
 
 #include "nvidia-vr-bmc-nvl144-core.dtsi"
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/i2c/i2c.h>
 
 / {
     model = "AST2600 VR NVL144 BMC";
@@ -782,6 +783,12 @@
 &i2c13 {
     status = "ok";
     clock-frequency = <400000>;
+    mctp-controller;
+
+    mctp@18 {
+        compatible = "mctp-i2c-controller";
+        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+    };
 };
 
 // I2C15
