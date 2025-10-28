@@ -1366,6 +1366,37 @@ void mctp_route_remove_dev(struct mctp_dev *mdev)
 	}
 }
 
+/* Lookup bound socket for packet delivery when no route exists */
+static struct mctp_route *mctp_route_lookup_bound_socket(struct net *net, struct sk_buff *skb)
+{
+	struct mctp_hdr *mh;
+	struct mctp_sock *msk;
+	struct mctp_route *rt = NULL;
+
+	WARN_ON(!rcu_read_lock_held());
+
+	mh = mctp_hdr(skb);
+
+	if (!skb_headlen(skb))
+		return NULL;
+
+	/* Look for bound sockets that match this packet */
+	msk = mctp_lookup_bind(net, skb);
+	if (msk) {
+		/* Create a temporary route for socket delivery */
+		rt = mctp_route_alloc();
+		if (rt) {
+			rt->min = mh->dest;
+			rt->max = mh->dest;
+			rt->type = RTN_LOCAL;
+			rt->output = mctp_route_input;
+			rt->dev = NULL;
+		}
+	}
+
+	return rt;
+}
+
 /* Incoming packet-handling */
 
 static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
@@ -1421,8 +1452,17 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	rt = mctp_route_lookup(net, cb->net, mh->dest);
 
 	/* NULL EID, but addressed to our physical address */
-	if (!rt && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST)
+	if (!rt && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST) {
 		rt = mctp_route_lookup_null(net, dev);
+		if (!rt) {
+			/* Check if there's a bound socket that matches for this packet */
+			rt = mctp_route_lookup_bound_socket(net, skb);
+			if (rt) {
+				rt->dev = mdev;
+				mctp_dev_hold(rt->dev);
+			}
+		}
+	}
 
 	if (!rt)
 		goto err_drop;
