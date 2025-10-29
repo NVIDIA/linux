@@ -240,7 +240,9 @@
 //NIC
 &i2c5 {
 	status = "okay";
+        mctp-controller;
 	multi-master;
+
 	mctp@32 {
 		compatible = "mctp-i2c-controller";
 		reg = <(0x32 | I2C_OWN_SLAVE_ADDRESS)>;
