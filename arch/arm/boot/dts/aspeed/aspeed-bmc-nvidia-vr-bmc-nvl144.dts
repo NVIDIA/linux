@@ -784,6 +784,7 @@
     status = "ok";
     clock-frequency = <400000>;
     mctp-controller;
+    multi-master;
 
     mctp@18 {
         compatible = "mctp-i2c-controller";
