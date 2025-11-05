@@ -122,7 +122,7 @@ static netdev_tx_t mctp_spi_net_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;
 }
 
-static int mctp_spi_net_recv(struct mctp_spi *midev)
+static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 {
 	struct net_device *ndev = midev->ndev;
 	struct sk_buff *skb;
@@ -139,7 +139,9 @@ static int mctp_spi_net_recv(struct mctp_spi *midev)
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
-	skb_put_data(skb, midev->spidev->rx_buffer, recvlen);
+	if (!rx_buffer) 
+		rx_buffer = midev->spidev->rx_buffer;
+	skb_put_data(skb, rx_buffer, recvlen);
 	skb_reset_network_header(skb);
 	cb = __mctp_cb(skb);
 	cb->halen = 0;
@@ -187,8 +189,8 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 	len = payload_len + hdr_size;
 
 	midev->spidev->rx_len = payload_len;
-	memcpy(midev->spidev->rx_buffer, tmp_rx_buffer + hdr_size, payload_len);
-	mctp_spi_net_recv(midev);
+	// memcpy(midev->spidev->rx_buffer, tmp_rx_buffer + hdr_size, payload_len);
+	mctp_spi_net_recv(midev, tmp_rx_buffer + hdr_size);
 
 	return 0;
 }
