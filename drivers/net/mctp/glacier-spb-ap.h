@@ -176,26 +176,22 @@ static const char *mailbox_str(uint32_t mb)
 
 static inline uint32_t buf2dw(uint8_t *x)
 {
-	return (x[0] << 24) | (x[1] << 16) | (x[2] << 8) | (x[3] << 0);
+	return ntohl(*(uint32_t*)x);
 }
 
 static inline uint16_t buf2w(uint8_t *x)
 {
-	return (x[0] << 8) | (x[1] << 0);
+	return ntohs(*(uint16_t*)x);
 }
 
 static inline void dw2buf(uint32_t dw, uint8_t *buf)
 {
-	buf[0] = (uint8_t)((dw >> 24) & 0xff);
-	buf[1] = (uint8_t)((dw >> 16) & 0xff);
-	buf[2] = (uint8_t)((dw >> 8) & 0xff);
-	buf[3] = (uint8_t)((dw >> 0) & 0xff);
+	*(uint32_t*)buf = htonl(dw);
 }
 
 static inline void w2buf(uint16_t w, uint8_t *buf)
 {
-	buf[0] = (uint8_t)((w >> 8) & 0xff);
-	buf[1] = (uint8_t)((w >> 0) & 0xff);
+	*(uint16_t*)buf = htons(w);
 }
 
 static int wait_for_gpio_interrupt(wait_queue_head_t *gpio_intr_wq, bool *gpio_intr_cond,
@@ -413,12 +409,8 @@ SpbApStatus posted_write(SpbAp *ap, uint16_t offset, int len, uint8_t *payload)
 			buf[0] = CMD_MEM_BLK_W1 + bytes / 4 - 1;
 			w2buf(offset + off, buf + 1);
 			// byteswap for DWORD
-			for (int ii = 0; ii < bytes; ii += 4) {
-				buf[ii + 3 + 0] = payload[off + ii + 3];
-				buf[ii + 3 + 1] = payload[off + ii + 2];
-				buf[ii + 3 + 2] = payload[off + ii + 1];
-				buf[ii + 3 + 3] = payload[off + ii + 0];
-			}
+			for (int ii = 0; ii < bytes; ii += 4)
+				*(uint32_t*)(buf + ii + 3) = __builtin_bswap32(*(uint32_t*)(payload + off + ii));
 
 			status = wait_for_memory_write_busy_and_rx_fifo_empty(
 				ap);
@@ -515,12 +507,8 @@ SpbApStatus posted_read(SpbAp *ap, int offset, int len, uint8_t *payload)
 			MCTP_ASSERT_RET(status == SPB_AP_OK, status,
 					"posted_read_helper failed");
 
-			for (int ii = 0; ii < bytes; ii += 4) {
-				payload[off + ii + 3] = buf[ii + 0];
-				payload[off + ii + 2] = buf[ii + 1];
-				payload[off + ii + 1] = buf[ii + 2];
-				payload[off + ii + 0] = buf[ii + 3];
-			}
+			for (int ii = 0; ii < bytes; ii += 4)
+				*(uint32_t*)(payload + off + ii) = __builtin_bswap32(*(uint32_t*)(buf + ii));
 		} else {
 			for (int ii = 0; ii < bytes; ii++) {
 				status = posted_read_helper(
