@@ -102,8 +102,19 @@ int create_user_ns(struct cred *new)
 	 * mount namespace which allows all files to be accessed.
 	 */
 	ret = -EPERM;
-	if (current_chrooted())
-		goto fail_dec;
+	if (current_chrooted()) {
+		struct path init_root;
+		bool is_real_chroot;
+
+		/* Compare our root with init's root to detect real chroot */
+		get_fs_root(init_task.fs, &init_root);
+		is_real_chroot = !path_equal(&current->fs->root, &init_root);
+		path_put(&init_root);
+
+		/* Only block if this is a real chroot, not overlayfs false-positive */
+		if (is_real_chroot)
+			goto fail_dec;
+	}
 
 	/* The creator needs a mapping in the parent user namespace
 	 * or else we won't be able to reasonably tell userspace who
