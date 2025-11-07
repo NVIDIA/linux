@@ -130,8 +130,11 @@
     pinctrl-names = "default";
     pinctrl-0 = <&pinctrl_spi1_default>;
     spidev@0 {
+        compatible = "mctp-spi";
         spi-max-frequency = <25000000>;
-        compatible = "hgx,glacier";
+        alert-gpio = <&gpio0 ASPEED_GPIO(Z, 0) GPIO_ACTIVE_HIGH>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <&gpio0 ASPEED_GPIO(Z, 0) GPIO_ACTIVE_HIGH>;
         status = "okay";
     };
 };
