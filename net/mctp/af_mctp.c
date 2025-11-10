@@ -20,6 +20,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/mctp.h>
 
+#include "mctp-socket-error-inject.h"
+
 /* socket implementation */
 
 static void mctp_sk_expire_keys(struct timer_list *timer);
@@ -83,7 +85,7 @@ static int mctp_bind(struct socket *sock, struct sockaddr *addr, int addrlen)
 	msk->bind_type = smctp->smctp_type & 0x7f; /* ignore the IC bit */
 
 	rc = sk->sk_prot->hash(sk);
-
+	
 out_release:
 	release_sock(sk);
 
@@ -125,6 +127,17 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 
 	if (!capable(CAP_NET_RAW))
 		return -EACCES;
+
+	/* Socket-level error injection - test application error handling
+	 * Simulates various sendto() failures at socket layer (binding-agnostic):
+	 * - EBUSY: Tag allocation failure (all 8 tags in use)
+	 * - EHOSTUNREACH: No route to destination
+	 * - ENOBUFS/ENOMEM: Memory allocation failure
+	 * - EAGAIN: Would block (non-blocking socket)
+	 */
+	rc = mctp_socket_error_inject_sendmsg();
+	if (rc < 0)
+		return rc;
 
 	if (addr->smctp_network == MCTP_NET_ANY)
 		addr->smctp_network = mctp_default_net(sock_net(sk));
@@ -203,7 +216,7 @@ err_free:
 }
 
 static int mctp_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
-			int flags)
+		int flags)
 {
 	DECLARE_SOCKADDR(struct sockaddr_mctp *, addr, msg->msg_name);
 	struct sock *sk = sock->sk;
@@ -212,6 +225,10 @@ static int mctp_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 	size_t msglen;
 	u8 type;
 	int rc;
+
+	/* Handle error queue read */
+	if (flags & MSG_ERRQUEUE)
+		return sock_recv_errqueue(sk, msg, len, SOL_MCTP, MCTP_RECVERR);
 
 	if (flags & ~(MSG_DONTWAIT | MSG_TRUNC | MSG_PEEK))
 		return -EOPNOTSUPP;
@@ -278,6 +295,103 @@ out_free:
 	return rc;
 }
 
+/* Work function - called by kernel worker thread to report errors
+ * Context: Process context, NO locks held
+ * 
+ * This defers error reporting from timer/softirq context to avoid deadlock.
+ * The timer path (mctp_sk_expire_keys) holds keys_lock, which would cause
+ * deadlock if we call sk_error_report() directly (wake-up callback might
+ * need keys_lock). By deferring to workqueue, we ensure error reporting
+ * happens after keys_lock is released.
+ */
+static void mctp_error_report_work_fn(struct work_struct *work)
+{
+	struct mctp_sock *msk = container_of(work, struct mctp_sock,
+					     error_report_work);
+	struct mctp_pending_error *perr, *tmp;
+	struct list_head local_list;
+	
+	/* Move all pending errors to local list to minimize lock time */
+	INIT_LIST_HEAD(&local_list);
+	
+	spin_lock_bh(&msk->error_queue_lock);
+	list_splice_init(&msk->pending_errors, &local_list);
+	spin_unlock_bh(&msk->error_queue_lock);
+	
+	/* Process all errors without holding locks - safe! */
+	list_for_each_entry_safe(perr, tmp, &local_list, list) {
+		/* Report error to application - safe, no MCTP locks held.
+		 *
+		 * For RX reassembly timeout, we use the socket saved in perr->sk
+		 * (from the RX key at timeout). This avoids redundant socket lookup
+		 * and ensures we report to the correct socket even if RX key is gone.
+		 *
+		 * For ETIMEDOUT, we have orig_payload saved in perr, so we build
+		 * the error structure directly instead of calling mctp_queue_error.
+		 */
+		if (perr->error_code == ETIMEDOUT && perr->sk && perr->orig_payload_len > 0) {
+			/* RX timeout with saved request payload - build error directly */
+			struct mctp_error *mctp_err;
+			struct sk_buff *err_skb;
+			struct mctp_hdr *mh;
+			
+			if (!perr->skb || perr->skb->len < sizeof(struct mctp_hdr))
+				goto cleanup;
+			
+			err_skb = alloc_skb(sizeof(*mctp_err), GFP_KERNEL);
+			if (!err_skb)
+				goto cleanup;
+			
+			mctp_err = (struct mctp_error *)skb_put(err_skb, sizeof(*mctp_err));
+			memset(mctp_err, 0, sizeof(*mctp_err));
+			
+			/* Fill error information */
+			mctp_err->error_code = perr->error_code;
+			mctp_err->direction = perr->direction;
+			mctp_err->binding = perr->binding;
+			mctp_err->timestamp_ns = ktime_get_ns();
+			
+			/* Fill addressing from first fragment SKB */
+			mh = mctp_hdr(perr->skb);
+			mctp_err->src_eid = mh->src;
+			mctp_err->dest_eid = mh->dest;
+			mctp_err->tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+			
+			/* Use saved REQUEST payload from perr */
+			mctp_err->msg_type = perr->orig_msg_type;
+			mctp_err->payload_len = min_t(u16, perr->orig_payload_len,
+						      MCTP_ERROR_PAYLOAD_SIZE);
+			memcpy(mctp_err->payload, perr->orig_payload, mctp_err->payload_len);
+			
+			/* Queue error to socket */
+			if (sock_queue_err_skb(perr->sk, err_skb) == 0) {
+				sk_error_report(perr->sk);
+				pr_debug("MCTP timeout: Error queued (REQUEST payload, len=%u)\n",
+					 mctp_err->payload_len);
+			} else {
+				kfree_skb(err_skb);
+				pr_debug("MCTP timeout: Failed to queue error to socket\n");
+			}
+cleanup:
+			sock_put(perr->sk);
+		} else if (perr->sk) {
+			/* Other error types - use mctp_queue_error */
+			mctp_queue_error(perr->sk, perr->skb, perr->error_code,
+					 perr->dev, perr->direction, perr->binding, NULL);
+			sock_put(perr->sk);
+		} else {
+			/* Fallback: Look up socket from SKB (future error types) */
+			mctp_queue_error(&msk->sk, perr->skb, perr->error_code,
+					 perr->dev, perr->direction, perr->binding, NULL);
+		}
+		
+		/* Cleanup */
+		list_del(&perr->list);
+		kfree_skb(perr->skb);
+		kfree(perr);
+	}
+}
+
 /* We're done with the key; invalidate, stop reassembly, and remove from lists.
  */
 static void __mctp_key_remove(struct mctp_sk_key *key, struct net *net,
@@ -292,6 +406,82 @@ __must_hold(&net->mctp.keys_lock)
 	key->reasm_head = NULL;
 	key->reasm_dead = true;
 	key->valid = false;
+
+	/* Reassembly timeout - queue error for deferred reporting */
+	if (reason == MCTP_TRACE_KEY_TIMEOUT && skb && key->dev && key->dev->dev &&
+	    key->sk) {
+		struct mctp_sock *msk = container_of(key->sk, struct mctp_sock, sk);
+		
+		netdev_warn(key->dev->dev,
+			   "MCTP RX: Reassembly timeout - partial message discarded "
+			   "(src=%u, dest=%u, tag=%u, fragments incomplete)\n",
+			   key->peer_addr, key->local_addr, key->tag);
+		
+		/* Queue error for deferred reporting via workqueue if enabled.
+		 * Use ETIMEDOUT for reassembly timeout - semantically clearer than EPROTO
+		 * (timeout is caused by missing fragments that never arrive).
+		 *
+		 * CRITICAL: Only report if this key originated from TX (has orig_payload).
+		 * This ensures we only report errors for responses to OUR requests,
+		 * not for unsolicited requests from device.
+		 *
+		 * For TX-originated keys:
+		 * - key->sk = application that sent original request
+		 * - key->reasm_head (skb) = first fragment of response (used for addressing)
+		 * - key->orig_payload = original REQUEST payload (from TX phase)
+		 *
+		 * We pass socket + first fragment SKB (for addressing) to workqueue.
+		 * Workqueue will extract REQUEST payload from key->orig_payload,
+		 * allowing applications to identify which transaction timed out.
+		 */
+		if (msk->enable_errqueue && key->orig_payload_len > 0) {
+			struct mctp_pending_error *perr;
+			
+			perr = kmalloc(sizeof(*perr), GFP_ATOMIC);
+			if (perr) {
+				/* Clone first fragment SKB for later use by workqueue */
+				perr->skb = skb_clone(skb, GFP_ATOMIC);
+				if (perr->skb) {
+					/* Save socket with refcount - ensures it stays alive
+					 * until workqueue processes the error.
+					 * This is the application that sent the original request.
+					 */
+					perr->sk = key->sk;
+					sock_hold(perr->sk);
+					
+					perr->error_code = ETIMEDOUT;
+					perr->dev = key->dev->dev;
+					perr->direction = MCTP_DIR_RX;
+					perr->binding = mctp_get_binding_type(key->dev ? key->dev->dev : NULL);
+					
+				/* Copy original request payload from key for error reporting */
+				perr->orig_msg_type = key->orig_msg_type;
+				perr->orig_payload_len = key->orig_payload_len;
+				memcpy(perr->orig_payload, key->orig_payload,
+				       min_t(size_t, key->orig_payload_len, sizeof(perr->orig_payload)));
+				
+				/* Add to pending list and schedule work
+				 * Work will run later in process context with no locks held
+				 */
+				spin_lock_bh(&msk->error_queue_lock);
+				list_add_tail(&perr->list, &msk->pending_errors);
+				spin_unlock_bh(&msk->error_queue_lock);
+					
+					pr_info("MCTP: RX timeout queued for deferred error reporting (key has TX origin, orig_payload_len=%u)\n",
+						key->orig_payload_len);
+					
+					/* Schedule work - returns immediately */
+					schedule_work(&msk->error_report_work);
+				} else {
+					kfree(perr);
+				}
+			}
+		} else if (msk->enable_errqueue && key->orig_payload_len == 0) {
+			/* RX-only key (unsolicited request from device) - don't report */
+			pr_info("MCTP: RX timeout NOT reported - no TX origin (unsolicited request, orig_payload_len=0)\n");
+		}
+	}
+
 	mctp_dev_release_key(key->dev, key);
 	spin_unlock_irqrestore(&key->lock, flags);
 
@@ -320,6 +510,17 @@ static int mctp_setsockopt(struct socket *sock, int level, int optname,
 		if (copy_from_sockptr(&val, optval, sizeof(int)))
 			return -EFAULT;
 		msk->addr_ext = val;
+		return 0;
+	}
+
+	if (optname == MCTP_OPT_ENABLE_ERRQUEUE) {
+		if (optlen != sizeof(int))
+			return -EINVAL;
+		if (copy_from_sockptr(&val, optval, sizeof(int)))
+			return -EFAULT;
+		
+		msk->enable_errqueue = !!val;
+		
 		return 0;
 	}
 
@@ -547,6 +748,22 @@ static int mctp_compat_ioctl(struct socket *sock, unsigned int cmd,
 }
 #endif
 
+static __poll_t mctp_poll(struct file *file, struct socket *sock,
+			  poll_table *wait)
+{
+	struct sock *sk = sock->sk;
+	__poll_t mask;
+
+	/* Use standard datagram_poll for normal data */
+	mask = datagram_poll(file, sock, wait);
+
+	/* Check error queue */
+	if (!skb_queue_empty_lockless(&sk->sk_error_queue))
+		mask |= EPOLLERR | EPOLLPRI;
+
+	return mask;
+}
+
 static const struct proto_ops mctp_dgram_ops = {
 	.family		= PF_MCTP,
 	.release	= mctp_release,
@@ -555,7 +772,7 @@ static const struct proto_ops mctp_dgram_ops = {
 	.socketpair	= sock_no_socketpair,
 	.accept		= sock_no_accept,
 	.getname	= sock_no_getname,
-	.poll		= datagram_poll,
+	.poll		= mctp_poll,
 	.ioctl		= mctp_ioctl,
 	.gettstamp	= sock_gettstamp,
 	.listen		= sock_no_listen,
@@ -612,12 +829,21 @@ static void mctp_sk_expire_keys(struct timer_list *timer)
 		mod_timer(timer, next_expiry);
 }
 
+/* Forward declaration for workqueue callback */
+static void mctp_error_report_work_fn(struct work_struct *work);
+
 static int mctp_sk_init(struct sock *sk)
 {
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
 
 	INIT_HLIST_HEAD(&msk->keys);
 	timer_setup(&msk->key_expiry, mctp_sk_expire_keys, 0);
+	
+	/* Initialize deferred error reporting workqueue */
+	INIT_WORK(&msk->error_report_work, mctp_error_report_work_fn);
+	INIT_LIST_HEAD(&msk->pending_errors);
+	spin_lock_init(&msk->error_queue_lock);
+	
 	return 0;
 }
 
@@ -667,6 +893,22 @@ static void mctp_sk_unhash(struct sock *sk)
 	 * as the sk is no longer observable
 	 */
 	del_timer_sync(&msk->key_expiry);
+	
+	/* Cancel pending error reporting work and free any pending errors */
+	cancel_work_sync(&msk->error_report_work);
+	{
+	struct mctp_pending_error *perr, *tmp_err;
+		
+	spin_lock_bh(&msk->error_queue_lock);
+	list_for_each_entry_safe(perr, tmp_err, &msk->pending_errors, list) {
+		list_del(&perr->list);
+			if (perr->sk)
+				sock_put(perr->sk);
+		kfree_skb(perr->skb);
+		kfree(perr);
+	}
+	spin_unlock_bh(&msk->error_queue_lock);
+	}
 }
 
 static void mctp_sk_destruct(struct sock *sk)
@@ -763,6 +1005,10 @@ static __init int mctp_init(void)
 	if (rc)
 		goto err_unreg_neigh;
 
+	rc = mctp_socket_error_inject_init();
+	if (rc)
+		pr_warn("MCTP: Socket error injection init failed, continuing without it\n");
+
 	return 0;
 
 err_unreg_neigh:
@@ -779,6 +1025,7 @@ err_unreg_sock:
 
 static __exit void mctp_exit(void)
 {
+	mctp_socket_error_inject_cleanup();
 	mctp_device_exit();
 	mctp_neigh_exit();
 	mctp_routes_exit();

@@ -64,6 +64,21 @@ static inline struct mctp_hdr *mctp_hdr(struct sk_buff *skb)
 }
 
 /* socket implementation */
+/* Pending error context for deferred error reporting via workqueue */
+struct mctp_pending_error {
+	struct list_head list;
+	struct sk_buff *skb;		/* First fragment SKB (for addressing) */
+	struct sock *sk;		/* Socket for error reporting (refcounted) */
+	int error_code;
+	struct net_device *dev;
+	u8 direction;
+	u8 binding;
+	/* For RX timeout: original request payload from key */
+	u8 orig_msg_type;
+	u16 orig_payload_len;
+	u8 orig_payload[32];		/* First 32 bytes of original request */
+};
+
 struct mctp_sock {
 	struct sock	sk;
 
@@ -84,6 +99,14 @@ struct mctp_sock {
 	 * tag, and any netdev state for a request/response pairing
 	 */
 	struct timer_list key_expiry;
+
+	/* Error queue control */
+	bool		enable_errqueue;
+
+	/* Deferred error reporting (to avoid deadlock in timer context) */
+	struct work_struct error_report_work;
+	struct list_head pending_errors;
+	spinlock_t error_queue_lock;
 };
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
@@ -178,6 +201,14 @@ struct mctp_sk_key {
 	 * is used.
 	 */
 	bool		manual_alloc;
+
+	/* Original message header for error reporting on fragmented messages.
+	 * Captured from first fragment (SOM=1) to ensure errors on middle/end
+	 * fragments can still report original header to application.
+	 */
+	u8		orig_msg_type;		/* Message type (PLDM, SPDM, etc) */
+	u16		orig_payload_len;	/* Captured payload length */
+	u8		orig_payload[32];	/* First 32 bytes of original message */
 };
 
 struct mctp_skb_cb {
@@ -297,6 +328,18 @@ void mctp_routes_exit(void);
 
 int mctp_device_init(void);
 void mctp_device_exit(void);
+
+/* Error queue support */
+u8 mctp_get_binding_type(struct net_device *dev);
+void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
+		      int error_code, struct net_device *dev, u8 direction, u8 binding,
+		      struct mctp_sk_key *key);
+struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev,
+				     struct mctp_sk_key **found_key);
+struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
+					struct net_device *dev,
+					struct mctp_sk_key *key,
+					struct mctp_sk_key **found_key);
 
 /* MCTP IDs and Codes from DMTF specification
  * "DSP0239 Management Component Transport Protocol (MCTP) IDs and Codes"

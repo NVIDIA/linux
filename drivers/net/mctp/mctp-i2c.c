@@ -23,9 +23,11 @@
 #include <linux/i2c-mux.h>
 #include <linux/if_arp.h>
 #include <linux/delay.h>
+
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
+#include "mctp-i2c-error-inject.h"
 /* byte_count is limited to u8 */
 #define MCTP_I2C_MAXBLOCK 255
 /* One byte is taken by source_slave */
@@ -326,6 +328,20 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	cb->halen = 1;
 	cb->haddr[0] = hdr->source_slave >> 1;
 
+	/* ERROR INJECTION POINT: Fragment drop/corruption
+	 * At this point:
+	 * - I2C header has been removed
+	 * - skb->data points to MCTP header
+	 * - Before packet sent to network stack
+	 * This is the ideal location to inject fragment errors
+	 */
+	if (mctp_i2c_error_inject_fragment(midev, skb)) {
+		/* Drop this fragment */
+		ndev->stats.rx_dropped++;
+		kfree_skb(skb);
+		return 0;
+	}
+
 	/* We need to ensure that the netif is not used once netdev
 	 * unregister occurs
 	 */
@@ -550,7 +566,13 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* no flow: full lock & unlock */
 		mctp_i2c_lock_nest(midev);
 		mctp_i2c_device_select(midev->client, midev);
-		rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
+		
+		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
+		rc = mctp_i2c_error_inject_tx(midev, skb);
+		if (rc == 0)
+			rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
+		
+
 		mctp_i2c_unlock_nest(midev);
 		break;
 
@@ -564,7 +586,11 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 
 	case MCTP_I2C_TX_FLOW_EXISTING:
 		/* existing flow: we already have the lock; just tx */
-		rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
+		
+		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
+		rc = mctp_i2c_error_inject_tx(midev, skb);
+		if (rc == 0)
+			rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
 
 		/* on tx errors, the flow can no longer be considered valid */
 		if (rc)
@@ -577,6 +603,23 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	}
 
 	if (rc < 0) {
+		struct sock *sk;
+		
+		/* Report error to socket error queue
+		 * Look up socket and key. Key provides orig_payload for error reporting.
+		 * TX key existence proves this was our transaction.
+		 */
+		struct mctp_sk_key *key = NULL;
+		
+		sk = mctp_lookup_sock_for_error(skb, midev->ndev, NULL, &key);
+		
+		if (sk) {
+			/* Pass key so error report uses orig_payload (before fragmentation) */
+			mctp_queue_error(sk, skb, -rc, midev->ndev,
+					MCTP_DIR_TX, MCTP_BINDING_I2C, key);
+			sock_put(sk);
+		}
+		
 		stats->tx_errors++;
 	} else {
 		stats->tx_bytes += skb->len;
@@ -835,6 +878,9 @@ static void mctp_i2c_unregister(struct mctp_i2c_dev *midev)
 {
 	unsigned long flags;
 
+	/* Cleanup error injection */
+	mctp_i2c_error_inject_cleanup(midev);
+
 	/* Stop tx thread prior to unregister, it uses netif_() functions */
 	kthread_stop(midev->tx_thread);
 	midev->tx_thread = NULL;
@@ -920,6 +966,9 @@ static int mctp_i2c_add_netdev(struct mctp_i2c_client *mcli,
 			ndev->name, rc);
 		goto err;
 	}
+
+	/* Setup error injection after netdev registration (debugfs needs the netdev name) */
+	mctp_i2c_error_inject_init(midev);
 
 	spin_lock_irqsave(&midev->lock, flags);
 	midev->allow_rx = false;
@@ -1145,12 +1194,21 @@ static __init int mctp_i2c_mod_init(void)
 	int rc;
 
 	pr_info("MCTP I2C interface driver\n");
+	
+	/* Initialize error injection infrastructure */
+	rc = mctp_i2c_error_inject_module_init();
+	if (rc)
+		pr_warn("MCTP I2C: Error injection initialization failed, continuing without it\n");
+	
 	rc = i2c_add_driver(&mctp_i2c_driver);
-	if (rc < 0)
+	if (rc < 0) {
+		mctp_i2c_error_inject_module_exit();
 		return rc;
+	}
 	rc = bus_register_notifier(&i2c_bus_type, &mctp_i2c_notifier);
 	if (rc < 0) {
 		i2c_del_driver(&mctp_i2c_driver);
+		mctp_i2c_error_inject_module_exit();
 		return rc;
 	}
 	return 0;
@@ -1164,6 +1222,7 @@ static __exit void mctp_i2c_mod_exit(void)
 	if (rc < 0)
 		pr_warn("MCTP I2C could not unregister notifier, %d\n", rc);
 	i2c_del_driver(&mctp_i2c_driver);
+	mctp_i2c_error_inject_module_exit();
 }
 
 module_init(mctp_i2c_mod_init);

@@ -29,6 +29,22 @@
 static const unsigned int mctp_message_maxlen = 64 * 1024;
 static const unsigned long mctp_key_lifetime = 6 * CONFIG_HZ;
 
+/* Helper to determine binding type from network device */
+u8 mctp_get_binding_type(struct net_device *dev)
+{
+	if (!dev)
+		return 0;  /* Unknown */
+
+	if (strstr(dev->name, "mctpusb"))
+		return MCTP_BINDING_USB;
+	else if (strstr(dev->name, "mctpi2c"))
+		return MCTP_BINDING_I2C;
+	else if (strstr(dev->name, "mctppcie"))
+		return MCTP_BINDING_PCIE;
+	
+	return 0;  /* Unknown binding */
+}
+
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev);
 
 /* route output callbacks */
@@ -352,7 +368,7 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 		return -EINVAL;
 
 	if (key->reasm_head->len + skb->len > mctp_message_maxlen)
-		return -EINVAL;
+		return -EMSGSIZE;
 
 	skb->next = NULL;
 	skb->sk = NULL;
@@ -366,6 +382,126 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 	key->reasm_head->truesize += skb->truesize;
 
 	return 0;
+}
+
+/*
+ * mctp_report_rx_missing_som - Report error for middle/end fragment without SOM
+ * @key: RX MCTP key for this transaction (provides addressing for TX key lookup)
+ * @skb: The failed fragment
+ * @mh: MCTP header
+ * @tag: Tag value
+ * @flags: Lock flags (will be used to release/reacquire key->lock)
+ *
+ * This function must be called with key->lock held. It will temporarily release
+ * the lock to report the error (to avoid deadlock), then reacquire it.
+ *
+ * NEW BEHAVIOR: Looks up TX key and only reports if found. This ensures we only
+ * report errors for responses to OUR requests.
+ */
+static void mctp_report_rx_missing_som(struct mctp_sk_key *key,
+				       struct sk_buff *skb,
+				       struct mctp_hdr *mh,
+				       unsigned long tag,
+				       unsigned long *flags)
+{
+	struct sock *sk;
+
+	netdev_err(skb->dev,
+		   "MCTP RX: Middle/End fragment without SOM (src=%u, dest=%u, tag=%lu)\n",
+		   mh->src, mh->dest, tag & MCTP_HDR_TAG_MASK);
+
+	/* CRITICAL: Release key->lock BEFORE error reporting to avoid deadlock.
+	 * mctp_queue_error() needs to acquire keys_lock for TX key lookup, but
+	 * correct lock order is keys_lock → key->lock. We currently hold key->lock,
+	 * so we must release it first.
+	 */
+	spin_unlock_irqrestore(&key->lock, *flags);
+
+	/* Look up socket and report error.
+	 * mctp_queue_error() will look up TX key internally and only report
+	 * if TX key is found (our transaction).
+	 */
+	sk = mctp_lookup_sock_for_error(skb, skb->dev, key, NULL);
+	if (sk) {
+		/* Pass RX key - mctp_queue_error will use it to find TX key */
+		mctp_queue_error(sk, skb, EPROTO, skb->dev, MCTP_DIR_RX,
+				 mctp_get_binding_type(skb->dev), key);
+		sock_put(sk);
+	}
+
+	/* Re-acquire key->lock for caller */
+	spin_lock_irqsave(&key->lock, *flags);
+}
+
+/*
+ * mctp_report_rx_sequence_error - Report RX sequence/size error
+ * @key: RX MCTP key for this transaction (provides addressing for TX key lookup)
+ * @skb: The failed fragment
+ * @mh: MCTP header
+ * @tag: Tag value
+ * @flags: Lock flags (will be used to release/reacquire key->lock)
+ * @err_code: Error code from mctp_frag_queue (-EINVAL or -EMSGSIZE)
+ *
+ * This function must be called with key->lock held. It will temporarily release
+ * the lock to report the error (to avoid deadlock), then reacquire it.
+ *
+ * NEW BEHAVIOR: Looks up TX key and only reports if found. This ensures we only
+ * report errors for responses to OUR requests.
+ */
+static void mctp_report_rx_sequence_error(struct mctp_sk_key *key,
+					  struct sk_buff *skb,
+					  struct mctp_hdr *mh,
+					  unsigned long tag,
+					  unsigned long *flags,
+					  int err_code)
+{
+	struct sock *sk;
+	struct sk_buff *report_skb;
+	u8 exp_seq = (key->last_seq + 1) & MCTP_HDR_SEQ_MASK;
+	u8 this_seq = (mh->flags_seq_tag >> MCTP_HDR_SEQ_SHIFT) & MCTP_HDR_SEQ_MASK;
+	int report_errno;
+
+	/* Determine error type and error code to report */
+	if (err_code == -EMSGSIZE) {
+		netdev_err(skb->dev,
+			   "MCTP RX: Message too large - exceeds 64KB limit (src=%u, dest=%u, tag=%lu)\n",
+			   mh->src, mh->dest, tag & MCTP_HDR_TAG_MASK);
+		report_errno = EMSGSIZE;
+	} else {
+		/* err_code == -EINVAL - sequence error */
+		netdev_err(skb->dev,
+			   "MCTP RX: Sequence error - expected %u, got %u (src=%u, dest=%u, tag=%lu)\n",
+			   exp_seq, this_seq, mh->src, mh->dest,
+			   tag & MCTP_HDR_TAG_MASK);
+		report_errno = EPROTO;
+	}
+
+	/* Use first response fragment (reasm_head) for addressing if available.
+	 * Fall back to failed fragment only if reasm_head is NULL.
+	 */
+	report_skb = key->reasm_head ? key->reasm_head : skb;
+
+	/* CRITICAL: Release key->lock BEFORE error reporting to avoid deadlock.
+	 * mctp_queue_error() needs to acquire keys_lock for TX key lookup, but
+	 * correct lock order is keys_lock → key->lock. We currently hold key->lock,
+	 * so we must release it first.
+	 */
+	spin_unlock_irqrestore(&key->lock, *flags);
+
+	/* Look up socket and report error.
+	 * mctp_queue_error() will look up TX key internally and only report
+	 * if TX key is found (our transaction).
+	 */
+	sk = mctp_lookup_sock_for_error(report_skb, skb->dev, key, NULL);
+	if (sk) {
+		/* Pass RX key - mctp_queue_error will use it to find TX key */
+		mctp_queue_error(sk, report_skb, report_errno, skb->dev, MCTP_DIR_RX,
+				 mctp_get_binding_type(skb->dev), key);
+		sock_put(sk);
+	}
+
+	/* Re-acquire key->lock for caller */
+	spin_lock_irqsave(&key->lock, *flags);
 }
 
 static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
@@ -472,10 +608,32 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				goto out_unlock;
 			}
 
-			/* we can queue without the key lock here, as the
-			 * key isn't observable yet
-			 */
-			mctp_frag_queue(key, skb);
+		/* we can queue without the key lock here, as the
+		 * key isn't observable yet
+		 */
+		mctp_frag_queue(key, skb);
+		
+		/* Cache message type and payload from first fragment (SOM) for error reporting.
+		 * If middle/end fragments are missing (timeout), we can still report
+		 * the correct message headers to the application.
+		 * Use skb_network_header() not skb->data for consistency.
+		 */
+		if (skb && skb->len > sizeof(struct mctp_hdr)) {
+			u8 *msg_start = (u8 *)skb_network_header(skb);
+			size_t payload_offset, available, capture_len;
+			
+			/* Capture message type (first byte after MCTP header) */
+			key->orig_msg_type = *(msg_start + sizeof(struct mctp_hdr));
+			
+			/* Capture first 32 bytes of payload (after message type) for RX timeout errors */
+			payload_offset = sizeof(struct mctp_hdr) + 1;
+			if (skb->len > payload_offset) {
+				available = skb->len - payload_offset;
+				capture_len = min_t(size_t, available, sizeof(key->orig_payload));
+				memcpy(key->orig_payload, msg_start + payload_offset, capture_len);
+				key->orig_payload_len = capture_len;
+			}
+		}
 
 			/* if the key_add fails, we've raced with another
 			 * SOM packet with the same src, dest and tag. There's
@@ -515,11 +673,18 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 		 * using the message-specific key
 		 */
 
-		/* we need to be continuing an existing reassembly... */
-		if (!key->reasm_head)
-			rc = -EINVAL;
-		else
-			rc = mctp_frag_queue(key, skb);
+	/* we need to be continuing an existing reassembly... */
+	if (!key->reasm_head) {
+		rc = -EINVAL;
+		mctp_report_rx_missing_som(key, skb, mh, tag, &f);
+	} else {
+		rc = mctp_frag_queue(key, skb);
+		
+		if (rc == -EINVAL || rc == -EMSGSIZE) {
+			/* Reassembly failure: sequence error (-EINVAL) or message too large (-EMSGSIZE) */
+			mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
+		}
+	}
 
 		if (rc)
 			goto out_unlock;
@@ -1243,6 +1408,34 @@ int mctp_local_output(struct sock *sk, struct mctp_route *rt,
 	hdr->dest = daddr;
 	hdr->src = saddr;
 
+	/* Capture original message header for error reporting on fragmented messages.
+	 * This ensures that if a middle or end fragment fails, we can still report
+	 * the original header (PLDM Instance ID, etc.) to the application.
+	 */
+	if (key && skb->len > sizeof(struct mctp_hdr)) {
+		unsigned long flags2;
+		size_t payload_offset, available, capture_len;
+
+		spin_lock_irqsave(&key->lock, flags2);
+
+		/* Capture message type (first byte after MCTP header) */
+		key->orig_msg_type = *((u8 *)(skb->data + sizeof(struct mctp_hdr)));
+
+		/* Capture first 32 bytes of payload (after message type) */
+		payload_offset = sizeof(struct mctp_hdr) + 1;
+		available = skb->len - payload_offset;
+		capture_len = min_t(size_t, available, sizeof(key->orig_payload));
+
+		if (capture_len > 0) {
+			memcpy(key->orig_payload, skb->data + payload_offset, capture_len);
+			key->orig_payload_len = capture_len;
+		} else {
+			key->orig_payload_len = 0;
+		}
+
+		spin_unlock_irqrestore(&key->lock, flags2);
+	}
+
 	mtu = mctp_route_mtu(rt);
 
 	if (skb->len + sizeof(struct mctp_hdr) <= mtu) {
@@ -1768,6 +1961,492 @@ void mctp_routes_exit(void)
 	unregister_pernet_subsys(&mctp_net_ops);
 	dev_remove_pack(&mctp_packet_type);
 }
+
+/**
+ * mctp_lookup_sock_by_key - Find socket using MCTP key (tag-based lookup)
+ * @skb: The SKB to look up
+ * @dev: The network device
+ * @found_key: Output parameter to return the matched key (optional, can be NULL)
+ *
+ * Uses MCTP tag to uniquely identify which socket sent the packet.
+ * This properly handles multiple applications sending to the same remote EID.
+ * If found_key is non-NULL, returns the matched key via output parameter.
+ * The returned key is still in the hash table (caller should not free it).
+ * Returns a reference to the sock if found (caller must sock_put), NULL otherwise.
+ */
+struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev,
+				     struct mctp_sk_key **found_key)
+{
+	struct net *net = dev_net(dev);
+	struct mctp_dev *mdev;
+	struct mctp_hdr *mh;
+	struct mctp_sk_key *key;
+	struct sock *sk = NULL;
+	unsigned long flags;
+	unsigned int netid;
+	u8 tag;
+
+	/* Initialize output parameter */
+	if (found_key)
+		*found_key = NULL;
+
+	if (!skb || skb->len < sizeof(struct mctp_hdr)) {
+		pr_info("MCTP: lookup_sock_by_key: invalid skb (skb=%p len=%u)\n",
+			skb, skb ? skb->len : 0);
+		return NULL;
+	}
+
+	mh = mctp_hdr(skb);
+	
+	/* Get network ID from device rather than SKB control block.
+	 * In URB completion context, skb->cb may not have valid magic,
+	 * causing WARN_ON in mctp_cb(). We can safely get netid from
+	 * the MCTP device instead.
+	 */
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (!mdev) {
+		rcu_read_unlock();
+		pr_info("MCTP: lookup_sock_by_key: no mctp_dev for %s\n", dev->name);
+		return NULL;
+	}
+	netid = READ_ONCE(mdev->net);
+	mctp_dev_put(mdev);
+	rcu_read_unlock();
+
+	/* Extract tag from MCTP header (bits 2-0) */
+	tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+	pr_info("MCTP: lookup_sock_by_key: netid=%u src=%u dest=%u tag=%u\n",
+		netid, mh->src, mh->dest, tag);
+
+	/* Look up key in global key table */
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		/* Match by: network, local EID, peer EID, tag */
+		if (key->net != netid)
+			continue;
+
+		/* For TX errors: source = local, dest = peer
+		 * Use wildcard matching to handle MCTP_ADDR_ANY in keys.
+		 * This is critical for Get Endpoint ID (dest=0/NULL) which
+		 * creates keys with peer_addr=MCTP_ADDR_ANY.
+		 */
+		if (!mctp_address_matches(key->local_addr, mh->src))
+			continue;
+		if (!mctp_address_matches(key->peer_addr, mh->dest))
+			continue;
+
+		/* The critical differentiator: TAG */
+		if (key->tag != tag)
+			continue;
+
+	/* Found exact match! */
+	sk = key->sk;
+	if (sk) {
+		sock_hold(sk);
+		/* Return the matched key via output parameter */
+		if (found_key)
+			*found_key = key;
+		pr_info("MCTP: lookup_sock_by_key: FOUND socket %p (key: net=%u local=%u peer=%u tag=%u)\n",
+			sk, key->net, key->local_addr, key->peer_addr, key->tag);
+	}
+	break;
+}
+
+spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+
+if (!sk) {
+	pr_info("MCTP: lookup_sock_by_key: NO MATCH found for netid=%u src=%u dest=%u tag=%u\n",
+		netid, mh->src, mh->dest, tag);
+}
+
+	return sk;
+}
+EXPORT_SYMBOL_GPL(mctp_lookup_sock_by_key);
+
+/**
+ * mctp_lookup_sock_for_error - Find socket for error reporting
+ * @skb: Packet that failed (contains addressing info)
+ * @dev: Network device
+ * @key: Existing key (if available, may be NULL)
+ * @found_key: Output parameter to return the matched key (optional, can be NULL)
+ *
+ * Finds which socket should receive an error notification for failed
+ * operations WE initiated (our requests/responses).
+ *
+ * Uses two-tier lookup:
+ * 1. Use socket from existing key (if key provided and valid)
+ *    - For RX reassembly errors where key is from reassembly context
+ * 2. Try TX key lookup by tag (for TX errors from drivers)
+ *    - TX key existence indicates operation we initiated
+ *    - No TX key = not our transaction = don't report
+ *    - Returns found key via found_key output parameter
+ *
+ * With BMC-to-device behavior where device uses TO=0 in responses,
+ * TX keys naturally match responses (both have tag value 0-7 only).
+ *
+ * Device-initiated messages won't have TX keys, so errors on those
+ * messages are correctly not reported (not our operations).
+ *
+ * DEADLOCK PREVENTION: Method 2 is skipped if key parameter is provided,
+ * as this indicates call from __mctp_key_remove() which holds keys_lock.
+ *
+ * Returns: Socket with refcount held, or NULL if no socket found or
+ *          error should not be reported. Caller must call sock_put()
+ *          if non-NULL returned.
+ */
+struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
+					struct net_device *dev,
+					struct mctp_sk_key *key,
+					struct mctp_sk_key **found_key)
+{
+	struct net *net;
+	struct sock *sk = NULL;
+	struct mctp_hdr *mh;
+	u8 tag;
+
+	/* Initialize output parameter */
+	if (found_key)
+		*found_key = NULL;
+
+	if (!skb || !dev)
+		return NULL;
+
+	if (skb->len < sizeof(struct mctp_hdr))
+		return NULL;
+
+	net = dev_net(dev);
+	mh = mctp_hdr(skb);
+	/* Extract tag value only (0-7), not TO bit.
+	 * With BMC-to-device behavior where device uses TO=0 in responses,
+	 * this naturally matches TX keys which are also stored without TO bit.
+	 */
+	tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+	/* Method 1: Use existing key socket (fastest path) */
+	if (key && key->sk) {
+		struct mctp_sock *check_msk = container_of(key->sk, struct mctp_sock, sk);
+		
+		/* Check if socket is still valid and open */
+		if (sock_flag(&check_msk->sk, SOCK_DEAD)) {
+			pr_debug("MCTP error: key socket is dead (closed)\n");
+			return NULL;
+		}
+		
+		/* Skip if this socket doesn't have error queue enabled */
+		if (!check_msk->enable_errqueue) {
+			pr_debug("MCTP error: key socket found but error queue disabled (src=%u, dest=%u, tag=%u)\n",
+				 mh->src, mh->dest, tag);
+			return NULL;
+		}
+		
+		sk = key->sk;
+		sock_hold(sk);
+		/* Return the key via output parameter */
+		if (found_key)
+			*found_key = key;
+		pr_debug("MCTP error: socket via key (src=%u, dest=%u, tag=%u)\n",
+			 mh->src, mh->dest, tag);
+		return sk;
+	}
+
+	/* Method 2: Try TX key lookup (for TX errors from drivers)
+	 * 
+	 * Searches for TX keys by (netid, local_eid, peer_eid, tag).
+	 * TX key existence indicates operation WE initiated.
+	 * No TX key = not our transaction = don't report error.
+	 * 
+	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
+	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
+	 * mctp_lookup_sock_by_key() also needs keys_lock, causing deadlock.
+	 */
+	if (!key) {
+		struct mctp_sk_key *tx_key = NULL;
+		
+		/* Safe to do key lookup - not called from __mctp_key_remove() */
+		sk = mctp_lookup_sock_by_key(skb, dev, &tx_key);
+		if (sk) {
+			struct mctp_sock *check_msk = container_of(sk, struct mctp_sock, sk);
+			
+			/* Check if socket is still valid and open */
+			if (sock_flag(&check_msk->sk, SOCK_DEAD)) {
+				pr_debug("MCTP error: TX key socket is dead (closed)\n");
+				sock_put(sk);
+				return NULL;
+			}
+			
+			/* Skip if this socket doesn't have error queue enabled */
+			if (!check_msk->enable_errqueue) {
+				pr_debug("MCTP error: TX key socket found but error queue disabled (src=%u, dest=%u, tag=%u)\n",
+					 mh->src, mh->dest, tag);
+				sock_put(sk);
+				return NULL;
+			}
+			
+			/* Return the found TX key via output parameter */
+			if (found_key)
+				*found_key = tx_key;
+			
+			pr_debug("MCTP error: socket via TX key lookup (src=%u, dest=%u, tag=%u)\n",
+				 mh->src, mh->dest, tag);
+			return sk;
+		}
+		
+		/* No TX key found = not our transaction = don't report error */
+		pr_debug("MCTP error: No TX key found, not our transaction (src=%u, dest=%u, tag=%u)\n",
+			 mh->src, mh->dest, tag);
+	}
+
+	/* If we reach here:
+	 * - key parameter provided: called from __mctp_key_remove()
+	 *   Method 2 skipped for deadlock prevention
+	 * - OR Method 2 found no TX key: not our transaction
+	 * 
+	 * In either case, don't report error.
+	 */
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(mctp_lookup_sock_for_error);
+
+/**
+ * mctp_lookup_tx_key_for_rx_error - Look up TX key for RX error reporting
+ * @net: Network namespace
+ * @netid: MCTP network ID
+ * @local_eid: Local EID (from RX packet dest)
+ * @peer_eid: Peer EID (from RX packet src)
+ * @tag: Tag value (without TO bit)
+ *
+ * For RX errors, we need to find the original TX request to report the
+ * correct payload to the application. This function looks up the TX key
+ * by reversing the addressing from the RX packet.
+ *
+ * Returns: TX key with refcount incremented, or NULL if not found
+ */
+static struct mctp_sk_key *mctp_lookup_tx_key_for_rx_error(struct net *net,
+							    unsigned int netid,
+							    mctp_eid_t local_eid,
+							    mctp_eid_t peer_eid,
+							    u8 tag)
+{
+	struct mctp_sk_key *key, *ret = NULL;
+	unsigned long flags;
+
+	/* For RX errors, the TX key was created with:
+	 * - local_addr = local_eid (our address when we sent request)
+	 * - peer_addr = peer_eid (who we sent to)
+	 * - tag = tag value (without TO bit, as TX key stores incoming perspective)
+	 */
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		if (!mctp_key_match(key, netid, local_eid, peer_eid, tag))
+			continue;
+
+		spin_lock(&key->lock);
+		if (key->valid && key->orig_payload_len > 0) {
+			refcount_inc(&key->refs);
+			ret = key;
+			spin_unlock(&key->lock);
+			break;
+		}
+		spin_unlock(&key->lock);
+	}
+	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+
+	pr_debug("mctp_lookup_tx_key_for_rx_error: netid=%u local=%u peer=%u tag=%u -> %s\n",
+		 netid, local_eid, peer_eid, tag, ret ? "FOUND" : "NOT FOUND");
+
+	return ret;
+}
+
+/**
+ * mctp_queue_error - Queue error to socket error queue
+ * @sk: Socket to report error to
+ * @skb: SKB that failed (contains addressing info)
+ * @error_code: errno value (EPROTO, ETIMEDOUT, EMSGSIZE for RX; EHOSTUNREACH, ENXIO for TX)
+ * @dev: Network device (used to extract MCTP network ID)
+ * @direction: MCTP_DIR_TX or MCTP_DIR_RX
+ * @binding: MCTP_BINDING_USB, MCTP_BINDING_I2C, etc.
+ * @rx_key: For RX errors, the RX key (provides addressing). For TX errors, the TX key.
+ *
+ * Builds an mctp_error structure and queues it to the socket's error queue.
+ * Applications can read this via recvmsg(MSG_ERRQUEUE).
+ *
+ * Strategy:
+ * - TX errors: Use provided TX key's orig_payload (captured before fragmentation)
+ * - RX errors: Look up TX key using addressing from RX key/SKB, use TX key's orig_payload
+ *              (the original request we sent). Only report if TX key found - this ensures
+ *              we only report errors for responses to OUR requests, not unsolicited packets.
+ *
+ * This ensures applications always receive the REQUEST payload for both TX and RX errors,
+ * allowing them to identify which transaction failed.
+ *
+ * Common error codes:
+ *   RX errors: EPROTO (sequence error), ETIMEDOUT (reassembly timeout), EMSGSIZE (too large)
+ *   TX errors: EHOSTUNREACH, ENXIO, ENODEV, ESHUTDOWN, ENOMEM, EPROTO, etc.
+ */
+void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
+		      int error_code, struct net_device *dev, u8 direction, u8 binding,
+		      struct mctp_sk_key *rx_key)
+{
+	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+	struct mctp_sk_key *tx_key = NULL;
+	struct mctp_error *mctp_err;
+	struct sk_buff *err_skb;
+	struct mctp_hdr *mh;
+	struct mctp_dev *mdev;
+	unsigned int netid;
+	size_t capture_len;
+	bool key_found = false;
+
+	/* Extract network ID from device.
+	 * This is safer than using skb->cb which may be corrupted by qdisc.
+	 */
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (!mdev) {
+		rcu_read_unlock();
+		pr_debug("MCTP: Failed to get mctp_dev for error reporting\n");
+		return;
+	}
+	netid = READ_ONCE(mdev->net);
+	mctp_dev_put(mdev);
+	rcu_read_unlock();
+
+	if (!msk->enable_errqueue) {
+		pr_debug("MCTP: Error queue not enabled, skipping error report\n");
+		return;
+	}
+
+	/* Extract addressing from SKB */
+	if (!skb || skb->len < sizeof(struct mctp_hdr)) {
+		pr_debug("MCTP: Invalid SKB for error reporting\n");
+		return;
+	}
+	mh = mctp_hdr(skb);
+
+	/* Determine payload source based on error type.
+	 * 
+	 * TX errors: Use TX key's orig_payload (captured before fragmentation)
+	 * RX timeout: Use RX key's orig_payload (original REQUEST we sent)
+	 * RX other errors: Look up TX key to report original request
+	 */
+	if (direction == MCTP_DIR_TX) {
+		/* TX error: Use provided TX key directly */
+		tx_key = rx_key;
+		if (tx_key && tx_key->orig_payload_len > 0) {
+			key_found = true;
+			pr_debug("mctp_queue_error: TX error - using TX key (orig_payload_len=%u)\n",
+				 tx_key->orig_payload_len);
+		} else {
+			pr_debug("mctp_queue_error: TX error - no valid TX key, NOT REPORTING\n");
+		}
+		
+		if (!key_found || !tx_key || tx_key->orig_payload_len == 0) {
+			return;
+		}
+	} else if (error_code == ETIMEDOUT) {
+		/* RX reassembly timeout: Use RX key's orig_payload (original REQUEST).
+		 * For TX-originated keys (BMC request → device response), orig_payload
+		 * was captured during TX phase and contains the REQUEST we sent.
+		 * This allows applications to identify which transaction timed out.
+		 * If no orig_payload, this is an unsolicited request - don't report.
+		 */
+		tx_key = rx_key;  /* RX key IS the TX key (same key reused for response) */
+		if (tx_key && tx_key->orig_payload_len > 0) {
+			key_found = true;
+			pr_debug("mctp_queue_error: RX timeout - using TX key orig_payload (REQUEST, len=%u)\n",
+				 tx_key->orig_payload_len);
+		} else {
+			pr_debug("mctp_queue_error: RX timeout - no TX origin (unsolicited), NOT REPORTING\n");
+			return;
+		}
+	} else {
+		/* RX error (SOM, sequence): Look up TX key by reversing src/dest.
+		 * Response came FROM peer (mh->src) TO us (mh->dest).
+		 * Our original request was FROM us (mh->dest) TO peer (mh->src).
+		 */
+		u8 tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+		
+		pr_debug("mctp_queue_error: RX error - looking up TX key (local=%u, peer=%u, tag=%u)\n",
+			 mh->dest, mh->src, tag);
+		
+		tx_key = mctp_lookup_tx_key_for_rx_error(dev_net(dev), netid,
+							 mh->dest, mh->src, tag);
+		if (tx_key) {
+			key_found = true;
+			pr_debug("mctp_queue_error: RX error - TX key FOUND, will report error\n");
+		} else {
+			pr_debug("mctp_queue_error: RX error - TX key NOT FOUND, NOT REPORTING (unsolicited)\n");
+			return;
+		}
+		
+		if (!tx_key || tx_key->orig_payload_len == 0) {
+			pr_debug("mctp_queue_error: RX error - TX key has no orig_payload, NOT REPORTING\n");
+			mctp_key_unref(tx_key);
+			return;
+		}
+	}
+
+	/* Allocate SKB for error */
+	err_skb = alloc_skb(sizeof(*mctp_err), GFP_ATOMIC);
+	if (!err_skb) {
+		if (direction == MCTP_DIR_RX)
+			mctp_key_unref(tx_key);
+		return;
+	}
+
+	/* Build error structure */
+	mctp_err = (struct mctp_error *)skb_put(err_skb, sizeof(*mctp_err));
+	memset(mctp_err, 0, sizeof(*mctp_err));
+
+	/* Fill basic error information */
+	mctp_err->error_code = error_code;
+	mctp_err->direction = direction;
+	mctp_err->binding = binding;
+	mctp_err->timestamp_ns = ktime_get_ns();
+
+	/* Fill addressing from SKB */
+	mctp_err->src_eid = mh->src;
+	mctp_err->dest_eid = mh->dest;
+	mctp_err->tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+	/* Extract payload - ALL error types now use TX key's orig_payload (original REQUEST).
+	 * This ensures applications always receive the REQUEST payload, allowing them to
+	 * identify which transaction failed, regardless of error type.
+	 * 
+	 * TX errors: TX key provided directly
+	 * RX timeout: RX key (which is the TX key) has orig_payload from TX phase
+	 * RX SOM/seq: TX key looked up by reversing src/dest addressing
+	 */
+	if (tx_key) {
+		/* Use TX key payload (original REQUEST for all error types) */
+		mctp_err->msg_type = tx_key->orig_msg_type;
+		capture_len = min_t(size_t, tx_key->orig_payload_len,
+				   MCTP_ERROR_PAYLOAD_SIZE);
+		memcpy(mctp_err->payload, tx_key->orig_payload, capture_len);
+		mctp_err->payload_len = capture_len;
+
+		/* Release TX key if we looked it up (RX non-timeout case) */
+		if (direction == MCTP_DIR_RX && error_code != ETIMEDOUT)
+			mctp_key_unref(tx_key);
+	}
+
+	/* Queue error to socket */
+	if (sock_queue_err_skb(sk, err_skb) == 0) {
+		/* Successfully queued, trigger error report */
+		sk_error_report(sk);
+		pr_debug("mctp_queue_error: Error queued successfully (code=%d, %s, src=%u->dest=%u)\n",
+			 error_code, direction == MCTP_DIR_TX ? "TX" : "RX",
+			 mctp_err->src_eid, mctp_err->dest_eid);
+	} else {
+		/* Failed to queue - free the SKB to avoid memory leak */
+		kfree_skb(err_skb);
+		pr_debug("mctp_queue_error: Failed to queue error to socket\n");
+	}
+}
+EXPORT_SYMBOL_GPL(mctp_queue_error);
 
 #if IS_ENABLED(CONFIG_MCTP_TEST)
 #include "test/route-test.c"

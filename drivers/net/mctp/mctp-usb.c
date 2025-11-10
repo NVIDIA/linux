@@ -19,9 +19,12 @@
 
 #include <uapi/linux/if_arp.h>
 
+#include "mctp-usb-error-inject.h"
+
 /* number of IN/OUT urbs to queue */
 const unsigned int n_rx_queue = 8;
 const unsigned int n_tx_queue = 8;
+
 
 struct mctp_usb {
 	struct usb_device *usbdev;
@@ -42,6 +45,10 @@ struct mctp_usb {
 
 	/* TX batching support - controlled via sysfs */
 	bool tx_batching_enabled;
+	
+	/* Error injection support */
+	struct mctp_error_inject error_inject;
+	struct dentry *debugfs_dir;
 };
 
 /* Structure to track batched packets in URB context */
@@ -64,11 +71,18 @@ static void mctp_usb_out_complete(struct urb *urb)
 		netif_wake_queue(netdev);
 
 	status = urb->status;
+	
+	/* ERROR INJECTION POINT: TX URB completion (asynchronous error)
+	 * Note: Injection happens at URB level (may affect multiple batched packets)
+	 */
+	status = mctp_usb_error_inject_tx_async(mctp_usb, status);
 
+	/* Log error type for debugging */
 	switch (status) {
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
+	case -EPROTO:
 		if (net_ratelimit()) {
 			netdev_warn(netdev,
 				    "tx urb shutdown/error status: %d\n",
@@ -88,6 +102,57 @@ static void mctp_usb_out_complete(struct urb *urb)
 		netdev->stats.tx_dropped += ctx->num_packets;
 	}
 
+	if (status != 0) {
+		/* Report error to socket error queue for batched URB.
+		*/
+		skb = skb_dequeue(&ctx->skbs);
+		if (skb) {
+			if (skb->len >= sizeof(struct mctp_usb_hdr)) {
+				struct mctp_usb_hdr *hdr;
+				struct sk_buff *pkt_skb;
+				struct mctp_sk_key *key = NULL;
+				struct sock *sk;
+				unsigned int pkt_total_len;
+				
+				netdev_dbg(netdev, "Async TX error: Processing batched SKB len=%u\n", skb->len);
+				
+				/* Parse ONLY the first packet for error reporting */
+				hdr = (struct mctp_usb_hdr *)skb->data;
+				pkt_total_len = hdr->len;
+				
+				if (pkt_total_len <= skb->len) {
+					/* Create temp SKB with first packet only */
+					pkt_skb = alloc_skb(pkt_total_len, GFP_ATOMIC);
+					if (pkt_skb) {
+						skb_put_data(pkt_skb, skb->data, pkt_total_len);
+						pkt_skb->dev = netdev;
+						
+						/* Remove USB header to expose MCTP header */
+						if (skb_pull(pkt_skb, sizeof(struct mctp_usb_hdr))) {
+							skb_reset_network_header(pkt_skb);
+							
+							/* Look up socket and report ONE error for entire batch */
+							sk = mctp_lookup_sock_for_error(pkt_skb, netdev, NULL, &key);
+							
+							if (sk) {
+								netdev_dbg(netdev, "Async TX error: Reporting error %d for entire batch (key=%p)\n",
+									status, key);
+								mctp_queue_error(sk, pkt_skb, -status, netdev,
+										MCTP_DIR_TX, MCTP_BINDING_USB, key);
+								sock_put(sk);
+							} else {
+								netdev_dbg(netdev, "Async TX error: Not reported (no TX key or error queue disabled)\n");
+							}
+						}
+						kfree_skb(pkt_skb);
+					}
+				}
+			}
+			/* Always free the dequeued SKB, regardless of whether we could report error */
+			kfree_skb(skb);
+		}	
+	}
+
 	/* Free all batched skbs */
 	while ((skb = skb_dequeue(&ctx->skbs)) != NULL) {
 		if (status == 0)
@@ -97,7 +162,7 @@ static void mctp_usb_out_complete(struct urb *urb)
 	}
 
 	kfree(ctx);
-	usb_free_urb(urb);
+	usb_free_urb(urb);	
 }
 /* Fast path: send a single packet without batching.
  * This avoids lock overhead when batching is disabled.
@@ -138,6 +203,14 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 
 	netdev->stats.tx_bytes += pkt_len - sizeof(struct mctp_usb_hdr);
 
+	/* ERROR INJECTION POINT: TX URB submission (synchronous error) */
+	rc = mctp_usb_error_inject_tx_sync(mctp_usb, skb);
+	if (rc) {
+		/* Simulate URB submission failure */
+		netdev_info(netdev, "TX single packet: URB submit SIMULATED failure (error injection, code %d)\n", rc);
+		goto err_free_urb;
+	}
+
 	/* Submit URB */
 	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
 			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
@@ -164,6 +237,25 @@ err_free_ctx:
 	skb_dequeue(&ctx->skbs);
 	kfree(ctx);
 err_drop:
+	/* Report synchronous TX error if URB submission failed.
+	 * SKB still has USB header, remove it for socket lookup.
+	 */
+	if (rc != 0 && skb->len >= sizeof(struct mctp_usb_hdr)) {
+		struct sock *sk;
+		struct mctp_sk_key *key = NULL;
+		
+		skb_pull(skb, sizeof(struct mctp_usb_hdr));
+		skb_reset_network_header(skb);
+		
+		sk = mctp_lookup_sock_for_error(skb, netdev, NULL, &key);
+		if (sk) {
+			netdev_dbg(netdev, "TX single: Reporting sync error (code=%d)\n", -rc);
+			mctp_queue_error(sk, skb, -rc, netdev,
+					 MCTP_DIR_TX, MCTP_BINDING_USB, key);
+			sock_put(sk);
+		}
+	}
+	
 	netdev->stats.tx_dropped++;
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
@@ -247,6 +339,52 @@ err_free_ctx:
 	skb_dequeue(&ctx->skbs);
 	kfree(ctx);
 err_drop:
+	/* TX Synchronous Error Reporting for batched SKB:
+	 */
+	if (rc != 0) {
+		struct mctp_usb_hdr *hdr;
+		struct sk_buff *pkt_skb;
+		struct sock *sk;
+		struct mctp_sk_key *key = NULL;
+		unsigned int pkt_total_len;
+		
+		netdev_info(netdev, "TX batch DROPPED (URB submit failed, error %d)\n", rc);
+		
+		/* Parse ONLY the first packet for error reporting */
+		if (skb->len >= sizeof(struct mctp_usb_hdr)) {
+			hdr = (struct mctp_usb_hdr *)skb->data;
+			
+			/* Validate USB header */
+			if (be16_to_cpu(hdr->id) == MCTP_USB_DMTF_ID) {
+				pkt_total_len = hdr->len;
+				
+				if (pkt_total_len <= skb->len) {
+					/* Create temp SKB for first packet only */
+					pkt_skb = alloc_skb(pkt_total_len, GFP_ATOMIC);
+					if (pkt_skb) {
+						skb_put_data(pkt_skb, skb->data, pkt_total_len);
+						pkt_skb->dev = netdev;
+						
+						/* Remove USB header to expose MCTP header */
+						if (skb_pull(pkt_skb, sizeof(struct mctp_usb_hdr))) {
+							skb_reset_network_header(pkt_skb);
+							
+							/* Look up socket and report ONE error for entire batch */
+							sk = mctp_lookup_sock_for_error(pkt_skb, netdev, NULL, &key);
+							if (sk) {
+								netdev_dbg(netdev, "TX batch sync error: Reporting for entire batch\n");
+								mctp_queue_error(sk, pkt_skb, -rc, netdev,
+										 MCTP_DIR_TX, MCTP_BINDING_USB, key);
+								sock_put(sk);
+							}
+						}
+						kfree_skb(pkt_skb);
+					}
+				}
+			}
+		}
+	}
+	
 	netdev->stats.tx_dropped++;
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
@@ -305,6 +443,7 @@ err_drop:
 	return NETDEV_TX_OK;
 }
 
+
 static void mctp_usb_in_complete(struct urb *urb);
 
 /* If we fail to queue an in urb atomically (either due to skb allocation or
@@ -355,6 +494,9 @@ static void mctp_usb_in_complete(struct urb *urb)
 
 	status = urb->status;
 	atomic_dec(&mctp_usb->rx_qlen);
+	
+	/* ERROR INJECTION POINT: RX URB completion error */
+	status = mctp_usb_error_inject_rx(mctp_usb, status);
 
 	switch (status) {
 	case -ENOENT:
@@ -367,6 +509,16 @@ static void mctp_usb_in_complete(struct urb *urb)
 		}
 		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
+		if (mctp_usb->error_inject.enable_rx) {
+			netdev_info(netdev,
+			           "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
+			           status);
+		} else {
+			netdev_dbg(netdev,
+			           "RX packet DROPPED (error %d) - expected shutdown/reset\n",
+			           status);
+		}
+		netdev->stats.rx_dropped++;
 		kfree_skb(skb);
 		return;
 	case 0:
@@ -377,7 +529,17 @@ static void mctp_usb_in_complete(struct urb *urb)
 				    "unexpected rx urb status: %d, requeuing\n",
 				    status);
 		}
-		/* Free the bad SKB and try to requeue the URB */
+		if (mctp_usb->error_inject.enable_rx) {
+			netdev_info(netdev,
+			           "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
+			           status);
+		} else {
+			netdev_info(netdev,
+			           "RX packet DROPPED (error %d) - real error\n",
+			           status);
+		}
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
 		kfree_skb(skb);
 		goto requeue;
 	}
@@ -397,6 +559,8 @@ static void mctp_usb_in_complete(struct urb *urb)
 		if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
 			netdev_dbg(netdev, "rx: invalid id %04x\n",
 				   be16_to_cpu(hdr->id));
+			netdev->stats.rx_errors++;
+			netdev->stats.rx_dropped++;
 			break;
 		}
 
@@ -437,6 +601,30 @@ static void mctp_usb_in_complete(struct urb *urb)
 		skb_reset_network_header(skb);
 		cb = __mctp_cb(skb);
 		cb->halen = 0;
+		
+		/* ERROR INJECTION POINT: Fragment drop/corruption
+		 * At this point:
+		 * - USB header has been removed
+		 * - skb->data points to MCTP header
+		 * - Before packet sent to network stack
+		 * This is the ideal location to inject fragment errors
+		 */
+		if (mctp_usb->error_inject.enable_fragment_drop ||
+		    mctp_usb->error_inject.enable_seq_corrupt ||
+		    mctp_usb->error_inject.enable_som_clear ||
+		    mctp_usb->error_inject.enable_rx) {
+			int inject_action = mctp_usb_error_inject_fragment(mctp_usb, skb);
+			
+			if (inject_action == 1) {
+				/* Drop this fragment */
+				netdev->stats.rx_dropped++;
+				kfree_skb(skb);
+				skb = skb2;
+				continue;
+			}
+			/* inject_action == 0: pass through (normally or with corruption) */
+		}
+		
 		netif_rx(skb);
 
 		skb = skb2;
@@ -673,6 +861,9 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		goto err_unregister_netdev;
 	}
 
+	/* Setup error injection after netdev registration (debugfs needs the netdev name) */
+	mctp_usb_error_inject_init(dev);
+
 	return 0;
 
 err_unregister_netdev:
@@ -686,7 +877,12 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 {
 	struct mctp_usb *dev = usb_get_intfdata(intf);
 
+	/* Remove sysfs attribute group */
 	sysfs_remove_group(&dev->netdev->dev.kobj, &mctp_usb_attr_group);
+
+	/* Cleanup error injection */
+	mctp_usb_error_inject_cleanup(dev);
+	
 	mctp_unregister_netdev(dev->netdev);
 	usb_put_dev(dev->usbdev);
 	free_netdev(dev->netdev);
@@ -707,7 +903,30 @@ static struct usb_driver mctp_usb_driver = {
 	.disconnect	= mctp_usb_disconnect,
 };
 
-module_usb_driver(mctp_usb_driver)
+static int __init mctp_usb_init(void)
+{
+	int rc;
+	
+	/* Initialize error injection infrastructure */
+	rc = mctp_usb_error_inject_module_init();
+	if (rc)
+		pr_warn("MCTP USB: Error injection initialization failed, continuing without it\n");
+	
+	rc = usb_register(&mctp_usb_driver);
+	if (rc)
+		mctp_usb_error_inject_module_exit();
+	
+	return rc;
+}
+
+static void __exit mctp_usb_exit(void)
+{
+	usb_deregister(&mctp_usb_driver);
+	mctp_usb_error_inject_module_exit();
+}
+
+module_init(mctp_usb_init);
+module_exit(mctp_usb_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jeremy Kerr <jk@codeconstruct.com.au>");

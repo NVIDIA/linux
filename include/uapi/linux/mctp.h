@@ -47,6 +47,7 @@ struct sockaddr_mctp_ext {
 #define MCTP_TAG_PREALLOC	0x10
 
 #define MCTP_OPT_ADDR_EXT	1
+#define MCTP_OPT_ENABLE_ERRQUEUE	2
 
 #define SIOCMCTPALLOCTAG	(SIOCPROTOPRIVATE + 0)
 #define SIOCMCTPDROPTAG		(SIOCPROTOPRIVATE + 1)
@@ -96,5 +97,76 @@ struct mctp_ioc_tag_ctl2 {
 	__u8		tag;
 
 };
+
+/*
+ * MCTP Error Queue Support
+ * For receiving asynchronous errors via recvmsg(MSG_ERRQUEUE)
+ */
+
+#define MCTP_ERROR_PAYLOAD_SIZE  32  /* Capture first 32 bytes of payload */
+
+/* Control message type for reading errors */
+#define MCTP_RECVERR  1
+
+/* Direction values */
+#define MCTP_DIR_TX  0
+#define MCTP_DIR_RX  1
+
+/* Binding types */
+#define MCTP_BINDING_USB   1
+#define MCTP_BINDING_I2C   2
+#define MCTP_BINDING_PCIE  3
+
+/**
+ * struct mctp_error - MCTP error information for applications
+ *
+ * This structure is returned to applications via recvmsg(MSG_ERRQUEUE).
+ * Contains everything needed to identify and handle binding layer errors.
+ *
+ * @error_code: Error number (ETIMEDOUT, EPIPE, EPROTO, etc.)
+ * @direction: 0=TX, 1=RX
+ * @binding: Binding type (1=USB, 2=I2C, 3=PCIe)
+ * @src_eid: Source EID
+ * @dest_eid: Destination EID
+ * @tag: MCTP tag value (0-7)
+ * @msg_type: MCTP message type (0x01=PLDM, 0x05=SPDM, etc.)
+ * @timestamp_ns: When error occurred (nanoseconds since boot)
+ * @payload_len: Length of captured payload
+ * @payload: First N bytes of message payload (includes protocol headers)
+ *
+ * For PLDM messages, payload contains:
+ *   payload[0] = Instance ID byte (bits 4-0 = instance ID)
+ *   payload[1] = PLDM Type byte (bits 5-0 = type: 2=T2, 5=T5)
+ *   payload[2] = Command code
+ *
+ * For SPDM messages, payload contains:
+ *   payload[0] = SPDM version
+ *   payload[1] = Request/Response code
+ *   payload[2+] = Parameters and session context
+ */
+struct mctp_error {
+	/* Error Information */
+	__u32	error_code;		/* errno value */
+	__u8	direction;		/* MCTP_DIR_TX or MCTP_DIR_RX */
+	__u8	binding;		/* MCTP_BINDING_* */
+	__u16	reserved1;
+
+	/* MCTP Addressing */
+	__u8	src_eid;		/* Source EID */
+	__u8	dest_eid;		/* Destination EID */
+	__u8	tag;			/* MCTP tag (0-7) */
+	__u8	msg_type;		/* MCTP message type */
+
+	/* Timestamp */
+	__u64	timestamp_ns;		/* Error timestamp */
+
+	/* Payload Capture */
+	__u16	payload_len;		/* Captured payload length */
+	__u16	reserved2;
+	__u8	payload[MCTP_ERROR_PAYLOAD_SIZE];
+
+	/* Reserved for future use */
+	__u32	reserved3[2];
+} __attribute__((packed));
 
 #endif /* __UAPI_MCTP_H */
