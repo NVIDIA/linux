@@ -646,6 +646,11 @@
     mctp-controller;
     multi-master;
 
+    mctp@18 {
+        compatible = "mctp-i2c-controller";
+        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+    };
+
     /* HBM MCU GPIOs on I2C_MGMT1 bus.
      * These IOEXPs are only present when HMC-bypass mode is configured.
      */
