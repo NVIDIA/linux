@@ -822,9 +822,18 @@ static bool mctp_rt_compare_exact(struct mctp_route *rt1,
 				  struct mctp_route *rt2)
 {
 	ASSERT_RTNL();
-	return rt1->dev->net == rt2->dev->net &&
-		rt1->min == rt2->min &&
-		rt1->max == rt2->max;
+
+	if (rt1->dev->net != rt2->dev->net)
+		return false;
+
+	if (rt1->max < rt2->min || rt1->min > rt2->max)
+		return false;
+
+	if (rt1->type == RTN_LOCAL && rt2->type == RTN_LOCAL &&
+	    rt1->dev != rt2->dev)
+		return false;
+
+	return true;
 }
 
 struct mctp_route *mctp_route_lookup(struct net *net, unsigned int dnet,
