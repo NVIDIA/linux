@@ -141,15 +141,16 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 	urb->transfer_flags |= URB_FREE_BUFFER;
 
 	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
-	rc = usb_submit_urb(urb, GFP_ATOMIC);
-	if (rc) {
-		usb_unanchor_urb(urb);
-		goto err_free_urb;
-	}
-
 	atomic_inc(&mctp_usb->tx_qlen);
 	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue)
 		netif_stop_queue(netdev);
+	rc = usb_submit_urb(urb, GFP_ATOMIC);
+	if (rc) {
+		usb_unanchor_urb(urb);
+		if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
+			netif_wake_queue(netdev);
+		goto err_free_urb;
+	}
 
 	return NETDEV_TX_OK;
 
@@ -220,15 +221,16 @@ static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
 			  skb->data, skb->len, mctp_usb_out_complete, ctx);
 
 	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
-	rc = usb_submit_urb(urb, GFP_ATOMIC);
-	if (rc) {
-		usb_unanchor_urb(urb);
-		goto err_free_urb;
-	}
-
 	atomic_inc(&mctp_usb->tx_qlen);
 	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue)
 		netif_stop_queue(netdev);
+	rc = usb_submit_urb(urb, GFP_ATOMIC);
+	if (rc) {
+		usb_unanchor_urb(urb);
+		if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
+			netif_wake_queue(netdev);
+		goto err_free_urb;
+	}
 
 	return NETDEV_TX_OK;
 
