@@ -654,6 +654,32 @@
     clock-frequency = <400000>;
 };
 
+// I2C Fan Control 0
+&i2c_fan_ctrl0 {
+    status = "okay";
+    clock-frequency = <400000>;
+
+    max31790_0 {
+        compatible = "maxim,max31790";
+        reg = <0x2C>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+};
+
+// I2C Fan Control 1
+&i2c_fan_ctrl1 {
+    status = "okay";
+    clock-frequency = <400000>;
+
+    max31790_1 {
+        compatible = "maxim,max31790";
+        reg = <0x2F>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+};
+
 // PCIe RC
 &pcie {
     status = "okay";
