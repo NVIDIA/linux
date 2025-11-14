@@ -89,6 +89,8 @@ static int aspeed_ecdsa_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
 	struct aspeed_engine_ecdsa *ecdsa_engine = &ecdsa_dev->ecdsa_engine;
 	int results = ecdsa_engine->results;
 
+	AST_DBG(ecdsa_dev, "\n");
+
 	ecdsa_engine->flags &= ~CRYPTO_FLAGS_BUSY;
 
 	return results;
@@ -100,6 +102,8 @@ static int aspeed_ecdsa_do_request(struct crypto_sig *tfm)
 	struct aspeed_ecdsa_dev *ecdsa_dev = ctx->ecdsa_dev;
 	struct aspeed_engine_ecdsa *ecdsa_engine;
 
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
 	ecdsa_engine = &ecdsa_dev->ecdsa_engine;
 	ecdsa_engine->flags |= CRYPTO_FLAGS_BUSY;
 
@@ -109,6 +113,8 @@ static int aspeed_ecdsa_do_request(struct crypto_sig *tfm)
 static void aspeed_ecdsa_done_task(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
 	u32 ctrl;
+
+	AST_DBG(ecdsa_dev, "\n");
 
 	/* Reset engine */
 	ctrl = ast_read(ecdsa_dev, ASPEED_ECC_CTRL_REG);
@@ -159,6 +165,8 @@ static int aspeed_ecdsa_wait_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
 
 static int aspeed_hw_trigger(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
+	AST_DBG(ecdsa_dev, "\n");
+
 	ast_write(ecdsa_dev, 0x1, ASPEED_ECC_ECDSA_VERIFY);
 
 	ast_write(ecdsa_dev, ECC_EN, ASPEED_ECC_CMD_REG);
@@ -193,6 +201,7 @@ static int _aspeed_ecdsa_verify(struct aspeed_ecc_ctx *ctx, const u64 *hash,
 	if (!data)
 		return -ENOMEM;
 
+	/* Initial signature/message and trigger ecdsa verification */
 	buf = (u8 *)r;
 	hexdump("Dump r:", buf, nbytes);
 
@@ -245,6 +254,8 @@ static int aspeed_ecdsa_trigger(struct crypto_sig *tfm)
 	u64 hash[ECC_MAX_DIGITS];
 	int ret;
 
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
 	if (unlikely(!ctx->pub_key_set))
 		return -EINVAL;
 
@@ -279,6 +290,8 @@ static int aspeed_ecdsa_verify(struct crypto_sig *tfm, const void *src,
 {
 	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
 
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
 	ctx->trigger = aspeed_ecdsa_trigger;
 	ctx->src = src;
 	ctx->slen = slen;
@@ -312,6 +325,8 @@ static int aspeed_ecdsa_ecc_ctx_init(struct aspeed_ecc_ctx *ctx, unsigned int cu
 		ctrl = ECDSA_384_EN;
 		break;
 	}
+
+	mutex_lock(&ctx->ecdsa_dev->lock);
 
 	ast_write(ctx->ecdsa_dev, ECC_EN | ctrl, ASPEED_ECC_CTRL_REG);
 
@@ -356,6 +371,8 @@ static int aspeed_ecdsa_ecc_ctx_init(struct aspeed_ecc_ctx *ctx, unsigned int cu
 
 static void aspeed_ecdsa_ecc_ctx_deinit(struct aspeed_ecc_ctx *ctx)
 {
+	mutex_unlock(&ctx->ecdsa_dev->lock);
+
 	ctx->pub_key_set = false;
 }
 
@@ -381,6 +398,8 @@ static int aspeed_ecdsa_set_pub_key(struct crypto_sig *tfm, const void *key,
 	unsigned int ndigits;
 	u8 *data, *buf;
 	int ret;
+
+	AST_DBG(ctx->ecdsa_dev, "\n");
 
 	ret = crypto_sig_set_pubkey(ctx->fallback_tfm, key, keylen);
 	if (ret)
@@ -429,6 +448,8 @@ static int aspeed_ecdsa_set_pub_key(struct crypto_sig *tfm, const void *key,
 static void aspeed_ecdsa_exit_tfm(struct crypto_sig *tfm)
 {
 	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+
+	AST_DBG(ctx->ecdsa_dev, "\n");
 
 	aspeed_ecdsa_ecc_ctx_deinit(ctx);
 
@@ -661,6 +682,8 @@ static int aspeed_ecdsa_probe(struct platform_device *pdev)
 		dev_err(dev, "ECDSA algo register failed\n");
 		return rc;
 	}
+
+	mutex_init(&ecdsa_dev->lock);
 
 	dev_info(dev, "Aspeed ECDSA Hardware Accelerator successfully registered\n");
 
