@@ -144,7 +144,7 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 	rc = usb_submit_urb(urb, GFP_ATOMIC);
 	if (rc) {
 		usb_unanchor_urb(urb);
-		goto err_free_buf;
+		goto err_free_urb;
 	}
 
 	atomic_inc(&mctp_usb->tx_qlen);
@@ -153,8 +153,6 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 
 	return NETDEV_TX_OK;
 
-err_free_buf:
-	kfree(buf);
 err_free_urb:
 	usb_free_urb(urb);
 err_free_ctx:
