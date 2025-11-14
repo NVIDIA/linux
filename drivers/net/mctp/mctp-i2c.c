@@ -33,6 +33,8 @@
 
 #include "mctp-i2c-error-inject.h"
 #include "mctp-stats.h"
+#include <trace/events/mctp.h>
+
 /* byte_count is limited to u8 */
 #define MCTP_I2C_MAXBLOCK 255
 /* One byte is taken by source_slave */
@@ -427,9 +429,11 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		if (status == NET_RX_SUCCESS) {
 			ndev->stats.rx_packets++;
 			ndev->stats.rx_bytes += recvlen;
+			trace_mctp_transport_rx("i2c", ndev, hdr->source_slave >> 1, recvlen);
 		} else {
 			ndev->stats.rx_dropped++;
 			MCTP_STAT_INC(midev, src_eid, rx_drop_not_ready);
+			trace_mctp_transport_error("i2c", ndev, "rx_dropped", status);
 		}
 	}
 	return 0;
@@ -691,9 +695,11 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		} else {
 			MCTP_STAT_INC(midev, dest_eid, tx_drop_io_error);
 		}
+		trace_mctp_transport_error("i2c", midev->ndev, "i2c_transfer_failed", rc);
 	} else {
 		stats->tx_bytes += skb->len;
 		stats->tx_packets++;
+		trace_mctp_transport_tx("i2c", midev->ndev, hdr->dest_slave >> 1, skb->len);
 	}
 }
 

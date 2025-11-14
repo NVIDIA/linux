@@ -19,6 +19,7 @@
 #include <net/mctpdevice.h>
 
 #include "mctp-stats.h"
+#include <trace/events/mctp.h>
 
 #define MCTP_I3C_MAXBUF 65536
 /* 48 bit Provisioned Id */
@@ -222,8 +223,10 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 	if (net_status == NET_RX_SUCCESS) {
 		stats->rx_packets++;
 		stats->rx_bytes += xfer.len - 1;
+		trace_mctp_transport_rx("i3c", ndev, 0, xfer.len - 1);
 	} else {
 		stats->rx_dropped++;
+		trace_mctp_transport_error("i3c", ndev, "rx_dropped", net_status);
 	}
 
 	mutex_unlock(&mi->lock);
@@ -494,6 +497,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 	if (rc == 0) {
 		stats->tx_bytes += data_len;
 		stats->tx_packets++;
+		trace_mctp_transport_tx("i3c", ndev, 0, data_len);
 	} else {
 		stats->tx_errors++;
 		if (rc == -ENXIO) {
@@ -515,6 +519,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 		} else {
 			MCTP_STAT_INC(mbus, dest_eid, tx_drop_io_error);
 		}
+		trace_mctp_transport_error("i3c", ndev, "i3c_xfer_failed", rc);
 	}
 
 out:

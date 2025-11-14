@@ -22,6 +22,7 @@
 
 #include "mctp-usb-error-inject.h"
 #include "mctp-stats.h"
+#include <trace/events/mctp.h>
 
 /* number of IN/OUT urbs to queue */
 const unsigned int n_rx_queue = 8;
@@ -234,10 +235,12 @@ static void mctp_usb_out_complete(struct urb *urb)
 		netdev->stats.tx_dropped += ctx->num_packets;
 		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_eagain += ctx->num_packets;
 		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		trace_mctp_transport_error("usb", netdev, "tx_urb_error", status);
 		break;
 	case 0:
 		netdev->stats.tx_packets += ctx->num_packets;
 		/* tx_bytes already updated per packet during batching */
+		trace_mctp_transport_tx("usb", netdev, 0, urb->actual_length);
 		break;
 	default:
 		if (net_ratelimit()) {
@@ -247,6 +250,7 @@ static void mctp_usb_out_complete(struct urb *urb)
 		netdev->stats.tx_dropped += ctx->num_packets;
 		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_urb_error += ctx->num_packets;
 		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		trace_mctp_transport_error("usb", netdev, "tx_urb_unexpected", status);
 	}
 
 	if (status != 0) {
@@ -898,6 +902,7 @@ static void mctp_usb_in_complete(struct urb *urb)
 			/* inject_action == 0: pass through (normally or with corruption) */
 		}
 		
+		trace_mctp_transport_rx("usb", netdev, 0, skb->len);
 		netif_rx(skb);
 
 		skb = skb2;

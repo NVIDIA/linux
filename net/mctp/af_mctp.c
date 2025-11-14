@@ -223,6 +223,7 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		memcpy(cb->haddr, extaddr->smctp_haddr, cb->halen);
 	}
 
+	trace_mctp_tx_packet(skb);
 	rc = mctp_local_output(sk, rt, skb, addr->smctp_addr.s_addr,
 			       addr->smctp_tag);
 

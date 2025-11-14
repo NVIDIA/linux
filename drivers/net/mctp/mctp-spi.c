@@ -24,6 +24,8 @@
 #include <net/pkt_sched.h>
 #include <net/mctpdevice.h>
 
+#include <trace/events/mctp.h>
+
 #include "glacier-spb-ap.h"
 #include "mctp-stats.h"
 
@@ -196,6 +198,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 	if (status == NET_RX_SUCCESS) {
 		ndev->stats.rx_packets++;
 		ndev->stats.rx_bytes += recvlen;
+		trace_mctp_transport_rx("spi", ndev, 0, recvlen);
 	} else {
 		ndev->stats.rx_dropped++;
 		/* Extract EID for per-EID tracking (SKB has packet data) */
@@ -205,6 +208,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		} else {
 			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_not_ready);
 		}
+		trace_mctp_transport_error("spi", ndev, "rx_dropped", status);
 	}
 
 	return 0;
@@ -537,6 +541,7 @@ static int mctp_spi_tx_thread(void *data)
 
 			skb_copy_bits(skb, 0, txbuf, skb->len);
 			//Send SPI package
+		//Send SPI package
 		status = spb_ap_send(midev->ap, skb->len, txbuf);
 		if(status == SPB_AP_OK) {
 			midev->ndev->stats.tx_packets++;
@@ -559,6 +564,11 @@ static int mctp_spi_tx_thread(void *data)
 			} else {
 				MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
 			}
+			trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
+		}
+		else {
+			midev->ndev->stats.rx_dropped++;
+			trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", status);
 		}
 			kfree_skb(skb);
 			while (midev->ap->msgs_available > 0) {

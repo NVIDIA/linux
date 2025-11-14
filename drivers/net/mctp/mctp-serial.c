@@ -26,6 +26,8 @@
 #include <net/mctpdevice.h>
 #include <net/pkt_sched.h>
 
+#include <trace/events/mctp.h>
+
 #define MCTP_SERIAL_MTU		68 /* base mtu (64) + mctp header */
 #define MCTP_SERIAL_FRAME_MTU	(MCTP_SERIAL_MTU + 6) /* + serial framing */
 
@@ -219,6 +221,7 @@ static void mctp_serial_tx_work(struct work_struct *work)
 	if (dev->txstate == STATE_DONE) {
 		dev->netdev->stats.tx_packets++;
 		dev->netdev->stats.tx_bytes += dev->txlen;
+		trace_mctp_transport_tx("serial", dev->netdev, 0, dev->txlen);
 		dev->txlen = 0;
 		dev->txpos = 0;
 		clear_bit(TTY_DO_WRITE_WAKEUP, &dev->tty->flags);
@@ -293,6 +296,7 @@ static void mctp_serial_rx(struct mctp_serial *dev)
 	netif_rx(skb);
 	dev->netdev->stats.rx_packets++;
 	dev->netdev->stats.rx_bytes += dev->rxlen;
+	trace_mctp_transport_rx("serial", dev->netdev, 0, dev->rxlen);
 }
 
 static void mctp_serial_push_header(struct mctp_serial *dev, u8 c)

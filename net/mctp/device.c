@@ -19,6 +19,8 @@
 #include <net/mctpdevice.h>
 #include <net/sock.h>
 
+#include <trace/events/mctp.h>
+
 struct mctp_dump_cb {
 	unsigned long ifindex;
 	size_t a_idx;
@@ -237,6 +239,7 @@ static int mctp_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	kfree(tmp_addrs);
 
+	trace_mctp_address_add(dev, addr->s_addr);
 	mctp_addr_notify(mdev, addr->s_addr, RTM_NEWADDR, skb, nlh);
 	mctp_route_add_local(mdev, addr->s_addr);
 
@@ -293,6 +296,7 @@ static int mctp_rtm_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh,
 	mdev->num_addrs--;
 	spin_unlock_irqrestore(&mdev->addrs_lock, flags);
 
+	trace_mctp_address_del(dev, addr->s_addr);
 	mctp_addr_notify(mdev, addr->s_addr, RTM_DELADDR, skb, nlh);
 
 	return 0;
@@ -352,6 +356,7 @@ static struct mctp_dev *mctp_add_dev(struct net_device *dev)
 	dev_hold(dev);
 	mdev->dev = dev;
 
+	trace_mctp_device_register(dev, mdev->net);
 	return mdev;
 }
 
@@ -429,6 +434,7 @@ static void mctp_unregister(struct net_device *dev)
 	if (!mdev)
 		return;
 
+	trace_mctp_device_unregister(dev);
 	RCU_INIT_POINTER(mdev->dev->mctp_ptr, NULL);
 
 	mctp_route_remove_dev(mdev);
