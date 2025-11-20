@@ -239,7 +239,7 @@
         Uncomment below line to enable internal EHCI controller
         Current config uses xHCI Port1
     */
-    // pinctrl-0 = <&pinctrl_usb2adp_default>;
+    pinctrl-0 = <&pinctrl_usb2adp_default>;
 };
 
 &video {
@@ -270,6 +270,12 @@
                         i2c70: i2c {
                             #address-cells = <1>;
                             #size-cells = <0>;
+                            mctp-controller;
+                            // MCTP for HPM MCU
+                            mctp@18 {
+                                compatible = "mctp-i2c-controller";
+                                reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+                            };
 
                             exp16: pca9555@50 {
                                 compatible = "nxp,pca9555";
@@ -481,6 +487,12 @@
     clock-frequency = <400000>;
     i2c-scl-clk-low-timeout-us = <32000>;
     i2c-tck-thddat-config = <0x0099EC00>;
+    mctp-controller;
+    // MCTP for HPM MCU
+    mctp@18 {
+        compatible = "mctp-i2c-controller";
+        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+    };
 };
 
 // I2C4
