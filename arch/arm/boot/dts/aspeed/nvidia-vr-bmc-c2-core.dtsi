@@ -449,7 +449,7 @@
             "PDB_PWR_BRK_L-I",
             "PDB_FAN_CTL_PRSNT_L-I",
             "PDB_P12V_HPM_EN-O",
-            "PDB_P12V_AIC_EN-O",
+            "PDB_MUX_SEL-O",
             "PDB_P12V_GPU1_EN-O",
             "PDB_P12V_GPU2_EN-O",
             "PDB_PSU_PWOK-I",
