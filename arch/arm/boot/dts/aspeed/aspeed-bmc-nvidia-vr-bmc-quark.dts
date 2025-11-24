@@ -701,7 +701,7 @@
             "BRD0_CPU_IST_BOOT_HMC-O",
             "BRD0_CPU_BOOT_CHAIN0-O",
             "BRD0_BOARD_ID_1-I",
-            "BRD0_BOARD_ID_2-I",
+            "BRD0_HMC_TO_MCU_I2C_EN-O",
             "BRD0_CPU_DIE_SEL0-O",
             "BRD0_CPU_DIE_SEL1-O",
             "BRD0_CPU_DIE_SEL2-O",
