@@ -105,10 +105,7 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 	unsigned int pkt_len = skb->len;
 	int rc;
 
-	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
-		netif_stop_queue(netdev);
-		return NETDEV_TX_BUSY;
-	}
+	/* Queue check is done in mctp_usb_start_xmit() before modifying SKB */
 
 	/* Allocate minimal context for single packet */
 	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
@@ -197,6 +194,9 @@ static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
 		return NETDEV_TX_BUSY;
 	}
 
+	/* Restore the correct protocol now that we're committed to sending */
+	skb->protocol = htons(ETH_P_MCTP);
+
 	/* Allocate context */
 	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
 	if (!ctx)
@@ -258,8 +258,7 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	 * This avoids relying on skb->cb which may not be initialized.
 	 */
 	if (skb->protocol == htons(ETH_P_MCTP | 0x8000)) {
-		/* This is a batched SKB - restore the correct protocol */
-		skb->protocol = htons(ETH_P_MCTP);
+		/* This is a batched SKB - don't clear protocol until after queue check! */
 		netdev_dbg(dev, "Detected batched SKB: len=%u\n", skb->len);
 		return mctp_usb_send_batch(mctp_usb, skb);
 	}
@@ -271,6 +270,12 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	/* Single packet larger than max transfer size - can't send */
 	if (pkt_len > MCTP_USB_XFER_SIZE)
 		goto err_drop;
+
+	/* Check queue BEFORE modifying the SKB, so retries don't double-add headers */
+	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
+		netif_stop_queue(dev);
+		return NETDEV_TX_BUSY;
+	}
 
 	rc = skb_cow_head(skb, sizeof(*hdr));
 	if (rc)
