@@ -735,6 +735,12 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 	unsigned int mtu;
 	int rc;
 
+	/* Update skb->dev to the outgoing device from the route.
+	 * This is necessary for packet forwarding: the incoming skb->dev points to
+	 * the ingress interface, but we need to transmit on the egress interface.
+	 */
+	skb->dev = route->dev->dev;
+
 	/* Check if this is a batched SKB (marked by protocol field with high bit set).
 	 * Batched SKBs are intentionally larger than MTU as they contain multiple
 	 * MCTP packets packed together. The driver will clear this marker.
