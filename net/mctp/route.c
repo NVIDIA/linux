@@ -81,6 +81,7 @@ static struct mctp_sock *mctp_lookup_bind(struct net *net, struct sk_buff *skb)
 
 	sk_for_each_rcu(sk, &net->mctp.binds) {
 		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+		int bound_dev_if;
 
 		if (msk->bind_net != MCTP_NET_ANY && msk->bind_net != cb->net)
 			continue;
@@ -89,6 +90,12 @@ static struct mctp_sock *mctp_lookup_bind(struct net *net, struct sk_buff *skb)
 			continue;
 
 		if (!mctp_address_matches(msk->bind_addr, mh->dest))
+			continue;
+
+		/* Check SO_BINDTODEVICE constraint */
+		bound_dev_if = READ_ONCE(sk->sk_bound_dev_if);
+		if (bound_dev_if && skb->dev &&
+		    bound_dev_if != skb->dev->ifindex)
 			continue;
 
 		return msk;

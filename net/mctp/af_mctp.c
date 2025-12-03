@@ -147,26 +147,44 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
 				 extaddr, msg->msg_name);
 		struct net_device *dev;
+		int bound_dev_if;
 
 		rc = -EINVAL;
 		rcu_read_lock();
 		dev = dev_get_by_index_rcu(sock_net(sk), extaddr->smctp_ifindex);
 		/* check for correct halen */
 		if (dev && extaddr->smctp_halen == dev->addr_len) {
-			hlen = LL_RESERVED_SPACE(dev) + sizeof(struct mctp_hdr);
-			rc = 0;
+			/* Check SO_BINDTODEVICE constraint */
+			bound_dev_if = READ_ONCE(sk->sk_bound_dev_if);
+			if (bound_dev_if && bound_dev_if != dev->ifindex) {
+				rc = -EINVAL;
+			} else {
+				hlen = LL_RESERVED_SPACE(dev) + sizeof(struct mctp_hdr);
+				rc = 0;
+			}
 		}
 		rcu_read_unlock();
 		if (rc)
 			goto err_free;
 		rt = NULL;
 	} else {
+		int bound_dev_if;
+
 		rt = mctp_route_lookup(sock_net(sk), addr->smctp_network,
 				       addr->smctp_addr.s_addr);
 		if (!rt) {
 			rc = -EHOSTUNREACH;
 			goto err_free;
 		}
+		
+		/* Check SO_BINDTODEVICE constraint */
+		bound_dev_if = READ_ONCE(sk->sk_bound_dev_if);
+		if (bound_dev_if && rt->dev && 
+		    bound_dev_if != rt->dev->dev->ifindex) {
+			rc = -EINVAL;
+			goto err_free;
+		}
+		
 		hlen = LL_RESERVED_SPACE(rt->dev->dev) + sizeof(struct mctp_hdr);
 	}
 
