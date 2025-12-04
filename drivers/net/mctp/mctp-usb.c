@@ -69,7 +69,11 @@ static void mctp_usb_out_complete(struct urb *urb)
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
-	case -EPROTO:
+		if (net_ratelimit()) {
+			netdev_warn(netdev,
+				    "tx urb shutdown/error status: %d\n",
+				    status);
+		}
 		netdev->stats.tx_dropped += ctx->num_packets;
 		break;
 	case 0:
@@ -77,7 +81,10 @@ static void mctp_usb_out_complete(struct urb *urb)
 		/* tx_bytes already updated per packet during batching */
 		break;
 	default:
-		netdev_dbg(netdev, "unexpected tx urb status: %d\n", status);
+		if (net_ratelimit()) {
+			netdev_warn(netdev, "unexpected tx urb status: %d\n",
+				    status);
+		}
 		netdev->stats.tx_dropped += ctx->num_packets;
 	}
 
@@ -325,14 +332,14 @@ static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, struct urb *urb,
 			  skb->data, MCTP_USB_XFER_SIZE,
 			  mctp_usb_in_complete, skb);
 
+	atomic_inc(&mctp_usb->rx_qlen);
 	rc = usb_submit_urb(urb, gfp);
 	if (rc) {
 		netdev_dbg(mctp_usb->netdev, "rx urb submit failure: %d\n", rc);
+		atomic_dec(&mctp_usb->rx_qlen);
 		kfree_skb(skb);
 		return rc;
 	}
-
-	atomic_inc(&mctp_usb->rx_qlen);
 
 	return 0;
 }
@@ -353,7 +360,11 @@ static void mctp_usb_in_complete(struct urb *urb)
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
-	case -EPROTO:
+		if (net_ratelimit()) {
+			netdev_warn(netdev,
+				    "rx urb shutdown/error status: %d\n",
+				    status);
+		}
 		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
 		kfree_skb(skb);
@@ -361,11 +372,14 @@ static void mctp_usb_in_complete(struct urb *urb)
 	case 0:
 		break;
 	default:
-		netdev_dbg(netdev, "unexpected rx urb status: %d\n", status);
-		usb_unanchor_urb(urb);
-		usb_free_urb(urb);
+		if (net_ratelimit()) {
+			netdev_warn(netdev,
+				    "unexpected rx urb status: %d, requeuing\n",
+				    status);
+		}
+		/* Free the bad SKB and try to requeue the URB */
 		kfree_skb(skb);
-		return;
+		goto requeue;
 	}
 
 	len = urb->actual_length;
@@ -431,8 +445,14 @@ static void mctp_usb_in_complete(struct urb *urb)
 	if (skb)
 		kfree_skb(skb);
 
+requeue:
+	/* URB was automatically unanchored by USB core on completion,
+	 * re-anchor before resubmit so it's tracked for shutdown.
+	 */
+	usb_anchor_urb(urb, &mctp_usb->rx_anchor);
 	rc = mctp_usb_rx_queue(mctp_usb, urb, GFP_ATOMIC);
 	if (rc) {
+		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
 		schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
 	}
