@@ -195,7 +195,7 @@
         gpio-line-names =
             "B0_M0_I2C_BUS_MUX_RESET_L-O",
             "B0_M0_HPM_MCU_OK-I",
-            "B0_M0_AIC_USB_EN-O",
+            "B0_M0_CPU_L0_RST_IND_L-O",
             "B0_M0_C0_SOCAMM_DAC_SEL0-O",
             "B0_M0_C1_SOCAMM_DAC_SEL1-O",
             "B0_M0_C0_SOCAMM_I2C_SEL_R-O",
@@ -208,7 +208,7 @@
             "B0_M0_BMC_LEAK_TEST_L-O",
             "B0_M0_MCU_BMC_ALERT_L-I",
             "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
-            "B0_M0_BMC_TO_MCU_I2C_EN-O";
+            "B0_M0_BMC_TO_GPU_MCU_I2C_EN-O";
     };
 };
 
@@ -265,7 +265,7 @@
         gpio-line-names =
             "B1_M0_I2C_BUS_MUX_RESET_L-O",
             "B1_M0_HPM_MCU_OK-I",
-            "B1_M0_AIC_USB_EN-O",
+            "B1_M0_CPU_L0_RST_IND_L-O",
             "B1_M0_C0_SOCAMM_DAC_SEL0-O",
             "B1_M0_C1_SOCAMM_DAC_SEL1-O",
             "B1_M0_C0_SOCAMM_I2C_SEL_R-O",
@@ -278,7 +278,7 @@
             "B1_M0_BMC_LEAK_TEST_L-O",
             "B1_M0_MCU_BMC_ALERT_L-I",
             "B1_M0_CPU_BOOT_COMPLETE_3V3-I",
-            "B1_M0_BMC_TO_MCU_I2C_EN-O";
+            "B1_M0_BMC_TO_GPU_MCU_I2C_EN-O";
     };
 };
 
@@ -364,7 +364,7 @@
         gpio-line-names =
             "PDB_STRAP-I",
             "STBY_POWER_EN-O",
-            "PWBY_PWR_OK-I",
+            "STBY_PWR_OK-I",
             "",
             "",
             "MAIN_PWR_EN-O",
@@ -374,7 +374,7 @@
             "FAN_PRSNT-I",
             "",
             "",
-            "",
+            "HSC4_S5_OR_S0_N-O",
             "",
             "",
             "";
