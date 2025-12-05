@@ -735,6 +735,9 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 	unsigned int mtu;
 	int rc;
 
+	/* Check if this is a tunneled packet from one net dev to another*/
+	bool is_tunnel = (skb->dev != route->dev->dev);
+
 	/* Update skb->dev to the outgoing device from the route.
 	 * This is necessary for packet forwarding: the incoming skb->dev points to
 	 * the ingress interface, but we need to transmit on the egress interface.
@@ -758,7 +761,7 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 	}
 	/* else: batched SKB keeps the marked protocol for the driver to detect */
 
-	if (cb->ifindex) {
+	if (cb->ifindex && !is_tunnel) {
 		/* direct route; use the hwaddr we stashed in sendmsg */
 		if (cb->halen != skb->dev->addr_len) {
 			/* sanity check, sendmsg should have already caught this */
