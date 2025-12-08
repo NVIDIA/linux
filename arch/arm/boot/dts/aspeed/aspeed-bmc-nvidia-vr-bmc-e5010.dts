@@ -651,3 +651,6 @@
     status = "okay";
 };
 
+&chassis {
+	status = "okay";
+};
