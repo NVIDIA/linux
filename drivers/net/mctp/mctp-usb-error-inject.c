@@ -170,7 +170,7 @@ int mctp_usb_error_inject_tx_sync(struct mctp_usb *mctp_usb, struct sk_buff *skb
 	 */
 	mh = (struct mctp_hdr *)(skb->data + sizeof(struct mctp_usb_hdr));
 	
-	netdev_info(mctp_usb->netdev,
+	netdev_dbg(mctp_usb->netdev,
 	           "Error injection: TX URB submission failed (sync) - error=%d, src_eid=%u, dest_eid=%u, "
 	           "total_injected=%u, mode=%s\n",
 	           ei->urb_tx_sync_error_code, mh->src, mh->dest,
@@ -223,7 +223,7 @@ int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb,
 	ei->total_errors_injected++;
 	spin_unlock_bh(&ei->lock);
 	
-	netdev_info(mctp_usb->netdev,
+	netdev_dbg(mctp_usb->netdev,
 	           "Error injection: TX URB completion failed (async) - error=%d, total_injected=%u, mode=%s (URB-level, may affect multiple packets)\n",
 	           ei->urb_tx_async_error_code,
 	           ei->urb_tx_async_errors_injected,
@@ -269,14 +269,14 @@ int mctp_usb_error_inject_rx(struct mctp_usb *mctp_usb, int original_status)
 	ei->total_errors_injected++;
 	spin_unlock_bh(&ei->lock);
 	
-	netdev_info(mctp_usb->netdev,
+	netdev_dbg(mctp_usb->netdev,
 	           "Error injection: RX URB completion failed - error=%d, total_injected=%u, mode=%s\n",
 	           ei->urb_rx_error_code,
 	           ei->urb_rx_errors_injected,
 	           ei->mode == MCTP_ERR_MODE_ALWAYS ? "always" :
 	           ei->mode == MCTP_ERR_MODE_RANDOM ? "random" : "count");
 	
-	netdev_info(mctp_usb->netdev,
+	netdev_dbg(mctp_usb->netdev,
 	           "Error injection: RX packet will be DROPPED due to injected error\n");
 	
 	return ei->urb_rx_error_code;
@@ -366,7 +366,7 @@ int mctp_usb_error_inject_fragment(struct mctp_usb *mctp_usb, struct sk_buff *sk
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(mctp_usb->netdev,
+		netdev_dbg(mctp_usb->netdev,
 		           "Error injection: SOM bit CLEARED (first fragment, src=%u, dest=%u, seq=%u)%s\n",
 		           mh->src, mh->dest, seq,
 		           ei->eid_filter.enabled ? " [EID filter ACTIVE]" : "");
@@ -388,7 +388,7 @@ int mctp_usb_error_inject_fragment(struct mctp_usb *mctp_usb, struct sk_buff *sk
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(mctp_usb->netdev,
+		netdev_dbg(mctp_usb->netdev,
 		           "Error injection: Sequence CORRUPTED (2nd+ fragment, src=%u, dest=%u, orig_seq=%u -> corrupted_seq=%u)%s\n",
 		           mh->src, mh->dest, seq, corrupted_seq,
 		           ei->eid_filter.enabled ? " [EID filter ACTIVE]" : "");
@@ -404,7 +404,7 @@ int mctp_usb_error_inject_fragment(struct mctp_usb *mctp_usb, struct sk_buff *sk
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(mctp_usb->netdev,
+		netdev_dbg(mctp_usb->netdev,
 		           "Error injection: Fragment DROPPED (2nd+ fragment, src=%u, dest=%u, seq=%u)%s\n",
 		           mh->src, mh->dest, seq,
 		           ei->eid_filter.enabled ? " [EID filter ACTIVE]" : "");
@@ -460,7 +460,7 @@ static ssize_t mctp_debugfs_enable_tx_write(struct file *file, const char __user
 	mctp_usb->error_inject.enable_tx = enable;
 	spin_unlock_bh(&mctp_usb->error_inject.lock);
 	
-	netdev_info(mctp_usb->netdev, "TX error injection %s\n",
+	netdev_dbg(mctp_usb->netdev, "TX error injection %s\n",
 	           enable ? "enabled" : "disabled");
 	
 	return count;
@@ -509,7 +509,7 @@ static ssize_t mctp_debugfs_enable_rx_write(struct file *file, const char __user
 	mctp_usb->error_inject.enable_rx = enable;
 	spin_unlock_bh(&mctp_usb->error_inject.lock);
 	
-	netdev_info(mctp_usb->netdev, "RX error injection %s\n",
+	netdev_dbg(mctp_usb->netdev, "RX error injection %s\n",
 	           enable ? "enabled" : "disabled");
 	
 	return count;
@@ -951,7 +951,7 @@ static ssize_t mctp_debugfs_reset_write(struct file *file, const char __user *us
 	
 	spin_unlock_bh(&ei->lock);
 	
-	netdev_info(mctp_usb->netdev, "Error injection reset\n");
+	netdev_dbg(mctp_usb->netdev, "Error injection reset\n");
 	
 	return count;
 }

@@ -2000,7 +2000,7 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 		*found_key = NULL;
 
 	if (!skb || skb->len < sizeof(struct mctp_hdr)) {
-		pr_info("MCTP: lookup_sock_by_key: invalid skb (skb=%p len=%u)\n",
+		pr_err("MCTP: lookup_sock_by_key: invalid skb (skb=%p len=%u)\n",
 			skb, skb ? skb->len : 0);
 		return NULL;
 	}
@@ -2016,7 +2016,7 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 	mdev = __mctp_dev_get(dev);
 	if (!mdev) {
 		rcu_read_unlock();
-		pr_info("MCTP: lookup_sock_by_key: no mctp_dev for %s\n", dev->name);
+		pr_err("MCTP: lookup_sock_by_key: no mctp_dev for %s\n", dev->name);
 		return NULL;
 	}
 	netid = READ_ONCE(mdev->net);
@@ -2026,7 +2026,7 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 	/* Extract tag from MCTP header (bits 2-0) */
 	tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
 
-	pr_info("MCTP: lookup_sock_by_key: netid=%u src=%u dest=%u tag=%u\n",
+	pr_debug("MCTP: lookup_sock_by_key: netid=%u src=%u dest=%u tag=%u\n",
 		netid, mh->src, mh->dest, tag);
 
 	/* Look up key in global key table */
@@ -2058,7 +2058,7 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 		/* Return the matched key via output parameter */
 		if (found_key)
 			*found_key = key;
-		pr_info("MCTP: lookup_sock_by_key: FOUND socket %p (key: net=%u local=%u peer=%u tag=%u)\n",
+		pr_debug("MCTP: lookup_sock_by_key: FOUND socket %p (key: net=%u local=%u peer=%u tag=%u)\n",
 			sk, key->net, key->local_addr, key->peer_addr, key->tag);
 	}
 	break;
@@ -2067,7 +2067,7 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
 
 if (!sk) {
-	pr_info("MCTP: lookup_sock_by_key: NO MATCH found for netid=%u src=%u dest=%u tag=%u\n",
+	pr_debug("MCTP: lookup_sock_by_key: NO MATCH found for netid=%u src=%u dest=%u tag=%u\n",
 		netid, mh->src, mh->dest, tag);
 }
 

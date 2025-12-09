@@ -33,7 +33,7 @@ int mctp_socket_error_inject_sendmsg(void)
 		mctp_socket_ei.errors_injected++;
 		ret = mctp_socket_ei.error_code;
 		
-		pr_info("MCTP Socket Error Injection: sendmsg() returning %d, "
+		pr_debug("MCTP Socket Error Injection: sendmsg() returning %d, "
 		        "total_injected=%llu\n",
 		        ret, mctp_socket_ei.errors_injected);
 	}
@@ -71,7 +71,7 @@ static ssize_t enable_write(struct file *file, const char __user *userbuf,
 	
 	mctp_socket_ei.enabled = (value != 0);
 	
-	pr_info("MCTP Socket Error Injection: %s\n", 
+	pr_debug("MCTP Socket Error Injection: %s\n", 
 	        mctp_socket_ei.enabled ? "ENABLED" : "DISABLED");
 	return count;
 }
@@ -174,7 +174,7 @@ static ssize_t reset_write(struct file *file, const char __user *userbuf,
 	mctp_socket_ei.errors_injected = 0;
 	spin_unlock_bh(&mctp_socket_ei.lock);
 	
-	pr_info("MCTP Socket Error Injection: Reset (disabled and cleared)\n");
+	pr_debug("MCTP Socket Error Injection: Reset (disabled and cleared)\n");
 	return count;
 }
 

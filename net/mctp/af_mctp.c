@@ -467,7 +467,7 @@ __must_hold(&net->mctp.keys_lock)
 				list_add_tail(&perr->list, &msk->pending_errors);
 				spin_unlock_bh(&msk->error_queue_lock);
 					
-					pr_info("MCTP: RX timeout queued for deferred error reporting (key has TX origin, orig_payload_len=%u)\n",
+					pr_debug("MCTP: RX timeout queued for deferred error reporting (key has TX origin, orig_payload_len=%u)\n",
 						key->orig_payload_len);
 					
 					/* Schedule work - returns immediately */
@@ -478,7 +478,7 @@ __must_hold(&net->mctp.keys_lock)
 			}
 		} else if (msk->enable_errqueue && key->orig_payload_len == 0) {
 			/* RX-only key (unsolicited request from device) - don't report */
-			pr_info("MCTP: RX timeout NOT reported - no TX origin (unsolicited request, orig_payload_len=0)\n");
+			pr_debug("MCTP: RX timeout NOT reported - no TX origin (unsolicited request, orig_payload_len=0)\n");
 		}
 	}
 

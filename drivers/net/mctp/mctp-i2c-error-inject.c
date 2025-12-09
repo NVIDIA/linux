@@ -165,7 +165,7 @@ int mctp_i2c_error_inject_tx(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	
 	mh = mctp_hdr(skb);
 	
-	netdev_info(midev->ndev,
+	netdev_dbg(midev->ndev,
 		    "ERROR INJECTION: TX - error=%d, src_eid=%u, dest_eid=%u, "
 		    "total_injected=%u, mode=%s\n",
 		    ei->i2c_tx_error_code, mh->src, mh->dest,
@@ -223,7 +223,7 @@ int mctp_i2c_error_inject_fragment(struct mctp_i2c_dev *midev, struct sk_buff *s
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(midev->ndev,
+		netdev_dbg(midev->ndev,
 			    "ERROR INJECTION: SOM bit CLEARED (first fragment, src=%u, dest=%u, seq=%u)\n",
 			    mh->src, mh->dest, seq);
 		
@@ -243,7 +243,7 @@ int mctp_i2c_error_inject_fragment(struct mctp_i2c_dev *midev, struct sk_buff *s
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(midev->ndev,
+		netdev_dbg(midev->ndev,
 			    "ERROR INJECTION: Sequence CORRUPTED (2nd+ fragment, src=%u, dest=%u, %u -> %u)\n",
 			    mh->src, mh->dest, old_seq, corrupted_seq);
 		
@@ -257,7 +257,7 @@ int mctp_i2c_error_inject_fragment(struct mctp_i2c_dev *midev, struct sk_buff *s
 		ei->total_errors_injected++;
 		spin_unlock_bh(&ei->lock);
 		
-		netdev_info(midev->ndev,
+		netdev_dbg(midev->ndev,
 			    "ERROR INJECTION: Fragment DROPPED (2nd+ fragment, src=%u, dest=%u, seq=%u)\n",
 			    mh->src, mh->dest, seq);
 		
@@ -310,7 +310,7 @@ static ssize_t mctp_debugfs_enable_tx_write(struct file *file, const char __user
 	midev->error_inject.enable_tx = enable;
 	spin_unlock_bh(&midev->error_inject.lock);
 	
-	netdev_info(midev->ndev, "TX error injection %s\n",
+	netdev_dbg(midev->ndev, "TX error injection %s\n",
 		    enable ? "enabled" : "disabled");
 	
 	return count;
@@ -359,7 +359,7 @@ static ssize_t mctp_debugfs_enable_rx_write(struct file *file, const char __user
 	midev->error_inject.enable_rx = enable;
 	spin_unlock_bh(&midev->error_inject.lock);
 	
-	netdev_info(midev->ndev, "RX error injection %s\n",
+	netdev_dbg(midev->ndev, "RX error injection %s\n",
 		    enable ? "enabled" : "disabled");
 	
 	return count;
@@ -787,7 +787,7 @@ static ssize_t mctp_debugfs_reset_write(struct file *file, const char __user *us
 	
 	spin_unlock_bh(&ei->lock);
 	
-	netdev_info(midev->ndev, "Error injection reset\n");
+	netdev_dbg(midev->ndev, "Error injection reset\n");
 	
 	return count;
 }
