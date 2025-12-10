@@ -663,6 +663,10 @@
         reg = <0x20>;
         gpio-controller;
         #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+	interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
 
         gpio-line-names =
             "BRD0_MCU_RESET_L-O",
@@ -689,6 +693,10 @@
         reg = <0x21>;
         gpio-controller;
         #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
 
         gpio-line-names =
             "BRD0_CPU_FORCED_RECOVERY_L-O",
