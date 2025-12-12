@@ -369,7 +369,7 @@
             "",
             "MAIN_PWR_EN-O",
             "MAIN_PWR_OK-I",
-            "GLOBAL_WP-O",
+            "PDB_GLB_WP-O",
             "PDB_PWR_BRK_L-I",
             "FAN_PRSNT-I",
             "",
