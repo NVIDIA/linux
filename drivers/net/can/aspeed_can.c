@@ -613,7 +613,7 @@ static int aspeed_can_set_bittiming(struct net_device *ndev)
 {
 	struct aspeed_can_priv *priv = netdev_priv(ndev);
 	struct can_bittiming *bt = &priv->can.bittiming;
-	struct can_bittiming *dbt = &priv->can.data_bittiming;
+	struct can_bittiming *dbt = &priv->can.fd.data_bittiming;
 	u32 btr0, btr1;
 	u32 can_fd_ssp;
 
@@ -1577,7 +1577,7 @@ static int aspeed_can_probe(struct platform_device *pdev)
 	};
 
 	priv->can.bittiming_const = &aspeed_can_bittiming_const;
-	priv->can.data_bittiming_const = &aspeed_canfd_bittiming_const;
+	priv->can.fd.data_bittiming_const = &aspeed_canfd_bittiming_const;
 	priv->can.do_set_mode = aspeed_can_do_set_mode;
 	priv->can.do_get_berr_counter = aspeed_can_get_berr_counter;
 	priv->can.ctrlmode_supported = CAN_CTRLMODE_LOOPBACK |
@@ -1585,7 +1585,7 @@ static int aspeed_can_probe(struct platform_device *pdev)
 				       CAN_CTRLMODE_FD |
 				       CAN_CTRLMODE_CC_LEN8_DLC |
 				       CAN_CTRLMODE_TDC_AUTO;
-	priv->can.do_get_auto_tdcv = aspeed_can_get_auto_tdcv;
+	priv->can.fd.do_get_auto_tdcv = aspeed_can_get_auto_tdcv;
 
 	priv->tx_max = 3;
 	spin_lock_init(&priv->tx_lock);
