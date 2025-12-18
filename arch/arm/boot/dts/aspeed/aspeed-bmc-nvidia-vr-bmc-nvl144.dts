@@ -287,6 +287,46 @@
             reg = <2>;
             hub@1 {
                 reg = <1>;
+                hub@3 {
+                    reg = <3>;
+                    cp2112c: device@2 {
+                        reg = <2>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+
+                        gpio-line-names =
+                            "IOB0_MCP_P0_2-B",
+                            "IOB0_MCU_RST_L-O",
+                            "IOB0_MCU_RECOVERY_L-O",
+                            "IOB0_GLOBAL_WP-O",
+                            "IOB0_GLOBAL_ADDR_L_R-O",
+                            "IOB0_GLOBAL_ADDR_U_D-O",
+                            "IOB0_PWR_EN-O",
+                            "IOB0_MCU_READY_STATUS-I";
+		            };
+                };
+                hub@4 {
+                    reg = <4>;
+                    cp2112d: device@2 {
+                        reg = <2>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+
+                        gpio-line-names =
+                            "IOB1_MCP_P0_2-B",
+                            "IOB1_MCU_RST_L-O",
+                            "IOB1_MCU_RECOVERY_L-O",
+                            "IOB1_GLOBAL_WP-O",
+                            "IOB1_GLOBAL_ADDR_L_R-O",
+                            "IOB1_GLOBAL_ADDR_U_D-O",
+                            "IOB1_PWR_EN-O",
+                            "IOB1_MCU_READY_STATUS-I";
+		            };
+                };
                 device@1 {
                     reg = <1>;
                     cp2112a: interface@1 {
@@ -462,6 +502,46 @@
             };
             hub@2 {
                 reg = <2>;
+                hub@3 {
+                    reg = <3>;
+                    cp2112e: device@2 {
+                        reg = <2>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+
+                        gpio-line-names =
+                            "IOB2_MCP_P0_2-B",
+                            "IOB2_MCU_RST_L-O",
+                            "IOB2_MCU_RECOVERY_L-O",
+                            "IOB2_GLOBAL_WP-O",
+                            "IOB2_GLOBAL_ADDR_L_R-O",
+                            "IOB2_GLOBAL_ADDR_U_D-O",
+                            "IOB2_PWR_EN-O",
+                            "IOB2_MCU_READY_STATUS-I";
+		            };
+                };
+                hub@4 {
+                    reg = <4>;
+                    cp2112f: device@2 {
+                        reg = <2>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+
+                        gpio-line-names =
+                            "IOB3_MCP_P0_2-B",
+                            "IOB3_MCU_RST_L-O",
+                            "IOB3_MCU_RECOVERY_L-O",
+                            "IOB3_GLOBAL_WP-O",
+                            "IOB3_GLOBAL_ADDR_L_R-O",
+                            "IOB3_GLOBAL_ADDR_U_D-O",
+                            "IOB3_PWR_EN-O",
+                            "IOB3_MCU_READY_STATUS-I";
+		            };
+                };
                 device@1 {
                     reg = <1>;
                     cp2112b: interface@1 {
