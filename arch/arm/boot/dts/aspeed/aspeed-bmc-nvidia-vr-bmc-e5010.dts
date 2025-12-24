@@ -271,7 +271,69 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp16: pca9555@50 {
+                            exp21: pca9555@20 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x20>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "PS_HVDD_1V2_PGOOD-I",
+                                    "PS_CPU_PGOOD-I",
+                                    "PS_SOC_PGOOD-I",
+                                    "PS_MSS_PGOOD-I",
+                                    "PS_C2CLPI_PGOOD-I",
+                                    "PS_C2CLLI_PGOOD-I",
+                                    "PS_DDR_VDDP_PGOOD-I",
+                                    "PS_DDR_VDDQ_PGOOD-I",
+                                    "PS_C2CVDD_PGOOD-I",
+                                    "PS_UPHY_DVDD_PGOOD-I",
+                                    "PS_1V8_PGOOD-I",
+                                    "PS_3V3_PGOOD-I",
+                                    "MODULE_PWR_GOOD-I",
+                                    "U135_P1_5-B",
+                                    "CPU1_VDD_SOC_PGOOD_PD-I",
+                                    "";
+                            };
+                            exp22: pca9555@21 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x21>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "CPU1_PGOOD_PD-I",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "U113_P1_0-B",
+                                    "",
+                                    "IOX_C0_SYS_RST_N_3V3_STBY-O",
+                                    "",
+                                    "PS_FUSE_1V89_IOX_EN-O",
+                                    "PS_1V89_MISC_IOX_EN-B",
+                                    "PS_HVDD_1V2_MCU_EN-I",
+                                    "PS_1V8_MCU_EN-I";
+                            };
+			    exp16: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
