@@ -3,6 +3,8 @@
 #ifndef __ASPEED_ECDSA_H__
 #define __ASPEED_ECDSA_H__
 
+#include <crypto/sig.h>
+
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_DEBUG
 #define AST_DBG(d, fmt, ...)	\
 	dev_info((d)->dev, "%s() " fmt, __func__, ##__VA_ARGS__)
@@ -62,7 +64,7 @@
 
 struct aspeed_ecdsa_dev;
 
-typedef int (*aspeed_ecdsa_fn_t)(struct aspeed_ecdsa_dev *);
+typedef int (*aspeed_ecdsa_fn_t)(struct crypto_sig *);
 
 struct aspeed_ecc_ctx {
 	struct aspeed_ecdsa_dev		*ecdsa_dev;
@@ -74,9 +76,15 @@ struct aspeed_ecc_ctx {
 	u64				y[ECC_MAX_DIGITS];
 	struct ecc_point		pub_key;
 
-	struct crypto_akcipher		*fallback_tfm;
+	struct crypto_sig *fallback_tfm;
 
 	aspeed_ecdsa_fn_t		trigger;
+
+	/* Request signature parameter */
+	const void *src;
+	unsigned int slen;
+	const void *digest;
+	unsigned int dlen;
 };
 
 struct ecdsa_signature_ctx {
@@ -86,18 +94,13 @@ struct ecdsa_signature_ctx {
 };
 
 struct aspeed_engine_ecdsa {
-	struct tasklet_struct		done_task;
-	unsigned long			flags;
-	struct akcipher_request		*req;
-	int				results;
-
-	/* callback func */
-	aspeed_ecdsa_fn_t		resume;
+	unsigned long flags;
+	int results;
 };
 
 struct aspeed_ecdsa_alg {
 	struct aspeed_ecdsa_dev		*ecdsa_dev;
-	struct akcipher_engine_alg	akcipher;
+	struct sig_alg sig_alg;
 };
 
 struct aspeed_ecdsa_dev {
@@ -107,7 +110,6 @@ struct aspeed_ecdsa_dev {
 	struct reset_control		*rst;
 	int				irq;
 
-	struct crypto_engine		*crypt_engine_ecdsa;
 	struct aspeed_engine_ecdsa	ecdsa_engine;
 };
 
