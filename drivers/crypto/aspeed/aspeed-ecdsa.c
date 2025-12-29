@@ -27,7 +27,6 @@
 #include "aspeed-ecdsa.h"
 
 //#define ASPEED_ECDSA_IRQ_MODE
-#define ASPEED_ECDSA_FULL_FALLBACK
 
 static int aspeed_ecdsa_self_test(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
@@ -67,12 +66,6 @@ static void buff_reverse(u8 *dst, u8 *src, int len)
 		dst[len - i - 1] = src[i];
 }
 
-#ifdef ASPEED_ECDSA_FULL_FALLBACK
-static bool aspeed_ecdsa_need_fallback(struct aspeed_ecc_ctx *ctx, int d_len)
-{
-	return true;
-}
-#else
 static bool aspeed_ecdsa_need_fallback(struct aspeed_ecc_ctx *ctx, int d_len)
 {
 	int curve_id = ctx->curve_id;
@@ -90,7 +83,6 @@ static bool aspeed_ecdsa_need_fallback(struct aspeed_ecc_ctx *ctx, int d_len)
 
 	return false;
 }
-#endif
 
 static int aspeed_ecdsa_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
@@ -227,7 +219,6 @@ static int _aspeed_ecdsa_verify(struct aspeed_ecc_ctx *ctx, const u64 *hash,
 static int aspeed_ecdsa_handle_queue(struct crypto_sig *tfm)
 {
 	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	// struct aspeed_ecdsa_dev *ecdsa_dev = ctx->ecdsa_dev;
 	int ret;
 
 	if (aspeed_ecdsa_need_fallback(ctx, ctx->dlen)) {
@@ -247,39 +238,35 @@ static int aspeed_ecdsa_handle_queue(struct crypto_sig *tfm)
 static int aspeed_ecdsa_trigger(struct crypto_sig *tfm)
 {
 	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+	struct ecdsa_signature_ctx sig_ctx = { .curve = ctx->curve };
 	size_t keylen = ctx->curve->g.ndigits * sizeof(u64);
-	struct ecdsa_signature_ctx sig_ctx = {
-		.curve = ctx->curve,
-	};
+	ssize_t diff;
 	u8 rawhash[ECC_MAX_BYTES];
 	u64 hash[ECC_MAX_DIGITS];
-	ssize_t diff;
 	int ret;
 
 	if (unlikely(!ctx->pub_key_set))
 		return -EINVAL;
 
-	ret = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx, ctx->src,
-			       ctx->slen);
-	if (ret < 0)
-		goto error;
+	/* Extract r and s from signature */
+	memcpy(sig_ctx.r, ctx->src, ECC_MAX_BYTES);
+	memcpy(sig_ctx.s, ctx->src + ECC_MAX_BYTES, ECC_MAX_BYTES);
 
 	/* if the hash is shorter then we will add leading zeros to fit to ndigits */
 	diff = keylen - ctx->dlen;
 	if (diff >= 0) {
 		if (diff)
 			memset(rawhash, 0, diff);
-		memcpy(&rawhash[diff], ctx->src + ctx->slen, ctx->dlen);
+		memcpy(&rawhash[diff], ctx->digest, ctx->dlen);
 	} else if (diff < 0) {
 		/* given hash is longer, we take the left-most bytes */
-		memcpy(&rawhash, ctx->src + ctx->slen, keylen);
+		memcpy(&rawhash, ctx->digest, keylen);
 	}
-
 	ecc_swap_digits((u64 *)rawhash, hash, ctx->curve->g.ndigits);
 
+	/* Start ecdsa engine verification */
 	ret = _aspeed_ecdsa_verify(ctx, hash, sig_ctx.r, sig_ctx.s);
 
-error:
 	return ret;
 }
 
@@ -436,7 +423,6 @@ static int aspeed_ecdsa_set_pub_key(struct crypto_sig *tfm, const void *key,
 	ctx->pub_key_set = ret == 0;
 
 	vfree(data);
-
 	return ret;
 }
 
