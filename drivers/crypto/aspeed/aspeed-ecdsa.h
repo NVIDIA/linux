@@ -4,6 +4,7 @@
 #define __ASPEED_ECDSA_H__
 
 #include <crypto/sig.h>
+#include <crypto/internal/ecc.h>
 
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_DEBUG
 #define AST_DBG(d, fmt, ...)	\
@@ -66,56 +67,58 @@ struct aspeed_ecdsa_dev;
 
 typedef int (*aspeed_ecdsa_fn_t)(struct crypto_sig *);
 
+/*
+ * Aspeedd's ecdsa hardware sign/verify operations depend on
+ * context information supplied by the linux ecdsa framework.
+ */
 struct aspeed_ecc_ctx {
-	struct aspeed_ecdsa_dev		*ecdsa_dev;
-	unsigned int			curve_id;
-	const struct ecc_curve		*curve;
+	/* Hardware device */
+	struct aspeed_ecdsa_dev *ecdsa_dev;
 
-	bool				pub_key_set;
-	u64				x[ECC_MAX_DIGITS]; /* pub key x and y coordinates */
-	u64				y[ECC_MAX_DIGITS];
-	struct ecc_point		pub_key;
-
-	struct crypto_sig *fallback_tfm;
-
-	aspeed_ecdsa_fn_t		trigger;
-
-	/* Request signature parameter */
-	const void *src;
-	unsigned int slen;
-	const void *digest;
-	unsigned int dlen;
-};
-
-struct ecdsa_signature_ctx {
+	/* Curve information */
+	unsigned int curve_id;
 	const struct ecc_curve *curve;
-	u64 r[ECC_MAX_DIGITS];
-	u64 s[ECC_MAX_DIGITS];
+
+	/* Public key information */
+	bool pub_key_set;
+	u64 x[ECC_MAX_DIGITS]; /* pub key x and y coordinates */
+	u64 y[ECC_MAX_DIGITS];
+	struct ecc_point pub_key;
+
+	/* Signature information */
+	int sig_len;
+	struct ecdsa_raw_sig sig;
+
+	/* Digest information */
+	int dig_len;
+	u8 digest[SHA512_DIGEST_SIZE];
+
+	/* Software fallback function */
+	struct crypto_sig *fallback_tfm;
 };
 
+/* Aspeed's ecdsa hardware engine status */
 struct aspeed_engine_ecdsa {
 	unsigned long flags;
 	int results;
 };
 
-struct aspeed_ecdsa_alg {
-	struct aspeed_ecdsa_dev		*ecdsa_dev;
-	struct sig_alg sig_alg;
-};
-
+/* Aspeed's ecdsa hardware basic information */
 struct aspeed_ecdsa_dev {
-	void __iomem			*regs;
-	struct device			*dev;
-	struct clk			*clk;
-	struct reset_control		*rst;
-	int				irq;
-
-	/* Support ecdsa256/384 execution concurrent */
+	void __iomem *regs;
+	struct device *dev;
+	struct clk *clk;
+	struct reset_control *rst;
+	int irq;
 	struct mutex lock;
 
 	struct aspeed_engine_ecdsa	ecdsa_engine;
 };
 
-extern const struct asn1_decoder ecdsasignature_decoder;
+/* Bind aspeed's ecdsa hardware with linux kernel ecdsa framework */
+struct aspeed_ecdsa_alg {
+	struct aspeed_ecdsa_dev *ecdsa_dev;
+	struct sig_alg sig_alg;
+};
 
 #endif

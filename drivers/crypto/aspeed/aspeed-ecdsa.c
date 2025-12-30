@@ -20,7 +20,6 @@
 #include <linux/platform_device.h>
 #include <linux/vmalloc.h>
 #include <crypto/ecdh.h>
-#include <crypto/internal/ecc.h>
 #include <crypto/internal/sig.h>
 #include <crypto/sha2.h>
 
@@ -28,6 +27,11 @@
 
 //#define ASPEED_ECDSA_IRQ_MODE
 
+static int aspeed_ecdsa_complete(struct aspeed_ecdsa_dev *ecdsa_dev);
+
+/************************************************************************/
+/*                   Aspeed's ECDSA driver utility                      */
+/************************************************************************/
 static int aspeed_ecdsa_self_test(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
 	u32 val;
@@ -84,32 +88,9 @@ static bool aspeed_ecdsa_need_fallback(struct aspeed_ecc_ctx *ctx, int d_len)
 	return false;
 }
 
-static int aspeed_ecdsa_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
-{
-	struct aspeed_engine_ecdsa *ecdsa_engine = &ecdsa_dev->ecdsa_engine;
-	int results = ecdsa_engine->results;
-
-	AST_DBG(ecdsa_dev, "\n");
-
-	ecdsa_engine->flags &= ~CRYPTO_FLAGS_BUSY;
-
-	return results;
-}
-
-static int aspeed_ecdsa_do_request(struct crypto_sig *tfm)
-{
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	struct aspeed_ecdsa_dev *ecdsa_dev = ctx->ecdsa_dev;
-	struct aspeed_engine_ecdsa *ecdsa_engine;
-
-	AST_DBG(ctx->ecdsa_dev, "\n");
-
-	ecdsa_engine = &ecdsa_dev->ecdsa_engine;
-	ecdsa_engine->flags |= CRYPTO_FLAGS_BUSY;
-
-	return ctx->trigger(tfm);
-}
-
+/************************************************************************/
+/*                 Aspeed's ECDSA hardware operation                    */
+/************************************************************************/
 static void aspeed_ecdsa_done_task(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
 	u32 ctrl;
@@ -161,6 +142,37 @@ static int aspeed_ecdsa_wait_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
 
 	return ecdsa_engine->results;
 }
+#else
+/* ecdsa interrupt service routine. */
+static irqreturn_t aspeed_ecdsa_irq(int irq, void *dev)
+{
+	struct aspeed_ecdsa_dev *ecdsa_dev = (struct aspeed_ecdsa_dev *)dev;
+	struct aspeed_engine_ecdsa *ecdsa_engine = &ecdsa_dev->ecdsa_engine;
+	u32 sts;
+
+	sts = ast_read(ecdsa_dev, ASPEED_ECC_INT_STS);
+	ast_write(ecdsa_dev, sts, ASPEED_ECC_INT_STS);
+
+	AST_DBG(ecdsa_dev, "irq sts:0x%x\n", sts);
+
+	sts = ast_read(ecdsa_dev, ASPEED_ECC_STS_REG) & ECC_VERIFY_PASS;
+	if (sts == ECC_VERIFY_PASS) {
+		AST_DBG(ecdsa_dev, "Verify PASS !\n");
+
+		ecdsa_engine->results = 0;
+		/* Stop ECDSA engine */
+		if (ecdsa_engine->flags & CRYPTO_FLAGS_BUSY)
+			tasklet_schedule(&ecdsa_engine->done_task);
+		else
+			dev_err(ecdsa_dev->dev, "ECDSA no active requests.\n");
+
+	} else {
+		ecdsa_engine->results = -EKEYREJECTED;
+		AST_DBG(ecdsa_dev, "Verify FAILED !\n");
+	}
+
+	return IRQ_HANDLED;
+}
 #endif
 
 static int aspeed_hw_trigger(struct aspeed_ecdsa_dev *ecdsa_dev)
@@ -179,13 +191,89 @@ static int aspeed_hw_trigger(struct aspeed_ecdsa_dev *ecdsa_dev)
 #endif
 }
 
+static int _aspeed_ecdsa_init_ecc_curve(struct aspeed_ecc_ctx *ctx)
+{
+	void __iomem *base = ctx->ecdsa_dev->regs;
+	int nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
+	u32 ctrl;
+	u8 *data;
+
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
+	switch (ctx->curve_id) {
+	case ECC_CURVE_NIST_P256:
+		AST_DBG(ctx->ecdsa_dev, "curve ECC_CURVE_NIST_P256\n");
+		ctrl = ECDSA_256_EN;
+		break;
+	case ECC_CURVE_NIST_P384:
+		AST_DBG(ctx->ecdsa_dev, "curve ECC_CURVE_NIST_P384\n");
+		ctrl = ECDSA_384_EN;
+		break;
+	}
+
+	ast_write(ctx->ecdsa_dev, ECC_EN | ctrl, ASPEED_ECC_CTRL_REG);
+
+	/* Initial Curve: ecc point/p/a/n */
+	data = vmalloc(nbytes);
+	if (!data)
+		return -ENOMEM;
+
+	hexdump("Dump Gx:", (u8 *)ctx->curve->g.x, nbytes);
+	buff_reverse(data, (u8 *)ctx->curve->g.x, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_GX_REG, data, nbytes);
+
+	hexdump("Dump Gy:", (u8 *)ctx->curve->g.y, nbytes);
+	buff_reverse(data, (u8 *)ctx->curve->g.y, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_GY_REG, data, nbytes);
+
+	hexdump("Dump P:", (u8 *)ctx->curve->p, nbytes);
+	buff_reverse(data, (u8 *)ctx->curve->p, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_P_REG, data, nbytes);
+
+	hexdump("Dump A:", (u8 *)ctx->curve->a, nbytes);
+	buff_reverse(data, (u8 *)ctx->curve->a, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_A_REG, data, nbytes);
+
+	hexdump("Dump N:", (u8 *)ctx->curve->n, nbytes);
+	buff_reverse(data, (u8 *)ctx->curve->n, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_N_REG, data, nbytes);
+
+	vfree(data);
+
+	return 0;
+}
+
+static int _aspeed_ecdsa_set_pub_key(struct aspeed_ecc_ctx *ctx)
+{
+	void __iomem *base = ctx->ecdsa_dev->regs;
+	u32 nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
+	u8 *data;
+
+	/* Set public key: Qx/Qy */
+	data = vmalloc(nbytes);
+	if (!data)
+		return -ENOMEM;
+
+	hexdump("Dump Qx:", (u8 *)ctx->pub_key.x, nbytes);
+	buff_reverse(data, (u8 *)ctx->pub_key.x, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_QX_REG, data, nbytes);
+
+	hexdump("Dump Qy:", (u8 *)ctx->pub_key.y, nbytes);
+	buff_reverse(data, (u8 *)ctx->pub_key.y, nbytes);
+	memcpy_toio(base + ASPEED_ECC_PAR_QY_REG, data, nbytes);
+
+	vfree(data);
+
+	return 0;
+}
+
 static int _aspeed_ecdsa_verify(struct aspeed_ecc_ctx *ctx, const u64 *hash,
 				const u64 *r, const u64 *s)
 {
-	int nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
 	const struct ecc_curve *curve = ctx->curve;
 	void __iomem *base = ctx->ecdsa_dev->regs;
-	unsigned int ndigits = curve->g.ndigits;
+	int nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
+	u8 ndigits = curve->g.ndigits;
 	u8 *data, *buf;
 
 	/* 0 < r < n  and 0 < s < n */
@@ -225,154 +313,137 @@ static int _aspeed_ecdsa_verify(struct aspeed_ecc_ctx *ctx, const u64 *hash,
 	return aspeed_hw_trigger(ctx->ecdsa_dev);
 }
 
-static int aspeed_ecdsa_handle_queue(struct crypto_sig *tfm)
+static int aspeed_ecdsa_trigger(struct aspeed_ecc_ctx *ctx)
 {
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	int ret;
-
-	if (aspeed_ecdsa_need_fallback(ctx, ctx->dlen)) {
-		AST_DBG(ctx->ecdsa_dev, "SW fallback\n");
-
-		ret = crypto_sig_verify(ctx->fallback_tfm, ctx->src, ctx->slen,
-					ctx->digest, ctx->dlen);
-
-		AST_DBG(ctx->ecdsa_dev, "SW verify...ret:0x%x\n", ret);
-
-		return ret;
-	}
-
-	return aspeed_ecdsa_do_request(tfm);
-}
-
-static int aspeed_ecdsa_trigger(struct crypto_sig *tfm)
-{
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	struct ecdsa_signature_ctx sig_ctx = { .curve = ctx->curve };
-	size_t keylen = ctx->curve->g.ndigits * sizeof(u64);
-	ssize_t diff;
-	u8 rawhash[ECC_MAX_BYTES];
 	u64 hash[ECC_MAX_DIGITS];
+	size_t keylen = ctx->curve->g.ndigits * sizeof(u64);
+	int diff;
 	int ret;
+	u8 rawhash[ECC_MAX_BYTES];
 
 	AST_DBG(ctx->ecdsa_dev, "\n");
 
 	if (unlikely(!ctx->pub_key_set))
 		return -EINVAL;
 
-	/* Extract r and s from signature */
-	memcpy(sig_ctx.r, ctx->src, ECC_MAX_BYTES);
-	memcpy(sig_ctx.s, ctx->src + ECC_MAX_BYTES, ECC_MAX_BYTES);
-
 	/* if the hash is shorter then we will add leading zeros to fit to ndigits */
-	diff = keylen - ctx->dlen;
+	diff = keylen - ctx->sig_len;
 	if (diff >= 0) {
 		if (diff)
 			memset(rawhash, 0, diff);
-		memcpy(&rawhash[diff], ctx->digest, ctx->dlen);
+		memcpy(&rawhash[diff], ctx->digest, ctx->dig_len);
 	} else if (diff < 0) {
 		/* given hash is longer, we take the left-most bytes */
 		memcpy(&rawhash, ctx->digest, keylen);
 	}
-	ecc_swap_digits((u64 *)rawhash, hash, ctx->curve->g.ndigits);
+	ecc_digits_from_bytes(rawhash, ctx->dig_len, hash,
+			      ctx->curve->g.ndigits);
 
 	/* Start ecdsa engine verification */
-	ret = _aspeed_ecdsa_verify(ctx, hash, sig_ctx.r, sig_ctx.s);
+	mutex_lock(&ctx->ecdsa_dev->lock);
 
+	ret = _aspeed_ecdsa_init_ecc_curve(ctx);
+	if (ret)
+		goto end;
+
+	ret = _aspeed_ecdsa_set_pub_key(ctx);
+	if (ret)
+		goto end;
+
+	ret = _aspeed_ecdsa_verify(ctx, hash, ctx->sig.r, ctx->sig.s);
+	if (ret)
+		goto end;
+
+end:
+	mutex_unlock(&ctx->ecdsa_dev->lock);
 	return ret;
 }
 
-/*
- * Verify an ECDSA signature.
- */
-static int aspeed_ecdsa_verify(struct crypto_sig *tfm, const void *src,
-			       unsigned int slen, const void *digest,
-			       unsigned int dlen)
+/************************************************************************/
+/*                Aspeed's ECDSA crypto engine function                 */
+/************************************************************************/
+static int aspeed_ecdsa_do_request(struct aspeed_ecc_ctx *ctx)
 {
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+	struct aspeed_ecdsa_dev *ecdsa_dev = ctx->ecdsa_dev;
+	struct aspeed_engine_ecdsa *ecdsa_engine;
 
 	AST_DBG(ctx->ecdsa_dev, "\n");
 
-	ctx->trigger = aspeed_ecdsa_trigger;
-	ctx->src = src;
-	ctx->slen = slen;
-	ctx->digest = digest;
-	ctx->dlen = dlen;
+	ecdsa_engine = &ecdsa_dev->ecdsa_engine;
+	ecdsa_engine->flags |= CRYPTO_FLAGS_BUSY;
 
-	return aspeed_ecdsa_handle_queue(tfm);
+	return aspeed_ecdsa_trigger(ctx);
 }
 
-static int aspeed_ecdsa_ecc_ctx_init(struct aspeed_ecc_ctx *ctx, unsigned int curve_id)
+static int aspeed_ecdsa_complete(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
-	void __iomem *base = ctx->ecdsa_dev->regs;
-	u8 *data, *buf;
-	u32 ctrl;
-	int nbytes;
+	struct aspeed_engine_ecdsa *ecdsa_engine = &ecdsa_dev->ecdsa_engine;
+	int results = ecdsa_engine->results;
 
+	AST_DBG(ecdsa_dev, "\n");
+
+	ecdsa_engine->flags &= ~CRYPTO_FLAGS_BUSY;
+
+	return results;
+}
+
+static int aspeed_ecdsa_handle_queue(struct aspeed_ecc_ctx *ctx)
+{
+	int ret;
+
+	if (aspeed_ecdsa_need_fallback(ctx, ctx->dig_len)) {
+		AST_DBG(ctx->ecdsa_dev, "SW fallback\n");
+
+		ret = crypto_sig_verify(ctx->fallback_tfm, &ctx->sig,
+					ctx->sig_len, ctx->digest,
+					ctx->dig_len);
+
+		AST_DBG(ctx->ecdsa_dev, "SW verify...ret:0x%x\n", ret);
+
+		return ret;
+	}
+
+	/* sig_alg does not support crypto engine queue now, do request directly */
+	return aspeed_ecdsa_do_request(ctx);
+}
+
+/************************************************************************/
+/*             Aspeed's ECDSA context operation function                */
+/************************************************************************/
+static int aspeed_ecdsa_ecc_ctx_init(struct crypto_sig *tfm,
+				     unsigned int curve_id)
+{
+	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+	struct sig_alg *alg = crypto_sig_alg(tfm);
+	struct aspeed_ecdsa_alg *ecdsa_alg;
+	const char *name = crypto_tfm_alg_name(&tfm->base);
+
+	/* Get ecdsa device */
+	ecdsa_alg = container_of(alg, struct aspeed_ecdsa_alg, sig_alg);
+	ctx->ecdsa_dev = ecdsa_alg->ecdsa_dev;
+
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
+	/* Get ecdsa fallback software */
+	ctx->fallback_tfm = crypto_alloc_sig(name, 0, CRYPTO_ALG_NEED_FALLBACK);
+	if (IS_ERR(ctx->fallback_tfm)) {
+		dev_err(ctx->ecdsa_dev->dev,
+			"ERROR: Cannot allocate fallback for %s %ld\n", name,
+			PTR_ERR(ctx->fallback_tfm));
+		return PTR_ERR(ctx->fallback_tfm);
+	}
+
+	/* Set ecdsa curve */
 	ctx->curve_id = curve_id;
 	ctx->curve = ecc_get_curve(curve_id);
 	if (!ctx->curve)
 		return -EINVAL;
 
-	nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
-
-	switch (curve_id) {
-	case ECC_CURVE_NIST_P256:
-		AST_DBG(ctx->ecdsa_dev, "curve ECC_CURVE_NIST_P256\n");
-		ctrl = ECDSA_256_EN;
-		break;
-	case ECC_CURVE_NIST_P384:
-		AST_DBG(ctx->ecdsa_dev, "curve ECC_CURVE_NIST_P384\n");
-		ctrl = ECDSA_384_EN;
-		break;
-	}
-
-	mutex_lock(&ctx->ecdsa_dev->lock);
-
-	ast_write(ctx->ecdsa_dev, ECC_EN | ctrl, ASPEED_ECC_CTRL_REG);
-
-	/* Initial Curve: ecc point/p/a/n */
-	data = vmalloc(nbytes);
-	if (!data)
-		return -ENOMEM;
-
-	buf = (u8 *)ctx->curve->g.x;
-	hexdump("Dump Gx:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->curve->g.x, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_GX_REG, data, nbytes);
-
-	buf = (u8 *)ctx->curve->g.y;
-	hexdump("Dump Gy:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->curve->g.y, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_GY_REG, data, nbytes);
-
-	buf = (u8 *)ctx->curve->p;
-	hexdump("Dump P:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->curve->p, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_P_REG, data, nbytes);
-
-	buf = (u8 *)ctx->curve->a;
-	hexdump("Dump A:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->curve->a, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_A_REG, data, nbytes);
-
-	buf = (u8 *)ctx->curve->n;
-	hexdump("Dump N:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->curve->n, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_N_REG, data, nbytes);
-
-	vfree(data);
 	return 0;
 }
 
 static void aspeed_ecdsa_ecc_ctx_deinit(struct aspeed_ecc_ctx *ctx)
 {
-	mutex_unlock(&ctx->ecdsa_dev->lock);
-
 	ctx->pub_key_set = false;
 }
 
@@ -382,6 +453,9 @@ static void aspeed_ecdsa_ecc_ctx_reset(struct aspeed_ecc_ctx *ctx)
 				      ctx->curve->g.ndigits);
 }
 
+/************************************************************************/
+/*                Aspeed's ECDSA driver entry function                  */
+/************************************************************************/
 /*
  * Set the public key given the raw uncompressed key data from an X509
  * certificate. The key data contain the concatenated X and Y coordinates of
@@ -391,12 +465,8 @@ static int aspeed_ecdsa_set_pub_key(struct crypto_sig *tfm, const void *key,
 				    unsigned int keylen)
 {
 	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	int nbytes = ctx->curve->g.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
-	void __iomem *base = ctx->ecdsa_dev->regs;
-	const unsigned char *d = key;
-	const u64 *digits = (const u64 *)&d[1];
-	unsigned int ndigits;
-	u8 *data, *buf;
+	u32 ndigits, digitlen;
+	const u8 *d = key;
 	int ret;
 
 	AST_DBG(ctx->ecdsa_dev, "\n");
@@ -414,35 +484,61 @@ static int aspeed_ecdsa_set_pub_key(struct crypto_sig *tfm, const void *key,
 		return -EINVAL;
 
 	keylen--;
-	ndigits = (keylen >> 1) / sizeof(u64);
+	digitlen = keylen >> 1;
+	ndigits = digitlen / sizeof(u64);
 	if (ndigits != ctx->curve->g.ndigits)
 		return -EINVAL;
 
-	ecc_swap_digits(digits, ctx->pub_key.x, ndigits);
-	ecc_swap_digits(&digits[ndigits], ctx->pub_key.y, ndigits);
+	d++;
+	ecc_digits_from_bytes(d, digitlen, ctx->pub_key.x, ndigits);
+	ecc_digits_from_bytes(&d[digitlen], digitlen, ctx->pub_key.y, ndigits);
+
 	ret = ecc_is_pubkey_valid_full(ctx->curve, &ctx->pub_key);
-
-	/* Set public key: Qx/Qy */
-	data = vmalloc(nbytes);
-	if (!data)
-		return -ENOMEM;
-
-	buf = (u8 *)ctx->pub_key.x;
-	hexdump("Dump Qx:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->pub_key.x, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_QX_REG, data, nbytes);
-
-	buf = (u8 *)ctx->pub_key.y;
-	hexdump("Dump Qy:", buf, nbytes);
-
-	buff_reverse(data, (u8 *)ctx->pub_key.y, nbytes);
-	memcpy_toio(base + ASPEED_ECC_PAR_QY_REG, data, nbytes);
-
 	ctx->pub_key_set = ret == 0;
 
-	vfree(data);
 	return ret;
+}
+
+/*
+ * Verify an ECDSA signature.
+ */
+static int aspeed_ecdsa_verify(struct crypto_sig *tfm, const void *src,
+			       unsigned int slen, const void *digest,
+			       unsigned int dlen)
+{
+	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+
+	AST_DBG(ctx->ecdsa_dev, "\n");
+
+	if (slen > ECC_MAX_BYTES * 2 || dlen > SHA512_DIGEST_SIZE)
+		return -EINVAL;
+
+	/* Prepare signature information */
+	ctx->sig_len = slen;
+	memcpy(&ctx->sig, src, slen);
+
+	/* Prepare digest information */
+	ctx->dig_len = dlen;
+	memcpy(ctx->digest, digest, dlen);
+
+	return aspeed_ecdsa_handle_queue(ctx);
+}
+
+static unsigned int aspeed_ecdsa_max_size(struct crypto_sig *tfm)
+{
+	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
+
+	return ctx->pub_key.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
+}
+
+static int aspeed_ecdsa_nist_p256_init_tfm(struct crypto_sig *tfm)
+{
+	return aspeed_ecdsa_ecc_ctx_init(tfm, ECC_CURVE_NIST_P256);
+}
+
+static int aspeed_ecdsa_nist_p384_init_tfm(struct crypto_sig *tfm)
+{
+	return aspeed_ecdsa_ecc_ctx_init(tfm, ECC_CURVE_NIST_P384);
 }
 
 static void aspeed_ecdsa_exit_tfm(struct crypto_sig *tfm)
@@ -456,61 +552,10 @@ static void aspeed_ecdsa_exit_tfm(struct crypto_sig *tfm)
 	crypto_free_sig(ctx->fallback_tfm);
 }
 
-static unsigned int aspeed_ecdsa_max_size(struct crypto_sig *tfm)
-{
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-
-	return ctx->pub_key.ndigits << ECC_DIGITS_TO_BYTES_SHIFT;
-}
-
-static int aspeed_ecdsa_nist_p384_init_tfm(struct crypto_sig *tfm)
-{
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	struct sig_alg *alg = crypto_sig_alg(tfm);
-	const char *name = crypto_tfm_alg_name(&tfm->base);
-	struct aspeed_ecdsa_alg *ecdsa_alg;
-
-	ecdsa_alg = container_of(alg, struct aspeed_ecdsa_alg, sig_alg);
-
-	ctx->ecdsa_dev = ecdsa_alg->ecdsa_dev;
-
-	AST_DBG(ctx->ecdsa_dev, "\n");
-	ctx->fallback_tfm = crypto_alloc_sig(name, 0, CRYPTO_ALG_NEED_FALLBACK);
-	if (IS_ERR(ctx->fallback_tfm)) {
-		dev_err(ctx->ecdsa_dev->dev, "ERROR: Cannot allocate fallback for %s %ld\n",
-			name, PTR_ERR(ctx->fallback_tfm));
-		return PTR_ERR(ctx->fallback_tfm);
-	}
-
-	return aspeed_ecdsa_ecc_ctx_init(ctx, ECC_CURVE_NIST_P384);
-}
-
-static int aspeed_ecdsa_nist_p256_init_tfm(struct crypto_sig *tfm)
-{
-	struct aspeed_ecc_ctx *ctx = crypto_sig_ctx(tfm);
-	struct sig_alg *alg = crypto_sig_alg(tfm);
-	const char *name = crypto_tfm_alg_name(&tfm->base);
-	struct aspeed_ecdsa_alg *ecdsa_alg;
-
-	ecdsa_alg = container_of(alg, struct aspeed_ecdsa_alg, sig_alg);
-
-	ctx->ecdsa_dev = ecdsa_alg->ecdsa_dev;
-
-	AST_DBG(ctx->ecdsa_dev, "\n");
-	ctx->fallback_tfm = crypto_alloc_sig(name, 0, CRYPTO_ALG_NEED_FALLBACK);
-	if (IS_ERR(ctx->fallback_tfm)) {
-		dev_err(ctx->ecdsa_dev->dev, "ERROR: Cannot allocate fallback for %s %ld\n",
-			name, PTR_ERR(ctx->fallback_tfm));
-		return PTR_ERR(ctx->fallback_tfm);
-	}
-
-	return aspeed_ecdsa_ecc_ctx_init(ctx, ECC_CURVE_NIST_P256);
-}
-
 static struct aspeed_ecdsa_alg aspeed_ecdsa_nist_p256 = {
 	.sig_alg = {
-		.verify = aspeed_ecdsa_verify,
 		.set_pub_key = aspeed_ecdsa_set_pub_key,
+		.verify = aspeed_ecdsa_verify,
 		.key_size = aspeed_ecdsa_max_size,
 		.init = aspeed_ecdsa_nist_p256_init_tfm,
 		.exit = aspeed_ecdsa_exit_tfm,
@@ -528,8 +573,8 @@ static struct aspeed_ecdsa_alg aspeed_ecdsa_nist_p256 = {
 
 static struct aspeed_ecdsa_alg aspeed_ecdsa_nist_p384 = {
 	.sig_alg = {
-		.verify = aspeed_ecdsa_verify,
 		.set_pub_key = aspeed_ecdsa_set_pub_key,
+		.verify = aspeed_ecdsa_verify,
 		.key_size = aspeed_ecdsa_max_size,
 		.init = aspeed_ecdsa_nist_p384_init_tfm,
 		.exit = aspeed_ecdsa_exit_tfm,
@@ -545,6 +590,9 @@ static struct aspeed_ecdsa_alg aspeed_ecdsa_nist_p384 = {
 	},
 };
 
+/************************************************************************/
+/*            Aspeed's ECDSA driver init/register function              */
+/************************************************************************/
 static int aspeed_ecdsa_register(struct aspeed_ecdsa_dev *ecdsa_dev)
 {
 	int rc;
@@ -573,47 +621,8 @@ static void aspeed_ecdsa_unregister(struct aspeed_ecdsa_dev *ecdsa_dev)
 	crypto_unregister_sig(&aspeed_ecdsa_nist_p384.sig_alg);
 }
 
-#ifdef ASPEED_ECDSA_IRQ_MODE
-/* ecdsa interrupt service routine. */
-static irqreturn_t aspeed_ecdsa_irq(int irq, void *dev)
-{
-	struct aspeed_ecdsa_dev *ecdsa_dev = (struct aspeed_ecdsa_dev *)dev;
-	struct aspeed_engine_ecdsa *ecdsa_engine = &ecdsa_dev->ecdsa_engine;
-	u32 sts;
-
-	sts = ast_read(ecdsa_dev, ASPEED_ECC_INT_STS);
-	ast_write(ecdsa_dev, sts, ASPEED_ECC_INT_STS);
-
-	AST_DBG(ecdsa_dev, "irq sts:0x%x\n", sts);
-
-	sts = ast_read(ecdsa_dev, ASPEED_ECC_STS_REG) & ECC_VERIFY_PASS;
-	if (sts == ECC_VERIFY_PASS) {
-		AST_DBG(ecdsa_dev, "Verify PASS !\n");
-
-		ecdsa_engine->results = 0;
-		/* Stop ECDSA engine */
-		if (ecdsa_engine->flags & CRYPTO_FLAGS_BUSY)
-			tasklet_schedule(&ecdsa_engine->done_task);
-		else
-			dev_err(ecdsa_dev->dev, "ECDSA no active requests.\n");
-
-	} else {
-		ecdsa_engine->results = -EKEYREJECTED;
-		AST_DBG(ecdsa_dev, "Verify FAILED !\n");
-	}
-
-	return IRQ_HANDLED;
-}
-#endif
-
-static const struct of_device_id aspeed_ecdsa_of_matches[] = {
-	{ .compatible = "aspeed,ast2700-ecdsa", },
-	{},
-};
-
 static int aspeed_ecdsa_probe(struct platform_device *pdev)
 {
-	// struct aspeed_engine_ecdsa *ecdsa_engine;
 	struct aspeed_ecdsa_dev *ecdsa_dev;
 	struct device *dev = &pdev->dev;
 	int rc;
@@ -700,6 +709,12 @@ static void aspeed_ecdsa_remove(struct platform_device *pdev)
 	aspeed_ecdsa_unregister(ecdsa_dev);
 }
 
+static const struct of_device_id aspeed_ecdsa_of_matches[] = {
+	{
+		.compatible = "aspeed,ast2700-ecdsa",
+	},
+	{},
+};
 MODULE_DEVICE_TABLE(of, aspeed_ecdsa_of_matches);
 
 static struct platform_driver aspeed_ecdsa_driver = {
