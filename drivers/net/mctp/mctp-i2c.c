@@ -22,12 +22,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
 #include <linux/if_arp.h>
-<<<<<<< HEAD
-=======
-#include <linux/delay.h>
 #include <linux/ethtool.h>
 
->>>>>>> 6edd24c3376e (mctp: Add ethtool statistics for detailed error tracking)
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
@@ -307,6 +303,7 @@ static int mctp_i2c_slave_cb(struct i2c_client *client,
 			midev->rx_pos++;
 		} else {
 			midev->ndev->stats.rx_over_errors++;
+			trace_mctp_transport_error("i2c", midev->ndev, "rx_over_errors", midev->rx_pos);
 		}
 
 		break;
@@ -341,6 +338,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	/* + 1 for the PEC */
 	if (midev->rx_pos < MCTP_I2C_MINLEN + 1) {
 		ndev->stats.rx_length_errors++;
+		trace_mctp_transport_error("i2c", ndev, "rx_short_packet", midev->rx_pos);
 		return -EINVAL;
 	}
 	/* recvlen excludes PEC */
@@ -351,11 +349,16 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		ndev->stats.rx_dropped++;
 		/* UNKNOWN: Command byte checked before MCTP header can be read */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_cmd);
+		netdev_dbg(ndev, "MCTP I2C: invalid command code 0x%02x\n", hdr->command);
+		trace_mctp_transport_error("i2c", ndev, "invalid_command_code", hdr->command);
 		return -EINVAL;
 	}
 
 	if (hdr->byte_count + offsetof(struct mctp_i2c_hdr, source_slave) != recvlen) {
 		ndev->stats.rx_length_errors++;
+		netdev_dbg(ndev, "MCTP I2C: length mismatch (byte_count=%u, recvlen=%zu)\n",
+			   hdr->byte_count, recvlen);
+		trace_mctp_transport_error("i2c", ndev, "length_mismatch", hdr->byte_count);
 		return -EINVAL;
 	}
 
@@ -365,6 +368,9 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		ndev->stats.rx_crc_errors++;
 		/* PEC validation failed - cannot trust header, track as UNKNOWN */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_pec);
+		netdev_dbg(ndev, "MCTP I2C: PEC error (got 0x%02x, expected 0x%02x)\n",
+			   pec, calc_pec);
+		trace_mctp_transport_error("i2c", ndev, "pec_error", pec);
 		return -EINVAL;
 	}
 
@@ -375,6 +381,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 
 		ndev->stats.rx_dropped++;
 		MCTP_STAT_INC(midev, src_eid, rx_drop_no_memory);
+		trace_mctp_transport_error("i2c", ndev, "rx_drop_no_memory", recvlen);
 		return -ENOMEM;
 	}
 
@@ -402,6 +409,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		/* Drop this fragment */
 		ndev->stats.rx_dropped++;
 		MCTP_STAT_INC(midev, src_eid, rx_drop_fragment_error);
+		trace_mctp_transport_error("i2c", ndev, "rx_drop_fragment_error", 0);
 		kfree_skb(skb);
 		return 0;
 	}
@@ -429,10 +437,13 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		if (status == NET_RX_SUCCESS) {
 			ndev->stats.rx_packets++;
 			ndev->stats.rx_bytes += recvlen;
+			netdev_dbg(ndev, "MCTP I2C: RX success from 0x%02x, %zu bytes\n",
+				hdr->source_slave >> 1, recvlen);
 			trace_mctp_transport_rx("i2c", ndev, hdr->source_slave >> 1, recvlen);
 		} else {
 			ndev->stats.rx_dropped++;
 			MCTP_STAT_INC(midev, src_eid, rx_drop_not_ready);
+			netdev_dbg(ndev, "MCTP I2C: RX dropped, status=%d\n", status);
 			trace_mctp_transport_error("i2c", ndev, "rx_dropped", status);
 		}
 	}
@@ -596,6 +607,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 				     "Bad tx length %d vs skb %u\n",
 				     hdr->byte_count + 3, skb->len);
 		MCTP_STAT_INC(midev, dest_eid, tx_drop_invalid_len);
+		trace_mctp_transport_error("i2c", midev->ndev, "tx_invalid_len", skb->len);
 		return;
 	}
 
@@ -695,10 +707,14 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		} else {
 			MCTP_STAT_INC(midev, dest_eid, tx_drop_io_error);
 		}
+		netdev_dbg(midev->ndev, "MCTP I2C: TX failed to 0x%02x, error=%d\n",
+			   hdr->dest_slave >> 1, rc);
 		trace_mctp_transport_error("i2c", midev->ndev, "i2c_transfer_failed", rc);
 	} else {
 		stats->tx_bytes += skb->len;
 		stats->tx_packets++;
+		netdev_dbg(midev->ndev, "MCTP I2C: TX success to 0x%02x, %u bytes\n",
+			   hdr->dest_slave >> 1, skb->len);
 		trace_mctp_transport_tx("i2c", midev->ndev, hdr->dest_slave >> 1, skb->len);
 	}
 }

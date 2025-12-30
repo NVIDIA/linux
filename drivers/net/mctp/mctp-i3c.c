@@ -143,6 +143,7 @@ struct mctp_i3c_internal_hdr {
 static int mctp_i3c_read(struct mctp_i3c_device *mi)
 {
 	struct i3c_priv_xfer xfer = { .rnw = 1, .len = mi->mrl };
+	struct net_device *ndev = mi->mbus->ndev;
 	struct net_device_stats *stats = &mi->mbus->ndev->stats;
 	struct mctp_i3c_internal_hdr *ihdr = NULL;
 	struct sk_buff *skb = NULL;
@@ -156,6 +157,7 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 		stats->rx_dropped++;
 		/* Can't extract EID - no packet data received yet */
 		MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_no_memory);
+		trace_mctp_transport_error("i3c", ndev, "rx_drop_no_memory", mi->mrl);
 		rc = -ENOMEM;
 		goto err;
 	}
@@ -173,11 +175,14 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 	/* Make sure netif_rx() is read in the same order as i3c. */
 	mutex_lock(&mi->lock);
 	rc = i3c_device_do_priv_xfers(mi->i3c, &xfer, 1);
-	if (rc < 0)
+	if (rc < 0) {
+		trace_mctp_transport_error("i3c", ndev, "rx_i3c_xfer_failed", rc);
 		goto err;
+	}
 
 	if (WARN_ON_ONCE(xfer.len > mi->mrl)) {
 		/* Bad i3c bus driver */
+		trace_mctp_transport_error("i3c", ndev, "rx_len_exceeds_mrl", xfer.len);
 		rc = -EIO;
 		goto err;
 	}
@@ -190,6 +195,8 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 		} else {
 			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_length_error);
 		}
+		netdev_dbg(ndev, "MCTP I3C: RX length error %d\n", xfer.len);
+		trace_mctp_transport_error("i3c", ndev, "rx_length_error", xfer.len);
 		rc = -EIO;
 		goto err;
 	}
@@ -207,6 +214,8 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 		} else {
 			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_pec_error);
 		}
+		netdev_dbg(ndev, "MCTP I3C: PEC error\n");
+		trace_mctp_transport_error("i3c", ndev, "pec_error", pec);
 		rc = -EINVAL;
 		goto err;
 	}
@@ -223,9 +232,11 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 	if (net_status == NET_RX_SUCCESS) {
 		stats->rx_packets++;
 		stats->rx_bytes += xfer.len - 1;
+		netdev_dbg(ndev, "MCTP I3C: RX success, %u bytes\n", xfer.len - 1);
 		trace_mctp_transport_rx("i3c", ndev, 0, xfer.len - 1);
 	} else {
 		stats->rx_dropped++;
+		netdev_dbg(ndev, "MCTP I3C: RX dropped, status=%d\n", net_status);
 		trace_mctp_transport_error("i3c", ndev, "rx_dropped", net_status);
 	}
 
@@ -435,6 +446,7 @@ mctp_i3c_lookup(struct mctp_i3c_bus *mbus, u64 pid)
 
 static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 {
+	struct net_device *ndev = mbus->ndev;
 	struct net_device_stats *stats = &mbus->ndev->stats;
 	struct i3c_priv_xfer xfer = { .rnw = false };
 	struct mctp_i3c_internal_hdr *ihdr = NULL;
@@ -462,16 +474,20 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 		/* I3C endpoint went away after the packet was enqueued? */
 		stats->tx_dropped++;
 		MCTP_STAT_INC(mbus, dest_eid, tx_drop_no_device);
+		trace_mctp_transport_error("i3c", ndev, "tx_no_device", 0);
 		goto out;
 	}
 
-	if (WARN_ON_ONCE(data_len + 1 > MCTP_I3C_MAXBUF))
+	if (WARN_ON_ONCE(data_len + 1 > MCTP_I3C_MAXBUF)) {
+		trace_mctp_transport_error("i3c", ndev, "tx_len_exceeds_maxbuf", data_len);
 		goto out;
+	}
 
 	if (data_len + 1 > (unsigned int)mi->mwl) {
 		/* Route MTU was larger than supported by the endpoint */
 		stats->tx_dropped++;
 		MCTP_STAT_INC(mbus, dest_eid, tx_drop_mwl_exceeded);
+		trace_mctp_transport_error("i3c", ndev, "tx_len_exceeds_mwl", data_len);
 		goto out;
 	}
 
@@ -497,6 +513,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 	if (rc == 0) {
 		stats->tx_bytes += data_len;
 		stats->tx_packets++;
+		netdev_dbg(ndev, "MCTP I3C: TX success, %u bytes\n", data_len);
 		trace_mctp_transport_tx("i3c", ndev, 0, data_len);
 	} else {
 		stats->tx_errors++;
@@ -519,6 +536,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 		} else {
 			MCTP_STAT_INC(mbus, dest_eid, tx_drop_io_error);
 		}
+		netdev_dbg(ndev, "MCTP I3C: TX failed, error=%d\n", rc);
 		trace_mctp_transport_error("i3c", ndev, "i3c_xfer_failed", rc);
 	}
 

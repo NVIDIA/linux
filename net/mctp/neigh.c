@@ -33,17 +33,21 @@ static int mctp_neigh_add(struct mctp_dev *mdev, mctp_eid_t eid,
 
 	mutex_lock(&net->mctp.neigh_lock);
 	if (mctp_neigh_lookup(mdev, eid, NULL) == 0) {
+		netdev_dbg(mdev->dev, "MCTP: neighbor eid %u already exists\n", eid);
 		rc = -EEXIST;
 		goto out;
 	}
 
 	if (lladdr_len > sizeof(neigh->ha)) {
+		netdev_dbg(mdev->dev, "MCTP: neighbor lladdr too long (%zu > %zu)\n",
+			   lladdr_len, sizeof(neigh->ha));
 		rc = -EINVAL;
 		goto out;
 	}
 
 	neigh = kzalloc(sizeof(*neigh), GFP_KERNEL);
 	if (!neigh) {
+		netdev_dbg(mdev->dev, "MCTP: failed to allocate neighbor entry for eid %u\n", eid);
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -55,6 +59,8 @@ static int mctp_neigh_add(struct mctp_dev *mdev, mctp_eid_t eid,
 	memcpy(neigh->ha, lladdr, lladdr_len);
 
 	list_add_rcu(&neigh->list, &net->mctp.neighbours);
+	netdev_dbg(mdev->dev, "MCTP: neighbor eid %u added (lladdr_len %zu)\n",
+		   eid, lladdr_len);
 	trace_mctp_neighbor_add(mdev->dev, eid, lladdr, lladdr_len);
 	rc = 0;
 out:
@@ -99,6 +105,7 @@ static int mctp_neigh_remove(struct mctp_dev *mdev, mctp_eid_t eid,
 	list_for_each_entry_safe(neigh, tmp, &net->mctp.neighbours, list) {
 		if (neigh->dev == mdev && neigh->eid == eid &&
 		    neigh->source == source) {
+			netdev_dbg(mdev->dev, "MCTP: neighbor eid %u removed\n", eid);
 			trace_mctp_neighbor_del(mdev->dev, eid);
 			list_del_rcu(&neigh->list);
 			/* TODO: immediate RTM_DELNEIGH */
@@ -108,6 +115,8 @@ static int mctp_neigh_remove(struct mctp_dev *mdev, mctp_eid_t eid,
 	}
 
 	mutex_unlock(&net->mctp.neigh_lock);
+	if (!dropped)
+		netdev_dbg(mdev->dev, "MCTP: neighbor eid %u not found for removal\n", eid);
 	return dropped ? 0 : -ENOENT;
 }
 
@@ -297,6 +306,8 @@ int mctp_neigh_lookup(struct mctp_dev *mdev, mctp_eid_t eid, void *ret_hwaddr)
 		}
 	}
 	rcu_read_unlock();
+	if (rc)
+		netdev_dbg(mdev->dev, "MCTP: neighbor eid %u lookup failed\n", eid);
 	trace_mctp_neighbor_lookup(mdev->dev, eid, rc);
 	return rc;
 }

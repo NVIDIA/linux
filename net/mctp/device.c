@@ -222,12 +222,16 @@ static int mctp_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh,
 		return -EINVAL;
 
 	/* Prevent duplicates. Under RTNL so don't need to lock for reading */
-	if (memchr(mdev->addrs, addr->s_addr, mdev->num_addrs))
+	if (memchr(mdev->addrs, addr->s_addr, mdev->num_addrs)) {
+		netdev_dbg(dev, "MCTP: address %u already exists\n", addr->s_addr);
 		return -EEXIST;
+	}
 
 	tmp_addrs = kmalloc(mdev->num_addrs + 1, GFP_KERNEL);
-	if (!tmp_addrs)
+	if (!tmp_addrs) {
+		netdev_dbg(dev, "MCTP: failed to allocate memory for address %u\n", addr->s_addr);
 		return -ENOMEM;
+	}
 	memcpy(tmp_addrs, mdev->addrs, mdev->num_addrs);
 	tmp_addrs[mdev->num_addrs] = addr->s_addr;
 
@@ -239,6 +243,8 @@ static int mctp_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	kfree(tmp_addrs);
 
+	netdev_dbg(dev, "MCTP: address %u added (total %u addresses)\n",
+		   addr->s_addr, mdev->num_addrs);
 	trace_mctp_address_add(dev, addr->s_addr);
 	mctp_addr_notify(mdev, addr->s_addr, RTM_NEWADDR, skb, nlh);
 	mctp_route_add_local(mdev, addr->s_addr);
@@ -283,8 +289,10 @@ static int mctp_rtm_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh,
 		return -ENODEV;
 
 	pos = memchr(mdev->addrs, addr->s_addr, mdev->num_addrs);
-	if (!pos)
+	if (!pos) {
+		netdev_dbg(dev, "MCTP: address %u not found for deletion\n", addr->s_addr);
 		return -ENOENT;
+	}
 
 	rc = mctp_route_remove_local(mdev, addr->s_addr);
 	// we can ignore -ENOENT in the case a route was already removed
@@ -296,6 +304,8 @@ static int mctp_rtm_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh,
 	mdev->num_addrs--;
 	spin_unlock_irqrestore(&mdev->addrs_lock, flags);
 
+	netdev_dbg(dev, "MCTP: address %u deleted (remaining %u addresses)\n",
+		   addr->s_addr, mdev->num_addrs);
 	trace_mctp_address_del(dev, addr->s_addr);
 	mctp_addr_notify(mdev, addr->s_addr, RTM_DELADDR, skb, nlh);
 
@@ -356,6 +366,7 @@ static struct mctp_dev *mctp_add_dev(struct net_device *dev)
 	dev_hold(dev);
 	mdev->dev = dev;
 
+	netdev_dbg(dev, "MCTP: device registered (net %u)\n", mdev->net);
 	trace_mctp_device_register(dev, mdev->net);
 	return mdev;
 }
@@ -434,6 +445,7 @@ static void mctp_unregister(struct net_device *dev)
 	if (!mdev)
 		return;
 
+	netdev_dbg(dev, "MCTP: device unregistering (%u addresses)\n", mdev->num_addrs);
 	trace_mctp_device_unregister(dev);
 	RCU_INIT_POINTER(mdev->dev->mctp_ptr, NULL);
 

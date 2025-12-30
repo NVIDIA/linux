@@ -171,6 +171,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		ndev->stats.rx_dropped++;
 		/* Can't extract EID - no packet data available yet */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_no_memory);
+		trace_mctp_transport_error("spi", ndev, "rx_drop_no_memory", recvlen);
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
@@ -198,6 +199,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 	if (status == NET_RX_SUCCESS) {
 		ndev->stats.rx_packets++;
 		ndev->stats.rx_bytes += recvlen;
+		netdev_dbg(ndev, "MCTP SPI: RX success, %zu bytes\n", recvlen);
 		trace_mctp_transport_rx("spi", ndev, 0, recvlen);
 	} else {
 		ndev->stats.rx_dropped++;
@@ -208,6 +210,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		} else {
 			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_not_ready);
 		}
+		netdev_dbg(ndev, "MCTP SPI: RX dropped, status=%d\n", status);
 		trace_mctp_transport_error("spi", ndev, "rx_dropped", status);
 	}
 
@@ -230,6 +233,8 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 		midev->ndev->stats.rx_dropped++;
 		/* Can't extract EID - SPI receive failed, no data */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_spi_error);
+		netdev_dbg(midev->ndev, "MCTP SPI: RX error %d\n", status);
+		trace_mctp_transport_error("spi", midev->ndev, "rx_spi_error", status);
 		return ERR_SPI_RX_NO_DATA;
 	}
 
@@ -541,11 +546,12 @@ static int mctp_spi_tx_thread(void *data)
 
 			skb_copy_bits(skb, 0, txbuf, skb->len);
 			//Send SPI package
-		//Send SPI package
-		status = spb_ap_send(midev->ap, skb->len, txbuf);
+			status = spb_ap_send(midev->ap, skb->len, txbuf);
 		if(status == SPB_AP_OK) {
 			midev->ndev->stats.tx_packets++;
 			midev->ndev->stats.tx_bytes += skb->len;
+			netdev_dbg(midev->ndev, "MCTP SPI: TX success, %u bytes\n", skb->len);
+			trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
 		}
 		else {
 			midev->ndev->stats.tx_dropped++;
@@ -564,10 +570,7 @@ static int mctp_spi_tx_thread(void *data)
 			} else {
 				MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
 			}
-			trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
-		}
-		else {
-			midev->ndev->stats.rx_dropped++;
+			netdev_dbg(midev->ndev, "MCTP SPI: TX failed, status=%d\n", status);
 			trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", status);
 		}
 			kfree_skb(skb);

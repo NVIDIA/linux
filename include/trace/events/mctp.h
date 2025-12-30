@@ -84,7 +84,8 @@ TRACE_EVENT(mctp_rx_packet,
 		__array(u8, data, 32)
 	),
 	TP_fast_assign(
-		struct mctp_hdr *mh = mctp_hdr(skb);
+		struct mctp_hdr *mh = skb->len >= sizeof(*mh) ?
+				      mctp_hdr(skb) : NULL;
 		__entry->len = skb->len;
 		__entry->src = mh ? mh->src : 0;
 		__entry->dest = mh ? mh->dest : 0;
