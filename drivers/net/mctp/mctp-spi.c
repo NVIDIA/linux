@@ -16,6 +16,7 @@
 #include <linux/spi/spidev.h>
 
 #include <linux/uaccess.h>
+#include <linux/ethtool.h>
 
 #include <linux/if_arp.h>
 #include <linux/mctp.h>
@@ -24,6 +25,7 @@
 #include <net/mctpdevice.h>
 
 #include "glacier-spb-ap.h"
+#include "mctp-stats.h"
 
 static DEFINE_IDA(mctp_spi_ida);
 
@@ -71,6 +73,35 @@ struct mctp_spi {
 	wait_queue_head_t gpio_intr_wq;
 	bool gpio_intr_cond;
 	spinlock_t gpio_intr_cond_lock;
+
+	/* Per-EID statistics tracking - SINGLE source of truth
+	 *
+	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
+	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
+	 * - EID 254 (MCTP_EID_UNKNOWN): errors where EID could not be determined
+	 *   (GPIO interrupts, SPI transfer errors, allocation failures)
+	 */
+	struct {
+		DECLARE_BITMAP(active, 256);  /* Which EIDs have activity */
+		struct mctp_spi_eid_stats {
+			/* RX stats */
+			u64 rx_drop_no_memory;
+			u64 rx_drop_not_ready;       /* Tracked as UNKNOWN (before EID known) */
+			u64 rx_drop_spi_error;       /* Tracked as UNKNOWN */
+			
+			/* TX stats */
+			u64 tx_drop_spi_error;
+			u64 tx_drop_ebusy;
+			u64 tx_drop_etimedout;
+			u64 tx_drop_eio;
+			u64 tx_drop_einval;
+			u64 tx_drop_enomem;
+			u64 tx_drop_emsgsize;
+			
+			/* GPIO interrupt tracking (UNKNOWN - no EID context) */
+			u64 gpio_interrupts;
+		} eid[256];
+	} eid_stats;
 };
 
 struct mctp_spi_hdr {
@@ -136,6 +167,8 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 	skb = netdev_alloc_skb(ndev, recvlen);
 	if (!skb) {
 		ndev->stats.rx_dropped++;
+		/* Can't extract EID - no packet data available yet */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_no_memory);
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
@@ -165,6 +198,13 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		ndev->stats.rx_bytes += recvlen;
 	} else {
 		ndev->stats.rx_dropped++;
+		/* Extract EID for per-EID tracking (SKB has packet data) */
+		if (skb->len >= sizeof(struct mctp_spi_hdr) + sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)(skb->data + sizeof(struct mctp_spi_hdr));
+			MCTP_STAT_INC(midev, mh->src, rx_drop_not_ready);
+		} else {
+			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_not_ready);
+		}
 	}
 
 	return 0;
@@ -182,8 +222,12 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 	spi_hdr_rx = (struct mctp_spi_hdr *)tmp_rx_buffer;
 
 	status = spb_ap_recv(midev->ap, RX_BUFFER_SIZE, tmp_rx_buffer);
-	if(status != SPB_AP_OK)
+	if(status != SPB_AP_OK) {
+		midev->ndev->stats.rx_dropped++;
+		/* Can't extract EID - SPI receive failed, no data */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_spi_error);
 		return ERR_SPI_RX_NO_DATA;
+	}
 
 	payload_len = spi_hdr_rx->byte_count;
 	len = payload_len + hdr_size;
@@ -232,6 +276,156 @@ static int mctp_spi_header_create(struct sk_buff *skb, struct net_device *dev,
 	return sizeof(struct mctp_spi_hdr);
 }
 
+/* Ethtool statistics support */
+/* Per-EID stat descriptors with abbreviated names */
+struct mctp_spi_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define MCTP_SPI_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct mctp_spi_eid_stats, field) \
+}
+
+static const struct mctp_spi_eid_stat_desc mctp_spi_eid_stat_descs[] = {
+	MCTP_SPI_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
+	MCTP_SPI_EID_STAT("rx_drop_not_ready",          rx_drop_not_ready),
+	MCTP_SPI_EID_STAT("rx_drop_spi_error",          rx_drop_spi_error),
+	MCTP_SPI_EID_STAT("tx_drop_spi_error",          tx_drop_spi_error),
+	MCTP_SPI_EID_STAT("tx_drop_ebusy",              tx_drop_ebusy),
+	MCTP_SPI_EID_STAT("tx_drop_etimedout",          tx_drop_etimedout),
+	MCTP_SPI_EID_STAT("tx_drop_eio",                tx_drop_eio),
+	MCTP_SPI_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_SPI_EID_STAT("tx_drop_enomem",             tx_drop_enomem),
+	MCTP_SPI_EID_STAT("tx_drop_emsgsize",           tx_drop_emsgsize),
+	MCTP_SPI_EID_STAT("gpio_interrupts",            gpio_interrupts),
+};
+
+#define MCTP_SPI_EID_NUM_STATS ARRAY_SIZE(mctp_spi_eid_stat_descs)
+
+/* Generate ethtool helper functions using shared macros */
+MCTP_EID_STATS_HELPERS(mctp_spi, struct mctp_spi,
+		       struct mctp_spi_eid_stats, mctp_spi_eid_stat_descs)
+
+static void mctp_spi_get_strings(struct net_device *ndev, u32 stringset,
+				 u8 *data)
+{
+	struct mctp_spi *midev = netdev_priv(ndev);
+	unsigned int i;
+	int eid;
+
+	if (stringset != ETH_SS_STATS)
+		return;
+
+	/* Output aggregate stats (computed from per-EID) */
+	for (i = 0; i < MCTP_SPI_EID_NUM_STATS; i++) {
+		snprintf(data, ETH_GSTRING_LEN, "%-30s", mctp_spi_eid_stat_descs[i].name);
+		data += ETH_GSTRING_LEN;
+	}
+
+	/* Separator line */
+	snprintf(data, ETH_GSTRING_LEN, "                              ");
+	data += ETH_GSTRING_LEN;
+
+	/* Output per-EID stats (only for active EIDs with non-zero stats) */
+	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+		struct mctp_spi_eid_stats *es = &midev->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = mctp_spi_count_eid_nonzero(midev, eid);
+
+		if (nz == 0)
+			continue;
+
+		/* EID header line with explanation
+		 * - UNKNOWN: Errors where EID could not be determined (GPIO interrupt
+		 *   events, low-level SPI transfer failures, or allocation failures
+		 *   before packet parsing)
+		 * - EID_0: Valid packets with source/dest EID=0 (null/unallocated
+		 *   endpoint per MCTP spec DSP0236)
+		 * - EID_X: Normal endpoints (X = 1..253)
+		 */
+		if (eid == MCTP_EID_UNKNOWN) {
+			snprintf(data, ETH_GSTRING_LEN, "UNKNOWN: SPI/GPIO errors      ");
+		} else if (eid == 0) {
+			snprintf(data, ETH_GSTRING_LEN, "EID_0: null endpoint          ");
+		} else {
+			snprintf(data, ETH_GSTRING_LEN, "EID_%-3u                       ", eid);
+		}
+		data += ETH_GSTRING_LEN;
+
+		/* Individual non-zero stats for this EID */
+		for (i = 0; i < MCTP_SPI_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base + mctp_spi_eid_stat_descs[i].offset);
+			if (val != 0) {
+				snprintf(data, ETH_GSTRING_LEN, "%-30s",
+					 mctp_spi_eid_stat_descs[i].name);
+				data += ETH_GSTRING_LEN;
+			}
+		}
+	}
+}
+
+static int mctp_spi_get_sset_count(struct net_device *ndev, int sset)
+{
+	struct mctp_spi *midev = netdev_priv(ndev);
+
+	if (sset == ETH_SS_STATS)
+		return MCTP_SPI_EID_NUM_STATS + 1 + mctp_spi_count_eid_stats(midev);
+		       /* aggregates */  /* separator */  /* per-EID */
+
+	return -EOPNOTSUPP;
+}
+
+static void mctp_spi_get_ethtool_stats(struct net_device *ndev,
+				       struct ethtool_stats *stats,
+				       u64 *data)
+{
+	struct mctp_spi *midev = netdev_priv(ndev);
+	unsigned int i, idx = 0;
+	int eid;
+
+	/* Output aggregate stats (computed by summing across all EIDs) */
+	for (i = 0; i < MCTP_SPI_EID_NUM_STATS; i++) {
+		u64 total = 0;
+		
+		for_each_set_bit(eid, midev->eid_stats.active, 256) {
+			u8 *base = (u8 *)&midev->eid_stats.eid[eid];
+			total += *(u64 *)(base + mctp_spi_eid_stat_descs[i].offset);
+		}
+		data[idx++] = total;
+	}
+
+	/* Separator (blank line in output) */
+	data[idx++] = 0;
+
+	/* Output per-EID stats (only for active EIDs with non-zero stats) */
+	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+		struct mctp_spi_eid_stats *es = &midev->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = mctp_spi_count_eid_nonzero(midev, eid);
+
+		if (nz == 0)
+			continue;
+
+		/* EID header: value is sum of all stats for this EID */
+		data[idx++] = mctp_spi_eid_stats_total(midev, eid);
+
+		/* Individual non-zero stats for this EID */
+		for (i = 0; i < MCTP_SPI_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base + mctp_spi_eid_stat_descs[i].offset);
+			if (val != 0)
+				data[idx++] = val;
+		}
+	}
+}
+
+static const struct ethtool_ops mctp_spi_ethtool_ops = {
+	.get_strings = mctp_spi_get_strings,
+	.get_sset_count = mctp_spi_get_sset_count,
+	.get_ethtool_stats = mctp_spi_get_ethtool_stats,
+};
+
 static const struct net_device_ops mctp_spi_ops = {
 	.ndo_start_xmit = mctp_spi_net_xmit,
 	.ndo_uninit = mctp_spi_ndo_uninit,
@@ -256,6 +450,7 @@ static void mctp_spi_net_setup(struct net_device *dev)
 
 	dev->netdev_ops		= &mctp_spi_ops;
 	dev->header_ops		= &mctp_spi_headops;
+	dev->ethtool_ops	= &mctp_spi_ethtool_ops;
 }
 
 static irqreturn_t mctp_pkg_rec_wake(int irq, void *data)
@@ -263,6 +458,8 @@ static irqreturn_t mctp_pkg_rec_wake(int irq, void *data)
 	struct mctp_spi *midev = data;
 	spin_lock(&midev->gpio_intr_cond_lock);
 	midev->gpio_intr_cond = true;
+	/* GPIO interrupts have no EID context */
+	MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, gpio_interrupts);
 	spin_unlock(&midev->gpio_intr_cond_lock);
 
 	wake_up(&midev->main_thread_wq); // Wake up the consumer waiting on the condition
@@ -334,15 +531,35 @@ static int mctp_spi_tx_thread(void *data)
 		}
 
 		if (skb) {
+			/* Extract destination EID for per-EID tracking */
+			struct mctp_hdr *mh = (void *)(skb->data + sizeof(struct mctp_spi_hdr));
+			u8 dest_eid = mh->dest;
+
 			skb_copy_bits(skb, 0, txbuf, skb->len);
 			//Send SPI package
-			status = spb_ap_send(midev->ap, skb->len, txbuf);
-			if(status == SPB_AP_OK) {
-				midev->ndev->stats.tx_packets++;
-				midev->ndev->stats.tx_bytes += skb->len;
+		status = spb_ap_send(midev->ap, skb->len, txbuf);
+		if(status == SPB_AP_OK) {
+			midev->ndev->stats.tx_packets++;
+			midev->ndev->stats.tx_bytes += skb->len;
+		}
+		else {
+			midev->ndev->stats.tx_dropped++;
+			if (status == -EBUSY) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_ebusy);
+			} else if (status == -ETIMEDOUT) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_etimedout);
+			} else if (status == -EIO) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+			} else if (status == -EINVAL) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
+			} else if (status == -ENOMEM) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_enomem);
+			} else if (status == -EMSGSIZE) {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_emsgsize);
+			} else {
+				MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
 			}
-			else
-				midev->ndev->stats.rx_dropped++;
+		}
 			kfree_skb(skb);
 			while (midev->ap->msgs_available > 0) {
 				status = mctp_spi_rx(midev);
