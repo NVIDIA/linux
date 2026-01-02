@@ -112,11 +112,6 @@ struct mctp_ioc_tag_ctl2 {
 #define MCTP_DIR_TX  0
 #define MCTP_DIR_RX  1
 
-/* Binding types */
-#define MCTP_BINDING_USB   1
-#define MCTP_BINDING_I2C   2
-#define MCTP_BINDING_PCIE  3
-
 /**
  * struct mctp_error - MCTP error information for applications
  *
@@ -125,7 +120,7 @@ struct mctp_ioc_tag_ctl2 {
  *
  * @error_code: Error number (ETIMEDOUT, EPIPE, EPROTO, etc.)
  * @direction: 0=TX, 1=RX
- * @binding: Binding type (1=USB, 2=I2C, 3=PCIe)
+ * @binding: DMTF binding type (1=SMBus, 2=PCIe VDM, 3=USB, 4=KCS, 5=Serial, 6=I3C)
  * @src_eid: Source EID
  * @dest_eid: Destination EID
  * @tag: MCTP tag value (0-7)
@@ -148,7 +143,7 @@ struct mctp_error {
 	/* Error Information */
 	__u32	error_code;		/* errno value */
 	__u8	direction;		/* MCTP_DIR_TX or MCTP_DIR_RX */
-	__u8	binding;		/* MCTP_BINDING_* */
+	__u8	binding;		/* enum mctp_phys_binding */
 	__u16	reserved1;
 
 	/* MCTP Addressing */

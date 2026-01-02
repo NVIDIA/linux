@@ -616,7 +616,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		if (sk) {
 			/* Pass key so error report uses orig_payload (before fragmentation) */
 			mctp_queue_error(sk, skb, -rc, midev->ndev,
-					MCTP_DIR_TX, MCTP_BINDING_I2C, key);
+					MCTP_DIR_TX, MCTP_PHYS_BINDING_SMBUS, key);
 			sock_put(sk);
 		}
 		

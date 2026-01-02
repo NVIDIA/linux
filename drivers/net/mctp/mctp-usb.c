@@ -138,7 +138,7 @@ static void mctp_usb_out_complete(struct urb *urb)
 								netdev_dbg(netdev, "Async TX error: Reporting error %d for entire batch (key=%p)\n",
 									status, key);
 								mctp_queue_error(sk, pkt_skb, -status, netdev,
-										MCTP_DIR_TX, MCTP_BINDING_USB, key);
+										MCTP_DIR_TX, MCTP_PHYS_BINDING_USB, key);
 								sock_put(sk);
 							} else {
 								netdev_dbg(netdev, "Async TX error: Not reported (no TX key or error queue disabled)\n");
@@ -251,7 +251,7 @@ err_drop:
 		if (sk) {
 			netdev_dbg(netdev, "TX single: Reporting sync error (code=%d)\n", -rc);
 			mctp_queue_error(sk, skb, -rc, netdev,
-					 MCTP_DIR_TX, MCTP_BINDING_USB, key);
+					 MCTP_DIR_TX, MCTP_PHYS_BINDING_USB, key);
 			sock_put(sk);
 		}
 	}
@@ -374,7 +374,7 @@ err_drop:
 							if (sk) {
 								netdev_dbg(netdev, "TX batch sync error: Reporting for entire batch\n");
 								mctp_queue_error(sk, pkt_skb, -rc, netdev,
-										 MCTP_DIR_TX, MCTP_BINDING_USB, key);
+										 MCTP_DIR_TX, MCTP_PHYS_BINDING_USB, key);
 								sock_put(sk);
 							}
 						}

@@ -29,21 +29,29 @@
 static const unsigned int mctp_message_maxlen = 64 * 1024;
 static const unsigned long mctp_key_lifetime = 6 * CONFIG_HZ;
 
-/* Helper to determine binding type from network device */
+/* Helper to determine binding type from network device
+ * Returns the physical binding type from mctp_dev, which is set during
+ * device registration and remains constant regardless of device renaming.
+ */
 u8 mctp_get_binding_type(struct net_device *dev)
 {
+	struct mctp_dev *mdev;
+	u8 binding = 0;
+	
 	if (!dev)
 		return 0;  /* Unknown */
-
-	if (strstr(dev->name, "mctpusb"))
-		return MCTP_BINDING_USB;
-	else if (strstr(dev->name, "mctpi2c"))
-		return MCTP_BINDING_I2C;
-	else if (strstr(dev->name, "mctppcie"))
-		return MCTP_BINDING_PCIE;
 	
-	return 0;  /* Unknown binding */
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (mdev) {
+		binding = mdev->binding;
+		mctp_dev_put(mdev);
+	}
+	rcu_read_unlock();
+	
+	return binding;
 }
+
 
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev);
 
@@ -2276,7 +2284,7 @@ static struct mctp_sk_key *mctp_lookup_tx_key_for_rx_error(struct net *net,
  * @error_code: errno value (EPROTO, ETIMEDOUT, EMSGSIZE for RX; EHOSTUNREACH, ENXIO for TX)
  * @dev: Network device (used to extract MCTP network ID)
  * @direction: MCTP_DIR_TX or MCTP_DIR_RX
- * @binding: MCTP_BINDING_USB, MCTP_BINDING_I2C, etc.
+ * @binding: enum mctp_phys_binding value (MCTP_PHYS_BINDING_USB, MCTP_PHYS_BINDING_SMBUS, etc.)
  * @rx_key: For RX errors, the RX key (provides addressing). For TX errors, the TX key.
  *
  * Builds an mctp_error structure and queues it to the socket's error queue.
