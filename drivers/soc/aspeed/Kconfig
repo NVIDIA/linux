@@ -160,4 +160,6 @@ endmenu
 
 source "drivers/soc/aspeed/espi/Kconfig"
 
+source "drivers/soc/aspeed/rvas/Kconfig"
+
 endif
