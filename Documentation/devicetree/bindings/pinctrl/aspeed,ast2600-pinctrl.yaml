@@ -278,6 +278,7 @@ additionalProperties:
         - EMMCG4
         - EMMCG5
         - EMMCG8
+        - EMMCG9
         - ESPI
         - ESPIALT
         - FSI1

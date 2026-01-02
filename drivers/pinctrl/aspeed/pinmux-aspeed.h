@@ -750,6 +750,7 @@ struct aspeed_pin_desc {
 #define FUNC_DECL_2(func, one, two) FUNC_DECL_(func, #one, #two)
 #define FUNC_DECL_3(func, one, two, three) FUNC_DECL_(func, #one, #two, #three)
 #define FUNC_DECL_4(func, one, two, three, four) FUNC_DECL_(func, #one, #two, #three, #four)
+#define FUNC_DECL_5(func, one, two, three, four, five) FUNC_DECL_(func, #one, #two, #three, #four, #five)
 
 #define FUNC_GROUP_DECL(func, ...) \
 	GROUP_DECL(func, __VA_ARGS__); \
