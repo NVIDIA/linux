@@ -224,8 +224,8 @@
 
 &emmc {
     non-removable;
-    pinctrl-0 = <&pinctrl_emmcg5_default>;
-    bus-width = <4>;
+    pinctrl-0 = <&pinctrl_emmcg9_default>;
+    bus-width = <8>;
     max-frequency = <52000000>;
     clk-phase-mmc-hs200 = <9>, <225>;
 };
@@ -492,7 +492,7 @@
                         };
                     };
                 };
-            
+
             };
         };
     };
@@ -527,7 +527,7 @@
     clock-frequency = <400000>;
     i2c-scl-clk-low-timeout-us = <32000>;
     i2c-tck-thddat-config = <0x0099EC00>;
-    multi-master; 
+    multi-master;
     mctp-controller;
     // MCTP for HPM MCU
     mctp@18 {
