@@ -862,6 +862,11 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		if (!msk) {
 			trace_mctp_drop_packet(skb, "no_socket_bound");
 			rc = -ENOENT;
+
+			/* Track global drop - no specific socket */
+			atomic64_inc(&net->mctp.rx_drops);
+			atomic64_inc(&net->mctp.drops_no_route);
+
 			goto out_unlock;
 		}
 
@@ -873,9 +878,37 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			rc = sock_queue_rcv_skb(&msk->sk, skb);
 			trace_mctp_rx_socket(skb, rc);
 			if (!rc) {
+				u64 rx_time = ktime_get_ns();
+				unsigned int pkt_len = skb->len + sizeof(struct mctp_hdr);
+
+				spin_lock_bh(&msk->stats_lock);
+				msk->stats.rx_packets++;
+				msk->stats.rx_bytes += pkt_len;
+				msk->stats.rx_messages++;
+				msk->stats.last_rx_time = rx_time;
+				spin_unlock_bh(&msk->stats_lock);
+
+				atomic64_inc(&net->mctp.rx_packets);
+				atomic64_add(pkt_len, &net->mctp.rx_bytes);
+				atomic64_inc(&net->mctp.rx_messages);
+
 				skb = NULL;
 			} else {
 				trace_mctp_drop_packet(skb, "sock_queue_failed");
+
+				spin_lock_bh(&msk->stats_lock);
+				msk->stats.rx_drops++;
+				if (rc == -ENOBUFS || rc == -ENOMEM)
+					msk->stats.drops_queue_full++;
+				else if (rc == -EPERM || rc == -EACCES)
+					msk->stats.drops_permission++;
+				spin_unlock_bh(&msk->stats_lock);
+
+				atomic64_inc(&net->mctp.rx_drops);
+				if (rc == -ENOBUFS || rc == -ENOMEM)
+					atomic64_inc(&net->mctp.drops_queue_full);
+				else if (rc == -EPERM || rc == -EACCES)
+					atomic64_inc(&net->mctp.drops_permission);
 			}
 			if (key) {
 				/* we've hit a pending reassembly; not much we
@@ -904,6 +937,16 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 					     tag, GFP_ATOMIC);
 			if (!key) {
 				rc = -ENOMEM;
+
+				/* Track memory allocation failure */
+				spin_lock_bh(&msk->stats_lock);
+				msk->stats.rx_drops++;
+				msk->stats.drops_no_memory++;
+				spin_unlock_bh(&msk->stats_lock);
+
+				atomic64_inc(&net->mctp.rx_drops);
+				atomic64_inc(&net->mctp.drops_no_memory);
+
 				goto out_unlock;
 			}
 
@@ -970,19 +1013,33 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		 * using the message-specific key
 		 */
 
-		/* we need to be continuing an existing reassembly... */
-		if (!key->reasm_head) {
-			rc = -EINVAL;
-			mctp_report_rx_missing_som(key, skb, mh, tag, &f);
-		} else {
-			rc = mctp_frag_queue(key, skb);
-			
-			if (rc == -EINVAL || rc == -EMSGSIZE) {
-				/* Reassembly failure: sequence error (-EINVAL) or message too large (-EMSGSIZE) */
-				mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
-			}
+	/* we need to be continuing an existing reassembly... */
+	if (!key->reasm_head) {
+		rc = -EINVAL;
+		mctp_report_rx_missing_som(key, skb, mh, tag, &f);
+	} else {
+		rc = mctp_frag_queue(key, skb);
+		
+		if (rc == -EINVAL || rc == -EMSGSIZE) {
+			struct mctp_sock *msk_err = container_of(key->sk, struct mctp_sock, sk);
 
-			skb = NULL;
+			/* Reassembly failure: sequence error (-EINVAL) or message too large (-EMSGSIZE) */
+			mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
+
+			/* Track stats for sequence/size errors */
+			spin_lock_bh(&msk_err->stats_lock);
+			msk_err->stats.rx_drops++;
+			if (rc == -EINVAL)
+				msk_err->stats.drops_seq_mismatch++;
+			else if (rc == -EMSGSIZE)
+				msk_err->stats.drops_mtu_exceeded++;
+			spin_unlock_bh(&msk_err->stats_lock);
+
+			atomic64_inc(&net->mctp.rx_drops);
+			if (rc == -EINVAL)
+				atomic64_inc(&net->mctp.drops_seq_mismatch);
+			else if (rc == -EMSGSIZE)
+				atomic64_inc(&net->mctp.drops_mtu_exceeded);
 		}
 
 		if (rc)
@@ -1710,8 +1767,20 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	spin_unlock_irqrestore(&dst->dev->addrs_lock, flags);
 	netid = READ_ONCE(dst->dev->net);
 
-	if (rc)
+	if (rc) {
+		struct net *net = sock_net(sk);
+
+		/* Track no-route drops */
+		spin_lock_bh(&msk->stats_lock);
+		msk->stats.tx_drops++;
+		msk->stats.drops_no_route++;
+		spin_unlock_bh(&msk->stats_lock);
+
+		atomic64_inc(&net->mctp.tx_drops);
+		atomic64_inc(&net->mctp.drops_no_route);
+
 		goto out_release;
+	}
 
 	if (req_tag & MCTP_TAG_OWNER) {
 		if (req_tag & MCTP_TAG_PREALLOC)
@@ -1791,6 +1860,45 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 		rc = dst->output(dst, skb);
 	} else {
 		rc = mctp_do_fragment_route(dst, skb, mtu, tag);
+	}
+
+	/* Update statistics based on transmission result */
+	if (rc == 0) {
+		struct net *net = sock_net(sk);
+		u64 tx_time = ktime_get_ns();
+		unsigned int pkt_len = skb->len;
+
+		/* Update per-socket stats */
+		spin_lock_bh(&msk->stats_lock);
+		msk->stats.tx_packets++;
+		msk->stats.tx_bytes += pkt_len;
+		msk->stats.tx_messages++;
+		msk->stats.last_tx_time = tx_time;
+		spin_unlock_bh(&msk->stats_lock);
+
+		/* Update global stats */
+		atomic64_inc(&net->mctp.tx_packets);
+		atomic64_add(pkt_len, &net->mctp.tx_bytes);
+		atomic64_inc(&net->mctp.tx_messages);
+	} else {
+		struct net *net = sock_net(sk);
+
+		/* Update error stats with specific reasons */
+		spin_lock_bh(&msk->stats_lock);
+		msk->stats.tx_errors++;
+		msk->stats.tx_drops++;
+		if (rc == -ENETDOWN || rc == -ENODEV)
+			msk->stats.drops_device_down++;
+		else if (rc == -EPERM || rc == -EACCES)
+			msk->stats.drops_permission++;
+		spin_unlock_bh(&msk->stats_lock);
+
+		atomic64_inc(&net->mctp.tx_errors);
+		atomic64_inc(&net->mctp.tx_drops);
+		if (rc == -ENETDOWN || rc == -ENODEV)
+			atomic64_inc(&net->mctp.drops_device_down);
+		else if (rc == -EPERM || rc == -EACCES)
+			atomic64_inc(&net->mctp.drops_permission);
 	}
 
 	/* route output functions consume the skb, even on error */
@@ -1991,18 +2099,18 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	/* We have enough for a header; decode and route */
 	mh = mctp_hdr(skb);
 	if (mh->ver < MCTP_VER_MIN || mh->ver > MCTP_VER_MAX)
-		goto err_drop;
+		goto err_invalid_hdr;
 
 	/* source must be valid unicast or null; drop reserved ranges and
 	 * broadcast
 	 */
 	if (!(mctp_address_unicast(mh->src) || mctp_address_null(mh->src)))
-		goto err_drop;
+		goto err_invalid_hdr;
 
 	/* dest address: as above, but allow broadcast */
 	if (!(mctp_address_unicast(mh->dest) || mctp_address_null(mh->dest) ||
 	      mctp_address_broadcast(mh->dest)))
-		goto err_drop;
+		goto err_invalid_hdr;
 
 	/* MCTP drivers must populate halen/haddr */
 	if (dev->type == ARPHRD_MCTP) {
@@ -2050,6 +2158,12 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	mctp_dev_put(mdev);
 
 	return NET_RX_SUCCESS;
+
+err_invalid_hdr:
+	/* Track invalid header drops */
+	atomic64_inc(&net->mctp.rx_drops);
+	atomic64_inc(&net->mctp.drops_invalid_header);
+	/* Fall through to err_drop */
 
 err_drop:
 	kfree_skb(skb);
@@ -2404,6 +2518,30 @@ static int __net_init mctp_routes_net_init(struct net *net)
 	INIT_HLIST_HEAD(&ns->keys);
 	spin_lock_init(&ns->keys_lock);
 	WARN_ON(mctp_default_net_set(net, MCTP_INITIAL_DEFAULT_NET));
+
+	/* Initialize global statistics */
+	atomic_set(&ns->num_sockets, 0);
+	atomic_set(&ns->num_bound_sockets, 0);
+	atomic64_set(&ns->tx_bytes, 0);
+	atomic64_set(&ns->tx_packets, 0);
+	atomic64_set(&ns->tx_messages, 0);
+	atomic64_set(&ns->tx_errors, 0);
+	atomic64_set(&ns->tx_drops, 0);
+	atomic64_set(&ns->rx_bytes, 0);
+	atomic64_set(&ns->rx_packets, 0);
+	atomic64_set(&ns->rx_messages, 0);
+	atomic64_set(&ns->rx_errors, 0);
+	atomic64_set(&ns->rx_drops, 0);
+	atomic64_set(&ns->drops_no_route, 0);
+	atomic64_set(&ns->drops_mtu_exceeded, 0);
+	atomic64_set(&ns->drops_no_memory, 0);
+	atomic64_set(&ns->drops_seq_mismatch, 0);
+	atomic64_set(&ns->drops_tag_mismatch, 0);
+	atomic64_set(&ns->drops_queue_full, 0);
+	atomic64_set(&ns->drops_device_down, 0);
+	atomic64_set(&ns->drops_invalid_header, 0);
+	atomic64_set(&ns->drops_permission, 0);
+
 	return 0;
 }
 

@@ -109,6 +109,38 @@ struct mctp_sock {
 	struct work_struct error_report_work;
 	struct list_head pending_errors;
 	spinlock_t error_queue_lock;
+
+	/* Per-socket statistics */
+	struct {
+		u64 tx_bytes;
+		u64 tx_packets;
+		u64 tx_messages;
+		u64 tx_errors;
+		u64 tx_drops;
+
+		u64 rx_bytes;
+		u64 rx_packets;
+		u64 rx_messages;
+		u64 rx_errors;
+		u64 rx_drops;
+
+		/* Detailed drop reasons */
+		u64 drops_no_route;
+		u64 drops_mtu_exceeded;
+		u64 drops_no_memory;
+		u64 drops_seq_mismatch;
+		u64 drops_tag_mismatch;
+		u64 drops_queue_full;
+		u64 drops_device_down;
+		u64 drops_invalid_header;
+		u64 drops_permission;
+
+		/* Timestamps */
+		u64 last_tx_time;
+		u64 last_rx_time;
+	} stats;
+
+	spinlock_t stats_lock;  /* Protects stats */
 };
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
@@ -365,6 +397,12 @@ void mctp_routes_exit(void);
 
 int mctp_device_init(void);
 void mctp_device_exit(void);
+
+int mctp_stats_init(void);
+void mctp_stats_exit(void);
+
+/* Generic Netlink family for statistics */
+extern struct genl_family mctp_genl_family;
 
 /* Error queue support */
 u8 mctp_get_binding_type(struct net_device *dev);

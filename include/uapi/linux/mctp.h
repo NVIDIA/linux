@@ -172,4 +172,100 @@ struct mctp_error {
 	__u32	reserved3[2];
 } __attribute__((packed));
 
+/*
+ * Socket Statistics Support
+ * For per-socket and global statistics via getsockopt/netlink
+ */
+
+/* New socket option for statistics */
+#define MCTP_OPT_SOCK_STATS    3
+
+/* MCTP per-socket statistics structure */
+struct mctp_sock_stats_info {
+	/* Traffic counters */
+	__u64 tx_bytes;
+	__u64 tx_packets;
+	__u64 tx_messages;
+	__u64 tx_errors;
+	__u64 tx_drops;
+
+	__u64 rx_bytes;
+	__u64 rx_packets;
+	__u64 rx_messages;
+	__u64 rx_errors;
+	__u64 rx_drops;
+
+	/* Detailed drop reasons */
+	__u64 drops_no_route;
+	__u64 drops_mtu_exceeded;
+	__u64 drops_no_memory;
+	__u64 drops_seq_mismatch;
+	__u64 drops_tag_mismatch;
+	__u64 drops_queue_full;
+	__u64 drops_device_down;
+	__u64 drops_invalid_header;
+	__u64 drops_permission;
+
+	/* Timestamps (nanoseconds since boot) */
+	__u64 last_tx_time;
+	__u64 last_rx_time;
+
+	/* Connection info */
+	__u32 num_active_keys;
+	__u32 bind_net;
+	__u8  bind_addr;
+	__u8  bind_type;
+	__u16 reserved;
+};
+
+/* MCTP global statistics structure (for Netlink) */
+struct mctp_global_stats {
+	__u32 num_sockets;
+	__u32 num_bound_sockets;
+
+	__u64 tx_bytes;
+	__u64 tx_packets;
+	__u64 tx_messages;
+	__u64 tx_errors;
+	__u64 tx_drops;
+
+	__u64 rx_bytes;
+	__u64 rx_packets;
+	__u64 rx_messages;
+	__u64 rx_errors;
+	__u64 rx_drops;
+
+	__u64 drops_no_route;
+	__u64 drops_mtu_exceeded;
+	__u64 drops_no_memory;
+	__u64 drops_seq_mismatch;
+	__u64 drops_tag_mismatch;
+	__u64 drops_queue_full;
+	__u64 drops_device_down;
+	__u64 drops_invalid_header;
+	__u64 drops_permission;
+};
+
+/*
+ * Generic Netlink interface for MCTP statistics
+ * Family name: "mctp"
+ * Version: 1
+ */
+
+/* Commands */
+enum {
+	MCTP_CMD_UNSPEC,
+	MCTP_CMD_GET_STATS,	/* Get global statistics */
+	__MCTP_CMD_MAX,
+};
+#define MCTP_CMD_MAX (__MCTP_CMD_MAX - 1)
+
+/* Attributes */
+enum {
+	MCTP_ATTR_UNSPEC,
+	MCTP_ATTR_STATS,	/* struct mctp_global_stats */
+	__MCTP_ATTR_MAX,
+};
+#define MCTP_ATTR_MAX (__MCTP_ATTR_MAX - 1)
+
 #endif /* __UAPI_MCTP_H */

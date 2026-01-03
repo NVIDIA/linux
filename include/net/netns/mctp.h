@@ -32,6 +32,33 @@ struct netns_mctp {
 	/* neighbour table */
 	struct mutex neigh_lock;
 	struct list_head neighbours;
+
+	/* Global socket statistics (atomic for lockless updates) */
+	atomic_t num_sockets;
+	atomic_t num_bound_sockets;
+
+	atomic64_t tx_bytes;
+	atomic64_t tx_packets;
+	atomic64_t tx_messages;
+	atomic64_t tx_errors;
+	atomic64_t tx_drops;
+
+	atomic64_t rx_bytes;
+	atomic64_t rx_packets;
+	atomic64_t rx_messages;
+	atomic64_t rx_errors;
+	atomic64_t rx_drops;
+
+	/* Detailed error counters */
+	atomic64_t drops_no_route;
+	atomic64_t drops_mtu_exceeded;
+	atomic64_t drops_no_memory;
+	atomic64_t drops_seq_mismatch;
+	atomic64_t drops_tag_mismatch;
+	atomic64_t drops_queue_full;
+	atomic64_t drops_device_down;
+	atomic64_t drops_invalid_header;
+	atomic64_t drops_permission;
 };
 
 #endif /* __NETNS_MCTP_H__ */

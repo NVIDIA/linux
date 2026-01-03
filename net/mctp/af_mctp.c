@@ -544,6 +544,63 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		return 0;
 	}
 
+	if (optname == MCTP_OPT_SOCK_STATS) {
+		struct mctp_sock_stats_info stats;
+		struct hlist_node *tmp;
+		u32 num_keys = 0;
+
+		if (len < sizeof(stats))
+			return -EINVAL;
+
+		/* Gather per-socket statistics */
+		spin_lock_bh(&msk->stats_lock);
+		stats.tx_bytes = msk->stats.tx_bytes;
+		stats.tx_packets = msk->stats.tx_packets;
+		stats.tx_messages = msk->stats.tx_messages;
+		stats.tx_errors = msk->stats.tx_errors;
+		stats.tx_drops = msk->stats.tx_drops;
+
+		stats.rx_bytes = msk->stats.rx_bytes;
+		stats.rx_packets = msk->stats.rx_packets;
+		stats.rx_messages = msk->stats.rx_messages;
+		stats.rx_errors = msk->stats.rx_errors;
+		stats.rx_drops = msk->stats.rx_drops;
+
+		stats.drops_no_route = msk->stats.drops_no_route;
+		stats.drops_mtu_exceeded = msk->stats.drops_mtu_exceeded;
+		stats.drops_no_memory = msk->stats.drops_no_memory;
+		stats.drops_seq_mismatch = msk->stats.drops_seq_mismatch;
+		stats.drops_tag_mismatch = msk->stats.drops_tag_mismatch;
+		stats.drops_queue_full = msk->stats.drops_queue_full;
+		stats.drops_device_down = msk->stats.drops_device_down;
+		stats.drops_invalid_header = msk->stats.drops_invalid_header;
+		stats.drops_permission = msk->stats.drops_permission;
+
+		stats.last_tx_time = msk->stats.last_tx_time;
+		stats.last_rx_time = msk->stats.last_rx_time;
+		spin_unlock_bh(&msk->stats_lock);
+
+		/* Count active keys */
+		hlist_for_each(tmp, &msk->keys)
+			num_keys++;
+		stats.num_active_keys = num_keys;
+
+		/* Socket binding info */
+		stats.bind_net = msk->bind_net;
+		stats.bind_addr = msk->bind_addr;
+		stats.bind_type = msk->bind_type;
+		stats.reserved = 0;
+
+		if (copy_to_user(optval, &stats, sizeof(stats)))
+			return -EFAULT;
+
+		len = sizeof(stats);
+		if (put_user(len, optlen))
+			return -EFAULT;
+
+		return 0;
+	}
+
 	return -ENOPROTOOPT;
 }
 
@@ -832,6 +889,7 @@ static void mctp_error_report_work_fn(struct work_struct *work);
 static int mctp_sk_init(struct sock *sk)
 {
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+	struct net *net = sock_net(sk);
 
 	INIT_HLIST_HEAD(&msk->keys);
 	timer_setup(&msk->key_expiry, mctp_sk_expire_keys, 0);
@@ -840,6 +898,13 @@ static int mctp_sk_init(struct sock *sk)
 	INIT_WORK(&msk->error_report_work, mctp_error_report_work_fn);
 	INIT_LIST_HEAD(&msk->pending_errors);
 	spin_lock_init(&msk->error_queue_lock);
+	
+	/* Initialize per-socket statistics */
+	memset(&msk->stats, 0, sizeof(msk->stats));
+	spin_lock_init(&msk->stats_lock);
+	
+	/* Increment global socket counter */
+	atomic_inc(&net->mctp.num_sockets);
 	
 	return 0;
 }
@@ -863,6 +928,9 @@ static int mctp_sk_hash(struct sock *sk)
 	sk_add_node_rcu(sk, &net->mctp.binds);
 	mutex_unlock(&net->mctp.bind_lock);
 
+	/* Track bound sockets */
+	atomic_inc(&net->mctp.num_bound_sockets);
+
 	return 0;
 }
 
@@ -873,11 +941,17 @@ static void mctp_sk_unhash(struct sock *sk)
 	unsigned long flags, fl2;
 	struct mctp_sk_key *key;
 	struct hlist_node *tmp;
+	bool was_hashed;
 
 	/* remove from any type-based binds */
 	mutex_lock(&net->mctp.bind_lock);
+	was_hashed = sk_hashed(sk);
 	sk_del_node_init_rcu(sk);
 	mutex_unlock(&net->mctp.bind_lock);
+
+	/* Decrement bound socket counter if it was bound */
+	if (was_hashed)
+		atomic_dec(&net->mctp.num_bound_sockets);
 
 	/* remove tag allocations */
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);
@@ -913,7 +987,12 @@ static void mctp_sk_unhash(struct sock *sk)
 
 static void mctp_sk_destruct(struct sock *sk)
 {
+	struct net *net = sock_net(sk);
+
 	skb_queue_purge(&sk->sk_receive_queue);
+
+	/* Decrement global socket counter */
+	atomic_dec(&net->mctp.num_sockets);
 }
 
 static struct proto mctp_proto = {
@@ -1009,6 +1088,12 @@ static __init int mctp_init(void)
 	if (rc)
 		pr_warn("MCTP: Socket error injection init failed, continuing without it\n");
 
+	rc = mctp_stats_init();
+	if (rc) {
+		pr_warn("MCTP: Statistics init failed, continuing without it\n");
+		/* Not fatal, continue */
+	}
+
 	return 0;
 
 err_unreg_neigh:
@@ -1025,6 +1110,7 @@ err_unreg_sock:
 
 static __exit void mctp_exit(void)
 {
+	mctp_stats_exit();
 	mctp_socket_error_inject_cleanup();
 	mctp_device_exit();
 	mctp_neigh_exit();
