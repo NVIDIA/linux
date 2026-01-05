@@ -422,14 +422,14 @@
         #gpio-cells = <2>;
 
         gpio-line-names =
-            "SSD0_PRSNT_L",
-            "E1S_PWR_EN",
-            "SSD0_PWRDIS",
-            "SMB_SSD0_RST",
-            "BMC_SSD0_RST_L",
-            "V_SSD0_FLT",
-            "GPIO_P6_TP",
-            "GPIO_P7_TP";
+            "SSD0_PRSNT_L-I",
+            "E1S_PWR_EN-O",
+            "SSD0_PWRDIS-O",
+            "I2C_PDB_ALERT_L-I",
+            "BMC_SSD0_RST_L-O",
+            "GLOBAL_WP_E1S-O",
+            "12V_SSD0_PGD-I",
+            "SSD0_LED-O";
     };
 };
 
