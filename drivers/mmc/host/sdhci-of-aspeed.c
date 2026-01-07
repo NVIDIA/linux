@@ -11,8 +11,10 @@
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/reset.h>
 #include <linux/spinlock.h>
 
 #include "sdhci-pltfm.h"
@@ -23,6 +25,8 @@
 #define ASPEED_SDC_PHASE		0xf4
 #define   ASPEED_SDC_S1_PHASE_IN	GENMASK(25, 21)
 #define   ASPEED_SDC_S0_PHASE_IN	GENMASK(20, 16)
+#define	  ASPEED_SDC_S0_PHASE_IN_SHIFT	16
+#define   ASPEED_SDC_S0_PHASE_OUT_SHIFT 3
 #define   ASPEED_SDC_S1_PHASE_OUT	GENMASK(15, 11)
 #define   ASPEED_SDC_S1_PHASE_IN_EN	BIT(10)
 #define   ASPEED_SDC_S1_PHASE_OUT_EN	GENMASK(9, 8)
@@ -31,61 +35,52 @@
 #define   ASPEED_SDC_S0_PHASE_OUT_EN	GENMASK(1, 0)
 #define   ASPEED_SDC_PHASE_MAX		31
 
+#define ASPEED_SDHCI_TAP_PARAM_INVERT_CLK	BIT(4)
+#define ASPEED_SDHCI_NR_TAPS		15
+
 /* SDIO{10,20} */
-#define ASPEED_SDC_CAP1_1_8V           (0 * 32 + 26)
+#define ASPEED_SDC_CAP1_1_8V	       (0 * 32 + 26)
 /* SDIO{14,24} */
-#define ASPEED_SDC_CAP2_SDR104         (1 * 32 + 1)
+#define ASPEED_SDC_CAP2_SDR104	       (1 * 32 + 1)
+
+#define PROBE_AFTER_ASSET_DEASSERT 0x1
+
+struct aspeed_sdc_info {
+	u32 flag;
+};
 
 struct aspeed_sdc {
 	struct clk *clk;
 	struct resource *res;
+	struct reset_control *rst;
 
 	spinlock_t lock;
 	void __iomem *regs;
 };
 
-struct aspeed_sdhci_tap_param {
-	bool valid;
-
-#define ASPEED_SDHCI_TAP_PARAM_INVERT_CLK	BIT(4)
-	u8 in;
-	u8 out;
-};
-
-struct aspeed_sdhci_tap_desc {
-	u32 tap_mask;
-	u32 enable_mask;
-	u8 enable_value;
-};
-
-struct aspeed_sdhci_phase_desc {
-	struct aspeed_sdhci_tap_desc in;
-	struct aspeed_sdhci_tap_desc out;
-};
-
 struct aspeed_sdhci_pdata {
 	unsigned int clk_div_start;
-	const struct aspeed_sdhci_phase_desc *phase_desc;
-	size_t nr_phase_descs;
 };
 
 struct aspeed_sdhci {
 	const struct aspeed_sdhci_pdata *pdata;
 	struct aspeed_sdc *parent;
 	u32 width_mask;
-	struct mmc_clk_phase_map phase_map;
-	const struct aspeed_sdhci_phase_desc *phase_desc;
+};
+
+static struct aspeed_sdc_info ast2600_sdc_info = {
+	.flag = PROBE_AFTER_ASSET_DEASSERT
 };
 
 /*
  * The function sets the mirror register for updating
  * capbilities of the current slot.
  *
- *   slot | capability  | caps_reg | mirror_reg
+ *   slot | capability	| caps_reg | mirror_reg
  *   -----|-------------|----------|------------
- *     0  | CAP1_1_8V   | SDIO140  |   SDIO10
+ *     0  | CAP1_1_8V	| SDIO140  |   SDIO10
  *     0  | CAP2_SDR104 | SDIO144  |   SDIO14
- *     1  | CAP1_1_8V   | SDIO240  |   SDIO20
+ *     1  | CAP1_1_8V	| SDIO240  |   SDIO20
  *     1  | CAP2_SDR104 | SDIO244  |   SDIO24
  */
 static void aspeed_sdc_set_slot_capability(struct sdhci_host *host, struct aspeed_sdc *sdc,
@@ -125,174 +120,6 @@ static void aspeed_sdc_configure_8bit_mode(struct aspeed_sdc *sdc,
 	spin_unlock(&sdc->lock);
 }
 
-static u32
-aspeed_sdc_set_phase_tap(const struct aspeed_sdhci_tap_desc *desc,
-			 u8 tap, bool enable, u32 reg)
-{
-	reg &= ~(desc->enable_mask | desc->tap_mask);
-	if (enable) {
-		reg |= tap << __ffs(desc->tap_mask);
-		reg |= desc->enable_value << __ffs(desc->enable_mask);
-	}
-
-	return reg;
-}
-
-static void
-aspeed_sdc_set_phase_taps(struct aspeed_sdc *sdc,
-			  const struct aspeed_sdhci_phase_desc *desc,
-			  const struct aspeed_sdhci_tap_param *taps)
-{
-	u32 reg;
-
-	spin_lock(&sdc->lock);
-	reg = readl(sdc->regs + ASPEED_SDC_PHASE);
-
-	reg = aspeed_sdc_set_phase_tap(&desc->in, taps->in, taps->valid, reg);
-	reg = aspeed_sdc_set_phase_tap(&desc->out, taps->out, taps->valid, reg);
-
-	writel(reg, sdc->regs + ASPEED_SDC_PHASE);
-	spin_unlock(&sdc->lock);
-}
-
-#define PICOSECONDS_PER_SECOND		1000000000000ULL
-#define ASPEED_SDHCI_NR_TAPS		15
-/* Measured value with *handwave* environmentals and static loading */
-#define ASPEED_SDHCI_MAX_TAP_DELAY_PS	1253
-static int aspeed_sdhci_phase_to_tap(struct device *dev, unsigned long rate_hz,
-				     int phase_deg)
-{
-	u64 phase_period_ps;
-	u64 prop_delay_ps;
-	u64 clk_period_ps;
-	unsigned int tap;
-	u8 inverted;
-
-	phase_deg %= 360;
-
-	if (phase_deg >= 180) {
-		inverted = ASPEED_SDHCI_TAP_PARAM_INVERT_CLK;
-		phase_deg -= 180;
-		dev_dbg(dev,
-			"Inverting clock to reduce phase correction from %d to %d degrees\n",
-			phase_deg + 180, phase_deg);
-	} else {
-		inverted = 0;
-	}
-
-	prop_delay_ps = ASPEED_SDHCI_MAX_TAP_DELAY_PS / ASPEED_SDHCI_NR_TAPS;
-	clk_period_ps = div_u64(PICOSECONDS_PER_SECOND, (u64)rate_hz);
-	phase_period_ps = div_u64((u64)phase_deg * clk_period_ps, 360ULL);
-
-	tap = div_u64(phase_period_ps, prop_delay_ps);
-	if (tap > ASPEED_SDHCI_NR_TAPS) {
-		dev_dbg(dev,
-			 "Requested out of range phase tap %d for %d degrees of phase compensation at %luHz, clamping to tap %d\n",
-			 tap, phase_deg, rate_hz, ASPEED_SDHCI_NR_TAPS);
-		tap = ASPEED_SDHCI_NR_TAPS;
-	}
-
-	return inverted | tap;
-}
-
-static void
-aspeed_sdhci_phases_to_taps(struct device *dev, unsigned long rate,
-			    const struct mmc_clk_phase *phases,
-			    struct aspeed_sdhci_tap_param *taps)
-{
-	taps->valid = phases->valid;
-
-	if (!phases->valid)
-		return;
-
-	taps->in = aspeed_sdhci_phase_to_tap(dev, rate, phases->in_deg);
-	taps->out = aspeed_sdhci_phase_to_tap(dev, rate, phases->out_deg);
-}
-
-static void
-aspeed_sdhci_configure_phase(struct sdhci_host *host, unsigned long rate)
-{
-	struct aspeed_sdhci_tap_param _taps = {0}, *taps = &_taps;
-	struct mmc_clk_phase *params;
-	struct aspeed_sdhci *sdhci;
-	struct device *dev;
-
-	dev = mmc_dev(host->mmc);
-	sdhci = sdhci_pltfm_priv(sdhci_priv(host));
-
-	if (!sdhci->phase_desc)
-		return;
-
-	params = &sdhci->phase_map.phase[host->timing];
-	aspeed_sdhci_phases_to_taps(dev, rate, params, taps);
-	aspeed_sdc_set_phase_taps(sdhci->parent, sdhci->phase_desc, taps);
-	dev_dbg(dev,
-		"Using taps [%d, %d] for [%d, %d] degrees of phase correction at %luHz (%d)\n",
-		taps->in & ASPEED_SDHCI_NR_TAPS,
-		taps->out & ASPEED_SDHCI_NR_TAPS,
-		params->in_deg, params->out_deg, rate, host->timing);
-}
-
-static void aspeed_sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
-{
-	struct sdhci_pltfm_host *pltfm_host;
-	unsigned long parent, bus;
-	struct aspeed_sdhci *sdhci;
-	int div;
-	u16 clk;
-
-	pltfm_host = sdhci_priv(host);
-	sdhci = sdhci_pltfm_priv(pltfm_host);
-
-	parent = clk_get_rate(pltfm_host->clk);
-
-	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
-
-	if (clock == 0)
-		return;
-
-	if (WARN_ON(clock > host->max_clk))
-		clock = host->max_clk;
-
-	/*
-	 * Regarding the AST2600:
-	 *
-	 * If (EMMC12C[7:6], EMMC12C[15:8] == 0) then
-	 *   period of SDCLK = period of SDMCLK.
-	 *
-	 * If (EMMC12C[7:6], EMMC12C[15:8] != 0) then
-	 *   period of SDCLK = period of SDMCLK * 2 * (EMMC12C[7:6], EMMC[15:8])
-	 *
-	 * If you keep EMMC12C[7:6] = 0 and EMMC12C[15:8] as one-hot,
-	 * 0x1/0x2/0x4/etc, you will find it is compatible to AST2400 or AST2500
-	 *
-	 * Keep the one-hot behaviour for backwards compatibility except for
-	 * supporting the value 0 in (EMMC12C[7:6], EMMC12C[15:8]), and capture
-	 * the 0-value capability in clk_div_start.
-	 */
-	for (div = sdhci->pdata->clk_div_start; div < 256; div *= 2) {
-		bus = parent / div;
-		if (bus <= clock)
-			break;
-	}
-
-	div >>= 1;
-
-	clk = div << SDHCI_DIVIDER_SHIFT;
-
-	aspeed_sdhci_configure_phase(host, bus);
-
-	sdhci_enable_clk(host, clk);
-}
-
-static unsigned int aspeed_sdhci_get_max_clock(struct sdhci_host *host)
-{
-	if (host->mmc->f_max)
-		return host->mmc->f_max;
-
-	return sdhci_pltfm_clk_get_max_clock(host);
-}
-
 static void aspeed_sdhci_set_bus_width(struct sdhci_host *host, int width)
 {
 	struct sdhci_pltfm_host *pltfm_priv;
@@ -328,19 +155,182 @@ static u32 aspeed_sdhci_readl(struct sdhci_host *host, int reg)
 	return val;
 }
 
+static void aspeed_sdhci_reset(struct sdhci_host *host, u8 mask)
+{
+	struct sdhci_pltfm_host *pltfm_priv;
+	struct aspeed_sdhci *aspeed_sdhci;
+	struct aspeed_sdc *aspeed_sdc;
+	u32 save_array[8];
+	u32 reg_array[] = {SDHCI_DMA_ADDRESS,
+			SDHCI_BLOCK_SIZE,
+			SDHCI_ARGUMENT,
+			SDHCI_HOST_CONTROL,
+			SDHCI_CLOCK_CONTROL,
+			SDHCI_INT_ENABLE,
+			SDHCI_SIGNAL_ENABLE,
+			SDHCI_AUTO_CMD_STATUS};
+	int i;
+	u16 tran_mode;
+	u32 mmc8_mode;
+
+	pltfm_priv = sdhci_priv(host);
+	aspeed_sdhci = sdhci_pltfm_priv(pltfm_priv);
+	aspeed_sdc = aspeed_sdhci->parent;
+
+	if (!IS_ERR(aspeed_sdc->rst)) {
+		for (i = 0; i < ARRAY_SIZE(reg_array); i++)
+			save_array[i] = sdhci_readl(host, reg_array[i]);
+
+		tran_mode = sdhci_readw(host, SDHCI_TRANSFER_MODE);
+		mmc8_mode = readl(aspeed_sdc->regs);
+
+		reset_control_assert(aspeed_sdc->rst);
+		mdelay(1);
+		reset_control_deassert(aspeed_sdc->rst);
+		mdelay(1);
+
+		for (i = 0; i < ARRAY_SIZE(reg_array); i++)
+			sdhci_writel(host, save_array[i], reg_array[i]);
+
+		sdhci_writew(host, tran_mode, SDHCI_TRANSFER_MODE);
+		writel(mmc8_mode, aspeed_sdc->regs);
+
+		sdhci_set_clock(host, host->clock);
+	}
+
+	sdhci_reset(host, mask);
+}
+
+static int aspeed_sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
+{
+	struct sdhci_pltfm_host *pltfm_priv;
+	struct aspeed_sdhci *sdhci;
+	struct aspeed_sdc *sdc;
+	struct device *dev;
+
+	u32 val, left, right, edge;
+	u32 window, oldwindow = 0, center;
+	u32 in_phase, out_phase, enable_mask, inverted = 0;
+
+	dev = mmc_dev(host->mmc);
+	pltfm_priv = sdhci_priv(host);
+	sdhci = sdhci_pltfm_priv(pltfm_priv);
+	sdc = sdhci->parent;
+
+	out_phase = readl(sdc->regs + ASPEED_SDC_PHASE) & ASPEED_SDC_S0_PHASE_OUT;
+
+	enable_mask = ASPEED_SDC_S0_PHASE_OUT_EN | ASPEED_SDC_S0_PHASE_IN_EN;
+
+	/*
+	 * There are two window upon clock rising and falling edge.
+	 * Iterate each tap delay to find the valid window and choose the
+	 * bigger one, set the tap delay at the middle of window.
+	 */
+	for (edge = 0; edge < 2; edge++) {
+		if (edge == 1)
+			inverted = ASPEED_SDHCI_TAP_PARAM_INVERT_CLK;
+
+		val = (out_phase | enable_mask | (inverted << ASPEED_SDC_S0_PHASE_IN_SHIFT));
+
+		/* find the left boundary */
+		for (left = 0; left < ASPEED_SDHCI_NR_TAPS + 1; left++) {
+			in_phase = val | (left << ASPEED_SDC_S0_PHASE_IN_SHIFT);
+			writel(in_phase, sdc->regs + ASPEED_SDC_PHASE);
+
+			if (!mmc_send_tuning(host->mmc, opcode, NULL))
+				break;
+		}
+
+		/* find the right boundary */
+		for (right = left + 1; right < ASPEED_SDHCI_NR_TAPS + 1; right++) {
+			in_phase = val | (right << ASPEED_SDC_S0_PHASE_IN_SHIFT);
+			writel(in_phase, sdc->regs + ASPEED_SDC_PHASE);
+
+			if (mmc_send_tuning(host->mmc, opcode, NULL))
+				break;
+		}
+
+		window = right - left;
+		pr_debug("tuning window[%d][%d~%d] = %d\n", edge, left, right, window);
+
+		if (window > oldwindow) {
+			oldwindow = window;
+			center = (((right - 1) + left) / 2) | inverted;
+		}
+	}
+
+	val = (out_phase | enable_mask | (center << ASPEED_SDC_S0_PHASE_IN_SHIFT));
+	writel(val, sdc->regs + ASPEED_SDC_PHASE);
+
+	pr_debug("input tuning result=%x\n", val);
+
+	inverted = 0;
+	out_phase = val & ~ASPEED_SDC_S0_PHASE_OUT;
+	in_phase = out_phase;
+	oldwindow = 0;
+
+	for (edge = 0; edge < 2; edge++) {
+		if (edge == 1)
+			inverted = ASPEED_SDHCI_TAP_PARAM_INVERT_CLK;
+
+		val = (in_phase | enable_mask | (inverted << ASPEED_SDC_S0_PHASE_OUT_SHIFT));
+
+		/* find the left boundary */
+		for (left = 0; left < ASPEED_SDHCI_NR_TAPS + 1; left++) {
+			out_phase = val | (left << ASPEED_SDC_S0_PHASE_OUT_SHIFT);
+			writel(out_phase, sdc->regs + ASPEED_SDC_PHASE);
+
+			if (!mmc_send_tuning(host->mmc, opcode, NULL))
+				break;
+		}
+
+		/* find the right boundary */
+		for (right = left + 1; right < ASPEED_SDHCI_NR_TAPS + 1; right++) {
+			out_phase = val | (right << ASPEED_SDC_S0_PHASE_OUT_SHIFT);
+			writel(out_phase, sdc->regs + ASPEED_SDC_PHASE);
+
+			if (mmc_send_tuning(host->mmc, opcode, NULL))
+				break;
+		}
+
+		window = right - left;
+		pr_debug("tuning window[%d][%d~%d] = %d\n", edge, left, right, window);
+
+		if (window > oldwindow) {
+			oldwindow = window;
+			center = (((right - 1) + left) / 2) | inverted;
+		}
+	}
+
+	val = (in_phase | enable_mask | (center << ASPEED_SDC_S0_PHASE_OUT_SHIFT));
+	writel(val, sdc->regs + ASPEED_SDC_PHASE);
+
+	pr_debug("output tuning result=%x\n", val);
+
+	return mmc_send_tuning(host->mmc, opcode, NULL);
+}
+
+static void aspeed_sdhci_voltage_switch(struct sdhci_host *host)
+{
+	mdelay(30);
+}
+
 static const struct sdhci_ops aspeed_sdhci_ops = {
 	.read_l = aspeed_sdhci_readl,
-	.set_clock = aspeed_sdhci_set_clock,
-	.get_max_clock = aspeed_sdhci_get_max_clock,
+	.set_clock = sdhci_set_clock,
+	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
 	.set_bus_width = aspeed_sdhci_set_bus_width,
 	.get_timeout_clock = sdhci_pltfm_clk_get_max_clock,
-	.reset = sdhci_reset,
+	.voltage_switch = aspeed_sdhci_voltage_switch,
+	.reset = aspeed_sdhci_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	.platform_execute_tuning = aspeed_sdhci_execute_tuning,
 };
 
 static const struct sdhci_pltfm_data aspeed_sdhci_pdata = {
 	.ops = &aspeed_sdhci_ops,
 	.quirks = SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
 };
 
 static inline int aspeed_sdhci_calculate_slot(struct aspeed_sdhci *dev,
@@ -372,12 +362,6 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
 	int slot;
 	int ret;
 
-	aspeed_pdata = of_device_get_match_data(&pdev->dev);
-	if (!aspeed_pdata) {
-		dev_err(&pdev->dev, "Missing platform configuration data\n");
-		return -EINVAL;
-	}
-
 	host = sdhci_pltfm_init(pdev, &aspeed_sdhci_pdata, sizeof(*dev));
 	if (IS_ERR(host))
 		return PTR_ERR(host);
@@ -395,14 +379,6 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
 	else if (slot >= 2)
 		return -EINVAL;
 
-	if (slot < dev->pdata->nr_phase_descs) {
-		dev->phase_desc = &dev->pdata->phase_desc[slot];
-	} else {
-		dev_info(&pdev->dev,
-			 "Phase control not supported for slot %d\n", slot);
-		dev->phase_desc = NULL;
-	}
-
 	dev->width_mask = !slot ? ASPEED_SDC_S0_MMC8 : ASPEED_SDC_S1_MMC8;
 
 	dev_info(&pdev->dev, "Configured for slot %d\n", slot);
@@ -413,11 +389,13 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
 	    of_property_read_bool(np, "sd-uhs-sdr104")) {
 		aspeed_sdc_set_slot_capability(host, dev->parent, ASPEED_SDC_CAP1_1_8V,
 					       true, slot);
-	}
-
-	if (of_property_read_bool(np, "sd-uhs-sdr104")) {
 		aspeed_sdc_set_slot_capability(host, dev->parent, ASPEED_SDC_CAP2_SDR104,
 					       true, slot);
+	} else {
+		aspeed_sdc_set_slot_capability(host, dev->parent, ASPEED_SDC_CAP1_1_8V,
+					       0, slot);
+		aspeed_sdc_set_slot_capability(host, dev->parent, ASPEED_SDC_CAP2_SDR104,
+					       0, slot);
 	}
 
 	pltfm_host->clk = devm_clk_get(&pdev->dev, NULL);
@@ -431,9 +409,6 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
 	ret = mmc_of_parse(host->mmc);
 	if (ret)
 		goto err_sdhci_add;
-
-	if (dev->phase_desc)
-		mmc_of_parse_clk_phase(&pdev->dev, &dev->phase_map);
 
 	ret = sdhci_add_host(host);
 	if (ret)
@@ -463,45 +438,11 @@ static const struct aspeed_sdhci_pdata ast2400_sdhci_pdata = {
 	.clk_div_start = 2,
 };
 
-static const struct aspeed_sdhci_phase_desc ast2600_sdhci_phase[] = {
-	/* SDHCI/Slot 0 */
-	[0] = {
-		.in = {
-			.tap_mask = ASPEED_SDC_S0_PHASE_IN,
-			.enable_mask = ASPEED_SDC_S0_PHASE_IN_EN,
-			.enable_value = 1,
-		},
-		.out = {
-			.tap_mask = ASPEED_SDC_S0_PHASE_OUT,
-			.enable_mask = ASPEED_SDC_S0_PHASE_OUT_EN,
-			.enable_value = 3,
-		},
-	},
-	/* SDHCI/Slot 1 */
-	[1] = {
-		.in = {
-			.tap_mask = ASPEED_SDC_S1_PHASE_IN,
-			.enable_mask = ASPEED_SDC_S1_PHASE_IN_EN,
-			.enable_value = 1,
-		},
-		.out = {
-			.tap_mask = ASPEED_SDC_S1_PHASE_OUT,
-			.enable_mask = ASPEED_SDC_S1_PHASE_OUT_EN,
-			.enable_value = 3,
-		},
-	},
-};
-
-static const struct aspeed_sdhci_pdata ast2600_sdhci_pdata = {
-	.clk_div_start = 1,
-	.phase_desc = ast2600_sdhci_phase,
-	.nr_phase_descs = ARRAY_SIZE(ast2600_sdhci_phase),
-};
-
 static const struct of_device_id aspeed_sdhci_of_match[] = {
 	{ .compatible = "aspeed,ast2400-sdhci", .data = &ast2400_sdhci_pdata, },
-	{ .compatible = "aspeed,ast2500-sdhci", .data = &ast2400_sdhci_pdata, },
-	{ .compatible = "aspeed,ast2600-sdhci", .data = &ast2600_sdhci_pdata, },
+	{ .compatible = "aspeed,ast2500-sdhci", },
+	{ .compatible = "aspeed,ast2600-sdhci", },
+	{ .compatible = "aspeed,ast2600-emmc", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, aspeed_sdhci_of_match);
@@ -516,11 +457,22 @@ static struct platform_driver aspeed_sdhci_driver = {
 	.remove		= aspeed_sdhci_remove,
 };
 
+static const struct of_device_id aspeed_sdc_of_match[] = {
+	{ .compatible = "aspeed,ast2400-sd-controller", },
+	{ .compatible = "aspeed,ast2500-sd-controller", },
+	{ .compatible = "aspeed,ast2600-sd-controller", .data = &ast2600_sdc_info},
+	{ }
+};
+
+MODULE_DEVICE_TABLE(of, aspeed_sdc_of_match);
+
 static int aspeed_sdc_probe(struct platform_device *pdev)
 
 {
 	struct device_node *parent, *child;
 	struct aspeed_sdc *sdc;
+	const struct of_device_id *match = NULL;
+	const struct aspeed_sdc_info *info = NULL;
 	int ret;
 
 	sdc = devm_kzalloc(&pdev->dev, sizeof(*sdc), GFP_KERNEL);
@@ -528,6 +480,23 @@ static int aspeed_sdc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	spin_lock_init(&sdc->lock);
+
+	match = of_match_device(aspeed_sdc_of_match, &pdev->dev);
+	if (!match)
+		return -ENODEV;
+
+	if (match->data)
+		info = match->data;
+
+	if (info) {
+		if (info->flag & PROBE_AFTER_ASSET_DEASSERT) {
+			sdc->rst = devm_reset_control_get(&pdev->dev, NULL);
+			if (!IS_ERR(sdc->rst)) {
+				reset_control_assert(sdc->rst);
+				reset_control_deassert(sdc->rst);
+			}
+		}
+	}
 
 	sdc->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(sdc->clk))
@@ -572,15 +541,6 @@ static void aspeed_sdc_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(sdc->clk);
 }
-
-static const struct of_device_id aspeed_sdc_of_match[] = {
-	{ .compatible = "aspeed,ast2400-sd-controller", },
-	{ .compatible = "aspeed,ast2500-sd-controller", },
-	{ .compatible = "aspeed,ast2600-sd-controller", },
-	{ }
-};
-
-MODULE_DEVICE_TABLE(of, aspeed_sdc_of_match);
 
 static struct platform_driver aspeed_sdc_driver = {
 	.driver		= {
