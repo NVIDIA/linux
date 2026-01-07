@@ -381,9 +381,11 @@ static void hci_dma_unmap_xfer(struct i3c_hci *hci,
 
 	for (i = 0; i < n; i++) {
 		xfer = xfer_list + i;
-		if (!xfer->data)
+		if (!xfer->data || !xfer->dma)
 			continue;
 		i3c_master_dma_unmap_single(xfer->dma);
+		xfer->dma = NULL;
+		xfer->data = NULL;
 	}
 }
 
@@ -607,6 +609,7 @@ static void hci_dma_xfer_done(struct i3c_hci *hci, struct hci_rh_data *rh)
 			dev_dbg(&hci->master.dev, "orphaned ring entry");
 		} else {
 			hci_dma_unmap_xfer(hci, xfer, 1);
+			rh->src_xfers[done_ptr] = NULL;
 			xfer->ring_entry = -1;
 			xfer->response = resp;
 			if (tid != xfer->cmd_tid) {
