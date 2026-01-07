@@ -199,6 +199,14 @@
 #define VHUB_DSC1_IN_SET_LEN(x)		((x) & 0xfff)
 #define VHUB_DSC1_IN_LEN(x)		((x) & 0xfff)
 
+/***********************************
+ *                                 *
+ * USB2COM register definitions *
+ *                                 *
+ ***********************************/
+#define AST_VHUB_COM_MODE_SEL		0x10
+#define AST_VHUB_COM_EN_CTRL		0x1C
+
 /****************************************
  *                                      *
  * Data structures and misc definitions *
@@ -217,6 +225,8 @@
 #define AST_VHUB_DESCS_COUNT	256	/* Use 256 descriptor mode (valid
 					 * values are 256 and 32)
 					 */
+
+#define AST_VHUB_NUM_UART_PORTS	15	/* USB2COM ports */
 
 struct ast_vhub;
 struct ast_vhub_dev;
@@ -388,6 +398,8 @@ struct ast_vhub {
 	spinlock_t			lock;
 	struct work_struct		wake_work;
 	struct clk			*clk;
+	struct reset_control		*rst;
+
 
 	/* EP0 DMA buffers allocated in one chunk */
 	void				*ep0_bufs;
@@ -419,6 +431,7 @@ struct ast_vhub {
 
 	/* Upstream bus speed captured at bus reset */
 	unsigned int			speed;
+	u8				current_config;
 
 	/* Standard USB Descriptors of the vhub. */
 	struct usb_device_descriptor	vhub_dev_desc;

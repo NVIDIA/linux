@@ -116,10 +116,14 @@ static int ast_vhub_dev_feature(struct ast_vhub_dev *d,
 
 	if (wValue == USB_DEVICE_REMOTE_WAKEUP) {
 		d->wakeup_en = is_set;
-		return std_req_complete;
-	}
+		val = readl(d->vhub->regs + AST_VHUB_CTRL);
+		if (is_set)
+			writel(val | VHUB_CTRL_AUTO_REMOTE_WAKEUP,
+			       d->vhub->regs + AST_VHUB_CTRL);
 
-	if (wValue == USB_DEVICE_TEST_MODE) {
+		return std_req_complete;
+
+	} else if (wValue == USB_DEVICE_TEST_MODE) {
 		val = readl(d->vhub->regs + AST_VHUB_CTRL);
 		val &= ~GENMASK(10, 8);
 		val |= VHUB_CTRL_SET_TEST_MODE((wIndex >> 8) & 0x7);
@@ -239,7 +243,7 @@ int ast_vhub_std_dev_request(struct ast_vhub_ep *ep,
 		d->gadget.speed = ep->vhub->speed;
 		if (d->gadget.speed > d->driver->max_speed)
 			d->gadget.speed = d->driver->max_speed;
-		DDBG(d, "fist packet, captured speed %d\n",
+		DDBG(d, "first packet, captured speed %d\n",
 		     d->gadget.speed);
 	}
 

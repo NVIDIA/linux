@@ -156,7 +156,7 @@
 #define AST_EP_DMA_DESC_PID_DATA1	(2 << 14)
 #define AST_EP_DMA_DESC_PID_MDATA	(3 << 14)
 #define EP_DESC1_IN_LEN(x)		((x) & 0x1fff)
-#define AST_EP_DMA_DESC_MAX_LEN		(7680) /* Max packet length for transmit in 1 desc */
+#define AST_EP_DMA_DESC_MAX_LEN		(4096) /* Max packet length for transmit in 1 desc */
 
 struct ast_udc_request {
 	struct usb_request	req;
@@ -278,6 +278,17 @@ static const char * const ast_ep_name[] = {
 
 /*-------------------------------------------------------------------------*/
 
+static inline void ast_udc_dma_workaround(void *addr)
+{
+	/*
+	 * The workaround consists of using a dummy read of the memory before
+	 * doing the MMIO writes. This will ensure that the previous writes
+	 * have been "pushed out".
+	 */
+	mb();
+	(void)__raw_readl((void __iomem *)addr);
+}
+
 static void ast_udc_done(struct ast_udc_ep *ep, struct ast_udc_request *req,
 			 int status)
 {
@@ -368,7 +379,6 @@ static int ast_udc_ep_enable(struct usb_ep *_ep,
 	ep->desc = desc;
 	ep->stopped = 0;
 	ep->ep.maxpacket = maxpacket;
-	ep->chunk_max = AST_EP_DMA_DESC_MAX_LEN;
 
 	if (maxpacket < AST_UDC_EPn_MAX_PACKET)
 		ep_conf = EP_SET_MAX_PKT(maxpacket);
@@ -381,7 +391,18 @@ static int ast_udc_ep_enable(struct usb_ep *_ep,
 	if (!ep->dir_in)
 		ep_conf |= EP_DIR_OUT;
 
-	EP_DBG(ep, "type %d, dir_in %d\n", type, dir_in);
+	/*
+	 * Large send function can send up to 8 packets from
+	 * one descriptor with a limit of 4096 bytes.
+	 */
+	ep->chunk_max = ep->ep.maxpacket;
+	if (ep->dir_in) {
+		ep->chunk_max <<= 3;
+		while (ep->chunk_max > AST_EP_DMA_DESC_MAX_LEN)
+			ep->chunk_max -= ep->ep.maxpacket;
+	}
+
+	EP_DBG(ep, "type %d, dir_in %d, chunk_max %d\n", type, dir_in, ep->chunk_max);
 	switch (type) {
 	case USB_ENDPOINT_XFER_ISOC:
 		ep_conf |= EP_SET_TYPE_MASK(EP_TYPE_ISO);
@@ -478,7 +499,7 @@ static int ast_dma_descriptor_setup(struct ast_udc_ep *ep, u32 dma_buf,
 	struct device *dev = &udc->pdev->dev;
 	bool last = false;
 	int chunk, count;
-	u32 offset;
+	u32 offset, size;
 
 	if (!ep->descs) {
 		dev_warn(dev, "%s: Empty DMA descs list failure\n",
@@ -489,9 +510,9 @@ static int ast_dma_descriptor_setup(struct ast_udc_ep *ep, u32 dma_buf,
 	chunk = tx_len;
 	offset = count = 0;
 
-	EP_DBG(ep, "req @%p, %s:%d, %s:0x%x, %s:0x%x\n", req,
+	EP_DBG(ep, "req @%p, %s:%d, %s:0x%x, %s:0x%x zero=%d\n", req,
 	       "wptr", ep->descs_wptr, "dma_buf", dma_buf,
-	       "tx_len", tx_len);
+	       "tx_len", tx_len, req->req.zero);
 
 	/* Create Descriptor Lists */
 	while (chunk >= 0 && !last && count < AST_UDC_DESCS_COUNT) {
@@ -499,13 +520,23 @@ static int ast_dma_descriptor_setup(struct ast_udc_ep *ep, u32 dma_buf,
 		ep->descs[ep->descs_wptr].des_0 = dma_buf + offset;
 
 		if (chunk > ep->chunk_max) {
-			ep->descs[ep->descs_wptr].des_1 = ep->chunk_max;
+			size = ep->chunk_max;
 		} else {
-			ep->descs[ep->descs_wptr].des_1 = chunk;
-			last = true;
+			size = chunk;
+			/*
+			 * Check if this is the last packet?
+			 * May go the loop again for the zero length packet
+			 */
+			if (!chunk || !req->req.zero || (chunk % ep->ep.maxpacket) != 0)
+				last = true;
 		}
 
-		chunk -= ep->chunk_max;
+		ep->descs[ep->descs_wptr].des_1 = size;
+		chunk -= size;
+		offset += size;
+
+		if (last)
+			ast_udc_dma_workaround(&ep->descs[ep->descs_wptr]);
 
 		EP_DBG(ep, "descs[%d]: 0x%x 0x%x\n",
 		       ep->descs_wptr,
@@ -520,8 +551,6 @@ static int ast_dma_descriptor_setup(struct ast_udc_ep *ep, u32 dma_buf,
 
 		if (ep->descs_wptr >= AST_UDC_DESCS_COUNT)
 			ep->descs_wptr = 0;
-
-		offset = ep->chunk_max * count;
 	}
 
 	return 0;
@@ -538,6 +567,9 @@ static void ast_udc_epn_kick(struct ast_udc_ep *ep, struct ast_udc_request *req)
 	EP_DBG(ep, "kick req @%p, len:%d, dir:%d\n",
 	       req, tx_len, ep->dir_in);
 
+	if (ep->dir_in)
+		ast_udc_dma_workaround(req->req.buf + req->req.actual);
+
 	ast_ep_write(ep, req->req.dma + req->req.actual, AST_UDC_EP_DMA_BUFF);
 
 	/* Start DMA */
@@ -549,11 +581,13 @@ static void ast_udc_epn_kick(struct ast_udc_ep *ep, struct ast_udc_request *req)
 static void ast_udc_epn_kick_desc(struct ast_udc_ep *ep,
 				  struct ast_udc_request *req)
 {
+	u32 count;
 	u32 descs_max_size;
 	u32 tx_len;
 	u32 last;
 
-	descs_max_size = AST_EP_DMA_DESC_MAX_LEN * AST_UDC_DESCS_COUNT;
+	count = req->req.zero ? AST_UDC_DESCS_COUNT - 1 : AST_UDC_DESCS_COUNT;
+	descs_max_size = AST_EP_DMA_DESC_MAX_LEN * count;
 
 	last = req->req.length - req->req.actual;
 	tx_len = last > descs_max_size ? descs_max_size : last;
@@ -1134,21 +1168,6 @@ static irqreturn_t ast_udc_isr(int irq, void *data)
 	/* Ack interrupts */
 	ast_udc_write(udc, isr, AST_UDC_ISR);
 
-	if (isr & UDC_IRQ_BUS_RESET) {
-		ISR_DBG(udc, "UDC_IRQ_BUS_RESET\n");
-		udc->gadget.speed = USB_SPEED_UNKNOWN;
-
-		ep = &udc->ep[1];
-		EP_DBG(ep, "dctrl:0x%x\n",
-		       ast_ep_read(ep, AST_UDC_EP_DMA_CTRL));
-
-		if (udc->driver && udc->driver->reset) {
-			spin_unlock(&udc->lock);
-			udc->driver->reset(&udc->gadget);
-			spin_lock(&udc->lock);
-		}
-	}
-
 	if (isr & UDC_IRQ_BUS_SUSPEND) {
 		ISR_DBG(udc, "UDC_IRQ_BUS_SUSPEND\n");
 		udc->suspended_from = udc->gadget.state;
@@ -1168,6 +1187,21 @@ static irqreturn_t ast_udc_isr(int irq, void *data)
 		if (udc->driver && udc->driver->resume) {
 			spin_unlock(&udc->lock);
 			udc->driver->resume(&udc->gadget);
+			spin_lock(&udc->lock);
+		}
+	}
+
+	if (isr & UDC_IRQ_BUS_RESET) {
+		ISR_DBG(udc, "UDC_IRQ_BUS_RESET\n");
+		udc->gadget.speed = USB_SPEED_UNKNOWN;
+
+		ep = &udc->ep[1];
+		EP_DBG(ep, "dctrl:0x%x\n",
+		       ast_ep_read(ep, AST_UDC_EP_DMA_CTRL));
+
+		if (udc->driver && udc->driver->reset) {
+			spin_unlock(&udc->lock);
+			udc->driver->reset(&udc->gadget);
 			spin_lock(&udc->lock);
 		}
 	}
@@ -1303,6 +1337,7 @@ static int ast_udc_start(struct usb_gadget *gadget,
 	UDC_DBG(udc, "\n");
 	udc->driver = driver;
 	udc->gadget.dev.of_node = udc->pdev->dev.of_node;
+	udc->gadget.dev.of_node_reused = true;
 
 	for (i = 0; i < AST_UDC_NUM_ENDPOINTS; i++) {
 		ep = &udc->ep[i];
