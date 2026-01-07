@@ -25,13 +25,31 @@
 		#size-cells = <1>;
 		ranges;
 
+		video_engine_memory: video {
+			size = <0x02000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
 		gfx_memory: framebuffer {
 			size = <0x01000000>;
 			alignment = <0x01000000>;
 			compatible = "shared-dma-pool";
 			reusable;
 		};
+
+		mctp_reserved: mctp_reserved@8a000000 {
+			reg = <0x8a000000 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
 	};
+};
+
+&mctp {
+	status = "okay";
+	memory-region = <&mctp_reserved>;
 };
 
 &fmc {
@@ -41,7 +59,7 @@
 		m25p,fast-read;
 		label = "bmc";
 		spi-max-frequency = <50000000>;
-#include "openbmc-flash-layout.dtsi"
+#include "aspeed-evb-flash-layout.dtsi"
 	};
 };
 
@@ -60,6 +78,10 @@
 };
 
 &uart5 {
+	status = "okay";
+};
+
+&uart_routing {
 	status = "okay";
 };
 
@@ -107,6 +129,14 @@
 	pinctrl-0 = <&pinctrl_sd1_default>;
 };
 
+&sdhci1 {
+	status = "okay";
+
+	non-removable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sd2_default>;
+};
+
 /*
  * Enable port A as device (via the virtual hub) and port B as
  * host by default on the eval board. This can be easily changed
@@ -125,9 +155,46 @@
 	status = "okay";
 };
 
-&gfx {
-     status = "okay";
-     memory-region = <&gfx_memory>;
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
+&uart3 {
+	status = "okay";
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&kcs1 {
+	kcs_addr = <0xca0>;
+	status = "okay";
+};
+
+&kcs2 {
+	kcs_addr = <0xca8>;
+	status = "okay";
+};
+
+&kcs3 {
+	kcs_addr = <0xca2>;
+	status = "okay";
+};
+
+&kcs4 {
+	kcs_addr = <0xca4>;
+	status = "okay";
+};
+
+&lpc_snoop {
+	status = "okay";
+	snoop-ports = <0x80>;
+};
+
+&ibt {
+	status = "okay";
 };
 
 &rtc {
