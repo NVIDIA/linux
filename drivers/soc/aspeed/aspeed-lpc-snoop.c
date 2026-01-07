@@ -11,7 +11,6 @@
  */
 
 #include <linux/bitops.h>
-#include <linux/clk.h>
 #include <linux/dev_printk.h>
 #include <linux/interrupt.h>
 #include <linux/fs.h>
@@ -82,7 +81,6 @@ struct aspeed_lpc_snoop_channel {
 struct aspeed_lpc_snoop {
 	struct regmap		*regmap;
 	int			irq;
-	struct clk		*clk;
 	struct aspeed_lpc_snoop_channel chan[ASPEED_LPC_SNOOP_INDEX_MAX + 1];
 };
 
@@ -102,6 +100,8 @@ static const struct aspeed_lpc_snoop_channel_cfg channel_cfgs[ASPEED_LPC_SNOOP_I
 		.hicrb_en = HICRB_ENSNP1D,
 	},
 };
+
+static DEFINE_IDA(aspeed_lpc_snoop_ida);
 
 static struct aspeed_lpc_snoop_channel *snoop_file_to_chan(struct file *file)
 {
@@ -173,7 +173,8 @@ static irqreturn_t aspeed_lpc_snoop_irq(int irq, void *arg)
 		return IRQ_NONE;
 
 	/* Ack pending IRQs */
-	regmap_write(lpc_snoop->regmap, HICR6, reg);
+	regmap_update_bits(lpc_snoop->regmap, HICR6,
+			   (HICR6_STR_SNP0W | HICR6_STR_SNP1W), reg);
 
 	/* Read and save most recent snoop'ed data byte to FIFO */
 	regmap_read(lpc_snoop->regmap, SNPWDR, &data);
@@ -222,7 +223,7 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 				    u16 lpc_port)
 {
 	const struct aspeed_lpc_snoop_model_data *model_data;
-	int rc = 0;
+	int rc = 0, id;
 
 	if (WARN_ON(channel->enabled))
 		return -EBUSY;
@@ -234,8 +235,12 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 	channel->miscdev.fops = &snoop_fops;
 	channel->miscdev.parent = dev;
 
+	id = ida_alloc(&aspeed_lpc_snoop_ida, GFP_KERNEL);
+	if (id < 0)
+		return id;
+
 	channel->miscdev.name =
-		devm_kasprintf(dev, GFP_KERNEL, "%s%d", DEVICE_NAME, cfg->index);
+		devm_kasprintf(dev, GFP_KERNEL, "%s%d", DEVICE_NAME, id);
 	if (!channel->miscdev.name)
 		return -ENOMEM;
 
@@ -305,22 +310,12 @@ static int aspeed_lpc_snoop_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	np = pdev->dev.parent->of_node;
-	if (!of_device_is_compatible(np, "aspeed,ast2400-lpc-v2") &&
-	    !of_device_is_compatible(np, "aspeed,ast2500-lpc-v2") &&
-	    !of_device_is_compatible(np, "aspeed,ast2600-lpc-v2")) {
-		dev_err(dev, "unsupported LPC device binding\n");
-		return -ENODEV;
-	}
 
 	lpc_snoop->regmap = syscon_node_to_regmap(np);
 	if (IS_ERR(lpc_snoop->regmap))
 		return dev_err_probe(dev, PTR_ERR(lpc_snoop->regmap), "Couldn't get regmap\n");
 
 	dev_set_drvdata(&pdev->dev, lpc_snoop);
-
-	lpc_snoop->clk = devm_clk_get_enabled(dev, NULL);
-	if (IS_ERR(lpc_snoop->clk))
-		return dev_err_probe(dev, PTR_ERR(lpc_snoop->clk), "couldn't get clock");
 
 	rc = aspeed_lpc_snoop_config_irq(lpc_snoop, pdev);
 	if (rc)
