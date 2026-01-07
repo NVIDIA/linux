@@ -72,6 +72,8 @@
 #define ASPEED_ADC_BAT_SENSING_ENABLE		BIT(13)
 #define ASPEED_ADC_CTRL_CHANNEL			GENMASK(31, 16)
 #define ASPEED_ADC_CTRL_CHANNEL_ENABLE(ch)	FIELD_PREP(ASPEED_ADC_CTRL_CHANNEL, BIT(ch))
+#define ADC_MASK(n)				((n) < 16 ? ((1U << (n)) - 1) : 0xFFFF)
+#define ASPEED_ADC_CTRL_CHANNELS_ENABLE(chs)	FIELD_PREP(ASPEED_ADC_CTRL_CHANNEL, ADC_MASK(chs))
 
 #define ASPEED_ADC_INIT_POLLING_TIME	500
 #define ASPEED_ADC_INIT_TIMEOUT		500000
@@ -81,6 +83,8 @@
  * sampling rate for most use cases.
  */
 #define ASPEED_ADC_DEF_SAMPLING_RATE	65000
+
+static DEFINE_IDA(aspeed_adc_ida);
 
 struct aspeed_adc_trim_locate {
 	const unsigned int offset;
@@ -95,6 +99,7 @@ struct aspeed_adc_model_data {
 	bool wait_init_sequence;
 	bool need_prescaler;
 	bool bat_sense_sup;
+	bool require_extra_eoc;
 	u8 scaler_bit_width;
 	unsigned int num_channels;
 	const struct aspeed_adc_trim_locate *trim_locate;
@@ -107,6 +112,7 @@ struct adc_gain {
 
 struct aspeed_adc_data {
 	struct device		*dev;
+	int			id;
 	const struct aspeed_adc_model_data *model_data;
 	void __iomem		*base;
 	spinlock_t		clk_lock;
@@ -119,6 +125,26 @@ struct aspeed_adc_data {
 	int			cv;
 	bool			battery_sensing;
 	struct adc_gain		battery_mode_gain;
+	unsigned int		required_eoc_num;
+	u16			*upper_bound;
+	u16			*lower_bound;
+	bool			*upper_en;
+	bool			*lower_en;
+};
+
+static const struct iio_event_spec aspeed_adc_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate =
+			BIT(IIO_EV_INFO_VALUE) | BIT(IIO_EV_INFO_ENABLE),
+	},
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate =
+			BIT(IIO_EV_INFO_VALUE) | BIT(IIO_EV_INFO_ENABLE),
+	},
 };
 
 #define ASPEED_CHAN(_idx, _data_reg_addr) {			\
@@ -130,6 +156,8 @@ struct aspeed_adc_data {
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |	\
 				BIT(IIO_CHAN_INFO_SAMP_FREQ) |	\
 				BIT(IIO_CHAN_INFO_OFFSET),	\
+	.event_spec = aspeed_adc_events,			\
+	.num_event_specs = ARRAY_SIZE(aspeed_adc_events),	\
 }
 
 static const struct iio_chan_spec aspeed_adc_iio_channels[] = {
@@ -174,18 +202,11 @@ static const struct iio_chan_spec aspeed_adc_iio_bat_channels[] = {
 
 static int aspeed_adc_set_trim_data(struct iio_dev *indio_dev)
 {
-	struct device_node *syscon;
 	struct regmap *scu;
 	u32 scu_otp, trimming_val;
 	struct aspeed_adc_data *data = iio_priv(indio_dev);
 
-	syscon = of_find_node_by_name(NULL, "syscon");
-	if (syscon == NULL) {
-		dev_warn(data->dev, "Couldn't find syscon node\n");
-		return -EOPNOTSUPP;
-	}
-	scu = syscon_node_to_regmap(syscon);
-	of_node_put(syscon);
+	scu = syscon_regmap_lookup_by_phandle(data->dev->of_node, "aspeed,scu");
 	if (IS_ERR(scu)) {
 		dev_warn(data->dev, "Failed to get syscon regmap\n");
 		return -EOPNOTSUPP;
@@ -276,36 +297,68 @@ static int aspeed_adc_set_sampling_rate(struct iio_dev *indio_dev, u32 rate)
 	return 0;
 }
 
+static int aspeed_adc_get_voltage_raw(struct aspeed_adc_data *data, struct iio_chan_spec const *chan)
+{
+	int val;
+
+	val = readw(data->base + chan->address);
+	dev_dbg(data->dev,
+		"%d upper_bound: %d %x, lower_bound: %d %x, delay: %d * %d ns",
+		chan->channel, data->upper_en[chan->channel],
+		data->upper_bound[chan->channel], data->lower_en[chan->channel],
+		data->lower_bound[chan->channel], data->sample_period_ns,
+		data->required_eoc_num);
+	if (data->upper_en[chan->channel]) {
+		if (val >= data->upper_bound[chan->channel]) {
+			ndelay(data->sample_period_ns *
+			       data->required_eoc_num);
+			val = readw(data->base + chan->address);
+		}
+	}
+	if (data->lower_en[chan->channel]) {
+		if (val <= data->lower_bound[chan->channel]) {
+			ndelay(data->sample_period_ns *
+			       data->required_eoc_num);
+			val = readw(data->base + chan->address);
+		}
+	}
+	return val;
+}
+
 static int aspeed_adc_read_raw(struct iio_dev *indio_dev,
 			       struct iio_chan_spec const *chan,
 			       int *val, int *val2, long mask)
 {
 	struct aspeed_adc_data *data = iio_priv(indio_dev);
-	u32 adc_engine_control_reg_val;
+	u32 engine_ctrl_tmp_val, reg_val;
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		if (data->battery_sensing && chan->channel == 7) {
-			adc_engine_control_reg_val =
-				readl(data->base + ASPEED_REG_ENGINE_CONTROL);
-			writel(adc_engine_control_reg_val |
-				       FIELD_PREP(ASPEED_ADC_CH7_MODE,
-						  ASPEED_ADC_CH7_BAT) |
-				       ASPEED_ADC_BAT_SENSING_ENABLE,
-			       data->base + ASPEED_REG_ENGINE_CONTROL);
+		if (data->model_data->bat_sense_sup &&
+		    chan->channel == data->model_data->num_channels - 1) {
+			engine_ctrl_tmp_val = readl(data->base + ASPEED_REG_ENGINE_CONTROL);
+			reg_val = engine_ctrl_tmp_val &
+				  ~ASPEED_ADC_CTRL_CHANNELS_ENABLE(data->model_data->num_channels);
+			reg_val |= ASPEED_ADC_CTRL_CHANNEL_ENABLE(chan->channel);
+			if (data->battery_sensing)
+				reg_val |= FIELD_PREP(ASPEED_ADC_CH7_MODE, ASPEED_ADC_CH7_BAT) |
+					   ASPEED_ADC_BAT_SENSING_ENABLE;
+			writel(reg_val, data->base + ASPEED_REG_ENGINE_CONTROL);
 			/*
 			 * After enable battery sensing mode need to wait some time for adc stable
 			 * Experiment result is 1ms.
 			 */
 			mdelay(1);
-			*val = readw(data->base + chan->address);
-			*val = (*val * data->battery_mode_gain.mult) /
-			       data->battery_mode_gain.div;
+			*val = aspeed_adc_get_voltage_raw(data, chan);
+			if (data->battery_sensing)
+				*val = (*val * data->battery_mode_gain.mult) /
+				       data->battery_mode_gain.div;
 			/* Restore control register value */
-			writel(adc_engine_control_reg_val,
+			writel(engine_ctrl_tmp_val,
 			       data->base + ASPEED_REG_ENGINE_CONTROL);
-		} else
-			*val = readw(data->base + chan->address);
+		} else {
+			*val = aspeed_adc_get_voltage_raw(data, chan);
+		}
 		return IIO_VAL_INT;
 
 	case IIO_CHAN_INFO_OFFSET:
@@ -368,9 +421,106 @@ static int aspeed_adc_reg_access(struct iio_dev *indio_dev,
 	return 0;
 }
 
+static int aspeed_adc_read_event_config(struct iio_dev *indio_dev,
+					const struct iio_chan_spec *chan,
+					enum iio_event_type type,
+					enum iio_event_direction dir)
+{
+	struct aspeed_adc_data *data = iio_priv(indio_dev);
+
+	switch (dir) {
+	case IIO_EV_DIR_RISING:
+		return data->upper_en[chan->channel];
+	case IIO_EV_DIR_FALLING:
+		return data->lower_en[chan->channel];
+	default:
+		return -EINVAL;
+	}
+}
+
+static int aspeed_adc_write_event_config(struct iio_dev *indio_dev,
+					 const struct iio_chan_spec *chan,
+					 enum iio_event_type type,
+					 enum iio_event_direction dir,
+					 bool state)
+{
+	struct aspeed_adc_data *data = iio_priv(indio_dev);
+
+	switch (dir) {
+	case IIO_EV_DIR_RISING:
+		data->upper_en[chan->channel] = state ? 1 : 0;
+		break;
+	case IIO_EV_DIR_FALLING:
+		data->lower_en[chan->channel] = state ? 1 : 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int aspeed_adc_write_event_value(struct iio_dev *indio_dev,
+					const struct iio_chan_spec *chan,
+					enum iio_event_type type,
+					enum iio_event_direction dir,
+					enum iio_event_info info, int val,
+					int val2)
+{
+	struct aspeed_adc_data *data = iio_priv(indio_dev);
+
+	if (info != IIO_EV_INFO_VALUE)
+		return -EINVAL;
+
+	switch (dir) {
+	case IIO_EV_DIR_RISING:
+		if (val >= BIT(ASPEED_RESOLUTION_BITS))
+			return -EINVAL;
+		data->upper_bound[chan->channel] = val;
+		break;
+	case IIO_EV_DIR_FALLING:
+		data->lower_bound[chan->channel] = val;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int aspeed_adc_read_event_value(struct iio_dev *indio_dev,
+				       const struct iio_chan_spec *chan,
+				       enum iio_event_type type,
+				       enum iio_event_direction dir,
+				       enum iio_event_info info, int *val,
+				       int *val2)
+{
+	struct aspeed_adc_data *data = iio_priv(indio_dev);
+
+	if (info != IIO_EV_INFO_VALUE)
+		return -EINVAL;
+
+	switch (dir) {
+	case IIO_EV_DIR_RISING:
+		*val = data->upper_bound[chan->channel];
+		break;
+	case IIO_EV_DIR_FALLING:
+		*val = data->lower_bound[chan->channel];
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return IIO_VAL_INT;
+}
+
 static const struct iio_info aspeed_adc_iio_info = {
 	.read_raw = aspeed_adc_read_raw,
 	.write_raw = aspeed_adc_write_raw,
+	.read_event_config = &aspeed_adc_read_event_config,
+	.write_event_config = &aspeed_adc_write_event_config,
+	.read_event_value = &aspeed_adc_read_event_value,
+	.write_event_value = &aspeed_adc_write_event_value,
 	.debugfs_reg_access = aspeed_adc_reg_access,
 };
 
@@ -379,6 +529,13 @@ static void aspeed_adc_unregister_fixed_divider(void *data)
 	struct clk_hw *clk = data;
 
 	clk_hw_unregister_fixed_factor(clk);
+}
+
+static void aspeed_adc_ida_remove(void *data)
+{
+	struct aspeed_adc_data *priv_data = data;
+
+	ida_free(&aspeed_adc_ida, priv_data->id);
 }
 
 static void aspeed_adc_reset_assert(void *data)
@@ -415,6 +572,7 @@ static int aspeed_adc_vref_config(struct iio_dev *indio_dev)
 	}
 	adc_engine_control_reg_val =
 		readl(data->base + ASPEED_REG_ENGINE_CONTROL);
+	adc_engine_control_reg_val &= ~ASPEED_ADC_REF_VOLTAGE;
 
 	ret = devm_regulator_get_enable_read_voltage(data->dev, "vref");
 	if (ret < 0 && ret != -ENODEV)
@@ -474,6 +632,7 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	u32 adc_engine_control_reg_val;
 	unsigned long scaler_flags = 0;
 	char clk_name[32], clk_parent_name[32];
+	const char *model_name;
 
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*data));
 	if (!indio_dev)
@@ -488,12 +647,44 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	if (IS_ERR(data->base))
 		return PTR_ERR(data->base);
 
+	data->upper_bound = devm_kzalloc(&pdev->dev,
+					 sizeof(data->upper_bound) *
+						 data->model_data->num_channels,
+					 GFP_KERNEL);
+	if (!data->upper_bound)
+		return -ENOMEM;
+	data->upper_en = devm_kzalloc(&pdev->dev,
+				      sizeof(data->upper_en) *
+					      data->model_data->num_channels,
+				      GFP_KERNEL);
+	if (!data->upper_en)
+		return -ENOMEM;
+	data->lower_bound = devm_kzalloc(&pdev->dev,
+					 sizeof(data->lower_bound) *
+						 data->model_data->num_channels,
+					 GFP_KERNEL);
+	if (!data->lower_bound)
+		return -ENOMEM;
+	data->lower_en = devm_kzalloc(&pdev->dev,
+				      sizeof(data->lower_en) *
+					      data->model_data->num_channels,
+				      GFP_KERNEL);
+	if (!data->lower_en)
+		return -ENOMEM;
+	data->id = ida_alloc(&aspeed_adc_ida, GFP_KERNEL);
+	if (data->id < 0)
+		return data->id;
+	ret = devm_add_action_or_reset(data->dev, aspeed_adc_ida_remove, data);
+	if (ret)
+		return ret;
+	model_name = kasprintf(GFP_KERNEL, "%s-%d",
+			       data->model_data->model_name, data->id);
 	/* Register ADC clock prescaler with source specified by device tree. */
 	spin_lock_init(&data->clk_lock);
 	snprintf(clk_parent_name, ARRAY_SIZE(clk_parent_name), "%s",
 		 of_clk_get_parent_name(pdev->dev.of_node, 0));
 	snprintf(clk_name, ARRAY_SIZE(clk_name), "%s-fixed-div",
-		 data->model_data->model_name);
+		 model_name);
 	data->fixed_div_clk = clk_hw_register_fixed_factor(
 		&pdev->dev, clk_name, clk_parent_name, 0, 1, 2);
 	if (IS_ERR(data->fixed_div_clk))
@@ -508,7 +699,7 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 
 	if (data->model_data->need_prescaler) {
 		snprintf(clk_name, ARRAY_SIZE(clk_name), "%s-prescaler",
-			 data->model_data->model_name);
+			 model_name);
 		data->clk_prescaler = devm_clk_hw_register_divider(
 			&pdev->dev, clk_name, clk_parent_name, 0,
 			data->base + ASPEED_REG_CLOCK_CONTROL, 17, 15, 0,
@@ -524,7 +715,7 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	 * setting to adjust the prescaler as well.
 	 */
 	snprintf(clk_name, ARRAY_SIZE(clk_name), "%s-scaler",
-		 data->model_data->model_name);
+		 model_name);
 	data->clk_scaler = devm_clk_hw_register_divider(
 		&pdev->dev, clk_name, clk_parent_name, scaler_flags,
 		data->base + ASPEED_REG_CLOCK_CONTROL, 0,
@@ -612,13 +803,25 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 
 	aspeed_adc_compensation(indio_dev);
 	/* Start all channels in normal mode. */
-	adc_engine_control_reg_val =
-		readl(data->base + ASPEED_REG_ENGINE_CONTROL);
-	adc_engine_control_reg_val |= ASPEED_ADC_CTRL_CHANNEL;
+	adc_engine_control_reg_val = readl(data->base + ASPEED_REG_ENGINE_CONTROL);
+	/* Disable the last channel when the controller supports battery sensing */
+	if (data->model_data->bat_sense_sup)
+		adc_engine_control_reg_val |=
+			ASPEED_ADC_CTRL_CHANNELS_ENABLE(data->model_data->num_channels - 1);
+	else
+		adc_engine_control_reg_val |=
+			ASPEED_ADC_CTRL_CHANNELS_ENABLE(data->model_data->num_channels);
 	writel(adc_engine_control_reg_val,
 	       data->base + ASPEED_REG_ENGINE_CONTROL);
-
-	indio_dev->name = data->model_data->model_name;
+	adc_engine_control_reg_val =
+		FIELD_GET(ASPEED_ADC_CTRL_CHANNEL,
+			  readl(data->base + ASPEED_REG_ENGINE_CONTROL));
+	data->required_eoc_num = hweight_long(adc_engine_control_reg_val);
+	if (data->model_data->require_extra_eoc &&
+	    (adc_engine_control_reg_val &
+	     BIT(data->model_data->num_channels - 1)))
+		data->required_eoc_num += 12;
+	indio_dev->name = model_name;
 	indio_dev->info = &aspeed_adc_iio_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->channels = data->battery_sensing ?
@@ -645,6 +848,16 @@ static const struct aspeed_adc_trim_locate ast2600_adc1_trim = {
 	.field = GENMASK(7, 4),
 };
 
+static const struct aspeed_adc_trim_locate ast2700_adc0_trim = {
+	.offset = 0x820,
+	.field = GENMASK(3, 0),
+};
+
+static const struct aspeed_adc_trim_locate ast2700_adc1_trim = {
+	.offset = 0x820,
+	.field = GENMASK(7, 4),
+};
+
 static const struct aspeed_adc_model_data ast2400_model_data = {
 	.model_name = "ast2400-adc",
 	.vref_fixed_mv = 2500,
@@ -653,6 +866,7 @@ static const struct aspeed_adc_model_data ast2400_model_data = {
 	.need_prescaler = true,
 	.scaler_bit_width = 10,
 	.num_channels = 16,
+	.require_extra_eoc = 0,
 };
 
 static const struct aspeed_adc_model_data ast2500_model_data = {
@@ -665,6 +879,7 @@ static const struct aspeed_adc_model_data ast2500_model_data = {
 	.scaler_bit_width = 10,
 	.num_channels = 16,
 	.trim_locate = &ast2500_adc_trim,
+	.require_extra_eoc = 0,
 };
 
 static const struct aspeed_adc_model_data ast2600_adc0_model_data = {
@@ -676,6 +891,7 @@ static const struct aspeed_adc_model_data ast2600_adc0_model_data = {
 	.scaler_bit_width = 16,
 	.num_channels = 8,
 	.trim_locate = &ast2600_adc0_trim,
+	.require_extra_eoc = 1,
 };
 
 static const struct aspeed_adc_model_data ast2600_adc1_model_data = {
@@ -687,6 +903,29 @@ static const struct aspeed_adc_model_data ast2600_adc1_model_data = {
 	.scaler_bit_width = 16,
 	.num_channels = 8,
 	.trim_locate = &ast2600_adc1_trim,
+	.require_extra_eoc = 1,
+};
+
+static const struct aspeed_adc_model_data ast2700_adc0_model_data = {
+	.model_name = "ast2700-adc0",
+	.min_sampling_rate = 10000,
+	.max_sampling_rate = 500000,
+	.wait_init_sequence = true,
+	.bat_sense_sup = true,
+	.scaler_bit_width = 16,
+	.num_channels = 8,
+	.trim_locate = &ast2700_adc0_trim,
+};
+
+static const struct aspeed_adc_model_data ast2700_adc1_model_data = {
+	.model_name = "ast2700-adc1",
+	.min_sampling_rate = 10000,
+	.max_sampling_rate = 500000,
+	.wait_init_sequence = true,
+	.bat_sense_sup = true,
+	.scaler_bit_width = 16,
+	.num_channels = 8,
+	.trim_locate = &ast2700_adc1_trim,
 };
 
 static const struct of_device_id aspeed_adc_matches[] = {
@@ -694,6 +933,8 @@ static const struct of_device_id aspeed_adc_matches[] = {
 	{ .compatible = "aspeed,ast2500-adc", .data = &ast2500_model_data },
 	{ .compatible = "aspeed,ast2600-adc0", .data = &ast2600_adc0_model_data },
 	{ .compatible = "aspeed,ast2600-adc1", .data = &ast2600_adc1_model_data },
+	{ .compatible = "aspeed,ast2700-adc0", .data = &ast2700_adc0_model_data },
+	{ .compatible = "aspeed,ast2700-adc1", .data = &ast2700_adc1_model_data },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, aspeed_adc_matches);
