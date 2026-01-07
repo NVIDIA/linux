@@ -12,6 +12,8 @@
 enum aspeed_video_input {
 	VIDEO_INPUT_VGA = 0,
 	VIDEO_INPUT_GFX,
+	VIDEO_INPUT_MEM,
+	VIDEO_INPUT_DVI,
 	VIDEO_INPUT_MAX
 };
 
