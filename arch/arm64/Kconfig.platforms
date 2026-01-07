@@ -53,6 +53,12 @@ config ARCH_AXIADO
 	help
 	  This enables support for Axiado SoC family like AX3000
 
+config ARCH_ASPEED
+	bool "Aspeed SoC family"
+	help
+	  Say yes if you intend to run on an Aspeed ast2700 or similar
+	  seventh generation Aspeed BMCs.
+
 menuconfig ARCH_BCM
 	bool "Broadcom SoC Support"
 
