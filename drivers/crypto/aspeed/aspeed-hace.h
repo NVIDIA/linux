@@ -10,6 +10,7 @@
 #include <linux/compiler_attributes.h>
 #include <linux/interrupt.h>
 #include <linux/types.h>
+#include <linux/semaphore.h>
 
 /*****************************
  *                           *
@@ -23,7 +24,7 @@
 #define ASPEED_HACE_CMD			0x10	/* Crypto Engine Command Register */
 
 /* G5 */
-#define ASPEED_HACE_TAG			0x18	/* HACE Tag Register */
+#define ASPEED_HACE_TAG			0x18	/* HACE Tag Write Buffer Base Address Register */
 /* G6 */
 #define ASPEED_HACE_GCM_ADD_LEN		0x14	/* Crypto AES-GCM Additional Data Length Register */
 #define ASPEED_HACE_GCM_TAG_BASE_ADDR	0x18	/* Crypto AES-GCM Tag Write Buff Base Address Reg */
@@ -35,6 +36,15 @@
 #define ASPEED_HACE_HASH_KEY_BUFF	0x28	/* Hash HMAC Key Buffer Base Address Register */
 #define ASPEED_HACE_HASH_DATA_LEN	0x2C	/* Hash Data Length Register */
 #define ASPEED_HACE_HASH_CMD		0x30	/* Hash Engine Command Register */
+
+/* G7 */
+#define ASPEED_HACE_SRC_H		0x80	/* Crypto Data Source Base High Address Register */
+#define ASPEED_HACE_DEST_H		0x84	/* Crypto Data Destination Base High Address Register */
+#define ASPEED_HACE_CONTEXT_H		0x88	/* Crypto Context Buffer Base High Address Register */
+#define ASPEED_HACE_TAG_H		0x8C	/* HACE Tag Write Buffer Base High Address Register */
+#define ASPEED_HACE_HASH_SRC_H		0x90	/* Hash Data Source Base High Address Register */
+#define ASPEED_HACE_HASH_DIGEST_BUFF_H	0x94	/* Hash Digest Write Buffer Base High Address Register */
+#define ASPEED_HACE_HASH_KEY_BUFF_H	0x98	/* Hash HMAC Key Buffer Base High Address Register */
 
 /* crypto cmd */
 #define  HACE_CMD_SINGLE_DES		0
@@ -109,8 +119,9 @@
 
 #define CRYPTO_FLAGS_BUSY		BIT(1)
 
-#define SHA_OP_UPDATE			1
-#define SHA_OP_FINAL			2
+#define SHA_OP_INIT			BIT(0)
+#define SHA_OP_UPDATE			BIT(1)
+#define SHA_OP_FINAL			BIT(2)
 
 #define SHA_FLAGS_SHA1			BIT(0)
 #define SHA_FLAGS_SHA224		BIT(1)
@@ -119,6 +130,7 @@
 #define SHA_FLAGS_SHA512		BIT(4)
 #define SHA_FLAGS_SHA512_224		BIT(5)
 #define SHA_FLAGS_SHA512_256		BIT(6)
+#define SHA_FLAGS_HMAC			BIT(8)
 #define SHA_FLAGS_FINUP			BIT(9)
 #define SHA_FLAGS_MASK			(0xff)
 
@@ -130,6 +142,8 @@
 
 #define HACE_CMD_IV_REQUIRE		(HACE_CMD_CBC | HACE_CMD_CFB | \
 					 HACE_CMD_OFB | HACE_CMD_CTR)
+
+#define DUMMY_KEY_SIZE			32
 
 struct aspeed_hace_dev;
 struct scatterlist;
@@ -146,9 +160,20 @@ struct aspeed_engine_hash {
 	unsigned long			flags;
 	struct ahash_request		*req;
 
+	/* Protects hash engine operation enqueue in order */
+	struct mutex			queue_lock;
+
 	/* input buffer */
 	void				*ahash_src_addr;
 	dma_addr_t			ahash_src_dma_addr;
+
+	/* remain data buffer */
+	u8				*buffer_addr;
+	dma_addr_t			buffer_dma_addr;
+
+	/* output buffer */
+	void				*digest_addr;
+	dma_addr_t			digest_dma_addr;
 
 	dma_addr_t			src_dma;
 	dma_addr_t			digest_dma;
@@ -160,18 +185,22 @@ struct aspeed_engine_hash {
 	aspeed_hace_fn_t		dma_prepare;
 };
 
+struct aspeed_sha_hmac_ctx {
+	struct crypto_shash *shash;
+	u8 ipad[SHA512_BLOCK_SIZE];
+	u8 opad[SHA512_BLOCK_SIZE];
+};
+
 struct aspeed_sham_ctx {
 	struct aspeed_hace_dev		*hace_dev;
+	unsigned long			flags;	/* hmac flag */
+
+	struct aspeed_sha_hmac_ctx	base[];
 };
 
 struct aspeed_sham_reqctx {
-	/* DMA buffer written by hardware */
-	u8			digest[SHA512_DIGEST_SIZE] __aligned(64);
-
-	/* Software state sorted by size. */
-	u64			digcnt[2];
-
 	unsigned long		flags;		/* final update flag should no use*/
+	unsigned long		op;		/* final or update */
 	u32			cmd;		/* trigger cmd */
 
 	/* walk state */
@@ -183,12 +212,15 @@ struct aspeed_sham_reqctx {
 	size_t			digsize;
 	size_t			block_size;
 	size_t			ivsize;
+	const __be32		*sha_iv;
 
-	dma_addr_t		buffer_dma_addr;
-	dma_addr_t		digest_dma_addr;
+	/* remain data buffer */
+	u8			buffer[SHA512_BLOCK_SIZE * 2];
+	size_t			bufcnt;		/* buffer counter */
 
-	/* This is DMA too but read-only for hardware. */
-	u8			buffer[SHA512_BLOCK_SIZE + 16];
+	/* output buffer */
+	u8			digest[SHA512_DIGEST_SIZE];
+	u64			digcnt[2];
 };
 
 struct aspeed_engine_crypto {
@@ -210,12 +242,14 @@ struct aspeed_engine_crypto {
 
 	/* callback func */
 	aspeed_hace_fn_t		resume;
+	int				load_vault_key;
 };
 
 struct aspeed_cipher_ctx {
 	struct aspeed_hace_dev		*hace_dev;
 	int				key_len;
 	u8				key[AES_MAX_KEYLENGTH];
+	int				dummy_key;
 
 	/* callback func */
 	aspeed_hace_fn_t		start;
@@ -233,10 +267,15 @@ struct aspeed_cipher_reqctx {
 
 struct aspeed_hace_dev {
 	void __iomem			*regs;
+	void __iomem			*sec_regs;
 	struct device			*dev;
 	int				irq;
 	struct clk			*clk;
+	struct reset_control		*rst;
 	unsigned long			version;
+
+	/* Protects hace register access */
+	struct semaphore lock;
 
 	struct crypto_engine		*crypt_engine_hash;
 	struct crypto_engine		*crypt_engine_crypto;
@@ -258,7 +297,8 @@ struct aspeed_hace_alg {
 
 enum aspeed_version {
 	AST2500_VERSION = 5,
-	AST2600_VERSION
+	AST2600_VERSION,
+	AST2700_VERSION,
 };
 
 #define ast_hace_write(hace, val, offset)	\
@@ -270,5 +310,11 @@ void aspeed_register_hace_hash_algs(struct aspeed_hace_dev *hace_dev);
 void aspeed_unregister_hace_hash_algs(struct aspeed_hace_dev *hace_dev);
 void aspeed_register_hace_crypto_algs(struct aspeed_hace_dev *hace_dev);
 void aspeed_unregister_hace_crypto_algs(struct aspeed_hace_dev *hace_dev);
+int aspeed_hace_hash_init(struct aspeed_hace_dev *hace_dev);
+void aspeed_hace_hash_remove(struct aspeed_hace_dev *hace_dev);
+int aspeed_hace_crypto_init(struct aspeed_hace_dev *hace_dev);
+void aspeed_hace_crypto_remove(struct aspeed_hace_dev *hace_dev);
+int find_dummy_key(const char *key, int keylen);
+int aspeed_hace_reset(struct aspeed_hace_dev *dev);
 
 #endif
