@@ -1,0 +1,201 @@
+Validation Plan: Virtual I2C Mux FRU Tools
+
+Scope
+- Validate FRU read/write functionality and robustness for two environments:
+  1) With kernel virtual-mux host driver present (use i2ctransfer-based helpers)
+  2) Without the host driver (use userspace RI v3 script)
+- Validate 8-bit (24C02 class) and 16-bit (24C64 class) FRUs, data integrity, timings, page handling, and error behavior.
+
+Artifacts Under Test (same folder)
+- No-driver userspace (RI v3, CRC on): tools/vmux/write_fru_no_driver.sh
+- Driver-present helpers:
+  - tools/vmux/write_8bit_fru_with_driver.sh
+  - tools/vmux/write_16bit_fru_with_driver.sh
+
+Prerequisites
+- BusyBox/OpenBMC-compatible shell for no-driver path; standard bash ok otherwise.
+- Tools required by scripts: i2ctransfer, dd, hexdump, usleep (BusyBox ash), cmp, md5sum (optional).
+- Known link bus and client address for the virtual-mux client (e.g., --bus 3, --address 0x51).
+- Known downstream FRU address (virt-address), typically 0x50–0x57.
+- Confirm FRU type:
+  - 8-bit addressing: total 256 bytes (e.g., 24C02)
+  - 16-bit addressing: total 8192 bytes (e.g., 24C64)
+
+Common Test Fixtures
+- Test images:
+  - 256 bytes of 0xFF: dd if=/dev/zero bs=256 count=1 2>/dev/null | tr '\0' '\377' > ff256.bin
+  - 8192 bytes of 0xFF: dd if=/dev/zero bs=8192 count=1 2>/dev/null | tr '\0' '\377' > ff8192.bin
+  - Random 8 KiB: dd if=/dev/urandom of=rand8192.bin bs=8192 count=1 2>/dev/null
+  - Provided baseline images per chip (for restore), place under tools/vmux/expected/ as:
+    - baseline_50_16.bin, baseline_51_16.bin, baseline_52_8.bin, ..., baseline_56_8.bin
+
+Test Matrix (High-Level)
+1) 8-bit FRU (256B total)
+   - With driver:
+     a) Erase: create ff256.bin (all 0xFF) and write it with write_8bit_fru_with_driver.sh (page=8 if required).
+     b) Verify erase: read back and cmp against ff256.bin.
+     c) Program: write golden 256B image for the target FRU, then read back and verify match.
+   - No driver:
+     a) Erase: create ff256.bin and write it using write_fru_no_driver.sh --bits 8 --input-bin-file ff256.bin (page=8).
+     b) Verify erase: read back and cmp against ff256.bin.
+     c) Program: write golden 256B image for the target FRU, then read back and verify match.
+
+2) 16-bit FRU (8192B total)
+   - With driver:
+     a) Erase: create ff8192.bin (all 0xFF) and write it with write_16bit_fru_with_driver.sh (page=32).
+     b) Verify erase: read back and cmp against ff8192.bin.
+     c) Program: write golden 8192B image for the target FRU, then read back and verify match.
+   - No driver:
+     a) Erase: create ff8192.bin and write it using write_fru_no_driver.sh --bits 16 --input-bin-file ff8192.bin (page=32).
+     b) Verify erase: read back and cmp against ff8192.bin.
+     c) Program: write golden 8192B image for the target FRU, then read back and verify match.
+
+Functional/Robustness Tests
+
+- Partial image on 16-bit:
+  - Write 256-byte image to 16-bit FRU; verify offsets 0x0000–0x00FF match and the remainder is unchanged from baseline.
+
+- CRC and framing:
+  - Keep CRC on (default). Confirm no CRC mismatch errors in client logs and host script output under normal conditions.
+- Logging:
+  - Enable --debug and verify submit bytes, response headers, and timestamps are printed and sane.
+  - Disable --debug and verify progress percentage advances to 100% on stderr during writes (no-driver path).
+
+Negative/Failure-Handling Tests
+- Wrong link bus or client address:
+  - Expect "bad magic" / "timeout waiting for response" without corrupting downstream FRU.
+
+- Seq mismatch / NOT_READY:
+  - Indirectly observe through logs if encountered; verify the script handles NOT_READY sleeps and seq drain logic (no hangs).
+
+Performance Measurements
+- Record elapsed time for full-device writes (8-bit 256B, 16-bit 8KiB) in both environments:
+  - With driver (reference target)
+  - No driver (userspace RI): 
+
+Example Driver-Present Commands
+- 8-bit write:
+  bash vmux/write_8bit_fru_with_driver.sh <DOWNSTREAM_BUS> 0x50 ff256.bin 8
+  # Verify:
+  # Read back via sysfs (if available) or i2ctransfer and compare with cmp/md5sum
+
+- 16-bit write:
+  bash vmux/write_16bit_fru_with_driver.sh <DOWNSTREAM_BUS> 0x50 ff8192.bin 32
+  # Verify as above
+
+Example No-Driver Commands
+- 8-bit:
+  sh vmux/write_fru_no_driver.sh --bus <LINK> --address 0x51 --virt-address 0x50 --bits 8 --input-bin-file ff256.bin --write-delay-ms 10
+  sh vmux/write_fru_no_driver.sh --bus <LINK> --address 0x51 --virt-address 0x50 --bits 8 --out read8.bin
+  cmp ff256.bin read8.bin
+
+- 16-bit:
+  sh vmux/write_fru_no_driver.sh --bus <LINK> --address 0x51 --virt-address 0x50 --bits 16 --input-bin-file ff8192.bin --write-delay-ms 10
+  sh vmux/write_fru_no_driver.sh --bus <LINK> --address 0x51 --virt-address 0x50 --bits 16 --out read16.bin
+  cmp ff8192.bin read16.bin
+
+Client-Side Logging (optional)
+- Enable dynamic debug on the client driver (virtual-mux-client) to observe submit/execute and CRC logs; capture dmesg during tests.
+
+Restoration
+- After each write test, restore the original FRU content by flashing the provided baseline image for that FRU (baseline_<virt>_<bits>.bin) and verify with a read-back.
+
+Acceptance Criteria
+- All read-backs exactly match written images (cmp returns success).
+- No CRC mismatch, bad magic, or timeouts in normal runs.
+- Page-boundary writes complete without wrap/corruption.
+- Progress indicator (no-driver) reaches 100% and timings meet targets:
+  - 8-bit 256B: < 10s typical (device dependent)
+  - 16-bit 8KiB: ~2–3 minutes no-driver; ~2 minutes with driver (device and platform dependent)
+
+Notes
+- Always run with DEBUG=0 for timing measurements; enable --debug for diagnosing issues.
+  # Keep --write-delay-ms fixed at 10ms; no tuning required.
+
+FRU Inventory and Per‑Chip Validation
+
+Put expected golden images here (suggested):
+- tools/vmux/expected/
+  - fru_50_16.bin (8192 bytes)
+  - fru_51_16.bin (8192 bytes)
+  - fru_52_8.bin  (256 bytes)
+  - fru_53_8.bin  (256 bytes)
+  - fru_54_8.bin  (256 bytes)
+  - fru_55_8.bin  (256 bytes)
+  - fru_56_8.bin  (256 bytes)
+
+Chip map (provided):
+- map@50: virt 0x50; downstream-bus=1;  downstream-addr=0x50; 16-bit; page=32
+- map@51: virt 0x51; downstream-bus=7;  downstream-addr=0x50; 16-bit; page=32
+- map@52: virt 0x52; downstream-bus=10; downstream-addr=0x50; 8-bit;  page=8
+- map@53: virt 0x53; downstream-bus=70; downstream-addr=0x54; 8-bit;  page=8
+- map@54: virt 0x54; downstream-bus=70; downstream-addr=0x55; 8-bit;  page=8
+- map@55: virt 0x55; downstream-bus=71; downstream-addr=0x54; 8-bit;  page=8
+- map@56: virt 0x56; downstream-bus=71; downstream-addr=0x55; 8-bit;  page=8
+
+Driver‑Present Validation (faster path)
+- 16‑bit chips (page 32):
+  - map@50 → bus=1 addr=0x50 image=expected/fru_50_16.bin
+    bash vmux/write_16bit_fru_with_driver.sh 1 0x50 vmux/expected/fru_50_16.bin 32
+  - map@51 → bus=7 addr=0x50 image=expected/fru_51_16.bin
+    bash vmux/write_16bit_fru_with_driver.sh 7 0x50 vmux/expected/fru_51_16.bin 32
+
+- 8‑bit chips (page 8):
+  - map@52 → bus=10 addr=0x50 image=expected/fru_52_8.bin
+    bash vmux/write_8bit_fru_with_driver.sh 10 0x50 vmux/expected/fru_52_8.bin 8
+  - map@53 → bus=70 addr=0x54 image=expected/fru_53_8.bin
+    bash vmux/write_8bit_fru_with_driver.sh 70 0x54 vmux/expected/fru_53_8.bin 8
+  - map@54 → bus=70 addr=0x55 image=expected/fru_54_8.bin
+    bash vmux/write_8bit_fru_with_driver.sh 70 0x55 vmux/expected/fru_54_8.bin 8
+  - map@55 → bus=71 addr=0x54 image=expected/fru_55_8.bin
+    bash vmux/write_8bit_fru_with_driver.sh 71 0x54 vmux/expected/fru_55_8.bin 8
+  - map@56 → bus=71 addr=0x55 image=expected/fru_56_8.bin
+    bash vmux/write_8bit_fru_with_driver.sh 71 0x55 vmux/expected/fru_56_8.bin 8
+
+No‑Driver Validation (userspace RI v3)
+- Define LINK and CLIENT_ADDR for the virtual‑mux client (example: LINK=3 CLIENT_ADDR=0x51).
+- 16‑bit (page 32, length 8192):
+  - map@50 (virt=0x50):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x50 --bits 16 \
+       --input-bin-file vmux/expected/fru_50_16.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x50 --bits 16 --out read_50.bin
+    cmp vmux/expected/fru_50_16.bin read_50.bin
+  - map@51 (virt=0x51):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x51 --bits 16 \
+       --input-bin-file vmux/expected/fru_51_16.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x51 --bits 16 --out read_51.bin
+    cmp vmux/expected/fru_51_16.bin read_51.bin
+
+- 8‑bit (page 8, length 256):
+  - map@52 (virt=0x52):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x52 --bits 8 \
+       --input-bin-file vmux/expected/fru_52_8.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x52 --bits 8 --out read_52.bin
+    cmp vmux/expected/fru_52_8.bin read_52.bin
+  - map@53 (virt=0x53):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x53 --bits 8 \
+       --input-bin-file vmux/expected/fru_53_8.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x53 --bits 8 --out read_53.bin
+    cmp vmux/expected/fru_53_8.bin read_53.bin
+  - map@54 (virt=0x54):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x54 --bits 8 \
+       --input-bin-file vmux/expected/fru_54_8.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x54 --bits 8 --out read_54.bin
+    cmp vmux/expected/fru_54_8.bin read_54.bin
+  - map@55 (virt=0x55):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x55 --bits 8 \
+       --input-bin-file vmux/expected/fru_55_8.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x55 --bits 8 --out read_55.bin
+    cmp vmux/expected/fru_55_8.bin read_55.bin
+  - map@56 (virt=0x56):
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x56 --bits 8 \
+       --input-bin-file vmux/expected/fru_56_8.bin --write-delay-ms 10
+    sh vmux/write_fru_no_driver.sh --bus "$LINK" --address "$CLIENT_ADDR" --virt-address 0x56 --bits 8 --out read_56.bin
+    cmp vmux/expected/fru_56_8.bin read_56.bin
+
+Restore Procedure
+- For each chip, keep a backup first (read to .bak), write test image, verify, then write the .bak back and verify.
+
+Remarks
+- Ensure page sizes match those listed; otherwise wraps will corrupt data across page boundaries.
+- Keep DEBUG=0 for elapsed time; use --debug to troubleshoot protocol/logs.

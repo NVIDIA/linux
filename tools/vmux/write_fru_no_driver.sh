@@ -178,7 +178,7 @@ drain_bytes_if_any() {
 	while [ "$left" -gt 0 ]; do
 		chunk="$left"
 		[ "$chunk" -gt 32 ] && chunk=32
-		i2ctransfer -y "$bus" r${chunk}@"$addr" >/dev/null || true
+		i2ctransfer -y -f "$bus" r${chunk}@"$addr" >/dev/null || true
 		left=$(( left - chunk ))
 	done
 }
@@ -194,13 +194,13 @@ submit_and_fetch_response() {
 		printf 'vmux [%s]: submit len=%s addr=%s\n' "$(ts_now)" "$wlen" "$addr"
 		printf 'vmux [%s]: submit bytes: %s\n' "$(ts_now)" "$REQ_BYTES"
 	fi
-	i2ctransfer -y "$bus" w${wlen}@"$addr" "$@" >/dev/null
+	i2ctransfer -y -f "$bus" w${wlen}@"$addr" "$@" >/dev/null
 	# give client a moment to process
 	sleep_ms 6
 	# poll
 	tries=0
 	while [ "$tries" -lt 50 ]; do
-		hdr="$(i2ctransfer -y "$bus" r12@"$addr" 2>/dev/null || true)"
+		hdr="$(i2ctransfer -y -f "$bus" r12@"$addr" 2>/dev/null || true)"
 		set -- $hdr
 		[ "${DEBUG:-0}" -eq 1 ] && printf 'vmux [%s]: resp hdr try=%s: %s\n' "$(ts_now)" "$tries" "$hdr"
 		if [ $# -ne 12 ]; then
@@ -231,7 +231,7 @@ submit_and_fetch_response() {
 		fi
 		remain=$(( total - 12 ))
 		if [ "$remain" -gt 0 ]; then
-			pl="$(i2ctransfer -y "$bus" r${remain}@"$addr")"
+			pl="$(i2ctransfer -y -f "$bus" r${remain}@"$addr")"
 			RESP_PAYLOAD="$pl"
 		else
 			RESP_PAYLOAD=""
