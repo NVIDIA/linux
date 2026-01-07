@@ -54,7 +54,7 @@ while (( OFFSET < SIZE )); do
 
 	# Perform a single write: [ADDR8][DATA...]
 	LEN=$(( 1 + CHUNK ))
-	i2ctransfer -y "$BUS" w${LEN}@"$ADDR" "$ADDR8" "${DATA_TOKENS[@]}"
+	i2ctransfer -f -y "$BUS" w${LEN}@"$ADDR" "$ADDR8" "${DATA_TOKENS[@]}"
 
 	# Write cycle time (tWR), conservative 10ms
 	sleep 0.01
