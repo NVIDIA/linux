@@ -3,6 +3,7 @@
 // FSI master driver for AST2600
 
 #include <linux/clk.h>
+#include <linux/reset.h>
 #include <linux/delay.h>
 #include <linux/fsi.h>
 #include <linux/io.h>
@@ -24,7 +25,12 @@ struct fsi_master_aspeed {
 	struct device		*dev;
 	void __iomem		*base;
 	struct clk		*clk;
+	struct reset_control	*rst;
 	struct gpio_desc	*cfam_reset_gpio;
+};
+
+struct aspeed_fsi_match_data {
+	bool sup_ahb_access;
 };
 
 #define to_fsi_master_aspeed(m) \
@@ -60,6 +66,8 @@ static const u32 fsi_base = 0xa0000000;
 #define OPB1_READ_ORDER2	0x60
 
 #define OPB_RETRY_COUNTER	0x64
+#define OPB_ACCESS_CTRL_REG	BIT(18)
+#define OPB_ACCESS_CPU_BRIDGE	BIT(19)
 
 /* OPBn_STATUS */
 #define STATUS_HALFWORD_ACK	BIT(0)
@@ -539,6 +547,7 @@ static int fsi_master_aspeed_probe(struct platform_device *pdev)
 	struct fsi_master_aspeed *aspeed;
 	int rc, links, reg;
 	__be32 raw;
+	const struct aspeed_fsi_match_data *match_data;
 
 	rc = tacoma_cabled_fsi_fixup(&pdev->dev);
 	if (rc) {
@@ -558,16 +567,22 @@ static int fsi_master_aspeed_probe(struct platform_device *pdev)
 		goto err_free_aspeed;
 	}
 
+	aspeed->rst = devm_reset_control_get_shared(&pdev->dev, NULL);
+	if (IS_ERR(aspeed->rst))
+		dev_warn(aspeed->dev, "couldn't get reset\n");
+	else
+		reset_control_deassert(aspeed->rst);
+
 	aspeed->clk = devm_clk_get(aspeed->dev, NULL);
 	if (IS_ERR(aspeed->clk)) {
 		dev_err(aspeed->dev, "couldn't get clock\n");
 		rc = PTR_ERR(aspeed->clk);
-		goto err_free_aspeed;
+		goto err_reset;
 	}
 	rc = clk_prepare_enable(aspeed->clk);
 	if (rc) {
 		dev_err(aspeed->dev, "couldn't enable clock\n");
-		goto err_free_aspeed;
+		goto err_reset;
 	}
 
 	rc = setup_cfam_reset(aspeed);
@@ -580,7 +595,12 @@ static int fsi_master_aspeed_probe(struct platform_device *pdev)
 			aspeed->base + OPB_IRQ_MASK);
 
 	/* TODO: determine an appropriate value */
-	writel(0x10, aspeed->base + OPB_RETRY_COUNTER);
+	match_data = of_device_get_match_data(&pdev->dev);
+	if (match_data->sup_ahb_access)
+		writel(0x10 | OPB_ACCESS_CTRL_REG | OPB_ACCESS_CPU_BRIDGE,
+		       aspeed->base + OPB_RETRY_COUNTER);
+	else
+		writel(0x10, aspeed->base + OPB_RETRY_COUNTER);
 
 	writel(ctrl_base, aspeed->base + OPB_CTRL_BASE);
 	writel(fsi_base, aspeed->base + OPB_FSI_BASE);
@@ -641,6 +661,9 @@ static int fsi_master_aspeed_probe(struct platform_device *pdev)
 
 err_release:
 	clk_disable_unprepare(aspeed->clk);
+err_reset:
+	if (!IS_ERR(aspeed->rst))
+		reset_control_assert(aspeed->rst);
 err_free_aspeed:
 	kfree(aspeed);
 	return rc;
@@ -652,10 +675,21 @@ static void fsi_master_aspeed_remove(struct platform_device *pdev)
 
 	fsi_master_unregister(&aspeed->master);
 	clk_disable_unprepare(aspeed->clk);
+	if (!IS_ERR(aspeed->rst))
+		reset_control_assert(aspeed->rst);
 }
 
+static const struct aspeed_fsi_match_data ast2600_match_data = {
+	.sup_ahb_access = 0,
+};
+
+static const struct aspeed_fsi_match_data ast2700_match_data = {
+	.sup_ahb_access = 1,
+};
+
 static const struct of_device_id fsi_master_aspeed_match[] = {
-	{ .compatible = "aspeed,ast2600-fsi-master" },
+	{ .compatible = "aspeed,ast2600-fsi-master", .data = &ast2600_match_data },
+	{ .compatible = "aspeed,ast2700-fsi-master", .data = &ast2700_match_data },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, fsi_master_aspeed_match);
