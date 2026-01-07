@@ -2,6 +2,11 @@
 // Copyright 2019 IBM Corp.
 
 &pinctrl {
+	pinctrl_pcierc1_default: pcierc1-default {
+		function = "PCIERC1";
+		groups = "PCIERC1";
+	};
+
 	pinctrl_adc0_default: adc0_default {
 		function = "ADC0";
 		groups = "ADC0";
@@ -1142,27 +1147,37 @@
 		groups = "UART9";
 	};
 
-	pinctrl_usb2ah_default: usb2ah_default {
+	pinctrl_usb2ah_default: usb2ah-default {
 		function = "USB2AH";
 		groups = "USBA";
 	};
 
-	pinctrl_usb2ad_default: usb2ad_default {
+	pinctrl_usb2ad_default: usb2ad-default {
 		function = "USB2AD";
 		groups = "USBA";
 	};
 
-	pinctrl_usb2bh_default: usb2bh_default {
+	pinctrl_usb2bh_default: usb2bh-default {
 		function = "USB2BH";
 		groups = "USBB";
 	};
 
-	pinctrl_usb2bd_default: usb2bd_default {
+	pinctrl_usb2bd_default: usb2bd-default {
 		function = "USB2BD";
 		groups = "USBB";
 	};
 
-	pinctrl_usb11bhid_default: usb11bhid_default {
+	pinctrl_usb2adp_default: usb2adp-default {
+		function = "USB2ADP";
+		groups = "USBA";
+	};
+
+	pinctrl_usb2ahp_default: usb2ahp-default {
+		function = "USB2AHP";
+		groups = "USBA";
+	};
+
+	pinctrl_usb11bhid_default: usb11bhid-default {
 		function = "USB11BHID";
 		groups = "USBB";
 	};
@@ -1180,6 +1195,11 @@
 	pinctrl_vgavs_default: vgavs_default {
 		function = "VGAVS";
 		groups = "VGAVS";
+	};
+
+	pinctrl_vpa_default: vpa_default {
+		function = "VPA";
+		groups = "VPA";
 	};
 
 	pinctrl_wdtrst1_default: wdtrst1_default {
