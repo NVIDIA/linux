@@ -1411,7 +1411,7 @@ static void spi_nor_rww_end_rd(struct spi_nor *nor, loff_t start, size_t len)
 	rww->ongoing_rd = false;
 }
 
-static int spi_nor_prep_and_lock_rd(struct spi_nor *nor, loff_t start, size_t len)
+int spi_nor_prep_and_lock_rd(struct spi_nor *nor, loff_t start, size_t len)
 {
 	int ret;
 
@@ -1939,6 +1939,106 @@ int spi_nor_sr2_bit7_quad_enable(struct spi_nor *nor)
 	return 0;
 }
 
+int spi_nor_read_nvcr(struct spi_nor *nor, u8 *nvcr)
+{
+	int ret;
+
+	if (nor->spimem) {
+		struct spi_mem_op op =
+			SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_SST_RDNVCR, 0),
+				   SPI_MEM_OP_NO_ADDR,
+				   SPI_MEM_OP_NO_DUMMY,
+				   SPI_MEM_OP_DATA_IN(2, nvcr, 0));
+
+		if (nor->reg_proto == SNOR_PROTO_8_8_8_DTR) {
+			op.addr.nbytes = nor->params->rdsr_addr_nbytes;
+			op.dummy.nbytes = nor->params->rdsr_dummy;
+			/*
+			 * We don't want to read only one byte in DTR mode. So,
+			 * read 2 and then discard the second byte.
+			 */
+			op.data.nbytes = 2;
+		}
+
+		spi_nor_spimem_setup_op(nor, &op, nor->reg_proto);
+
+		ret = spi_mem_exec_op(nor->spimem, &op);
+	} else {
+		ret = spi_nor_controller_ops_read_reg(nor, SPINOR_OP_SST_RDNVCR, nvcr,
+						      2);
+	}
+
+	if (ret)
+		dev_dbg(nor->dev, "error %d reading SR\n", ret);
+
+	return ret;
+}
+
+int spi_nor_write_nvcr(struct spi_nor *nor, const u8 *nvcr, size_t len)
+{
+	int ret;
+
+	ret = spi_nor_write_enable(nor);
+	if (ret)
+		return ret;
+
+	if (nor->spimem) {
+		struct spi_mem_op op =
+			SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_SST_WRNVCR, 0),
+				   SPI_MEM_OP_NO_ADDR,
+				   SPI_MEM_OP_NO_DUMMY,
+				   SPI_MEM_OP_DATA_OUT(len, nvcr, 0));
+
+		spi_nor_spimem_setup_op(nor, &op, nor->reg_proto);
+
+		ret = spi_mem_exec_op(nor->spimem, &op);
+	} else {
+		ret = spi_nor_controller_ops_write_reg(nor, SPINOR_OP_SST_WRNVCR, nvcr,
+						       len);
+	}
+
+	if (ret) {
+		dev_dbg(nor->dev, "error %d writing NVCR\n", ret);
+		return ret;
+	}
+
+	return spi_nor_wait_till_ready(nor);
+}
+
+int spi_nor_nvcr_bit4_quad_enable(struct spi_nor *nor)
+{
+	int ret;
+	u8 *nvcr = nor->bouncebuf;
+
+	/* Check current Quad Enable bit value. */
+	ret = spi_nor_read_nvcr(nor, nvcr);
+	if (ret) {
+		dev_dbg(nor->dev, "SST error while reading nonvolatile configuration register\n");
+		return -EINVAL;
+	}
+
+	if ((nvcr[0] & SPINOR_SST_RST_HOLD_CTRL) == 0)
+		return 0;
+
+	/* Nonvolatile Configuration Register bit 4 */
+	nvcr[0] &= ~SPINOR_SST_RST_HOLD_CTRL;
+
+	/* Keep the current value of the Status Register. */
+	ret = spi_nor_write_nvcr(nor, nvcr, 2);
+	if (ret) {
+		dev_err(nor->dev, "SST error while writing nonvolatile configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_read_nvcr(nor, nvcr);
+	if (ret && (nvcr[0] & SPINOR_SST_RST_HOLD_CTRL)) {
+		dev_err(nor->dev, "SST Quad bit not set\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct spi_nor_manufacturer *manufacturers[] = {
 	&spi_nor_atmel,
 	&spi_nor_eon,
@@ -2355,22 +2455,13 @@ int spi_nor_hwcaps_pp2cmd(u32 hwcaps)
 static int spi_nor_spimem_check_op(struct spi_nor *nor,
 				   struct spi_mem_op *op)
 {
-	/*
-	 * First test with 4 address bytes. The opcode itself might
-	 * be a 3B addressing opcode but we don't care, because
-	 * SPI controller implementation should not check the opcode,
-	 * but just the sequence.
-	 */
-	op->addr.nbytes = 4;
-	if (!spi_mem_supports_op(nor->spimem, op)) {
-		if (nor->params->size > SZ_16M)
-			return -EOPNOTSUPP;
-
-		/* If flash size <= 16MB, 3 address bytes are sufficient */
+	if (nor->mtd.size > SZ_16M)
+		op->addr.nbytes = 4;
+	else
 		op->addr.nbytes = 3;
-		if (!spi_mem_supports_op(nor->spimem, op))
-			return -EOPNOTSUPP;
-	}
+
+	if (!spi_mem_supports_op(nor->spimem, op))
+		return -ENOTSUPP;
 
 	return 0;
 }
@@ -3295,6 +3386,8 @@ static void spi_nor_soft_reset(struct spi_nor *nor)
 		return;
 	}
 
+	usleep_range(50, 80);
+
 	op = (struct spi_mem_op)SPINOR_SRST_OP;
 
 	spi_nor_spimem_setup_op(nor, &op, nor->reg_proto);
@@ -3305,12 +3398,7 @@ static void spi_nor_soft_reset(struct spi_nor *nor)
 		return;
 	}
 
-	/*
-	 * Software Reset is not instant, and the delay varies from flash to
-	 * flash. Looking at a few flashes, most range somewhere below 100
-	 * microseconds. So, sleep for a range of 200-400 us.
-	 */
-	usleep_range(SPI_NOR_SRST_SLEEP_MIN, SPI_NOR_SRST_SLEEP_MAX);
+	mdelay(50);
 }
 
 /* mtd suspend handler */
@@ -3620,6 +3708,9 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	ret = spi_nor_set_mtd_info(nor);
 	if (ret)
 		return ret;
+
+	if (info->fixups && info->fixups->post_fixups)
+		info->fixups->post_fixups(nor);
 
 	dev_dbg(dev, "Manufacturer and device ID: %*phN\n",
 		SPI_NOR_MAX_ID_LEN, nor->id);

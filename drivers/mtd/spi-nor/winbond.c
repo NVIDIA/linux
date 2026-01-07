@@ -4,7 +4,10 @@
  * Copyright (C) 2014, Freescale Semiconductor, Inc.
  */
 
+#include <linux/device.h>
+#include <linux/mtd/mtd.h>
 #include <linux/mtd/spi-nor.h>
+#include <linux/spi/flash.h>
 
 #include "core.h"
 
@@ -72,6 +75,57 @@ w25q256_post_bfpt_fixups(struct spi_nor *nor,
 static const struct spi_nor_fixups w25q256_fixups = {
 	.post_bfpt = w25q256_post_bfpt_fixups,
 };
+
+static int spi_nor_read_w25q02gjv(struct mtd_info *mtd, loff_t from, size_t len,
+				  size_t *retlen, u_char *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	loff_t from_lock = from;
+	size_t len_lock = len;
+	ssize_t ret;
+	loff_t addr = from;
+	size_t read_len;
+	u32 die_sz = 0x04000000;
+
+	dev_dbg(nor->dev, "from 0x%08x, len %zd\n", (u32)from, len);
+
+	ret = spi_nor_prep_and_lock_rd(nor, from_lock, len_lock);
+	if (ret)
+		return ret;
+
+	while (len) {
+		read_len = len;
+		if (read_len > die_sz - ((u32)addr % die_sz))
+			read_len = die_sz - ((u32)addr % die_sz);
+
+		ret = spi_nor_read_data(nor, addr, read_len, buf);
+		if (ret == 0) {
+			/* We shouldn't see 0-length reads */
+			ret = -EIO;
+			goto read_err;
+		}
+		if (ret < 0)
+			goto read_err;
+
+		WARN_ON(ret > len);
+		*retlen += ret;
+		buf += ret;
+		addr += ret;
+		len -= ret;
+	}
+	ret = 0;
+
+read_err:
+	spi_nor_unlock_and_unprep(nor);
+	return ret;
+}
+
+static void w25q02gjv_post_fixups(struct spi_nor *nor)
+{
+	struct mtd_info *mtd = &nor->mtd;
+
+	mtd->_read = spi_nor_read_w25q02gjv;
+}
 
 /**
  * winbond_nor_select_die() - Set active die.
@@ -144,6 +198,11 @@ winbond_nor_multi_die_post_sfdp_fixups(struct spi_nor *nor)
 
 static const struct spi_nor_fixups winbond_nor_multi_die_fixups = {
 	.post_sfdp = winbond_nor_multi_die_post_sfdp_fixups,
+};
+
+static const struct spi_nor_fixups winbond_nor_four_die_fixups = {
+	.post_sfdp = winbond_nor_multi_die_post_sfdp_fixups,
+	.post_fixups = w25q02gjv_post_fixups,
 };
 
 static const struct flash_info winbond_nor_parts[] = {
@@ -231,6 +290,14 @@ static const struct flash_info winbond_nor_parts[] = {
 		.id = SNOR_ID(0xef, 0x40, 0x21),
 		.fixups = &winbond_nor_multi_die_fixups,
 	}, {
+		/* W25Q01NVQ */
+		.id = SNOR_ID(0xef, 0x60, 0x21),
+		.fixups = &winbond_nor_multi_die_fixups,
+	}, {
+		/* W25Q01JVM */
+		.id = SNOR_ID(0xef, 0x70, 0x21),
+		.fixups = &winbond_nor_multi_die_fixups,
+	}, {
 		.id = SNOR_ID(0xef, 0x50, 0x12),
 		.name = "w25q20bw",
 		.size = SZ_256K,
@@ -295,7 +362,7 @@ static const struct flash_info winbond_nor_parts[] = {
 		.id = SNOR_ID(0xef, 0x70, 0x17),
 		.name = "w25q64jvm",
 		.size = SZ_8M,
-		.no_sfdp_flags = SECT_4K,
+		.no_sfdp_flags = SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ,
 	}, {
 		.id = SNOR_ID(0xef, 0x70, 0x18),
 		.name = "w25q128jv",
@@ -308,7 +375,11 @@ static const struct flash_info winbond_nor_parts[] = {
 	}, {
 		/* W25Q02JV */
 		.id = SNOR_ID(0xef, 0x70, 0x22),
-		.fixups = &winbond_nor_multi_die_fixups,
+		.fixups = &winbond_nor_four_die_fixups,
+	}, {
+		/* W25Q02NW */
+		.id = SNOR_ID(0xef, 0x80, 0x22),
+		.fixups = &winbond_nor_four_die_fixups,
 	}, {
 		.id = SNOR_ID(0xef, 0x71, 0x19),
 		.name = "w25m512jv",
