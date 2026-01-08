@@ -539,33 +539,40 @@
 			linux,pci-domain = <0>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			bus-range = <0x00 0xff>;
-			ranges = <0x02000000 0x0 0x60000000 0x0 0x60000000 0x0 0x20000000>; /* memory */
 			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&syscon0 SCU0_RESET_H2X0>,
-				 <&syscon0 SCU0_RESET_PCIE0RST>;
-			reset-names = "h2x", "perst";
+			bus-range = <0x00 0xff>;
+
+			ranges = <0x02000000 0x0 0x60000000 0x0 0x60000000 0x0 0x20000000>;
+
 			status = "disabled";
 
-			clocks = <&syscon0 SCU0_CLK_GATE_BCLK>;
+			resets = <&syscon0 SCU0_RESET_H2X0>;
+			reset-names = "h2x";
 			pinctrl-0 = <&pinctrl_pcierc0_perst_default>;
 			pinctrl-names = "default";
 
 			#interrupt-cells = <1>;
 			msi-controller;
 
-			aspeed,pciephy = <&pcie_phy0>;
 			aspeed,pciecfg = <&pcie_cfg0>;
 
 			interrupt-map-mask = <0 0 0 7>;
-			interrupt-map = <0 0 0 1 &pcie_intc0 0>,
-					<0 0 0 2 &pcie_intc0 1>,
-					<0 0 0 3 &pcie_intc0 2>,
-					<0 0 0 4 &pcie_intc0 3>;
-			pcie_intc0: interrupt-controller {
-				interrupt-controller;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
+			interrupt-map = <0 0 0 1 &pcie0 0>,
+					<0 0 0 2 &pcie0 1>,
+					<0 0 0 3 &pcie0 2>,
+					<0 0 0 4 &pcie0 3>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0x800000 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				resets = <&syscon0 SCU0_RESET_PCIE0RST>;
+				reset-names = "perst";
+				clocks = <&syscon0 SCU0_CLK_GATE_BCLK>;
+				phys = <&pcie_phy0>;
+				ranges;
 			};
 		};
 
@@ -576,33 +583,40 @@
 			linux,pci-domain = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			bus-range = <0x00 0xff>;
-			ranges = <0x02000000 0 0x80000000 0x0 0x80000000 0x0 0x20000000>; /* memory */
 			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&syscon0 SCU0_RESET_H2X1>,
-				 <&syscon0 SCU0_RESET_PCIE1RST>;
-			reset-names = "h2x", "perst";
+			bus-range = <0x00 0xff>;
+
+			ranges = <0x02000000 0x0 0x80000000 0x0 0x80000000 0x0 0x20000000>;
+
 			status = "disabled";
 
-			clocks = <&syscon0 SCU0_CLK_GATE_BCLK>;
+			resets = <&syscon0 SCU0_RESET_H2X1>;
+			reset-names = "h2x";
 			pinctrl-0 = <&pinctrl_pcierc1_perst_default>;
 			pinctrl-names = "default";
 
 			#interrupt-cells = <1>;
 			msi-controller;
 
-			aspeed,pciephy = <&pcie_phy1>;
 			aspeed,pciecfg = <&pcie_cfg1>;
 
 			interrupt-map-mask = <0 0 0 7>;
-			interrupt-map = <0 0 0 1 &pcie_intc1 0>,
-					<0 0 0 2 &pcie_intc1 1>,
-					<0 0 0 3 &pcie_intc1 2>,
-					<0 0 0 4 &pcie_intc1 3>;
-			pcie_intc1: interrupt-controller {
-				interrupt-controller;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
+			interrupt-map = <0 0 0 1 &pcie1 0>,
+					<0 0 0 2 &pcie1 1>,
+					<0 0 0 3 &pcie1 2>,
+					<0 0 0 4 &pcie1 3>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0x800000 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				resets = <&syscon0 SCU0_RESET_PCIE1RST>;
+				reset-names = "perst";
+				clocks = <&syscon0 SCU0_CLK_GATE_BCLK>;
+				phys = <&pcie_phy1>;
+				ranges;
 			};
 		};
 
@@ -823,11 +837,13 @@
 		pcie_phy0: phy@12c15000 {
 			compatible = "aspeed,ast2700-pcie-phy", "syscon";
 			reg = <0x0 0x12c15000 0x0 0x800>;
+			#phy-cells = <0>;
 		};
 
 		pcie_phy1: phy@12c15800 {
 			compatible = "aspeed,ast2700-pcie-phy", "syscon";
 			reg = <0x0 0x12c15800 0x0 0x800>;
+			#phy-cells = <0>;
 		};
 
 		pcie_vuart0: serial@12c18000 {
@@ -1384,33 +1400,40 @@
 			linux,pci-domain = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			bus-range = <0x00 0xff>;
-			ranges = <0x02000000 0 0xa0000000 0x0 0xa0000000 0x0 0x20000000>; /* memory */
 			interrupts-extended = <&intc1_4 31>;
-			resets = <&syscon1 SCU1_RESET_H2X>,
-				 <&syscon1 SCU1_RESET_PCIE2RST>;
-			reset-names = "h2x", "perst";
+			bus-range = <0x00 0xff>;
+
+			ranges = <0x02000000 0 0xa0000000 0x0 0xa0000000 0x0 0x20000000>;
+
 			status = "disabled";
 
-			clocks = <&syscon1 SCU1_CLK_GATE_PCICLK>;
+			resets = <&syscon1 SCU1_RESET_H2X>;
+			reset-names = "h2x";
 			pinctrl-0 = <&pinctrl_pcierc2_perst_default>;
 			pinctrl-names = "default";
 
 			#interrupt-cells = <1>;
 			msi-controller;
 
-			aspeed,pciephy = <&pcie_phy2>;
 			aspeed,pciecfg = <&pcie_cfg2>;
 
 			interrupt-map-mask = <0 0 0 7>;
-			interrupt-map = <0 0 0 1 &pcie_intc2 0>,
-					<0 0 0 2 &pcie_intc2 1>,
-					<0 0 0 3 &pcie_intc2 2>,
-					<0 0 0 4 &pcie_intc2 3>;
-			pcie_intc2: interrupt-controller {
-				interrupt-controller;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
+			interrupt-map = <0 0 0 1 &pcie2 0>,
+					<0 0 0 2 &pcie2 1>,
+					<0 0 0 3 &pcie2 2>,
+					<0 0 0 4 &pcie2 3>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0x800000 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				resets = <&syscon1 SCU1_RESET_PCIE2RST>;
+				reset-names = "perst";
+				clocks = <&syscon1 SCU1_CLK_GATE_PCICLK>;
+				phys = <&pcie_phy2>;
+				ranges;
 			};
 		};
 
@@ -1788,6 +1811,7 @@
 		pcie_phy2: phy@14c1c000 {
 			compatible = "aspeed,ast2700-pcie-phy", "syscon";
 			reg = <0x0 0x14c1c000 0x0 0x800>;
+			#phy-cells = <0>;
 		};
 
 		e2m_config2: e2m-config@14c1d000 {
