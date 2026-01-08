@@ -2328,6 +2328,12 @@ static int aspeed_mctp_dma_init(struct aspeed_mctp *priv)
 	BUILD_BUG_ON(TX_PACKET_COUNT >= TX_MAX_PACKET_COUNT);
 	BUILD_BUG_ON(RX_PACKET_COUNT >= RX_MAX_PACKET_COUNT);
 
+	ret = dma_set_mask_and_coherent(priv->dev, DMA_BIT_MASK(64));
+	if (ret) {
+		dev_err(priv->dev, "cannot set 64-bits DMA mask\n");
+		return ret;
+	}
+
 	ret = of_reserved_mem_device_init(priv->dev);
 	if (ret && ret != -ENODEV) {
 		dev_err(priv->dev, "Failed to check reserved DMA pool: %d\n", ret);
@@ -2344,12 +2350,6 @@ static int aspeed_mctp_dma_init(struct aspeed_mctp *priv)
 	}
 
 	dev_info(priv->dev, "%s DMA pool\n", use_reserved_mem ? "Reserved" : "Dynamic");
-
-	ret = dma_set_mask_and_coherent(priv->dev, DMA_BIT_MASK(64));
-	if (ret) {
-		dev_err(priv->dev, "cannot set 64-bits DMA mask\n");
-		return ret;
-	}
 
 	alloc_size = PAGE_ALIGN(priv->rx_packet_count * priv->match_data->packet_unit_size);
 	rx->data.vaddr =
