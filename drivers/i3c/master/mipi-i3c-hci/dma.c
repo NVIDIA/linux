@@ -435,11 +435,9 @@ static int hci_dma_queue_xfer(struct i3c_hci *hci,
 			*(ring_data - 1));
 		/* 2nd and 3rd words of Data Buffer Descriptor Structure */
 		if (xfer->data) {
-			need_bounce = xfer->rnw &&
+			need_bounce = device_iommu_mapped(rings->sysdev) &&
+				      xfer->rnw &&
 				      xfer->data_len != ALIGN(xfer->data_len, 4);
-			if (!need_bounce)
-				need_bounce = device_iommu_mapped(rings->sysdev) &&
-					      xfer->rnw;
 			xfer->dma = i3c_master_dma_map_single(rings->sysdev,
 							      xfer->data,
 							      xfer->data_len,
