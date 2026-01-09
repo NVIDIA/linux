@@ -35,6 +35,7 @@
 #define HICR6	0x84
 #define HICR6_STR_SNP0W		BIT(0)
 #define HICR6_STR_SNP1W		BIT(1)
+#define HICR6_NFE_WA		BIT(20)
 #define SNPWADR	0x90
 #define SNPWADR_CH0_MASK	GENMASK(15, 0)
 #define SNPWADR_CH0_SHIFT	0
@@ -168,13 +169,19 @@ static irqreturn_t aspeed_lpc_snoop_irq(int irq, void *arg)
 		return IRQ_NONE;
 
 	/* Check if one of the snoop channels is interrupting */
-	reg &= (HICR6_STR_SNP0W | HICR6_STR_SNP1W);
-	if (!reg)
+	if (!(reg & (HICR6_STR_SNP0W | HICR6_STR_SNP1W)))
 		return IRQ_NONE;
 
-	/* Ack pending IRQs */
-	regmap_update_bits(lpc_snoop->regmap, HICR6,
-			   (HICR6_STR_SNP0W | HICR6_STR_SNP1W), reg);
+	/* Check if NFE WA is set */
+	if (reg & HICR6_NFE_WA) {
+		/* Ack pending IRQs with keeping NFE WA */
+		regmap_write(lpc_snoop->regmap, HICR6,
+			     (HICR6_STR_SNP0W | HICR6_STR_SNP1W | HICR6_NFE_WA));
+	} else {
+		/* Ack pending IRQs */
+		regmap_write(lpc_snoop->regmap, HICR6,
+			     (HICR6_STR_SNP0W | HICR6_STR_SNP1W));
+	}
 
 	/* Read and save most recent snoop'ed data byte to FIFO */
 	regmap_read(lpc_snoop->regmap, SNPWDR, &data);
