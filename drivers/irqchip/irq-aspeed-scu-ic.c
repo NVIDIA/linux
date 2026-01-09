@@ -263,7 +263,7 @@ static const struct aspeed_scu_ic_variant *aspeed_scu_ic_find_variant(struct dev
 	return NULL;
 }
 
-static int aspeed_scu_ic_probe(struct platform_device *pdev)
+static int aspeed_scu_ic_probe(struct platform_device *pdev, struct device_node *parent)
 {
 	const struct aspeed_scu_ic_variant *variant;
 	struct aspeed_scu_ic *scu_ic;
@@ -289,28 +289,13 @@ static int aspeed_scu_ic_probe(struct platform_device *pdev)
 	return aspeed_scu_ic_of_init_common(scu_ic, np);
 }
 
-static const struct of_device_id aspeed_scu_ic_of_match[] = {
-	{ .compatible = "aspeed,ast2400-scu-ic" },
-	{ .compatible = "aspeed,ast2500-scu-ic" },
-	{ .compatible = "aspeed,ast2600-scu-ic0" },
-	{ .compatible = "aspeed,ast2600-scu-ic1" },
-	{ .compatible = "aspeed,ast2700-scu-ic0" },
-	{ .compatible = "aspeed,ast2700-scu-ic1" },
-	{ .compatible = "aspeed,ast2700-scu-ic2" },
-	{ .compatible = "aspeed,ast2700-scu-ic3" },
-	{ /* sentinel */ }
-};
-
-static struct platform_driver aspeed_scu_ic_driver = {
-	.probe		= aspeed_scu_ic_probe,
-	.driver	= {
-		.name		= "aspeed-scu-ic",
-		.of_match_table	= aspeed_scu_ic_of_match,
-	},
-};
-
-static int __init aspeed_scu_ic_init(void)
-{
-	return platform_driver_register(&aspeed_scu_ic_driver);
-}
-arch_initcall(aspeed_scu_ic_init);
+IRQCHIP_PLATFORM_DRIVER_BEGIN(aspeed_scu_ic)
+IRQCHIP_MATCH("aspeed,ast2400-scu-ic", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2500-scu-ic", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2600-scu-ic0", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2600-scu-ic1", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2700-scu-ic0", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2700-scu-ic1", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2700-scu-ic2", aspeed_scu_ic_probe)
+IRQCHIP_MATCH("aspeed,ast2700-scu-ic3", aspeed_scu_ic_probe)
+IRQCHIP_PLATFORM_DRIVER_END(aspeed_scu_ic)
