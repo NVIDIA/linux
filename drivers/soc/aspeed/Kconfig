@@ -156,10 +156,10 @@ config AST2700_OTP
 	help
 	  Enable driver support for Aspeed AST2700 OTP driver.
 
-endmenu
-
 source "drivers/soc/aspeed/espi/Kconfig"
 
 source "drivers/soc/aspeed/rvas/Kconfig"
+
+endmenu
 
 endif
