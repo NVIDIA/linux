@@ -1333,4 +1333,8 @@ static struct platform_driver ast2700_scu_driver = {
 	},
 };
 
-module_platform_driver(ast2700_scu_driver);
+static int __init clk_ast2700_init(void)
+{
+	return platform_driver_register(&ast2700_scu_driver);
+}
+arch_initcall(clk_ast2700_init);
