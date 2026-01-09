@@ -11,7 +11,7 @@
 #include <linux/irqchip.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
-#include <linux/of_address.h>
+#include <linux/of.h>
 #include <linux/spinlock.h>
 
 #define INTC1_IER	0x100
@@ -199,8 +199,9 @@ static int aspeed_intc1_interrupt_ranges(struct aspeed_intc_ic *intc_ic,
 	return 0;
 }
 
-static int aspeed_intc1_ic_of_init(struct device_node *node, struct device_node *parent)
+static int aspeed_intc1_ic_probe(struct platform_device *pdev, struct device_node *parent)
 {
+	struct device_node *node = pdev->dev.of_node;
 	struct aspeed_intc_ic *intc_ic;
 	int ret = 0;
 	int i;
@@ -213,17 +214,13 @@ static int aspeed_intc1_ic_of_init(struct device_node *node, struct device_node 
 	if (!irq_find_host(parent))
 		return -ENODEV;
 
-	intc_ic = kzalloc(sizeof(*intc_ic), GFP_KERNEL);
-
+	intc_ic = devm_kzalloc(&pdev->dev, sizeof(*intc_ic), GFP_KERNEL);
 	if (!intc_ic)
 		return -ENOMEM;
 
-	intc_ic->base = of_iomap(node, 0);
-	if (!intc_ic->base) {
-		pr_err("Failed to iomap intc_ic base\n");
-		ret = -ENOMEM;
-		goto err_free_ic;
-	}
+	intc_ic->base = devm_platform_ioremap_resource(pdev, 0);
+	if (IS_ERR(intc_ic->base))
+		return PTR_ERR(intc_ic->base);
 
 	raw_spin_lock_init(&intc_ic->intc_lock);
 
@@ -233,22 +230,18 @@ static int aspeed_intc1_ic_of_init(struct device_node *node, struct device_node 
 	intc_ic->irq_domain = irq_domain_create_linear(of_fwnode_handle(node),
 						       INTC1_BANK_NUM * INTC1_IRQS_PER_BANK,
 						       &aspeed_intc1_ic_irq_domain_ops, intc_ic);
-	if (!intc_ic->irq_domain) {
-		ret = -ENOMEM;
-		goto err_iounmap;
-	}
+	if (!intc_ic->irq_domain)
+		return -ENOMEM;
 
 	ret = aspeed_intc1_interrupt_ranges(intc_ic, node, parent);
-	if (ret < 0)
-		goto err_iounmap;
+	if (ret < 0) {
+		irq_domain_remove(intc_ic->irq_domain);
+		return -ENOENT;
+	}
 
 	return 0;
-
-err_iounmap:
-	iounmap(intc_ic->base);
-err_free_ic:
-	kfree(intc_ic);
-	return ret;
 }
 
-IRQCHIP_DECLARE(ast2700_intc1_ic, "aspeed,ast2700-intc1-ic", aspeed_intc1_ic_of_init);
+IRQCHIP_PLATFORM_DRIVER_BEGIN(ast2700_intc1)
+IRQCHIP_MATCH("aspeed,ast2700-intc1-ic", aspeed_intc1_ic_probe)
+IRQCHIP_PLATFORM_DRIVER_END(ast2700_intc1)

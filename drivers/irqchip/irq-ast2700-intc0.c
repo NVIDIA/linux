@@ -11,7 +11,7 @@
 #include <linux/irqchip.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
-#include <linux/of_address.h>
+#include <linux/of.h>
 #include <linux/spinlock.h>
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -416,8 +416,9 @@ out_put:
 	return 0;
 }
 
-static int aspeed_intc0_ic_of_init(struct device_node *node, struct device_node *parent)
+static int aspeed_intc0_ic_probe(struct platform_device *pdev, struct device_node *parent)
 {
+	struct device_node *node = pdev->dev.of_node;
 	struct irq_domain *parent_domain;
 	struct aspeed_intc_ic *intc_ic;
 	int i, j, ret;
@@ -433,15 +434,13 @@ static int aspeed_intc0_ic_of_init(struct device_node *node, struct device_node 
 		return -ENODEV;
 	}
 
-	intc_ic = kzalloc(sizeof(*intc_ic), GFP_KERNEL);
+	intc_ic = devm_kzalloc(&pdev->dev, sizeof(*intc_ic), GFP_KERNEL);
 	if (!intc_ic)
 		return -ENOMEM;
 
-	intc_ic->base = of_iomap(node, 0);
-	if (!intc_ic->base) {
-		ret = -ENOMEM;
-		goto err_free_ic;
-	}
+	intc_ic->base = devm_platform_ioremap_resource(pdev, 0);
+	if (IS_ERR(intc_ic->base))
+		return PTR_ERR(intc_ic->base);
 
 	writel(0, intc_ic->base + INTC0_SWINT_IER);
 	for (i = 0; i < INTC0_INTBANK_GROUPS; i++) {
@@ -460,22 +459,18 @@ static int aspeed_intc0_ic_of_init(struct device_node *node, struct device_node 
 							  of_fwnode_handle(node),
 							  &aspeed_intc0_ic_irq_domain_ops,
 							  intc_ic);
-	if (!intc_ic->irq_domain) {
-		ret = -ENOMEM;
-		goto err_ioumap;
-	}
+	if (!intc_ic->irq_domain)
+		return -ENOMEM;
 
 	ret = aspeed_intc0_init_gic_ranges(intc_ic, node, parent);
-	if (ret < 0)
-		goto err_ioumap;
+	if (ret < 0) {
+		irq_domain_remove(intc_ic->irq_domain);
+		return -ENOENT;
+	}
 
 	return 0;
-
-err_ioumap:
-	iounmap(intc_ic->base);
-err_free_ic:
-	kfree(intc_ic);
-	return ret;
 }
 
-IRQCHIP_DECLARE(ast2700_intc0_ic, "aspeed,ast2700-intc0-ic", aspeed_intc0_ic_of_init);
+IRQCHIP_PLATFORM_DRIVER_BEGIN(ast2700_intc0)
+IRQCHIP_MATCH("aspeed,ast2700-intc0-ic", aspeed_intc0_ic_probe)
+IRQCHIP_PLATFORM_DRIVER_END(ast2700_intc0)
