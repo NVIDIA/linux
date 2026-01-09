@@ -1622,7 +1622,7 @@ static int ast2600_i2c_setup_buff_tx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 		 * and write the remaining unaligned data at the end.
 		 */
 		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
-			return -ENOMEM;
+			return -EBUSY;
 		for (i = 0; i < xfer_len; i += 4) {
 			int xfer_cnt = i2c_bus->controller_xfer_cnt + i;
 
@@ -1643,13 +1643,13 @@ static int ast2600_i2c_setup_buff_tx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 			writel(wbuf_dword, i2c_bus->buf_base + i);
 		}
 		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
-			return -ENOMEM;
+			return -EBUSY;
 		writel(AST2600_I2CC_SET_TX_BUF_LEN(xfer_len),
 		       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
 	}
 
 	if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
-		return -ENOMEM;
+		return -EBUSY;
 
 	writel(cmd, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
 
@@ -1865,7 +1865,7 @@ static void ast2600_i2c_controller_package_irq(struct ast2600_i2c_bus *i2c_bus, 
 		i2c_bus->msgs_index++;
 		if (i2c_bus->msgs_index < i2c_bus->msgs_count) {
 			if (ast2600_i2c_do_start(i2c_bus)) {
-				i2c_bus->cmd_err = -ENOMEM;
+				i2c_bus->cmd_err = -EBUSY;
 				complete(&i2c_bus->cmd_complete);
 			}
 		} else {
@@ -1899,7 +1899,7 @@ static void ast2600_i2c_controller_package_irq(struct ast2600_i2c_bus *i2c_bus, 
 				complete(&i2c_bus->cmd_complete);
 			} else {
 				if (ast2600_i2c_do_start(i2c_bus)) {
-					i2c_bus->cmd_err = -ENOMEM;
+					i2c_bus->cmd_err = -EBUSY;
 					complete(&i2c_bus->cmd_complete);
 				}
 			}
@@ -1981,7 +1981,7 @@ static void ast2600_i2c_controller_package_irq(struct ast2600_i2c_bus *i2c_bus, 
 				complete(&i2c_bus->cmd_complete);
 			} else {
 				if (ast2600_i2c_do_start(i2c_bus)) {
-					i2c_bus->cmd_err = -ENOMEM;
+					i2c_bus->cmd_err = -EBUSY;
 					complete(&i2c_bus->cmd_complete);
 				}
 			}
