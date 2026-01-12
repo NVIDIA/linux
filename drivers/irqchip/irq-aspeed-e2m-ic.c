@@ -157,11 +157,24 @@ err:
 	return rc;
 }
 
-static int __init aspeed_ast2700_e2m_ic_of_init(struct device_node *node,
-						struct device_node *parent)
+static int aspeed_ast2700_e2m_ic_probe(struct platform_device *pdev, struct device_node *parent)
 {
-	struct aspeed_e2m_ic *e2m_ic = kzalloc(sizeof(*e2m_ic), GFP_KERNEL);
+	struct aspeed_e2m_ic *e2m_ic;
+	struct irq_domain *parent_domain;
 
+	if (!parent) {
+		pr_err("missing parent interrupt node\n");
+		return -ENODEV;
+	}
+
+	parent_domain = irq_find_host(parent);
+	if (!parent_domain) {
+		pr_err("missing intc0 interrupt node\n");
+		return dev_err_probe(&pdev->dev, -EPROBE_DEFER,
+				   "Missing intc0 interrupt node\n");
+	}
+
+	e2m_ic = devm_kzalloc(&pdev->dev, sizeof(*e2m_ic), GFP_KERNEL);
 	if (!e2m_ic)
 		return -ENOMEM;
 
@@ -171,8 +184,9 @@ static int __init aspeed_ast2700_e2m_ic_of_init(struct device_node *node,
 	e2m_ic->en_reg = ASPEED_AST2700_E2M_IC_EN_REG;
 	e2m_ic->sts_reg = ASPEED_AST2700_E2M_IC_STS_REG;
 
-	return aspeed_e2m_ic_of_init_common(e2m_ic, node);
+	return aspeed_e2m_ic_of_init_common(e2m_ic, pdev->dev.of_node);
 }
 
-IRQCHIP_DECLARE(ast2700_e2m_ic, "aspeed,ast2700-e2m-ic",
-		aspeed_ast2700_e2m_ic_of_init);
+IRQCHIP_PLATFORM_DRIVER_BEGIN(ast2700_e2m)
+IRQCHIP_MATCH("aspeed,ast2700-e2m-ic", aspeed_ast2700_e2m_ic_probe)
+IRQCHIP_PLATFORM_DRIVER_END(ast2700_e2m)
