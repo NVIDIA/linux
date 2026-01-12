@@ -433,11 +433,10 @@
     };
 };
 
-// EMMC group that excludes WP & CD pin
+// EMMC group that excludes WP pin
 &pinctrl {
-    pinctrl_emmcg9_default: emmcg9_default {
+    pinctrl_emmcg5_default: emmcg5_default {
         function = "EMMC";
-        groups = "EMMCG9";
+        groups = "EMMCG5";
     };
 };
-
