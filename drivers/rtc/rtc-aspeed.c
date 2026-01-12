@@ -273,10 +273,6 @@ static int aspeed_rtc_probe(struct platform_device *pdev)
 	if (IS_ERR(rtc_dev))
 		return PTR_ERR(rtc_dev);
 
-	rtc_dev = devm_rtc_allocate_device(&pdev->dev);
-	if (IS_ERR(rtc_dev))
-		return PTR_ERR(rtc_dev);
-
 	platform_set_drvdata(pdev, rtc);
 
 	rtc_dev->ops = &aspeed_rtc_ops;
