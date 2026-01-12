@@ -1102,14 +1102,14 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			aspeed,device = <&pcie_cfg0>;
-			interrupt-parent = <&intc0>;
 			e2m_ic0: interrupt-controller@14 {
-				#interrupt-cells = <1>;
 				compatible = "aspeed,ast2700-e2m-ic";
 				reg = <0 0x14 0 0x8>;
-				interrupts-extended = <&intc0 116>;
-				interrupt-names = "e2m";
 				interrupt-controller;
+				interrupt-parent = <&intc0>;
+				#interrupt-cells = <1>;
+				interrupt-names = "e2m";
+				interrupts = <116>;
 			};
 
 			pcie0_mmbi0: pcie0-mmbi@0 {
@@ -1160,13 +1160,13 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			aspeed,device = <&pcie_cfg1>;
-			interrupt-parent = <&intc0>;
 			e2m_ic1: interrupt-controller@14 {
-				#interrupt-cells = <1>;
 				compatible = "aspeed,ast2700-e2m-ic";
 				reg = <0 0x14 0 0x8>;
-				interrupts-extended = <&intc0 117>;
 				interrupt-controller;
+				interrupt-parent = <&intc0>;
+				#interrupt-cells = <1>;
+				interrupts = <117>;
 			};
 
 			pcie1_mmbi4: pcie1-mmbi@4 {
@@ -1823,11 +1823,12 @@
 			pinctrl-names = "default";
 
 			e2m_ic2: interrupt-controller@14 {
-				#interrupt-cells = <1>;
 				compatible = "aspeed,ast2700-e2m-ic";
 				reg = <0 0x14 0 0x8>;
-				interrupts-extended = <&intc1 4 20>;
 				interrupt-controller;
+				interrupt-parent = <&intc1>;
+				#interrupt-cells = <1>;
+				interrupts = <4 20>;
 			};
 
 			pcie2_mmbi0: pcie2-mmbi@0 {
