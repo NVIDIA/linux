@@ -297,14 +297,14 @@
                         #interrupt-cells = <2>;
 
                         gpio-line-names =
-                            "IOB0_MCP_P0_2-B",
-                            "IOB0_MCU_RST_L-O",
-                            "IOB0_MCU_RECOVERY_L-O",
-                            "IOB0_GLOBAL_WP-O",
-                            "IOB0_GLOBAL_ADDR_L_R-O",
-                            "IOB0_GLOBAL_ADDR_U_D-O",
-                            "IOB0_PWR_EN-O",
-                            "IOB0_MCU_READY_STATUS-I";
+                            "IOB1_MCP_P0_2-B",
+                            "IOB1_MCU_RST_L-O",
+                            "IOB1_MCU_RECOVERY_L-O",
+                            "IOB1_GLOBAL_WP-O",
+                            "IOB1_GLOBAL_ADDR_L_R-O",
+                            "IOB1_GLOBAL_ADDR_U_D-O",
+                            "IOB1_PWR_EN-O",
+                            "IOB1_MCU_READY_STATUS-I";
 		            };
                 };
                 hub@4 {
@@ -317,14 +317,14 @@
                         #interrupt-cells = <2>;
 
                         gpio-line-names =
-                            "IOB1_MCP_P0_2-B",
-                            "IOB1_MCU_RST_L-O",
-                            "IOB1_MCU_RECOVERY_L-O",
-                            "IOB1_GLOBAL_WP-O",
-                            "IOB1_GLOBAL_ADDR_L_R-O",
-                            "IOB1_GLOBAL_ADDR_U_D-O",
-                            "IOB1_PWR_EN-O",
-                            "IOB1_MCU_READY_STATUS-I";
+                            "IOB0_MCP_P0_2-B",
+                            "IOB0_MCU_RST_L-O",
+                            "IOB0_MCU_RECOVERY_L-O",
+                            "IOB0_GLOBAL_WP-O",
+                            "IOB0_GLOBAL_ADDR_L_R-O",
+                            "IOB0_GLOBAL_ADDR_U_D-O",
+                            "IOB0_PWR_EN-O",
+                            "IOB0_MCU_READY_STATUS-I";
 		            };
                 };
                 device@1 {
