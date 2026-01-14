@@ -550,7 +550,16 @@ static void mctp_usbg_free_func(struct usb_function *f)
 {
 	struct f_mctp *mctp = func_to_mctp(f);
 
-	kfree(mctp);
+	/* Cancel pending work before cleanup */
+	cancel_work_sync(&mctp->prealloc_work);
+
+	/* Free any pending SKBs in the queues */
+	__skb_queue_purge(&mctp->skb_free_list);
+
+	/* The netdev (and f_mctp) will be freed automatically
+	 * by the network core since needs_free_netdev = true.
+	 */
+	unregister_netdev(mctp->dev);
 }
 
 static void mctp_usbg_netdev_setup(struct net_device *dev)
