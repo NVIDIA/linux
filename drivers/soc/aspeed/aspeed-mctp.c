@@ -2493,6 +2493,23 @@ static int aspeed_mctp_probe(struct platform_device *pdev)
 		goto out_drv;
 	}
 
+	ret = aspeed_mctp_dma_init(priv);
+	if (ret) {
+		dev_err(priv->dev, "Failed to init DMA\n");
+		goto out_drv;
+	}
+
+	ret = aspeed_mctp_hw_reset(priv);
+	if (ret)
+		goto out_dma;
+
+	aspeed_mctp_channels_init(priv);
+
+	id = of_alias_get_id(priv->dev->of_node, "mctp");
+	if (id < 0) {
+		ret = id;
+		goto out_dma;
+	}
 #ifdef CONFIG_MCTP_TRANSPORT_PCIE_VDM
 	struct net_device *ndev;
 	struct mctp_client *client;
@@ -2504,26 +2521,11 @@ static int aspeed_mctp_probe(struct platform_device *pdev)
 	ndev = mctp_pcie_vdm_add_dev(priv->dev, &aspeed_mctp_pcie_vdm_ops);
 	if (IS_ERR(ndev)) {
 		dev_err(priv->dev, "Failed to add mctp pcie vdm device Err %ld\n", PTR_ERR(ndev));
-		goto out_drv;
+		goto out_dma;
 	}
 	priv->ndev = ndev;
 #endif
 
-	ret = aspeed_mctp_dma_init(priv);
-	if (ret) {
-		dev_err(priv->dev, "Failed to init DMA\n");
-		goto out_drv;
-	}
-
-	ret = aspeed_mctp_hw_reset(priv);
-	if (ret)
-		goto out_drv;
-
-	aspeed_mctp_channels_init(priv);
-
-	id = of_alias_get_id(priv->dev->of_node, "mctp");
-	if (id < 0)
-		return id;
 	priv->mctp_miscdev.parent = priv->dev;
 	priv->mctp_miscdev.minor = MISC_DYNAMIC_MINOR;
 	priv->mctp_miscdev.name = devm_kasprintf(priv->dev, GFP_KERNEL, "aspeed-mctp%d", id);
