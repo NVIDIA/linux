@@ -2182,7 +2182,9 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 	 */
 	tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
 
-	/* Method 1: Use existing key socket (fastest path) */
+	/* Method 1: Use existing key socket (fastest path)
+	 * If caller already has a key (e.g., from RX reassembly), use it directly.
+	 */
 	if (key && key->sk) {
 		struct mctp_sock *check_msk = container_of(key->sk, struct mctp_sock, sk);
 		
@@ -2209,11 +2211,47 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 		return sk;
 	}
 
-	/* Method 2: Try TX key lookup (for TX errors from drivers)
+	/* Method 2: Check skb->sk directly (fast path for TX errors)
 	 * 
-	 * Searches for TX keys by (netid, local_eid, peer_eid, tag).
-	 * TX key existence indicates operation WE initiated.
+	 * If SKB has socket pointer (from sendmsg), use it directly.
+	 * This is much faster than TX key lookup (no hash table search).
+	 * Works for both requests and responses (if skb->sk is preserved).
+	 * 
+	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
+	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
+	 * We skip to be consistent with Method 3 (TX key lookup).
+	 */
+	if (!key && skb->sk && skb->sk->sk_family == AF_MCTP) {
+		struct mctp_sock *msk = container_of(skb->sk, struct mctp_sock, sk);
+		
+		/* Check if socket is still valid and open */
+		if (sock_flag(&msk->sk, SOCK_DEAD)) {
+			pr_debug("MCTP error: skb->sk socket is dead (closed)\n");
+			return NULL;
+		}
+		
+		/* Skip if this socket doesn't have error queue enabled */
+		if (!msk->enable_errqueue) {
+			pr_debug("MCTP error: skb->sk socket found but error queue disabled (src=%u, dest=%u)\n",
+				 mh->src, mh->dest);
+			return NULL;
+		}
+		
+		/* This is the socket that sent this packet - safe to report error */
+		sock_hold(skb->sk);
+		pr_debug("MCTP error: socket via skb->sk (src=%u, dest=%u) - fast path\n",
+			 mh->src, mh->dest);
+		return skb->sk;
+	}
+
+	/* Method 3: TX key lookup (slower fallback for TX errors)
+	 * 
+	 * If skb->sk not available, search for TX keys by (netid, local_eid, peer_eid, tag).
+	 * TX key existence indicates operation WE initiated (request packet).
 	 * No TX key = not our transaction = don't report error.
+	 * 
+	 * This is slower than Method 2 (requires hash table lookup + lock),
+	 * but needed when skb->sk is lost (e.g., old drivers, special cases).
 	 * 
 	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
 	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
@@ -2251,17 +2289,18 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 			return sk;
 		}
 		
-		/* No TX key found = not our transaction = don't report error */
+		/* No TX key found and no skb->sk = not our transaction or response without TX key */
 		pr_debug("MCTP error: No TX key found, not our transaction (src=%u, dest=%u, tag=%u)\n",
 			 mh->src, mh->dest, tag);
 	}
 
 	/* If we reach here:
 	 * - key parameter provided: called from __mctp_key_remove()
-	 *   Method 2 skipped for deadlock prevention
-	 * - OR Method 2 found no TX key: not our transaction
+	 *   Methods 2 and 3 skipped for deadlock prevention
+	 * - OR Method 2 found no valid skb->sk
+	 * - OR Method 3 found no TX key: not our transaction
 	 * 
-	 * In either case, don't report error.
+	 * In any case, don't report error.
 	 */
 	return NULL;
 }
@@ -2383,66 +2422,84 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 	}
 	mh = mctp_hdr(skb);
 
-	/* Determine payload source based on error type.
+	/* Handle TX vs RX errors differently.
 	 * 
-	 * TX errors: Use TX key's orig_payload (captured before fragmentation)
-	 * RX timeout: Use RX key's orig_payload (original REQUEST we sent)
-	 * RX other errors: Look up TX key to report original request
+	 * TX errors: Use TX key if available, otherwise extract from SKB
+	 * RX errors: Always need TX key to identify our original transaction
 	 */
 	if (direction == MCTP_DIR_TX) {
-		/* TX error: Use provided TX key directly */
-		tx_key = rx_key;
-		if (tx_key && tx_key->orig_payload_len > 0) {
-			key_found = true;
-			pr_debug("mctp_queue_error: TX error - using TX key (orig_payload_len=%u)\n",
-				 tx_key->orig_payload_len);
-		} else {
-			pr_debug("mctp_queue_error: TX error - no valid TX key, NOT REPORTING\n");
-		}
-		
-		if (!key_found || !tx_key || tx_key->orig_payload_len == 0) {
-			return;
-		}
-	} else if (error_code == ETIMEDOUT) {
-		/* RX reassembly timeout: Use RX key's orig_payload (original REQUEST).
-		 * For TX-originated keys (BMC request → device response), orig_payload
-		 * was captured during TX phase and contains the REQUEST we sent.
-		 * This allows applications to identify which transaction timed out.
-		 * If no orig_payload, this is an unsolicited request - don't report.
+		/* ===== TX ERROR PATH =====
+		 * TX errors can occur on:
+		 *   1. REQUEST packets (owner=1) - TX key exists with orig_payload
+		 *   2. RESPONSE packets (owner=0) - No TX key, extract from SKB
+		 *   3. Fragmented packets - Middle/end need key, first has SKB payload
 		 */
-		tx_key = rx_key;  /* RX key IS the TX key (same key reused for response) */
+		tx_key = rx_key;  /* rx_key parameter actually holds TX key for TX errors */
+		
 		if (tx_key && tx_key->orig_payload_len > 0) {
+			/* Have TX key with payload - use it (fragmented requests) */
 			key_found = true;
-			pr_debug("mctp_queue_error: RX timeout - using TX key orig_payload (REQUEST, len=%u)\n",
+			pr_debug("mctp_queue_error: TX error - using TX key orig_payload (len=%u)\n",
 				 tx_key->orig_payload_len);
 		} else {
-			pr_debug("mctp_queue_error: RX timeout - no TX origin (unsolicited), NOT REPORTING\n");
-			return;
+			/* No key or empty key - must extract from SKB.
+			 * This handles:
+			 *   - Unfragmented messages (complete payload in SKB)
+			 *   - First fragment (SOM=1, has msg_type in SKB)
+			 *   - Response packets (no TX key created)
+			 * 
+			 * CRITICAL: Only works for first fragment or unfragmented.
+			 * Middle/end fragments without key cannot be reported.
+			 */
+			pr_debug("mctp_queue_error: TX error - no TX key, will extract from SKB\n");
+			key_found = false;
 		}
 	} else {
-		/* RX error (SOM, sequence): Look up TX key by reversing src/dest.
-		 * Response came FROM peer (mh->src) TO us (mh->dest).
-		 * Our original request was FROM us (mh->dest) TO peer (mh->src).
+		/* ===== RX ERROR PATH =====
+		 * RX errors occur when receiving responses to OUR requests.
+		 * We MUST find the TX key to identify our original transaction.
+		 * If no TX key exists, this is an unsolicited packet - don't report.
 		 */
-		u8 tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
-		
-		pr_debug("mctp_queue_error: RX error - looking up TX key (local=%u, peer=%u, tag=%u)\n",
-			 mh->dest, mh->src, tag);
-		
-		tx_key = mctp_lookup_tx_key_for_rx_error(dev_net(dev), netid,
-							 mh->dest, mh->src, tag);
-		if (tx_key) {
-			key_found = true;
-			pr_debug("mctp_queue_error: RX error - TX key FOUND, will report error\n");
+		if (error_code == ETIMEDOUT) {
+			/* RX reassembly timeout: fragments never completed.
+			 * RX key IS the TX key (same object, reused for response tracking).
+			 * It contains orig_payload from when we sent the original REQUEST.
+			 */
+			tx_key = rx_key;  /* RX key = TX key */
+			
+			if (tx_key && tx_key->orig_payload_len > 0) {
+				key_found = true;
+				pr_debug("mctp_queue_error: RX timeout - has TX orig_payload (REQUEST, len=%u)\n",
+					 tx_key->orig_payload_len);
+			} else {
+				/* No orig_payload = unsolicited request from device, not our transaction */
+				pr_debug("mctp_queue_error: RX timeout - no TX origin (unsolicited), NOT REPORTING\n");
+				return;
+			}
 		} else {
-			pr_debug("mctp_queue_error: RX error - TX key NOT FOUND, NOT REPORTING (unsolicited)\n");
-			return;
-		}
-		
-		if (!tx_key || tx_key->orig_payload_len == 0) {
-			pr_debug("mctp_queue_error: RX error - TX key has no orig_payload, NOT REPORTING\n");
-			mctp_key_unref(tx_key);
-			return;
+			/* RX sequence/SOM error: look up TX key by reversing addressing.
+			 * Response came FROM peer (mh->src) TO us (mh->dest).
+			 * Our original request was FROM us (mh->dest) TO peer (mh->src).
+			 */
+			u8 tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+			
+			pr_debug("mctp_queue_error: RX error - looking up TX key (local=%u, peer=%u, tag=%u)\n",
+				 mh->dest, mh->src, tag);
+			
+			tx_key = mctp_lookup_tx_key_for_rx_error(dev_net(dev), netid,
+								 mh->dest, mh->src, tag);
+			if (tx_key && tx_key->orig_payload_len > 0) {
+				key_found = true;
+				pr_debug("mctp_queue_error: RX error - TX key found with payload\n");
+			} else {
+				if (tx_key) {
+					pr_debug("mctp_queue_error: RX error - TX key has no payload, NOT REPORTING\n");
+					mctp_key_unref(tx_key);
+				} else {
+					pr_debug("mctp_queue_error: RX error - TX key NOT FOUND (unsolicited), NOT REPORTING\n");
+				}
+				return;
+			}
 		}
 	}
 
@@ -2469,24 +2526,73 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 	mctp_err->dest_eid = mh->dest;
 	mctp_err->tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
 
-	/* Extract payload - ALL error types now use TX key's orig_payload (original REQUEST).
-	 * This ensures applications always receive the REQUEST payload, allowing them to
-	 * identify which transaction failed, regardless of error type.
-	 * 
-	 * TX errors: TX key provided directly
-	 * RX timeout: RX key (which is the TX key) has orig_payload from TX phase
-	 * RX SOM/seq: TX key looked up by reversing src/dest addressing
-	 */
-	if (tx_key) {
-		/* Use TX key payload (original REQUEST for all error types) */
+	/* Extract payload for error report based on direction and availability. */
+	if (direction == MCTP_DIR_TX) {
+		/* ===== TX ERROR: Payload Extraction =====
+		 * Try TX key first, fall back to SKB extraction
+		 */
+		if (key_found) {
+			/* Use TX key payload (captured before fragmentation) */
+			mctp_err->msg_type = tx_key->orig_msg_type;
+			capture_len = min_t(size_t, tx_key->orig_payload_len,
+					   MCTP_ERROR_PAYLOAD_SIZE);
+			memcpy(mctp_err->payload, tx_key->orig_payload, capture_len);
+			mctp_err->payload_len = capture_len;
+			pr_debug("mctp_queue_error: TX - used key payload (len=%u)\n", capture_len);
+		} else {
+			/* No key - extract from SKB (responses, unfragmented, first fragments) */
+			u8 flags = mh->flags_seq_tag;
+			bool is_first_or_unfragmented = (flags & MCTP_HDR_FLAG_SOM);
+			
+			if (!is_first_or_unfragmented) {
+				/* Middle/end fragment without key - cannot extract payload.
+				 * Don't report - first fragment error already queued.
+				 */
+				pr_debug("mctp_queue_error: TX middle/end fragment without key - NOT REPORTING\n");
+				kfree_skb(err_skb);
+				return;
+			}
+			
+			/* First fragment or unfragmented - SKB has msg_type and payload */
+			size_t mctp_hdr_size = sizeof(struct mctp_hdr);
+			size_t available = skb->len - mctp_hdr_size;
+			
+			if (available > 0) {
+				u8 *payload_start = skb->data + mctp_hdr_size;
+				
+				/* First byte after MCTP header is message type */
+				mctp_err->msg_type = *payload_start;
+				
+				/* Capture up to 32 bytes of payload (after message type) */
+				if (available > 1) {
+					capture_len = min_t(size_t, available - 1,
+							   MCTP_ERROR_PAYLOAD_SIZE);
+					memcpy(mctp_err->payload, payload_start + 1, capture_len);
+					mctp_err->payload_len = capture_len;
+				} else {
+					mctp_err->payload_len = 0;
+				}
+				pr_debug("mctp_queue_error: TX - extracted from SKB (msg_type=%u, len=%u)\n",
+					 mctp_err->msg_type, mctp_err->payload_len);
+			} else {
+				pr_debug("mctp_queue_error: TX - SKB too small, no payload\n");
+				mctp_err->payload_len = 0;
+			}
+		}
+	} else {
+		/* ===== RX ERROR: Payload Extraction =====
+		 * Always use TX key payload (original REQUEST we sent)
+		 * We already validated key_found above, so tx_key is valid here.
+		 */
 		mctp_err->msg_type = tx_key->orig_msg_type;
 		capture_len = min_t(size_t, tx_key->orig_payload_len,
 				   MCTP_ERROR_PAYLOAD_SIZE);
 		memcpy(mctp_err->payload, tx_key->orig_payload, capture_len);
 		mctp_err->payload_len = capture_len;
-
-		/* Release TX key if we looked it up (RX non-timeout case) */
-		if (direction == MCTP_DIR_RX && error_code != ETIMEDOUT)
+		pr_debug("mctp_queue_error: RX - used TX key payload (REQUEST, len=%u)\n", capture_len);
+		
+		/* Release TX key if we looked it up (non-timeout RX errors) */
+		if (error_code != ETIMEDOUT)
 			mctp_key_unref(tx_key);
 	}
 

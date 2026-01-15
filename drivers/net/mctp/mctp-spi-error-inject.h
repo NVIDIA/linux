@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * MCTP SPI Error Injection Infrastructure
+ * 
+ * Provides debugfs-based error injection for testing MCTP error queue
+ * functionality over SPI binding.
+ * Interface unified with I2C/USB error injection.
+ */
+
+#ifndef __MCTP_SPI_ERROR_INJECT_H
+#define __MCTP_SPI_ERROR_INJECT_H
+
+#include <linux/types.h>
+#include <linux/skbuff.h>
+#include <linux/random.h>
+#include <linux/spinlock.h>
+#include <linux/netdevice.h>
+#include <linux/completion.h>
+#include <linux/kthread.h>
+#include <linux/debugfs.h>
+
+/* Forward declarations */
+struct dentry;
+
+/* Error injection modes - unified with I2C/USB */
+enum mctp_error_inject_mode {
+	MCTP_ERR_MODE_ALWAYS,
+	MCTP_ERR_MODE_RANDOM,
+	MCTP_ERR_MODE_COUNT
+};
+
+/* Error injection control structure - unified interface */
+struct mctp_spi_error_inject {
+	bool enable_tx;  /* TX error injection enable */
+	enum mctp_error_inject_mode mode;
+	
+	/* TX injection - SPI uses SPB_AP return codes */
+	int spi_tx_error_code;   /* SPB_AP error code (SPB_AP_ERROR_TIMEOUT, etc.) */
+	u32 spi_tx_error_rate;   /* Percentage (0-100) or count */
+	u32 spi_tx_inject_count; /* Counter for count mode */
+	u32 spi_tx_errors_injected;
+	
+	/* Delay injection */
+	u32 delay_ms;
+	
+	/* EID filtering - unified with I2C/USB */
+	struct {
+		bool enabled;
+		u8 src_eid;      /* 0 = any */
+		u8 dest_eid;     /* 0 = any */
+		u8 msg_type;     /* 0 = any */
+	} eid_filter;
+	
+	/* Statistics */
+	u64 total_packets_processed;
+	u64 total_errors_injected;
+	
+	/* RNG state */
+	struct rnd_state rng;
+	spinlock_t lock;
+};
+
+/* Forward declaration - full definition in mctp-spi.c */
+struct mctp_spi;
+
+/* Module init/exit functions */
+int mctp_spi_error_inject_module_init(void);
+void mctp_spi_error_inject_module_exit(void);
+
+/* Public API for main driver */
+void mctp_spi_error_inject_init(struct mctp_spi *midev);
+void mctp_spi_error_inject_cleanup(struct mctp_spi *midev);
+
+int mctp_spi_error_inject_tx(struct mctp_spi *midev, struct sk_buff *skb, int *injected_status);
+
+#endif /* __MCTP_SPI_ERROR_INJECT_H */
+
+
+
+
+
+
+
+

@@ -3,6 +3,7 @@ obj-$(CONFIG_MCTP_TRANSPORT_I2C) += mctp-i2c.o
 obj-$(CONFIG_MCTP_TRANSPORT_I2C) += mctp-i2c-error-inject.o
 obj-$(CONFIG_MCTP_TRANSPORT_I3C) += mctp-i3c.o
 obj-$(CONFIG_MCTP_TRANSPORT_SPI) += mctp-spi.o
+obj-$(CONFIG_MCTP_TRANSPORT_SPI) += mctp-spi-error-inject.o
 obj-$(CONFIG_MCTP_TRANSPORT_USB) += mctp-usb.o
 obj-$(CONFIG_MCTP_TRANSPORT_USB) += mctp-usb-error-inject.o
 obj-$(CONFIG_MCTP_TRANSPORT_PCIE_VDM) += mctp-pcie-vdm.o

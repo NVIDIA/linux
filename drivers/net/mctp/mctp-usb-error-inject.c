@@ -980,9 +980,18 @@ void mctp_usb_error_inject_init(struct mctp_usb *mctp_usb)
 	if (!mctp_usb_debugfs_root)
 		return;
 	
-	dir = debugfs_create_dir(netdev_name(mctp_usb->netdev), mctp_usb_debugfs_root);
-	if (IS_ERR_OR_NULL(dir))
+	/* Use USB interface device name (stable, unique, persistent across reboots)
+	 * instead of netdev name (which can be renamed by udev after probe).
+	 * This prevents debugfs directory name collisions when devices are hot-plugged.
+	 * Example: "1-1.1.1.1:1.0" instead of "mctpusb0"
+	 */
+	dir = debugfs_create_dir(dev_name(&mctp_usb->intf->dev), mctp_usb_debugfs_root);
+	if (IS_ERR_OR_NULL(dir)) {
+		netdev_warn(mctp_usb->netdev,
+			    "Failed to create debugfs directory '%s', error injection disabled\n",
+			    dev_name(&mctp_usb->intf->dev));
 		return;
+	}
 	
 	mctp_usb->debugfs_dir = dir;
 	

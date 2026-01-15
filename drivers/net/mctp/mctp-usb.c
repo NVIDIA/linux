@@ -325,6 +325,10 @@ static void mctp_usb_out_complete(struct urb *urb)
 						skb_put_data(pkt_skb, skb->data, pkt_total_len);
 						pkt_skb->dev = netdev;
 						
+						/* Preserve socket for error reporting (response packets) */
+						if (skb->sk)
+							skb_set_owner_w(pkt_skb, skb->sk);
+						
 						/* Remove USB header to expose MCTP header */
 						if (skb_pull(pkt_skb, sizeof(struct mctp_usb_hdr))) {
 							skb_reset_network_header(pkt_skb);
@@ -586,6 +590,10 @@ err_drop:
 					if (pkt_skb) {
 						skb_put_data(pkt_skb, skb->data, pkt_total_len);
 						pkt_skb->dev = netdev;
+						
+						/* Preserve socket for error reporting (response packets) */
+						if (skb->sk)
+							skb_set_owner_w(pkt_skb, skb->sk);
 						
 						/* Remove USB header to expose MCTP header */
 						if (skb_pull(pkt_skb, sizeof(struct mctp_usb_hdr))) {
