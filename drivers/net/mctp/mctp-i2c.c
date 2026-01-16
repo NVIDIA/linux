@@ -22,8 +22,6 @@
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
 #include <linux/if_arp.h>
-#include <linux/delay.h>
-
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
@@ -40,10 +38,6 @@
 #define MCTP_I2C_TX_WORK_LEN 100
 /* Sufficient for 64kB at min mtu */
 #define MCTP_I2C_TX_QUEUE_LEN 1100
-/* Number of retries for I2C transfers */
-#define MCTP_I2C_TX_RETRY_COUNT 10
-/* Delay between I2C transfer retries in microseconds */
-#define MCTP_I2C_TX_RETRY_DELAY_US 2000
 
 #define MCTP_I2C_OF_PROP "mctp-controller"
 
@@ -498,31 +492,6 @@ static void mctp_i2c_invalidate_tx_flow(struct mctp_i2c_dev *midev,
 		mctp_i2c_unlock_nest(midev);
 }
 
-/* Helper function to perform I2C transfer with retries */
-static int mctp_i2c_transfer_with_retry(struct i2c_adapter *adapter,
-					struct i2c_msg *msg)
-{
-	int retry = MCTP_I2C_TX_RETRY_COUNT;
-	int rc;
-
-	do {
-		rc = __i2c_transfer(adapter, msg, 1);
-		if (rc < 0) {
-			/* Only retry for EBUSY errors */
-			if (rc == -EBUSY) {
-				if (retry > 0)
-					usleep_range(MCTP_I2C_TX_RETRY_DELAY_US,
-						     MCTP_I2C_TX_RETRY_DELAY_US + 100);
-			} else {
-				/* Non-retryable error */
-				break;
-			}
-		}
-	} while ((rc < 0) && (retry--));
-
-	return rc;
-}
-
 static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 {
 	struct net_device_stats *stats = &midev->ndev->stats;
@@ -570,7 +539,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
 		rc = mctp_i2c_error_inject_tx(midev, skb);
 		if (rc == 0)
-			rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
+			rc = __i2c_transfer(midev->adapter, &msg, 1);
 		
 
 		mctp_i2c_unlock_nest(midev);
@@ -590,7 +559,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
 		rc = mctp_i2c_error_inject_tx(midev, skb);
 		if (rc == 0)
-			rc = mctp_i2c_transfer_with_retry(midev->adapter, &msg);
+			rc = __i2c_transfer(midev->adapter, &msg, 1);
 
 		/* on tx errors, the flow can no longer be considered valid */
 		if (rc < 0)
