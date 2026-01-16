@@ -478,8 +478,10 @@
     status = "okay";
     clock-frequency = <400000>;
     disable-master = <1>;
-    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-scl-clk-low-timeout-us = <128000>;
     i2c-tck-thddat-config = <0x0099EC00>;
+    tout-baseclk-div = <4096>;
+
     ssif-bmc@10 {
         compatible = "ssif-bmc";
         alert-gpio = <&gpio1 ASPEED_GPIO(D, 7) GPIO_ACTIVE_LOW>;
