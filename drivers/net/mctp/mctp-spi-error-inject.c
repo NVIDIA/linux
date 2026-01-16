@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * MCTP SPI Error Injection Implementation
- * 
+ *
+ * Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+ *
  * Provides debugfs-based error injection for testing MCTP error queue
  * functionality over SPI binding.
- * 
+ *
  * Interface unified with I2C/USB error injection where applicable.
  */
 
@@ -17,7 +19,7 @@
 #include <linux/uaccess.h>
 #include <net/mctp.h>
 
-#include "mctp-spi-error-inject.h"
+#include "mctp-spi-internal.h"
 
 /* Forward declare SpbApStatus enum values - avoid including glacier-spb-ap.h 
  * to prevent multiple definition linker errors */
@@ -27,69 +29,9 @@
 #define SPB_AP_ERROR_TIMEOUT 3
 #define SPB_AP_ERROR_UNKNOWN 4
 
-/* Forward declarations to avoid including glacier-spb-ap.h */
-typedef struct SpbAp SpbAp;
-struct spidev_data;
-struct gpio_desc;
-
 /* Constants from mctp-spi.c */
 #define BUFSIZE 256
 
-/* CRITICAL: This struct definition MUST match the one in mctp-spi.c exactly!
- * If you modify struct mctp_spi in mctp-spi.c, you MUST update this copy.
- */
-struct mctp_spi {
-	struct net_device	*ndev;
-	struct spidev_data *spidev;
-
-	struct task_struct *tx_thread;
-	wait_queue_head_t main_thread_wq;
-	struct sk_buff_head tx_queue;
-	spinlock_t lock;
-	bool allow_rx;
-	struct completion rx_done;
-
-	struct gpio_desc *rx_alert; //Input gpio to alert about the incoming package from SPI
-	int	rx_alert_irq;
-
-	SpbAp *ap;
-	wait_queue_head_t gpio_intr_wq;
-	bool gpio_intr_cond;
-	spinlock_t gpio_intr_cond_lock;
-
-	/* Per-EID statistics tracking - SINGLE source of truth
-	 *
-	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
-	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
-	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be determined
-	 *   (GPIO interrupts, SPI transfer errors, allocation failures)
-	 */
-	struct {
-		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
-		struct mctp_spi_eid_stats {
-			/* RX stats */
-			u64 rx_drop_no_memory;
-			u64 rx_drop_not_ready;       /* Tracked as UNKNOWN (before EID known) */
-			u64 rx_drop_spi_error;       /* Tracked as UNKNOWN */
-			
-			/* TX stats */
-			u64 tx_drop_spi_error;
-			u64 tx_drop_ebusy;
-			u64 tx_drop_etimedout;
-			u64 tx_drop_eio;
-			u64 tx_drop_einval;
-			u64 tx_drop_enomem;
-			u64 tx_drop_emsgsize;
-			
-			/* GPIO interrupt tracking (UNKNOWN - no EID context) */
-			u64 gpio_interrupts;
-		} eid[257];
-	} eid_stats;
-	
-	/* Error injection support */
-	struct mctp_spi_error_inject error_inject;
-	struct dentry *debugfs_dir;
-};
 /* Global debugfs root for all MCTP SPI error injection */
 static struct dentry *mctp_spi_error_inject_root;
 

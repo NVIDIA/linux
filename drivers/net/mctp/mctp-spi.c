@@ -27,6 +27,7 @@
 #include <trace/events/mctp.h>
 
 #include "glacier-spb-ap.h"
+#include "mctp-spi-internal.h"
 #include "mctp-stats.h"
 #include "mctp-spi-error-inject.h"
 
@@ -39,30 +40,7 @@ static DEFINE_IDA(mctp_spi_ida);
 #define MCTP_SPI_TX_WORK_LEN 100
 #define MCTP_COMMAND_CODE 0x02
 
-#define RX_BUFFER_SIZE 1024
-
 #define ERR_SPI_RX_NO_DATA -2
-
-struct spidev_data {
-	dev_t			devt;
-	spinlock_t		spi_lock;
-	struct spi_device	*spi;
-	struct list_head	device_entry;
-
-	struct mutex		buf_lock;
-	unsigned		users;
-	u8			*tx_buffer;
-	size_t	tx_len;
-	u8			rx_buffer[RX_BUFFER_SIZE];
-	size_t rx_len;
-	u32			speed_hz;
-};
-
-struct mctp_spi_hdr {
-	u8 command_code;
-	u8 byte_count;
-	u8 resrv[2];
-};
 
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);

@@ -217,7 +217,7 @@ static inline void spi_xfer(SpbAp *ap, int sendLen, uint8_t *xbuf, int recvLen,
 	ap->spi_xfer(ap->spi, xbuf, sendLen, rbuf, recvLen, deassert);
 }
 
-uint16_t sreg_write_8(SpbAp *ap, uint16_t addr, uint8_t value)
+static inline uint16_t sreg_write_8(SpbAp *ap, uint16_t addr, uint8_t value)
 {
 	uint8_t buf[1 + 2 + 1 + TAR_WAIT_CYCLES + 2] = { 0 };
 
@@ -229,7 +229,7 @@ uint16_t sreg_write_8(SpbAp *ap, uint16_t addr, uint8_t value)
 	return (buf2w(buf + TAR_WAIT_CYCLES));
 }
 
-uint16_t sreg_write_32(SpbAp *ap, uint16_t addr, uint32_t value)
+static inline uint16_t sreg_write_32(SpbAp *ap, uint16_t addr, uint32_t value)
 {
 	uint8_t buf[1 + 2 + 4 + TAR_WAIT_CYCLES + 2] = { 0 };
 
@@ -241,7 +241,7 @@ uint16_t sreg_write_32(SpbAp *ap, uint16_t addr, uint32_t value)
 	return (buf2w(buf + TAR_WAIT_CYCLES));
 }
 
-uint16_t sreg_read_8(SpbAp *ap, uint16_t addr, uint8_t *val)
+static inline uint16_t sreg_read_8(SpbAp *ap, uint16_t addr, uint8_t *val)
 {
 	uint8_t buf[1 + 2 + TAR_WAIT_CYCLES + 2 + 1] = { 0 };
 
@@ -253,7 +253,7 @@ uint16_t sreg_read_8(SpbAp *ap, uint16_t addr, uint8_t *val)
 	return (buf2w(buf + TAR_WAIT_CYCLES));
 }
 
-uint16_t sreg_read_32(SpbAp *ap, uint16_t addr, uint32_t *val)
+static inline uint16_t sreg_read_32(SpbAp *ap, uint16_t addr, uint32_t *val)
 {
 	uint8_t buf[1 + 2 + TAR_WAIT_CYCLES + 2 + 4] = { 0 };
 
@@ -265,7 +265,7 @@ uint16_t sreg_read_32(SpbAp *ap, uint16_t addr, uint32_t *val)
 	return (buf2w(buf + TAR_WAIT_CYCLES));
 }
 
-uint32_t cmd_poll_all(SpbAp *ap)
+static inline uint32_t cmd_poll_all(SpbAp *ap)
 {
 	uint8_t buf[1 + TAR_CYCLES + 4] = { 0 };
 
@@ -288,7 +288,7 @@ static SpbApStatus wait_for_tx_fifo_not_empty(SpbAp *ap)
 	return (SPB_AP_OK);
 }
 
-uint16_t mailbox_write(SpbAp *ap, uint32_t v)
+static inline uint16_t mailbox_write(SpbAp *ap, uint32_t v)
 {
 	uint16_t status = sreg_write_32(ap, SPI_SPIM2EC_MBX, v);
 
@@ -308,7 +308,7 @@ static inline uint32_t clear_memory_read_done(SpbAp *ap)
 }
 
 // Polling procedures with timeouts
-SpbApStatus wait_for_memory_write_busy_and_rx_fifo_empty(SpbAp *ap)
+static inline SpbApStatus wait_for_memory_write_busy_and_rx_fifo_empty(SpbAp *ap)
 {
 	uint64_t start = clock_msecs();
 
@@ -321,7 +321,7 @@ SpbApStatus wait_for_memory_write_busy_and_rx_fifo_empty(SpbAp *ap)
 	return (SPB_AP_OK);
 }
 
-SpbApStatus spb_ap_check_ack(SpbAp *ap)
+static inline SpbApStatus spb_ap_check_ack(SpbAp *ap)
 {
 	uint32_t sts = 0;
 	uint32_t mb = 1;
@@ -343,7 +343,7 @@ SpbApStatus spb_ap_check_ack(SpbAp *ap)
 	return (ret);
 }
 
-SpbApStatus spb_ap_wait_for_intr(SpbAp *ap, int timeout_ms, bool polling)
+static inline SpbApStatus spb_ap_wait_for_intr(SpbAp *ap, int timeout_ms, bool polling)
 {
 	int status = 0;
 
@@ -354,7 +354,7 @@ SpbApStatus spb_ap_wait_for_intr(SpbAp *ap, int timeout_ms, bool polling)
 	return (spb_ap_check_ack(ap));
 }
 
-SpbApStatus wait_for_ack(SpbAp *ap)
+static inline SpbApStatus wait_for_ack(SpbAp *ap)
 {
 	SpbApStatus status = SPB_AP_OK;
 	uint64_t start = clock_msecs();
@@ -375,7 +375,7 @@ SpbApStatus wait_for_ack(SpbAp *ap)
 	return (status);
 }
 
-SpbApStatus wait_for_length(SpbAp *ap, uint32_t *bytes)
+static inline SpbApStatus wait_for_length(SpbAp *ap, uint32_t *bytes)
 {
 	SpbApStatus status = SPB_AP_OK;
 	uint64_t start = clock_msecs();
@@ -394,7 +394,7 @@ SpbApStatus wait_for_length(SpbAp *ap, uint32_t *bytes)
 }
 
 // Write payload with maxiumum of 32 bytes per transfer
-SpbApStatus posted_write(SpbAp *ap, uint16_t offset, int len, uint8_t *payload)
+static inline SpbApStatus posted_write(SpbAp *ap, uint16_t offset, int len, uint8_t *payload)
 {
 	uint8_t buf[128] = { 0 };
 	int off = 0;
@@ -485,7 +485,7 @@ static SpbApStatus posted_read_helper(SpbAp *ap, uint8_t cmd, uint8_t cmd2,
 	return (SPB_AP_OK);
 }
 
-SpbApStatus posted_read(SpbAp *ap, int offset, int len, uint8_t *payload)
+static inline SpbApStatus posted_read(SpbAp *ap, int offset, int len, uint8_t *payload)
 {
 	uint8_t buf[128] = { 0 };
 	int off = 0;
@@ -530,7 +530,7 @@ SpbApStatus posted_read(SpbAp *ap, int offset, int len, uint8_t *payload)
 
 // --- public
 
-SpbApStatus spb_ap_reset(SpbAp *ap)
+static inline SpbApStatus spb_ap_reset(SpbAp *ap)
 {
 	// reset globals
 	SpbApStatus status;
@@ -546,7 +546,7 @@ SpbApStatus spb_ap_reset(SpbAp *ap)
 	return (SPB_AP_OK);
 }
 
-SpbApStatus spb_ap_initialize(SpbAp *ap)
+static inline SpbApStatus spb_ap_initialize(SpbAp *ap)
 {
 	MCTP_ASSERT_RET(ap != NULL, SPB_AP_ERROR_INVALID_ARGUMENT,
 			"ap is NULL.");
@@ -559,7 +559,7 @@ SpbApStatus spb_ap_initialize(SpbAp *ap)
 	return (spb_ap_reset(ap));
 }
 
-SpbApStatus spb_ap_set_cfg(SpbAp *ap, bool quad, uint8_t waitCycles)
+static inline SpbApStatus spb_ap_set_cfg(SpbAp *ap, bool quad, uint8_t waitCycles)
 {
 	SpbApStatus status = SPB_AP_OK;
 	uint8_t cmd[] = { 0x03, 0x00, waitCycles,
@@ -586,13 +586,13 @@ SpbApStatus spb_ap_set_cfg(SpbAp *ap, bool quad, uint8_t waitCycles)
 	return (SPB_AP_ERROR_UNKNOWN);
 }
 
-SpbApStatus spb_ap_shutdown(SpbAp *ap)
+static inline SpbApStatus spb_ap_shutdown(SpbAp *ap)
 {
 	// leave Glacier in single spi mode
 	return (spb_ap_set_cfg(ap, false, 0));
 }
 
-SpbApStatus spb_ap_on_interrupt(SpbAp *ap)
+static inline SpbApStatus spb_ap_on_interrupt(SpbAp *ap)
 {
 	uint32_t sts = 0;
 	uint32_t mb = 1;
@@ -610,7 +610,7 @@ SpbApStatus spb_ap_on_interrupt(SpbAp *ap)
 	return (ret);
 }
 
-SpbApStatus spb_ap_send(SpbAp *ap, int len, void *buf)
+static inline SpbApStatus spb_ap_send(SpbAp *ap, int len, void *buf)
 {
 	SpbApStatus status;
 
@@ -628,7 +628,7 @@ SpbApStatus spb_ap_send(SpbAp *ap, int len, void *buf)
 	return (SPB_AP_OK);
 }
 
-SpbApStatus spb_ap_recv(SpbAp *ap, int len, void *buf)
+static inline SpbApStatus spb_ap_recv(SpbAp *ap, int len, void *buf)
 {
 	uint32_t bytes;
 	SpbApStatus status;
@@ -651,12 +651,12 @@ SpbApStatus spb_ap_recv(SpbAp *ap, int len, void *buf)
 	return (SPB_AP_OK);
 }
 
-int spb_ap_msgs_available(SpbAp *ap)
+static inline int spb_ap_msgs_available(SpbAp *ap)
 {
 	return (ap->msgs_available);
 }
 
-const char *spb_ap_strstatus(SpbApStatus status)
+static inline const char *spb_ap_strstatus(SpbApStatus status)
 {
 	switch (status) {
 	case SPB_AP_OK:

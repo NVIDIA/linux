@@ -2,7 +2,7 @@
 /*
  * mctp-usb-error-inject.c - Error injection infrastructure for MCTP USB
  *
- * Copyright (C) 2024 Code Construct Pty Ltd
+ * Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
  */
 
 #include <linux/module.h>
@@ -16,32 +16,7 @@
 
 #include <net/mctp.h>
 
-#include "mctp-usb-error-inject.h"
-
-struct mctp_usb {
-	struct usb_device *usbdev;
-	struct usb_interface *intf;
-	bool stopped;
-
-	struct net_device *netdev;
-
-	u8 ep_in;
-	u8 ep_out;
-
-	struct usb_anchor rx_anchor;
-	struct usb_anchor tx_anchor;
-	/* number of urbs currently queued */
-	atomic_t rx_qlen, tx_qlen;
-
-	struct delayed_work rx_retry_work;
-
-	/* TX batching support - controlled via sysfs */
-	bool tx_batching_enabled;
-	
-	/* Error injection support */
-	struct mctp_error_inject error_inject;
-	struct dentry *debugfs_dir;
-};
+#include "mctp-usb-internal.h"
 
 /* Global debugfs root directory */
 static struct dentry *mctp_usb_debugfs_root;

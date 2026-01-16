@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MCTP I2C Error Injection Infrastructure
- * 
+ *
+ * Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+ *
  * Provides debugfs-based error injection for testing MCTP error queue
  * functionality over I2C binding.
  */

@@ -2,7 +2,7 @@
 /*
  * mctp-usb-error-inject.h - Error injection infrastructure for MCTP USB
  *
- * Copyright (C) 2024 Code Construct Pty Ltd
+ * Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
  */
 
 #ifndef _MCTP_USB_ERROR_INJECT_H

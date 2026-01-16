@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * MCTP I2C Error Injection Implementation
- * 
+ *
+ * Copyright (c) 2024 NVIDIA CORPORATION.  All rights reserved.
+ *
  * Provides debugfs-based error injection for testing MCTP error queue
  * functionality over I2C binding.
- * 
+ *
  * Interface unified with USB error injection where applicable.
  */
 
@@ -17,54 +19,7 @@
 #include <linux/uaccess.h>
 #include <net/mctp.h>
 
-#include "mctp-i2c-error-inject.h"
-
-/* Constants from mctp-i2c.c */
-#define MCTP_I2C_MAXBLOCK 255
-#define MCTP_I2C_BUFSZ (3 + MCTP_I2C_MAXBLOCK + 1)
-
-/* Forward declaration */
-struct mctp_i2c_client;
-
-/* CRITICAL: This struct definition MUST match the one in mctp-i2c.c exactly!
- * If you modify struct mctp_i2c_dev in mctp-i2c.c, you MUST update this copy.
- * Mismatched struct layouts will cause memory corruption and kernel panics!
- * 
- * This is a complete copy of struct mctp_i2c_dev from mctp-i2c.c.
- * We need this copy here because:
- * 1. We cannot include mctp-i2c.c
- * 2. We need to access struct members for error injection
- * 3. mctp-i2c.c keeps its original definition (user requirement)
- */
-struct mctp_i2c_dev {
-	struct net_device *ndev;
-	struct i2c_adapter *adapter;
-	struct mctp_i2c_client *client;
-	struct list_head list; /* For mctp_i2c_client.devs */
-
-	size_t rx_pos;
-	u8 rx_buffer[MCTP_I2C_BUFSZ];
-	struct completion rx_done;
-
-	struct task_struct *tx_thread;
-	wait_queue_head_t tx_wq;
-	struct sk_buff_head tx_queue;
-	u8 tx_scratch[MCTP_I2C_BUFSZ];
-
-	/* A fake entry in our tx queue to perform an unlock operation */
-	struct sk_buff unlock_marker;
-
-	/* Spinlock protects i2c_lock_count, release_count, allow_rx */
-	spinlock_t lock;
-	int i2c_lock_count;
-	int release_count;
-	/* Indicates that the netif is ready to receive incoming packets */
-	bool allow_rx;
-
-	/* Error injection support */
-	struct mctp_i2c_error_inject error_inject;
-	struct dentry *debugfs_dir;
-};
+#include "mctp-i2c-internal.h"
 
 /* Global debugfs root for all MCTP I2C error injection */
 static struct dentry *mctp_i2c_error_inject_root;
