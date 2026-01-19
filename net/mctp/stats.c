@@ -45,15 +45,25 @@ static int mctp_stats_genl_get(struct sk_buff *skb, struct genl_info *info)
 	stats.rx_messages = atomic64_read(&ns->rx_messages);
 	stats.rx_errors = atomic64_read(&ns->rx_errors);
 	stats.rx_drops = atomic64_read(&ns->rx_drops);
-	stats.drops_no_route = atomic64_read(&ns->drops_no_route);
-	stats.drops_mtu_exceeded = atomic64_read(&ns->drops_mtu_exceeded);
-	stats.drops_no_memory = atomic64_read(&ns->drops_no_memory);
-	stats.drops_seq_mismatch = atomic64_read(&ns->drops_seq_mismatch);
-	stats.drops_tag_mismatch = atomic64_read(&ns->drops_tag_mismatch);
-	stats.drops_queue_full = atomic64_read(&ns->drops_queue_full);
-	stats.drops_device_down = atomic64_read(&ns->drops_device_down);
-	stats.drops_invalid_header = atomic64_read(&ns->drops_invalid_header);
-	stats.drops_permission = atomic64_read(&ns->drops_permission);
+
+	/* Detailed RX drops */
+	stats.rx_dropped_no_route = atomic64_read(&ns->rx_dropped_no_route);
+	stats.rx_dropped_no_memory = atomic64_read(&ns->rx_dropped_no_memory);
+	stats.rx_dropped_seq_mismatch = atomic64_read(&ns->rx_dropped_seq_mismatch);
+	stats.rx_dropped_tag_mismatch = atomic64_read(&ns->rx_dropped_tag_mismatch);
+	stats.rx_dropped_queue_full = atomic64_read(&ns->rx_dropped_queue_full);
+	stats.rx_dropped_invalid_header = atomic64_read(&ns->rx_dropped_invalid_header);
+	stats.rx_dropped_permission = atomic64_read(&ns->rx_dropped_permission);
+	stats.rx_dropped_timeout = atomic64_read(&ns->rx_dropped_timeout);
+
+	/* Detailed TX drops */
+	stats.tx_dropped_no_route = atomic64_read(&ns->tx_dropped_no_route);
+	stats.tx_dropped_mtu_exceeded = atomic64_read(&ns->tx_dropped_mtu_exceeded);
+	stats.tx_dropped_no_memory = atomic64_read(&ns->tx_dropped_no_memory);
+	stats.tx_dropped_queue_full = atomic64_read(&ns->tx_dropped_queue_full);
+	stats.tx_dropped_device_down = atomic64_read(&ns->tx_dropped_device_down);
+	stats.tx_dropped_tag_exhaustion = atomic64_read(&ns->tx_dropped_tag_exhaustion);
+	stats.tx_dropped_permission = atomic64_read(&ns->tx_dropped_permission);
 
 	/* Build netlink reply */
 	msg = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_KERNEL);
@@ -112,7 +122,6 @@ static int mctp_stats_show(struct seq_file *m, void *v)
 
 	seq_printf(m, "TX Statistics:\n");
 	seq_printf(m, "  Bytes:    %llu\n", atomic64_read(&ns->tx_bytes));
-	seq_printf(m, "  Packets:  %llu\n", atomic64_read(&ns->tx_packets));
 	seq_printf(m, "  Messages: %llu\n", atomic64_read(&ns->tx_messages));
 	seq_printf(m, "  Errors:   %llu\n", atomic64_read(&ns->tx_errors));
 	seq_printf(m, "  Drops:    %llu\n", atomic64_read(&ns->tx_drops));
@@ -120,22 +129,30 @@ static int mctp_stats_show(struct seq_file *m, void *v)
 
 	seq_printf(m, "RX Statistics:\n");
 	seq_printf(m, "  Bytes:    %llu\n", atomic64_read(&ns->rx_bytes));
-	seq_printf(m, "  Packets:  %llu\n", atomic64_read(&ns->rx_packets));
 	seq_printf(m, "  Messages: %llu\n", atomic64_read(&ns->rx_messages));
 	seq_printf(m, "  Errors:   %llu\n", atomic64_read(&ns->rx_errors));
 	seq_printf(m, "  Drops:    %llu\n", atomic64_read(&ns->rx_drops));
 	seq_printf(m, "\n");
 
-	seq_printf(m, "Drop Reasons:\n");
-	seq_printf(m, "  No route:      %llu\n", atomic64_read(&ns->drops_no_route));
-	seq_printf(m, "  MTU exceeded:  %llu\n", atomic64_read(&ns->drops_mtu_exceeded));
-	seq_printf(m, "  No memory:     %llu\n", atomic64_read(&ns->drops_no_memory));
-	seq_printf(m, "  Seq mismatch:  %llu\n", atomic64_read(&ns->drops_seq_mismatch));
-	seq_printf(m, "  Tag mismatch:  %llu\n", atomic64_read(&ns->drops_tag_mismatch));
-	seq_printf(m, "  Queue full:    %llu\n", atomic64_read(&ns->drops_queue_full));
-	seq_printf(m, "  Device down:   %llu\n", atomic64_read(&ns->drops_device_down));
-	seq_printf(m, "  Invalid hdr:   %llu\n", atomic64_read(&ns->drops_invalid_header));
-	seq_printf(m, "  Permission:    %llu\n", atomic64_read(&ns->drops_permission));
+	seq_printf(m, "TX Drop Reasons:\n");
+	seq_printf(m, "  No route:      %llu\n", atomic64_read(&ns->tx_dropped_no_route));
+	seq_printf(m, "  MTU exceeded:  %llu\n", atomic64_read(&ns->tx_dropped_mtu_exceeded));
+	seq_printf(m, "  No memory:     %llu\n", atomic64_read(&ns->tx_dropped_no_memory));
+	seq_printf(m, "  Queue full:    %llu\n", atomic64_read(&ns->tx_dropped_queue_full));
+	seq_printf(m, "  Device down:   %llu\n", atomic64_read(&ns->tx_dropped_device_down));
+	seq_printf(m, "  Tag exhaust:   %llu\n", atomic64_read(&ns->tx_dropped_tag_exhaustion));
+	seq_printf(m, "  Permission:    %llu\n", atomic64_read(&ns->tx_dropped_permission));
+	seq_printf(m, "\n");
+
+	seq_printf(m, "RX Drop Reasons:\n");
+	seq_printf(m, "  No route:      %llu\n", atomic64_read(&ns->rx_dropped_no_route));
+	seq_printf(m, "  No memory:     %llu\n", atomic64_read(&ns->rx_dropped_no_memory));
+	seq_printf(m, "  Seq mismatch:  %llu\n", atomic64_read(&ns->rx_dropped_seq_mismatch));
+	seq_printf(m, "  Tag mismatch:  %llu\n", atomic64_read(&ns->rx_dropped_tag_mismatch));
+	seq_printf(m, "  Queue full:    %llu\n", atomic64_read(&ns->rx_dropped_queue_full));
+	seq_printf(m, "  Invalid hdr:   %llu\n", atomic64_read(&ns->rx_dropped_invalid_header));
+	seq_printf(m, "  Permission:    %llu\n", atomic64_read(&ns->rx_dropped_permission));
+	seq_printf(m, "  Timeout:       %llu\n", atomic64_read(&ns->rx_dropped_timeout));
 
 	return 0;
 }
@@ -152,6 +169,34 @@ static const struct proc_ops mctp_stats_proc_ops = {
 	.proc_release	= single_release,
 };
 
+/* Helper to find peer EID for connected sockets */
+/* static int mctp_sock_get_peer_eid(struct sock *sk, mctp_eid_t *peer)
+ * {
+ *	// TODO: Implement connected socket logic if needed.
+ *	// Currently we don't have a direct 'peer' field in mctp_sock
+ *	// for connected datagram sockets (unlike TCP).
+ *	// We would need to inspect the first key or a saved peer address.
+ *	*peer = 0; // Unknown
+ *	return 0;
+ * }
+ */
+
+/* Helper to map MCTP message type to name */
+static const char *mctp_msg_type_name(u8 type)
+{
+	switch (type) {
+	case 0x00: return "Control";
+	case 0x01: return "PLDM";
+	case 0x02: return "NC-SI";
+	case 0x03: return "Ethernet";
+	case 0x04: return "NVMe";
+	case 0x05: return "SPDM";
+	case 0x7E: return "Vendor(7E)";
+	case 0x7F: return "Vendor(7F)";
+	default:   return NULL;
+	}
+}
+
 /* Per-socket statistics display */
 static int mctp_sockets_show(struct seq_file *m, void *v)
 {
@@ -161,50 +206,57 @@ static int mctp_sockets_show(struct seq_file *m, void *v)
 
 	/* Header for socket list */
 	seq_printf(m, "Socket List:\n");
-	seq_printf(m, "  Sock   EID  Type  Net  State      TX Pkts   RX Pkts  TX Drops  RX Drops  UID   Inode\n");
-	seq_printf(m, "  ----   ---  ----  ---  -----      -------   -------  --------  --------  ---   -----\n");
+	seq_printf(m, "  PID    Net  Type         State      TX Msgs   RX Msgs\n");
+	seq_printf(m, "  ---    ---  ----         -----      -------   -------\n");
 
 	rcu_read_lock();
 	sk_for_each_rcu(sk, &net->mctp.binds) {
 		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+		const char *type_name;
+		char type_buf[8];
+
+		type_name = mctp_msg_type_name(msk->bind_type);
+		if (!type_name) {
+			snprintf(type_buf, sizeof(type_buf), "0x%02x", msk->bind_type);
+			type_name = type_buf;
+		}
 
 		/* Line 1: Basic socket info and summary stats */
-		seq_printf(m, "  %4d   %3u  0x%02x  %3u  %-9s %9llu %9llu %9llu %9llu %4u %7lu\n",
-			   i,
-			   msk->bind_addr,
-			   msk->bind_type,
+		seq_printf(m, "  %-6d %-4u %-12s %-10s %9llu %9llu\n",
+			   msk->pid,
 			   msk->bind_net,
+			   type_name,
 			   sk_hashed(sk) ? "BOUND" : "UNBOUND",
-			   msk->stats.tx_packets,
-			   msk->stats.rx_packets,
-			   msk->stats.tx_drops,
-			   msk->stats.rx_drops,
-			   from_kuid_munged(seq_user_ns(m), sock_i_uid(sk)),
-			   sock_i_ino(sk));
-		i++;
-	}
-	rcu_read_unlock();
-
-	seq_printf(m, "\nDetailed Drops (per socket):\n");
-	
-	i = 0;
-	rcu_read_lock();
-	sk_for_each_rcu(sk, &net->mctp.binds) {
-		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
-
-		/* Line 2: Detailed drop reasons */
+			   msk->stats.tx_messages,
+			   msk->stats.rx_messages);
+		
+		/* Detailed drops - only if non-zero */
 		spin_lock_bh(&msk->stats_lock);
-		seq_printf(m, "  Sock %4d: no_route:%llu mtu:%llu nomem:%llu seq:%llu tag:%llu queue:%llu dev:%llu hdr:%llu perm:%llu\n",
-			   i,
-			   msk->stats.drops_no_route,
-			   msk->stats.drops_mtu_exceeded,
-			   msk->stats.drops_no_memory,
-			   msk->stats.drops_seq_mismatch,
-			   msk->stats.drops_tag_mismatch,
-			   msk->stats.drops_queue_full,
-			   msk->stats.drops_device_down,
-			   msk->stats.drops_invalid_header,
-			   msk->stats.drops_permission);
+		
+		if (msk->stats.tx_drops) {
+			seq_printf(m, "    TX Drops: %llu (No Route:%llu, MTU:%llu, Mem:%llu, QFull:%llu, Down:%llu, Tag:%llu, Perm:%llu)\n",
+				   msk->stats.tx_drops,
+				   msk->stats.tx_dropped_no_route,
+				   msk->stats.tx_dropped_mtu_exceeded,
+				   msk->stats.tx_dropped_no_memory,
+				   msk->stats.tx_dropped_queue_full,
+				   msk->stats.tx_dropped_device_down,
+				   msk->stats.tx_dropped_tag_exhaustion,
+				   msk->stats.tx_dropped_permission);
+		}
+
+		if (msk->stats.rx_drops) {
+			seq_printf(m, "    RX Drops: %llu (No Route:%llu, Mem:%llu, Seq:%llu, Tag:%llu, QFull:%llu, Hdr:%llu, Perm:%llu, Time:%llu)\n",
+				   msk->stats.rx_drops,
+				   msk->stats.rx_dropped_no_route,
+				   msk->stats.rx_dropped_no_memory,
+				   msk->stats.rx_dropped_seq_mismatch,
+				   msk->stats.rx_dropped_tag_mismatch,
+				   msk->stats.rx_dropped_queue_full,
+				   msk->stats.rx_dropped_invalid_header,
+				   msk->stats.rx_dropped_permission,
+				   msk->stats.rx_dropped_timeout);
+		}
 		spin_unlock_bh(&msk->stats_lock);
 
 		i++;
@@ -293,4 +345,3 @@ void mctp_stats_exit(void)
 	unregister_pernet_subsys(&mctp_stats_net_ops);
 	genl_unregister_family(&mctp_genl_family);
 }
-

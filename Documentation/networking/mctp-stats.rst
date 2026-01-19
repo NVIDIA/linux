@@ -48,16 +48,24 @@ Each MCTP socket maintains its own set of statistics accessible via the
   - ``rx_errors``: Reception errors
   - ``rx_drops``: Dropped receptions
 
-* **Drop Reasons:**
-  - ``drops_no_route``: No route to destination
-  - ``drops_mtu_exceeded``: Message exceeds MTU (>64KB)
-  - ``drops_no_memory``: Memory allocation failure
-  - ``drops_seq_mismatch``: Fragment sequence number mismatch
-  - ``drops_tag_mismatch``: Message tag mismatch
-  - ``drops_queue_full``: Socket receive queue full (application slow to read)
-  - ``drops_device_down``: Network device is down or not available
-  - ``drops_invalid_header``: Malformed MCTP header (wrong version, invalid address)
-  - ``drops_permission``: Permission denied (EPERM, EACCES)
+* **TX Drop Reasons:**
+  - ``tx_dropped_no_route``: No route to destination (EHOSTUNREACH)
+  - ``tx_dropped_mtu_exceeded``: Message exceeds interface MTU (EMSGSIZE)
+  - ``tx_dropped_no_memory``: Failed to allocate socket buffer/key (ENOMEM)
+  - ``tx_dropped_queue_full``: Device transmit queue full (ENOBUFS)
+  - ``tx_dropped_device_down``: Network device is down (ENETDOWN)
+  - ``tx_dropped_tag_exhaustion``: No local tags available (EBUSY)
+  - ``tx_dropped_permission``: Permission denied (EPERM/EACCES)
+
+* **RX Drop Reasons:**
+  - ``rx_dropped_no_route``: Packet for unknown local socket/binding
+  - ``rx_dropped_no_memory``: Failed to allocate reassembly buffer
+  - ``rx_dropped_seq_mismatch``: Sequence number error or missing SOM
+  - ``rx_dropped_tag_mismatch``: Message tag mismatch (unexpected tag)
+  - ``rx_dropped_queue_full``: Socket receive queue full (application slow)
+  - ``rx_dropped_invalid_header``: Malformed MCTP header (version, addressing)
+  - ``rx_dropped_permission``: Socket filter/BPF drop
+  - ``rx_dropped_timeout``: Reassembly timed out (missing fragments)
 
 * **Timestamps:**
   - ``last_tx_time``: Last transmission time (nanoseconds since boot)
@@ -86,7 +94,7 @@ Per-Socket List
 A list of all active MCTP sockets with their individual statistics is available
 via **``/proc/net/mctp/sockets``** (similar to ``/proc/net/tcp``).
 
-This shows each socket's EID, type, network, state, and basic statistics,
+This shows each socket's PID, EID, type, network, state, and detailed statistics,
 allowing system administrators to identify which applications are using MCTP
 and their traffic patterns.
 
@@ -300,8 +308,7 @@ statistics:
 * ``overlimits``: Times queue limit was exceeded
 
 **Note:** ``tc`` tracks the **transmit queue** at the device layer, while socket-layer
-``drops_queue_full`` tracks the **receive queue** at the socket layer. They are
-different queues serving different purposes.
+``tx_dropped_queue_full`` tracks the **device queue full** condition from the socket's perspective.
 
 Complete Statistics Stack
 --------------------------
@@ -369,9 +376,12 @@ Per-Socket Statistics (C API)
            stats.tx_bytes, stats.tx_packets, stats.tx_messages);
     printf("RX: %llu bytes, %llu packets, %llu messages\\n",
            stats.rx_bytes, stats.rx_packets, stats.rx_messages);
-    printf("Drops: %llu (no route: %llu, seq mismatch: %llu, queue full: %llu)\\n",
-           stats.tx_drops + stats.rx_drops,
-           stats.drops_no_route, stats.drops_seq_mismatch, stats.drops_queue_full);
+    printf("TX Drops: %llu (no route: %llu, tag exhaust: %llu)\\n",
+           stats.tx_drops,
+           stats.tx_dropped_no_route, stats.tx_dropped_tag_exhaustion);
+    printf("RX Drops: %llu (seq mismatch: %llu, timeout: %llu)\\n",
+           stats.rx_drops,
+           stats.rx_dropped_seq_mismatch, stats.rx_dropped_timeout);
 
     close(fd);
 
@@ -431,9 +441,6 @@ Global Statistics via /proc (Shell)
     # Monitor statistics in real-time
     watch -n 1 cat /proc/net/mctp/stats
 
-    # Extract specific counters
-    grep "TX Packets" /proc/net/mctp/stats
-
 **Example Output:**
 
 .. code-block:: text
@@ -456,16 +463,24 @@ Global Statistics via /proc (Shell)
       Errors:   0
       Drops:    2
 
-    Drop Reasons:
-      No route:      3
+    TX Drop Reasons:
+      No route:      2
       MTU exceeded:  0
       No memory:     0
-      Seq mismatch:  4
-      Tag mismatch:  0
-      Queue full:    1
+      Queue full:    0
       Device down:   0
+      Tag exhaust:   3
+      Permission:    0
+
+    RX Drop Reasons:
+      No route:      0
+      No memory:     0
+      Seq mismatch:  0
+      Tag mismatch:  0
+      Queue full:    0
       Invalid hdr:   0
       Permission:    0
+      Timeout:       2
 
 Per-Socket Statistics via /proc (Shell)
 ----------------------------------------
@@ -479,28 +494,30 @@ Per-Socket Statistics via /proc (Shell)
 
 .. code-block:: text
 
-    sl  local_eid type net state   tx_pkts   rx_pkts  tx_drops  rx_drops  uid   inode
-     0: 8         01   1   BOUND      1234      5678         2         1  0     12345
-        drops: no_route=0 mtu=0 nomem=0 seq=2 tag=0 queue=0 dev=0 hdr=0 perm=0
-     1: 9         02   1   BOUND       456       789         0         0  1000  67890
-        drops: no_route=0 mtu=0 nomem=0 seq=0 tag=0 queue=0 dev=0 hdr=0 perm=0
-     2: 10        ff   1   BOUND      2000      1800       105        53  0     11111
-        drops: no_route=3 mtu=0 nomem=0 seq=50 tag=0 queue=52 dev=0 hdr=0 perm=0
+    Socket List:
+      PID    Net  Type     Local EID  Peer EID   State      TX Pkts   RX Pkts
+      ---    ---  ----     ---------  --------   -----      -------   -------
+      100    5    PLDM     255        20         BOUND      57        14
+        TX Drops: No Route: 2, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
+        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 0, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 1
 
-Each socket gets two lines:
-- Line 1: Basic info (EID, type, network, state, traffic summary)
-- Line 2: Detailed drop reasons (all 9 specific counters)
+      250    5    SPDM     255        *          BOUND      1024      1024
+        TX Drops: No Route: 0, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
+        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 5, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 0
+
+Each socket entry shows:
+- **PID:** Process ID of the application that created the socket
+- **Type:** Message type (e.g., PLDM, SPDM)
+- **Peer EID:** Destination EID (for connected sockets) or `*` (for listeners)
+- **Detailed Drops:** Indented lines showing specific TX and RX drop counts
 
 .. code-block:: bash
-
-    # Find socket with most drops
-    cat /proc/net/mctp/sockets | grep -E "^[[:space:]]*[0-9]" | sort -k8 -rn | head -5
 
     # Monitor per-socket activity
     watch -n 1 cat /proc/net/mctp/sockets
 
-    # Check which EIDs are active
-    cat /proc/net/mctp/sockets | awk '{print $2}' | sort -u
+    # Find which PID is dropping packets
+    cat /proc/net/mctp/sockets | grep -B 1 "RX Drops.*Timeout: [1-9]"
 
 Integration with Monitoring Tools
 ==================================
@@ -587,14 +604,17 @@ This captures:
     TX Statistics:
       Packets:  234
       Drops:    5
-    Drop Reasons:
-      Seq mismatch:  4
-      Queue full:    1
+    TX Drop Reasons:
+      Tag exhaust:   3
+      No route:      2
     
     === MCTP Active Sockets ===
-    sl  local_eid type net state   tx_pkts   rx_pkts  tx_drops  rx_drops
-     0: 8         01   1   BOUND      1234      5678         2         1
-        drops: seq=2 queue=0 ...
+    Socket List:
+      PID    Net  Type     Local EID  Peer EID   State      TX Pkts   RX Pkts
+      ---    ---  ----     ---------  --------   -----      -------   -------
+      100    5    PLDM     255        20         BOUND      57        14
+        TX Drops: No Route: 2, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
+        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 0, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 1
     
     === MCTP Network Device Statistics ===
     --- Device: mctp0 ---
@@ -630,23 +650,23 @@ own MCTP communication health:
             }
             
             // Check for sequence mismatches (fragmentation issues)
-            if (stats.drops_seq_mismatch > 10) {
+            if (stats.rx_dropped_seq_mismatch > 10) {
                 log_warning("MCTP fragmentation issues detected");
             }
             
             // Check for queue full (application slow to read)
-            if (stats.drops_queue_full > 20) {
+            if (stats.rx_dropped_queue_full > 20) {
                 log_warning("MCTP socket receive queue full - application too slow");
             }
             
             // Check for device issues
-            if (stats.drops_device_down > 0) {
+            if (stats.tx_dropped_device_down > 0) {
                 log_error("MCTP device is down");
             }
             
-            // Check for header validation issues
-            if (stats.drops_invalid_header > 0) {
-                log_error("MCTP received packets with invalid headers");
+            // Check for timeout (reassembly failure)
+            if (stats.rx_dropped_timeout > 5) {
+                log_error("MCTP reassembly timeout - check I2C bus health");
             }
         }
     }
@@ -664,7 +684,7 @@ If you observe high drop rates in the statistics:
    .. code-block:: bash
 
        # Find which socket has drops
-       cat /proc/net/mctp/sockets | grep -v "0.*0$"
+       cat /proc/net/mctp/sockets | grep -B 1 "Drops.*: [1-9]"
        # Shows sockets with non-zero drops
 
 2. **No Route Drops:** Check routing configuration
@@ -674,10 +694,10 @@ If you observe high drop rates in the statistics:
        ip mctp route show
        # Verify route exists for destination EID
 
-3. **Sequence Mismatches:** May indicate packet loss or reordering
+3. **Sequence Mismatches / Timeouts:** May indicate packet loss or reordering
    - Check physical layer (I2C, USB, etc.)
    - Verify MTU settings
-   - Check with: ``grep "Seq mismatch" /proc/net/mctp/stats``
+   - Check with: ``grep "Seq mismatch" /proc/net/mctp/stats`` or ``grep "Timeout" /proc/net/mctp/stats``
 
 4. **Memory Drops:** System under memory pressure
    - Check system memory availability
@@ -686,6 +706,10 @@ If you observe high drop rates in the statistics:
 5. **MTU Exceeded:** Messages too large for configured MTU
    - Increase MTU if possible
    - Fragment messages at application layer
+
+6. **Tag Exhaustion:** Too many concurrent requests
+   - Reduce concurrency or increase timeout
+   - Check for stuck requests
 
 Zero Statistics
 ---------------
@@ -724,14 +748,14 @@ Socket Layer Statistics
     socklen_t len = sizeof(stats);
     getsockopt(fd, SOL_MCTP, MCTP_OPT_SOCK_STATS, &stats, &len);
     
-    // Access: tx_bytes, rx_packets, drops_seq_mismatch, etc.
+    // Access: tx_bytes, rx_packets, rx_dropped_seq_mismatch, etc.
 
 **Per-Socket List (Shell):**
 
 ::
 
     cat /proc/net/mctp/sockets
-    # Shows: EID, type, network, state, TX/RX stats, drop reasons
+    # Shows: PID, EID, type, network, state, TX/RX stats, drop reasons
 
 **Global Stats (Netlink):**
 
@@ -746,7 +770,7 @@ Socket Layer Statistics
 ::
 
     cat /proc/net/mctp/stats
-    # Shows: System-wide aggregated stats with drop reasons
+    # Shows: System-wide aggregated stats with split TX/RX drop reasons
 
 Device Layer Statistics
 ------------------------
@@ -826,4 +850,3 @@ See Also
 * drivers/net/mctp/mctp-i3c.c - I3C binding with IBI events, per-device stats
 * drivers/net/mctp/mctp-serial.c - Serial binding with FCS tracking
 * drivers/net/mctp/mctp-spi.c - SPI binding with GPIO interrupt tracking
-

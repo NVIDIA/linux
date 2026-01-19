@@ -195,16 +195,24 @@ struct mctp_sock_stats_info {
 	__u64 rx_errors;
 	__u64 rx_drops;
 
-	/* Detailed drop reasons */
-	__u64 drops_no_route;
-	__u64 drops_mtu_exceeded;
-	__u64 drops_no_memory;
-	__u64 drops_seq_mismatch;
-	__u64 drops_tag_mismatch;
-	__u64 drops_queue_full;
-	__u64 drops_device_down;
-	__u64 drops_invalid_header;
-	__u64 drops_permission;
+	/* Detailed drop reasons - RX */
+	__u64 rx_dropped_no_route;
+	__u64 rx_dropped_no_memory;
+	__u64 rx_dropped_seq_mismatch;
+	__u64 rx_dropped_tag_mismatch;
+	__u64 rx_dropped_queue_full;
+	__u64 rx_dropped_invalid_header;
+	__u64 rx_dropped_permission;
+	__u64 rx_dropped_timeout;
+
+	/* Detailed drop reasons - TX */
+	__u64 tx_dropped_no_route;
+	__u64 tx_dropped_mtu_exceeded;
+	__u64 tx_dropped_no_memory;
+	__u64 tx_dropped_queue_full;
+	__u64 tx_dropped_device_down;
+	__u64 tx_dropped_tag_exhaustion;
+	__u64 tx_dropped_permission;
 
 	/* Timestamps (nanoseconds since boot) */
 	__u64 last_tx_time;
@@ -235,15 +243,24 @@ struct mctp_global_stats {
 	__u64 rx_errors;
 	__u64 rx_drops;
 
-	__u64 drops_no_route;
-	__u64 drops_mtu_exceeded;
-	__u64 drops_no_memory;
-	__u64 drops_seq_mismatch;
-	__u64 drops_tag_mismatch;
-	__u64 drops_queue_full;
-	__u64 drops_device_down;
-	__u64 drops_invalid_header;
-	__u64 drops_permission;
+	/* Detailed drop reasons - RX */
+	__u64 rx_dropped_no_route;
+	__u64 rx_dropped_no_memory;
+	__u64 rx_dropped_seq_mismatch;
+	__u64 rx_dropped_tag_mismatch;
+	__u64 rx_dropped_queue_full;
+	__u64 rx_dropped_invalid_header;
+	__u64 rx_dropped_permission;
+	__u64 rx_dropped_timeout;
+
+	/* Detailed drop reasons - TX */
+	__u64 tx_dropped_no_route;
+	__u64 tx_dropped_mtu_exceeded;
+	__u64 tx_dropped_no_memory;
+	__u64 tx_dropped_queue_full;
+	__u64 tx_dropped_device_down;
+	__u64 tx_dropped_tag_exhaustion;
+	__u64 tx_dropped_permission;
 };
 
 /*

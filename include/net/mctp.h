@@ -124,16 +124,24 @@ struct mctp_sock {
 		u64 rx_errors;
 		u64 rx_drops;
 
-		/* Detailed drop reasons */
-		u64 drops_no_route;
-		u64 drops_mtu_exceeded;
-		u64 drops_no_memory;
-		u64 drops_seq_mismatch;
-		u64 drops_tag_mismatch;
-		u64 drops_queue_full;
-		u64 drops_device_down;
-		u64 drops_invalid_header;
-		u64 drops_permission;
+		/* Detailed drop reasons - RX */
+		u64 rx_dropped_no_route;
+		u64 rx_dropped_no_memory;
+		u64 rx_dropped_seq_mismatch;
+		u64 rx_dropped_tag_mismatch;
+		u64 rx_dropped_queue_full;
+		u64 rx_dropped_invalid_header;
+		u64 rx_dropped_permission;
+		u64 rx_dropped_timeout;
+
+		/* Detailed drop reasons - TX */
+		u64 tx_dropped_no_route;
+		u64 tx_dropped_mtu_exceeded;
+		u64 tx_dropped_no_memory;
+		u64 tx_dropped_queue_full;
+		u64 tx_dropped_device_down;
+		u64 tx_dropped_tag_exhaustion;
+		u64 tx_dropped_permission;
 
 		/* Timestamps */
 		u64 last_tx_time;
@@ -141,6 +149,7 @@ struct mctp_sock {
 	} stats;
 
 	spinlock_t stats_lock;  /* Protects stats */
+	pid_t pid;		/* PID of the creating process */
 };
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
@@ -433,5 +442,17 @@ enum mctp_phys_binding {
 	MCTP_PHYS_BINDING_UCIE		= 0x09,
 	MCTP_PHYS_BINDING_VENDOR	= 0xFF,
 };
+
+/* Statistics helper macro */
+#define MCTP_SOCK_STAT_INC(_sk, _net, _field) do { \
+	struct netns_mctp *_ns = &(_net)->mctp; \
+	atomic64_inc(&_ns->_field); \
+	if (_sk) { \
+		struct mctp_sock *_msk = container_of(_sk, struct mctp_sock, sk); \
+		spin_lock_bh(&_msk->stats_lock); \
+		_msk->stats._field++; \
+		spin_unlock_bh(&_msk->stats_lock); \
+	} \
+} while (0)
 
 #endif /* __NET_MCTP_H */

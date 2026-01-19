@@ -49,16 +49,24 @@ struct netns_mctp {
 	atomic64_t rx_errors;
 	atomic64_t rx_drops;
 
-	/* Detailed error counters */
-	atomic64_t drops_no_route;
-	atomic64_t drops_mtu_exceeded;
-	atomic64_t drops_no_memory;
-	atomic64_t drops_seq_mismatch;
-	atomic64_t drops_tag_mismatch;
-	atomic64_t drops_queue_full;
-	atomic64_t drops_device_down;
-	atomic64_t drops_invalid_header;
-	atomic64_t drops_permission;
+	/* Detailed drop reasons - RX */
+	atomic64_t rx_dropped_no_route;
+	atomic64_t rx_dropped_no_memory;
+	atomic64_t rx_dropped_seq_mismatch;
+	atomic64_t rx_dropped_tag_mismatch;
+	atomic64_t rx_dropped_queue_full;
+	atomic64_t rx_dropped_invalid_header;
+	atomic64_t rx_dropped_permission;
+	atomic64_t rx_dropped_timeout;
+
+	/* Detailed drop reasons - TX */
+	atomic64_t tx_dropped_no_route;
+	atomic64_t tx_dropped_mtu_exceeded;
+	atomic64_t tx_dropped_no_memory;
+	atomic64_t tx_dropped_queue_full;
+	atomic64_t tx_dropped_device_down;
+	atomic64_t tx_dropped_tag_exhaustion;
+	atomic64_t tx_dropped_permission;
 };
 
 #endif /* __NETNS_MCTP_H__ */

@@ -136,8 +136,27 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	 * - EAGAIN: Would block (non-blocking socket)
 	 */
 	rc = mctp_socket_error_inject_sendmsg();
-	if (rc < 0)
+	if (rc < 0) {
+		switch (rc) {
+		case -EHOSTUNREACH:
+			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_no_route);
+			break;
+		case -ENOBUFS:
+		case -ENOMEM:
+			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_no_memory);
+			break;
+		case -EBUSY:
+			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_tag_exhaustion);
+			break;
+		case -EAGAIN:
+			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_queue_full);
+			break;
+		default:
+			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_drops);
+			break;
+		}
 		return rc;
+	}
 
 	if (addr->smctp_network == MCTP_NET_ANY)
 		addr->smctp_network = mctp_default_net(sock_net(sk));
@@ -566,15 +585,22 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		stats.rx_errors = msk->stats.rx_errors;
 		stats.rx_drops = msk->stats.rx_drops;
 
-		stats.drops_no_route = msk->stats.drops_no_route;
-		stats.drops_mtu_exceeded = msk->stats.drops_mtu_exceeded;
-		stats.drops_no_memory = msk->stats.drops_no_memory;
-		stats.drops_seq_mismatch = msk->stats.drops_seq_mismatch;
-		stats.drops_tag_mismatch = msk->stats.drops_tag_mismatch;
-		stats.drops_queue_full = msk->stats.drops_queue_full;
-		stats.drops_device_down = msk->stats.drops_device_down;
-		stats.drops_invalid_header = msk->stats.drops_invalid_header;
-		stats.drops_permission = msk->stats.drops_permission;
+		stats.rx_dropped_no_route = msk->stats.rx_dropped_no_route;
+		stats.rx_dropped_no_memory = msk->stats.rx_dropped_no_memory;
+		stats.rx_dropped_seq_mismatch = msk->stats.rx_dropped_seq_mismatch;
+		stats.rx_dropped_tag_mismatch = msk->stats.rx_dropped_tag_mismatch;
+		stats.rx_dropped_queue_full = msk->stats.rx_dropped_queue_full;
+		stats.rx_dropped_invalid_header = msk->stats.rx_dropped_invalid_header;
+		stats.rx_dropped_permission = msk->stats.rx_dropped_permission;
+		stats.rx_dropped_timeout = msk->stats.rx_dropped_timeout;
+
+		stats.tx_dropped_no_route = msk->stats.tx_dropped_no_route;
+		stats.tx_dropped_mtu_exceeded = msk->stats.tx_dropped_mtu_exceeded;
+		stats.tx_dropped_no_memory = msk->stats.tx_dropped_no_memory;
+		stats.tx_dropped_queue_full = msk->stats.tx_dropped_queue_full;
+		stats.tx_dropped_device_down = msk->stats.tx_dropped_device_down;
+		stats.tx_dropped_tag_exhaustion = msk->stats.tx_dropped_tag_exhaustion;
+		stats.tx_dropped_permission = msk->stats.tx_dropped_permission;
 
 		stats.last_tx_time = msk->stats.last_tx_time;
 		stats.last_rx_time = msk->stats.last_rx_time;
@@ -862,6 +888,16 @@ static void mctp_sk_expire_keys(struct timer_list *timer)
 
 		spin_lock_irqsave(&key->lock, fl2);
 		if (!time_after_eq(key->expiry, jiffies)) {
+			unsigned long flags3;
+
+			spin_lock_irqsave(&msk->stats_lock, flags3);
+			msk->stats.rx_drops++;
+			msk->stats.rx_dropped_timeout++;
+			spin_unlock_irqrestore(&msk->stats_lock, flags3);
+
+			atomic64_inc(&net->mctp.rx_drops);
+			atomic64_inc(&net->mctp.rx_dropped_timeout);
+
 			__mctp_key_remove(key, net, fl2,
 					  MCTP_TRACE_KEY_TIMEOUT);
 			continue;
@@ -902,7 +938,8 @@ static int mctp_sk_init(struct sock *sk)
 	/* Initialize per-socket statistics */
 	memset(&msk->stats, 0, sizeof(msk->stats));
 	spin_lock_init(&msk->stats_lock);
-	
+	msk->pid = current->pid;
+
 	/* Increment global socket counter */
 	atomic_inc(&net->mctp.num_sockets);
 	
