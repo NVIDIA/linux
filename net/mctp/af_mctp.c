@@ -137,6 +137,9 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	 */
 	rc = mctp_socket_error_inject_sendmsg();
 	if (rc < 0) {
+		/* Always increment total TX drops for any injected error */
+		MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_drops);
+
 		switch (rc) {
 		case -EHOSTUNREACH:
 			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_no_route);
@@ -150,9 +153,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 			break;
 		case -EAGAIN:
 			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_dropped_queue_full);
-			break;
-		default:
-			MCTP_SOCK_STAT_INC(sk, sock_net(sk), tx_drops);
 			break;
 		}
 		return rc;
@@ -989,6 +989,9 @@ static void mctp_sk_unhash(struct sock *sk)
 	/* Decrement bound socket counter if it was bound */
 	if (was_hashed)
 		atomic_dec(&net->mctp.num_bound_sockets);
+
+	/* Aggregate stats for closed socket (by process name) */
+	mctp_stats_aggregate_closed_sk(sk);
 
 	/* remove tag allocations */
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);

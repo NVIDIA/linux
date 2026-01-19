@@ -91,12 +91,15 @@ tools, while the /proc interface is convenient for debugging.
 Per-Socket List
 ---------------
 
-A list of all active MCTP sockets with their individual statistics is available
-via **``/proc/net/mctp/sockets``** (similar to ``/proc/net/tcp``).
+A list of all active and historically closed MCTP sockets with their individual
+statistics is available via **``/proc/net/mctp/sockets``** (similar to
+``/proc/net/tcp``).
 
-This shows each socket's PID, EID, type, network, state, and detailed statistics,
-allowing system administrators to identify which applications are using MCTP
-and their traffic patterns.
+This shows each bound socket's PID, message type, network, and TX/RX message
+counts, allowing system administrators to identify which applications are using
+MCTP and their traffic patterns. A second section aggregates statistics from
+already-closed sockets, grouped by process name, so traffic from short-lived
+tools (e.g. CLI utilities) is not lost when they exit.
 
 **Available Metrics:**
 
@@ -451,14 +454,12 @@ Global Statistics via /proc (Shell)
 
     TX Statistics:
       Bytes:    45678
-      Packets:  234
       Messages: 156
       Errors:   0
       Drops:    5
 
     RX Statistics:
       Bytes:    67890
-      Packets:  345
       Messages: 234
       Errors:   0
       Drops:    2
@@ -495,29 +496,46 @@ Per-Socket Statistics via /proc (Shell)
 .. code-block:: text
 
     Socket List:
-      PID    Net  Type     Local EID  Peer EID   State      TX Pkts   RX Pkts
-      ---    ---  ----     ---------  --------   -----      -------   -------
-      100    5    PLDM     255        20         BOUND      57        14
-        TX Drops: No Route: 2, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
-        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 0, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 1
+      PID    Net  Type         State      TX Msgs   RX Msgs
+      ---    ---  ----         -----      -------   -------
+      2339   0    SPDM         BOUND           156       156
+      2174   0    Vendor(7E)   BOUND         91549     91547
+        RX Drops: 1 (Timeout: 1)
+      1091   0    Vendor(7F)   BOUND            61        61
+      521    0    PLDM         BOUND            85        85
+      559    0    Control      BOUND             0         2
 
-      250    5    SPDM     255        *          BOUND      1024      1024
-        TX Drops: No Route: 0, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
-        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 5, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 0
+    Closed Sockets (Aggregate by Process):
+      Name             TX Msgs   RX Msgs   TX Drops  RX Drops
+      ----             -------   -------   --------  --------
+      pldmtool         1         1         0         0
+      mctpreactor      9         0         0         0
+      mctpd            2149      2149      0         0
 
-Each socket entry shows:
-- **PID:** Process ID of the application that created the socket
-- **Type:** Message type (e.g., PLDM, SPDM)
-- **Peer EID:** Destination EID (for connected sockets) or `*` (for listeners)
-- **Detailed Drops:** Indented lines showing specific TX and RX drop counts
+The output has two sections:
+
+**Socket List** — one row per currently bound socket:
+
+- **PID:** Process ID that created the socket
+- **Net:** Bound network ID
+- **Type:** MCTP message type (e.g., PLDM, SPDM, Control, Vendor(7E))
+- **State:** Always ``BOUND`` (only bound sockets are in this list)
+- **TX/RX Msgs:** Message counts; drop details printed on an indented line
+  only when non-zero, in the form ``TX/RX Drops: <total> (<Reason>:<count>, ...)``
+
+**Closed Sockets (Aggregate by Process)** — one row per process name that has
+ever closed an MCTP socket with non-zero activity since the module was loaded.
+Statistics from all sockets closed by that process are accumulated here, so
+traffic from short-lived CLI tools is preserved after they exit. This section
+is cleared on module unload.
 
 .. code-block:: bash
 
     # Monitor per-socket activity
     watch -n 1 cat /proc/net/mctp/sockets
 
-    # Find which PID is dropping packets
-    cat /proc/net/mctp/sockets | grep -B 1 "RX Drops.*Timeout: [1-9]"
+    # Find which process has RX timeout drops
+    grep -A 2 "Closed" /proc/net/mctp/sockets | grep "Timeout"
 
 Integration with Monitoring Tools
 ==================================
@@ -610,11 +628,17 @@ This captures:
     
     === MCTP Active Sockets ===
     Socket List:
-      PID    Net  Type     Local EID  Peer EID   State      TX Pkts   RX Pkts
-      ---    ---  ----     ---------  --------   -----      -------   -------
-      100    5    PLDM     255        20         BOUND      57        14
-        TX Drops: No Route: 2, MTU Exceeded: 0, No Memory: 0, Queue Full: 0, Device Down: 0, Tag Exhaust: 0, Permission: 0
-        RX Drops: No Route: 0, No Memory: 0, Seq Mismatch: 0, Tag Mismatch: 0, Queue Full: 0, Invalid Hdr: 0, Permission: 0, Timeout: 1
+      PID    Net  Type         State      TX Msgs   RX Msgs
+      ---    ---  ----         -----      -------   -------
+      521    0    PLDM         BOUND            85        85
+      2339   0    SPDM         BOUND           156       156
+        RX Drops: 1 (Timeout: 1)
+
+    Closed Sockets (Aggregate by Process):
+      Name             TX Msgs   RX Msgs   TX Drops  RX Drops
+      ----             -------   -------   --------  --------
+      pldmtool         1         1         0         0
+      mctpd            2149      2149      0         0
     
     === MCTP Network Device Statistics ===
     --- Device: mctp0 ---
@@ -755,7 +779,8 @@ Socket Layer Statistics
 ::
 
     cat /proc/net/mctp/sockets
-    # Shows: PID, EID, type, network, state, TX/RX stats, drop reasons
+    # Shows: active sockets (PID, type, net, TX/RX msgs, drop reasons)
+    #        + closed socket history aggregated by process name
 
 **Global Stats (Netlink):**
 

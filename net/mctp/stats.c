@@ -15,9 +15,134 @@
 #include <net/net_namespace.h>
 #include <net/mctp.h>
 
+#include <linux/sched.h> /* for TASK_COMM_LEN */
+
 /* Generic Netlink family for MCTP statistics
  * Enums are defined in include/uapi/linux/mctp.h
  */
+
+struct mctp_sock_stats {
+	u64 tx_bytes;
+	u64 tx_packets;
+	u64 tx_messages;
+	u64 tx_errors;
+	u64 tx_drops;
+
+	u64 rx_bytes;
+	u64 rx_packets;
+	u64 rx_messages;
+	u64 rx_errors;
+	u64 rx_drops;
+
+	/* Detailed drop reasons - RX */
+	u64 rx_dropped_no_route;
+	u64 rx_dropped_no_memory;
+	u64 rx_dropped_seq_mismatch;
+	u64 rx_dropped_tag_mismatch;
+	u64 rx_dropped_queue_full;
+	u64 rx_dropped_invalid_header;
+	u64 rx_dropped_permission;
+	u64 rx_dropped_timeout;
+
+	/* Detailed drop reasons - TX */
+	u64 tx_dropped_no_route;
+	u64 tx_dropped_mtu_exceeded;
+	u64 tx_dropped_no_memory;
+	u64 tx_dropped_queue_full;
+	u64 tx_dropped_device_down;
+	u64 tx_dropped_tag_exhaustion;
+	u64 tx_dropped_permission;
+
+	/* Timestamps - unused for aggregation */
+	u64 last_tx_time;
+	u64 last_rx_time;
+};
+
+struct mctp_proc_stats {
+	struct hlist_node hlist;
+	char name[TASK_COMM_LEN];
+	struct mctp_sock_stats stats;
+};
+
+static DEFINE_SPINLOCK(mctp_closed_stats_lock);
+static HLIST_HEAD(mctp_closed_stats_list);
+
+void mctp_stats_aggregate_closed_sk(struct sock *sk)
+{
+	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+	struct mctp_sock_stats snapshot;
+	struct mctp_proc_stats *pstats = NULL, *tmp;
+	char comm[TASK_COMM_LEN];
+	unsigned long flags;
+
+	/* Snapshot stats under stats_lock to avoid a race with route.c updates.
+	 * We copy first, then check, so we never read fields without the lock.
+	 */
+	spin_lock_bh(&msk->stats_lock);
+	memcpy(&snapshot, &msk->stats, sizeof(snapshot));
+	spin_unlock_bh(&msk->stats_lock);
+
+	/* If no activity, don't allocate memory to track it */
+	if (snapshot.tx_messages == 0 && snapshot.rx_messages == 0 &&
+	    snapshot.tx_drops == 0 && snapshot.rx_drops == 0)
+		return;
+
+	strscpy(comm, current->comm, TASK_COMM_LEN);
+
+	spin_lock_irqsave(&mctp_closed_stats_lock, flags);
+
+	/* Find existing entry for this process name */
+	hlist_for_each_entry(tmp, &mctp_closed_stats_list, hlist) {
+		if (strncmp(tmp->name, comm, TASK_COMM_LEN) == 0) {
+			pstats = tmp;
+			break;
+		}
+	}
+
+	/* Create new if not found */
+	if (!pstats) {
+		pstats = kzalloc(sizeof(*pstats), GFP_ATOMIC);
+		if (!pstats) {
+			spin_unlock_irqrestore(&mctp_closed_stats_lock, flags);
+			return;
+		}
+		strscpy(pstats->name, comm, TASK_COMM_LEN);
+		hlist_add_head(&pstats->hlist, &mctp_closed_stats_list);
+	}
+
+	/* Aggregate from snapshot */
+	pstats->stats.tx_bytes += snapshot.tx_bytes;
+	pstats->stats.tx_packets += snapshot.tx_packets;
+	pstats->stats.tx_messages += snapshot.tx_messages;
+	pstats->stats.tx_errors += snapshot.tx_errors;
+	pstats->stats.tx_drops += snapshot.tx_drops;
+
+	pstats->stats.rx_bytes += snapshot.rx_bytes;
+	pstats->stats.rx_packets += snapshot.rx_packets;
+	pstats->stats.rx_messages += snapshot.rx_messages;
+	pstats->stats.rx_errors += snapshot.rx_errors;
+	pstats->stats.rx_drops += snapshot.rx_drops;
+
+	pstats->stats.rx_dropped_no_route += snapshot.rx_dropped_no_route;
+	pstats->stats.rx_dropped_no_memory += snapshot.rx_dropped_no_memory;
+	pstats->stats.rx_dropped_seq_mismatch += snapshot.rx_dropped_seq_mismatch;
+	pstats->stats.rx_dropped_tag_mismatch += snapshot.rx_dropped_tag_mismatch;
+	pstats->stats.rx_dropped_queue_full += snapshot.rx_dropped_queue_full;
+	pstats->stats.rx_dropped_invalid_header += snapshot.rx_dropped_invalid_header;
+	pstats->stats.rx_dropped_permission += snapshot.rx_dropped_permission;
+	pstats->stats.rx_dropped_timeout += snapshot.rx_dropped_timeout;
+
+	pstats->stats.tx_dropped_no_route += snapshot.tx_dropped_no_route;
+	pstats->stats.tx_dropped_mtu_exceeded += snapshot.tx_dropped_mtu_exceeded;
+	pstats->stats.tx_dropped_no_memory += snapshot.tx_dropped_no_memory;
+	pstats->stats.tx_dropped_queue_full += snapshot.tx_dropped_queue_full;
+	pstats->stats.tx_dropped_device_down += snapshot.tx_dropped_device_down;
+	pstats->stats.tx_dropped_tag_exhaustion += snapshot.tx_dropped_tag_exhaustion;
+	pstats->stats.tx_dropped_permission += snapshot.tx_dropped_permission;
+
+	spin_unlock_irqrestore(&mctp_closed_stats_lock, flags);
+}
+EXPORT_SYMBOL_GPL(mctp_stats_aggregate_closed_sk);
 
 static struct nla_policy mctp_stats_genl_policy[MCTP_ATTR_MAX + 1] = {
 	[MCTP_ATTR_STATS] = { .type = NLA_BINARY, .len = sizeof(struct mctp_global_stats) },
@@ -197,12 +322,87 @@ static const char *mctp_msg_type_name(u8 type)
 	}
 }
 
+static void mctp_print_drop_reasons(struct seq_file *m, struct mctp_sock_stats *s)
+{
+	bool first = true;
+
+	if (s->tx_drops) {
+		seq_printf(m, "    TX Drops: %llu (", s->tx_drops);
+		if (s->tx_dropped_no_route) {
+			seq_printf(m, "No Route:%llu", s->tx_dropped_no_route);
+			first = false;
+		}
+		if (s->tx_dropped_mtu_exceeded) {
+			seq_printf(m, "%sMTU Exceeded:%llu", first ? "" : ", ", s->tx_dropped_mtu_exceeded);
+			first = false;
+		}
+		if (s->tx_dropped_no_memory) {
+			seq_printf(m, "%sNo Memory:%llu", first ? "" : ", ", s->tx_dropped_no_memory);
+			first = false;
+		}
+		if (s->tx_dropped_queue_full) {
+			seq_printf(m, "%sQueue Full:%llu", first ? "" : ", ", s->tx_dropped_queue_full);
+			first = false;
+		}
+		if (s->tx_dropped_device_down) {
+			seq_printf(m, "%sDevice Down:%llu", first ? "" : ", ", s->tx_dropped_device_down);
+			first = false;
+		}
+		if (s->tx_dropped_tag_exhaustion) {
+			seq_printf(m, "%sTag Exhaustion:%llu", first ? "" : ", ", s->tx_dropped_tag_exhaustion);
+			first = false;
+		}
+		if (s->tx_dropped_permission) {
+			seq_printf(m, "%sPermission:%llu", first ? "" : ", ", s->tx_dropped_permission);
+			first = false;
+		}
+		seq_printf(m, ")\n");
+	}
+
+	first = true;
+	if (s->rx_drops) {
+		seq_printf(m, "    RX Drops: %llu (", s->rx_drops);
+		if (s->rx_dropped_no_route) {
+			seq_printf(m, "No Route:%llu", s->rx_dropped_no_route);
+			first = false;
+		}
+		if (s->rx_dropped_no_memory) {
+			seq_printf(m, "%sNo Memory:%llu", first ? "" : ", ", s->rx_dropped_no_memory);
+			first = false;
+		}
+		if (s->rx_dropped_seq_mismatch) {
+			seq_printf(m, "%sSeq Mismatch:%llu", first ? "" : ", ", s->rx_dropped_seq_mismatch);
+			first = false;
+		}
+		if (s->rx_dropped_tag_mismatch) {
+			seq_printf(m, "%sTag Mismatch:%llu", first ? "" : ", ", s->rx_dropped_tag_mismatch);
+			first = false;
+		}
+		if (s->rx_dropped_queue_full) {
+			seq_printf(m, "%sQueue Full:%llu", first ? "" : ", ", s->rx_dropped_queue_full);
+			first = false;
+		}
+		if (s->rx_dropped_invalid_header) {
+			seq_printf(m, "%sInvalid Header:%llu", first ? "" : ", ", s->rx_dropped_invalid_header);
+			first = false;
+		}
+		if (s->rx_dropped_permission) {
+			seq_printf(m, "%sPermission:%llu", first ? "" : ", ", s->rx_dropped_permission);
+			first = false;
+		}
+		if (s->rx_dropped_timeout) {
+			seq_printf(m, "%sTimeout:%llu", first ? "" : ", ", s->rx_dropped_timeout);
+			first = false;
+		}
+		seq_printf(m, ")\n");
+	}
+}
+
 /* Per-socket statistics display */
 static int mctp_sockets_show(struct seq_file *m, void *v)
 {
 	struct net *net = m->private;
 	struct sock *sk;
-	int i = 0;
 
 	/* Header for socket list */
 	seq_printf(m, "Socket List:\n");
@@ -212,6 +412,7 @@ static int mctp_sockets_show(struct seq_file *m, void *v)
 	rcu_read_lock();
 	sk_for_each_rcu(sk, &net->mctp.binds) {
 		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+		struct mctp_sock_stats snap;
 		const char *type_name;
 		char type_buf[8];
 
@@ -221,47 +422,53 @@ static int mctp_sockets_show(struct seq_file *m, void *v)
 			type_name = type_buf;
 		}
 
-		/* Line 1: Basic socket info and summary stats */
+		/* Snapshot stats under lock so tx/rx_messages and drop counts
+		 * are consistent with each other (avoids torn u64 reads on
+		 * 32-bit ARM and TOCTOU between the summary line and drops).
+		 */
+		spin_lock_bh(&msk->stats_lock);
+		memcpy(&snap, &msk->stats, sizeof(snap));
+		spin_unlock_bh(&msk->stats_lock);
+
 		seq_printf(m, "  %-6d %-4u %-12s %-10s %9llu %9llu\n",
 			   msk->pid,
 			   msk->bind_net,
 			   type_name,
-			   sk_hashed(sk) ? "BOUND" : "UNBOUND",
-			   msk->stats.tx_messages,
-			   msk->stats.rx_messages);
-		
-		/* Detailed drops - only if non-zero */
-		spin_lock_bh(&msk->stats_lock);
-		
-		if (msk->stats.tx_drops) {
-			seq_printf(m, "    TX Drops: %llu (No Route:%llu, MTU:%llu, Mem:%llu, QFull:%llu, Down:%llu, Tag:%llu, Perm:%llu)\n",
-				   msk->stats.tx_drops,
-				   msk->stats.tx_dropped_no_route,
-				   msk->stats.tx_dropped_mtu_exceeded,
-				   msk->stats.tx_dropped_no_memory,
-				   msk->stats.tx_dropped_queue_full,
-				   msk->stats.tx_dropped_device_down,
-				   msk->stats.tx_dropped_tag_exhaustion,
-				   msk->stats.tx_dropped_permission);
-		}
+			   "BOUND",
+			   snap.tx_messages,
+			   snap.rx_messages);
 
-		if (msk->stats.rx_drops) {
-			seq_printf(m, "    RX Drops: %llu (No Route:%llu, Mem:%llu, Seq:%llu, Tag:%llu, QFull:%llu, Hdr:%llu, Perm:%llu, Time:%llu)\n",
-				   msk->stats.rx_drops,
-				   msk->stats.rx_dropped_no_route,
-				   msk->stats.rx_dropped_no_memory,
-				   msk->stats.rx_dropped_seq_mismatch,
-				   msk->stats.rx_dropped_tag_mismatch,
-				   msk->stats.rx_dropped_queue_full,
-				   msk->stats.rx_dropped_invalid_header,
-				   msk->stats.rx_dropped_permission,
-				   msk->stats.rx_dropped_timeout);
-		}
-		spin_unlock_bh(&msk->stats_lock);
-
-		i++;
+		if (snap.tx_drops || snap.rx_drops)
+			mctp_print_drop_reasons(m, &snap);
 	}
 	rcu_read_unlock();
+
+	/* Section for Closed Sockets (Aggregated by Name) */
+	seq_printf(m, "\nClosed Sockets (Aggregate by Process):\n");
+	seq_printf(m, "  Name             TX Msgs   RX Msgs   TX Drops  RX Drops\n");
+	seq_printf(m, "  ----             -------   -------   --------  --------\n");
+
+	{
+		struct mctp_proc_stats *pstats;
+		unsigned long flags;
+
+		/* Must use irqsave here — aggregate_closed_sk uses irqsave on
+		 * this same lock so all readers must do the same.
+		 */
+		spin_lock_irqsave(&mctp_closed_stats_lock, flags);
+		hlist_for_each_entry(pstats, &mctp_closed_stats_list, hlist) {
+			seq_printf(m, "  %-16s %-9llu %-9llu %-9llu %-9llu\n",
+				   pstats->name,
+				   pstats->stats.tx_messages,
+				   pstats->stats.rx_messages,
+				   pstats->stats.tx_drops,
+				   pstats->stats.rx_drops);
+
+			if (pstats->stats.tx_drops || pstats->stats.rx_drops)
+				mctp_print_drop_reasons(m, &pstats->stats);
+		}
+		spin_unlock_irqrestore(&mctp_closed_stats_lock, flags);
+	}
 
 	return 0;
 }
@@ -342,6 +549,18 @@ int __init mctp_stats_init(void)
 
 void mctp_stats_exit(void)
 {
+	struct mctp_proc_stats *pstats;
+	struct hlist_node *tmp;
+	unsigned long flags;
+
 	unregister_pernet_subsys(&mctp_stats_net_ops);
 	genl_unregister_family(&mctp_genl_family);
+
+	/* Free all closed-socket aggregate entries accumulated at runtime. */
+	spin_lock_irqsave(&mctp_closed_stats_lock, flags);
+	hlist_for_each_entry_safe(pstats, tmp, &mctp_closed_stats_list, hlist) {
+		hlist_del(&pstats->hlist);
+		kfree(pstats);
+	}
+	spin_unlock_irqrestore(&mctp_closed_stats_lock, flags);
 }

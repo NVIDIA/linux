@@ -28,6 +28,8 @@
 #include <net/netlink.h>
 #include <net/sock.h>
 
+#include <trace/events/mctp.h>
+
 static const unsigned int mctp_message_maxlen = 64 * 1024;
 static const unsigned long mctp_nf_track_timeout = 2 * CONFIG_HZ;
 
@@ -1106,6 +1108,8 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 	if (!is_batched) {
 		skb->protocol = htons(ETH_P_MCTP);
 		if (skb->len > dst->mtu) {
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_drops);
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_dropped_mtu_exceeded);
 			kfree_skb(skb);
 			return -EMSGSIZE;
 		}
@@ -1115,6 +1119,8 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 	if (dst->halen && !is_tunnel) {
 		if (dst->halen != skb->dev->addr_len) {
 			/* sanity check, sendmsg should have already caught this */
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_drops);
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_dropped_mtu_exceeded);
 			kfree_skb(skb);
 			return -EMSGSIZE;
 		}
@@ -1128,6 +1134,8 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 	rc = dev_hard_header(skb, skb->dev, ntohs(skb->protocol),
 			     daddr, skb->dev->dev_addr, skb->len);
 	if (rc < 0) {
+		MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_drops);
+		MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_dropped_no_route);
 		kfree_skb(skb);
 		return -EHOSTUNREACH;
 	}
