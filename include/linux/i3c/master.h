@@ -24,7 +24,6 @@
 
 struct i2c_client;
 
-struct i3c_target_ops;
 /* notifier actions. notifier call data is the struct i3c_bus */
 enum {
 	I3C_NOTIFY_BUS_ADD,
@@ -34,6 +33,7 @@ enum {
 struct i3c_master_controller;
 struct i3c_bus;
 struct i3c_device;
+extern const struct bus_type i3c_bus_type;
 
 /**
  * struct i3c_i2c_dev_desc - Common part of the I3C/I2C device descriptor
@@ -77,7 +77,6 @@ struct i2c_dev_boardinfo {
 /**
  * struct i2c_dev_desc - I2C device descriptor
  * @common: common part of the I2C device descriptor
- * @boardinfo: pointer to the boardinfo attached to this I2C device
  * @dev: I2C device object registered to the I2C framework
  * @addr: I2C device address
  * @lvr: LVR (Legacy Virtual Register) needed by the I3C core to know about
@@ -190,18 +189,7 @@ struct i3c_dev_boardinfo {
 	u8 init_dyn_addr;
 	u8 static_addr;
 	u64 pid;
-	u8 bcr;
-	u8 dcr;
 	struct device_node *of_node;
-};
-
-/**
- * struct i3c_target_info - target information attached to a specific device
- * @read handler: handler specified at i3c_target_read_register() call time.
- */
-
-struct i3c_target_info {
-	void (*read_handler)(struct i3c_device *dev, const u8 *data, size_t len);
 };
 
 /**
@@ -209,7 +197,6 @@ struct i3c_target_info {
  * @common: common part of the I3C device descriptor
  * @info: I3C device information. Will be automatically filled when you create
  *	  your device with i3c_master_add_i3c_dev_locked()
- * @target_info: I3C target information.
  * @ibi_lock: lock used to protect the &struct_i3c_device->ibi
  * @ibi: IBI info attached to a device. Should be NULL until
  *	 i3c_device_request_ibi() is called
@@ -218,8 +205,6 @@ struct i3c_target_info {
  *	 code should manipulate it in when updating the dev <-> desc link or
  *	 when propagating IBI events to the driver
  * @boardinfo: pointer to the boardinfo attached to this I3C device
- * @event_cb: I3C framework event callback used to publish events to registered
- *	      devices' drivers
  *
  * Internal representation of an I3C device. This object is only used by the
  * core and passed to I3C master controller drivers when they're requested to
@@ -230,12 +215,10 @@ struct i3c_target_info {
 struct i3c_dev_desc {
 	struct i3c_i2c_dev_desc common;
 	struct i3c_device_info info;
-	struct i3c_target_info target_info;
 	struct mutex ibi_lock;
 	struct i3c_device_ibi_info *ibi;
 	struct i3c_device *dev;
 	const struct i3c_dev_boardinfo *boardinfo;
-	i3c_event_cb event_cb;
 };
 
 /**
@@ -271,7 +254,6 @@ struct i3c_device {
 #define I3C_BUS_I2C_FM_PLUS_SCL_RATE	1000000
 #define I3C_BUS_I2C_FM_SCL_RATE		400000
 #define I3C_BUS_TLOW_OD_MIN_NS		200
-#define I3C_BUS_THIGH_MAX_NS		41
 
 /**
  * enum i3c_bus_mode - I3C bus mode
@@ -388,7 +370,6 @@ struct i3c_bus {
 		struct list_head i2c;
 	} devs;
 	struct rw_semaphore lock;
-	u8 context;
 };
 
 /**
@@ -430,9 +411,6 @@ struct i3c_bus {
  *		      all CCC commands are supported.
  * @send_ccc_cmd: send a CCC command
  *		  This method is mandatory.
- * @send_hdr_cmds: send one or several HDR commands. If there is more than one
- *		   command, they should ideally be sent in the same HDR
- *		   transaction
  * @priv_xfers: do one or several private I3C SDR transfers
  *		This method is mandatory.
  * @attach_i2c_dev: called every time an I2C device is attached to the bus.
@@ -482,7 +460,6 @@ struct i3c_bus {
 struct i3c_master_controller_ops {
 	int (*bus_init)(struct i3c_master_controller *master);
 	void (*bus_cleanup)(struct i3c_master_controller *master);
-	int (*bus_reset)(struct i3c_master_controller *master);
 	int (*attach_i3c_dev)(struct i3c_dev_desc *dev);
 	int (*reattach_i3c_dev)(struct i3c_dev_desc *dev, u8 old_dyn_addr);
 	void (*detach_i3c_dev)(struct i3c_dev_desc *dev);
@@ -491,15 +468,13 @@ struct i3c_master_controller_ops {
 				 const struct i3c_ccc_cmd *cmd);
 	int (*send_ccc_cmd)(struct i3c_master_controller *master,
 			    struct i3c_ccc_cmd *cmd);
-	int (*send_hdr_cmds)(struct i3c_dev_desc *dev,
-			     struct i3c_hdr_cmd *cmds, int ncmds);
 	int (*priv_xfers)(struct i3c_dev_desc *dev,
 			  struct i3c_priv_xfer *xfers,
 			  int nxfers);
 	int (*attach_i2c_dev)(struct i2c_dev_desc *dev);
 	void (*detach_i2c_dev)(struct i2c_dev_desc *dev);
 	int (*i2c_xfers)(struct i2c_dev_desc *dev,
-			 struct i2c_msg *xfers, int nxfers);
+			 const struct i2c_msg *xfers, int nxfers);
 	int (*request_ibi)(struct i3c_dev_desc *dev,
 			   const struct i3c_ibi_setup *req);
 	void (*free_ibi)(struct i3c_dev_desc *dev);
@@ -521,8 +496,6 @@ struct i3c_master_controller_ops {
  *	 registered to the I2C subsystem to be as transparent as possible to
  *	 existing I2C drivers
  * @ops: master operations. See &struct i3c_master_controller_ops
- * @target_ops: target operations. See &struct i3c_target_ops
- * @target: true if the underlying I3C device acts as a target on I3C bus
  * @secondary: true if the master is a secondary master
  * @init_done: true when the bus initialization is done
  * @hotjoin: true if the master support hotjoin
@@ -546,9 +519,6 @@ struct i3c_master_controller {
 	struct i3c_dev_desc *this;
 	struct i2c_adapter i2c;
 	const struct i3c_master_controller_ops *ops;
-	const struct i3c_target_ops *target_ops;
-	unsigned int pec_supported : 1;
-	unsigned int target : 1;
 	unsigned int secondary : 1;
 	unsigned int init_done : 1;
 	unsigned int hotjoin: 1;
@@ -590,12 +560,7 @@ int i3c_master_disec_locked(struct i3c_master_controller *master, u8 addr,
 			    u8 evts);
 int i3c_master_enec_locked(struct i3c_master_controller *master, u8 addr,
 			   u8 evts);
-int i3c_master_setmrl_locked(struct i3c_master_controller *master,
-			     struct i3c_device_info *info, u16 read_len,
-			     u8 ibi_len);
 int i3c_master_entdaa_locked(struct i3c_master_controller *master);
-int i3c_master_setaasa_locked(struct i3c_master_controller *master);
-int i3c_master_sethid_locked(struct i3c_master_controller *master);
 int i3c_master_defslvs_locked(struct i3c_master_controller *master);
 
 int i3c_master_get_free_addr(struct i3c_master_controller *master,
@@ -613,12 +578,6 @@ int i3c_master_register(struct i3c_master_controller *master,
 			const struct i3c_master_controller_ops *ops,
 			bool secondary);
 void i3c_master_unregister(struct i3c_master_controller *master);
-int i3c_register(struct i3c_master_controller *master,
-		 struct device *parent,
-		 const struct i3c_master_controller_ops *master_ops,
-		 const struct i3c_target_ops *target_ops,
-		 bool secondary);
-int i3c_unregister(struct i3c_master_controller *master);
 int i3c_master_enable_hotjoin(struct i3c_master_controller *master);
 int i3c_master_disable_hotjoin(struct i3c_master_controller *master);
 
