@@ -127,6 +127,7 @@ struct ssif_bmc_ctx {
 	struct kfifo fifo_post;
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 	struct ast2600_ara *ara;
+	bool wr_tolerance;
 };
 
 static ssize_t ssif_timeout_show(struct device *dev,
@@ -850,10 +851,22 @@ static void on_write_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
 	if (ssif_bmc->state == SSIF_READY || ssif_bmc->state == SSIF_SMBUS_CMD) {
 		ssif_bmc->state = SSIF_START;
+		ssif_bmc->wr_tolerance = true;
 
 	} else if (ssif_bmc->state == SSIF_START ||
 		   ssif_bmc->state == SSIF_REQ_RECVING ||
 		   ssif_bmc->state == SSIF_RES_SENDING) {
+
+		if (ssif_bmc->state == SSIF_START && ssif_bmc->wr_tolerance) {
+			/*
+			 * Duplicated WREQ received.
+			 * This may be caused by long latency caused host re-transmission.
+			 */
+			dev_warn(&ssif_bmc->client->dev, "Dup WREQ\n");
+			ssif_bmc->wr_tolerance = false;
+			return;
+		}
+
 		dev_warn(&ssif_bmc->client->dev,
 			 "Warn: %s unexpected WRITE REQUEST in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
@@ -879,6 +892,18 @@ static void on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
 		if (!supported_write_cmd(ssif_bmc->part_buf.smbus_cmd)) {
+
+			if (ssif_bmc->wr_tolerance &&
+				(ssif_bmc->part_buf.smbus_cmd == *val)) {
+				/*
+				 * Duplicated WRCV with the same data byte received.
+				 * This may be caused by long latency caused host re-transmission.
+				 */
+				dev_warn(&ssif_bmc->client->dev, "Dup WRCV:0x%x\n", *val);
+				ssif_bmc->wr_tolerance = false;
+				return;
+            }
+
 			dev_warn(&ssif_bmc->client->dev, "Warn: Unknown SMBus write command=0x%x",
 				 ssif_bmc->part_buf.smbus_cmd);
 			ssif_bmc->aborting = true;
@@ -891,10 +916,13 @@ static void on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	}
 
 	/* This is response sending state */
-	if (ssif_bmc->state == SSIF_REQ_RECVING)
+	if (ssif_bmc->state == SSIF_REQ_RECVING) {
+		ssif_bmc->wr_tolerance = false;
 		handle_write_received(ssif_bmc, val);
-	else if (ssif_bmc->state == SSIF_SMBUS_CMD)
+	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
+		ssif_bmc->wr_tolerance = true;
 		process_smbus_cmd(ssif_bmc, val);
+	}
 }
 
 static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
@@ -930,6 +958,7 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	/* Reset message index */
 	ssif_bmc->msg_idx = 0;
+	ssif_bmc->wr_tolerance = false;
 }
 
 /*
