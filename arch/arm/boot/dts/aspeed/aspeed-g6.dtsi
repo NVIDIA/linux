@@ -251,7 +251,7 @@
 			reg = <0x1e630000 0x100
 							0x30000000 0x200000
 							0x34000000 0x200000>;
-			compatible = "aspeed,ast2600-fmc-txrx";
+			compatible = "aspeed,ast2600-fmc-spi";
 			number_of_chip_select = /bits/ 16 <2>;
 			#address-cells = <1>;
 			#size-cells = <0>;
