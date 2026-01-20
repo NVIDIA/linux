@@ -5,6 +5,7 @@
 
 #include <linux/clk.h>
 #include <linux/device.h>
+#include <linux/gpio/consumer.h>
 #include <linux/interrupt.h>
 #include <linux/jtag.h>
 #include <linux/kernel.h>
@@ -199,6 +200,7 @@ struct aspeed_jtag {
 	const struct jtag_low_level_functions *llops;
 	u32 pad_data_one[ASPEED_JTAG_MAX_PAD_SIZE / 32];
 	u32 pad_data_zero[ASPEED_JTAG_MAX_PAD_SIZE / 32];
+	struct gpio_desc *mux_gpiod;
 };
 
 /*
@@ -1393,6 +1395,9 @@ static int aspeed_jtag_enable(struct jtag *jtag)
 {
 	struct aspeed_jtag *aspeed_jtag = jtag_priv(jtag);
 
+	if (!IS_ERR_OR_NULL(aspeed_jtag->mux_gpiod))
+		gpiod_set_value(aspeed_jtag->mux_gpiod, 1);
+
 	aspeed_jtag->llops->master_enable(aspeed_jtag);
 	return 0;
 }
@@ -1400,6 +1405,9 @@ static int aspeed_jtag_enable(struct jtag *jtag)
 static int aspeed_jtag_disable(struct jtag *jtag)
 {
 	struct aspeed_jtag *aspeed_jtag = jtag_priv(jtag);
+
+	if (!IS_ERR_OR_NULL(aspeed_jtag->mux_gpiod))
+		gpiod_set_value(aspeed_jtag->mux_gpiod, 0);
 
 	aspeed_jtag->llops->output_disable(aspeed_jtag);
 	return 0;
@@ -1611,6 +1619,13 @@ static int aspeed_jtag_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, jtag);
 	aspeed_jtag = jtag_priv(jtag);
 	aspeed_jtag->dev = &pdev->dev;
+
+	/* Optional GPIO mux control */
+	aspeed_jtag->mux_gpiod = devm_gpiod_get_index_optional(&pdev->dev,
+							       "mux", 0,
+							       GPIOD_OUT_LOW);
+	if (IS_ERR(aspeed_jtag->mux_gpiod))
+		return PTR_ERR(aspeed_jtag->mux_gpiod);
 
 	aspeed_jtag->llops = jtag_functions->aspeed_jtag_llops;
 
