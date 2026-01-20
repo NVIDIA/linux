@@ -95,6 +95,7 @@
 #define ASPEED_H2X_CFGE_TLP_NEXT	0x34
 #define ASPEED_H2X_CFGE_CTRL		0x38
 #define  ASPEED_CFGE_TLP_FIRE			BIT(0)
+#define  ASPEED_CFGE_TLP_RET_BYPASS		BIT(1)
 #define ASPEED_H2X_CFGE_RET_DATA	0x3c
 #define ASPEED_H2X_REMAP_PREF_ADDR	0x70
 #define  ASPEED_REMAP_PREF_ADDR_63_32(x)	(x)
@@ -562,6 +563,8 @@ static int aspeed_ast2700_child_config(struct pci_bus *bus, unsigned int devfn,
 		dev_err(pcie->dev,
 			"%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
 			bus->number, PCI_SLOT(devfn), PCI_FUNC(devfn), status);
+		writel(ASPEED_CFGE_TLP_RET_BYPASS,
+		       pcie->reg + ASPEED_H2X_CFGE_CTRL);
 		ret = PCIBIOS_SET_FAILED;
 		PCI_SET_ERROR_RESPONSE(val);
 		goto out;
