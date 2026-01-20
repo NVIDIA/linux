@@ -226,6 +226,7 @@ static int aspeed_pcie_phy_probe(struct platform_device *pdev)
 	if (IS_ENABLED(CONFIG_HOTPLUG_PCI_PCIE)) {
 		int ret;
 
+		platform_set_drvdata(pdev, pcie_phy);
 		ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_hotplug.attr);
 		if (ret)
 			return dev_err_probe(&pdev->dev, ret, "unable to create sysfs interface\n");
