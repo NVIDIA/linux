@@ -1281,7 +1281,16 @@ static int aspeed_spi_chip_adjust_window(struct aspeed_spi_chip *chip,
 	if (aspi->data == &ast2400_spi_data)
 		return 0;
 
-	/* Adjust this chip window */
+	/*
+	 * Only expand the window if needed, never shrink it.
+	 * Shrinking can break flash access if the window becomes
+	 * smaller than expected (e.g., when dirmap length is smaller
+	 * than the actual flash size).
+	 */
+	if (size <= aspi->chips[chip->cs].ahb_window_sz)
+		return 0;
+
+	/* Expand this chip window */
 	aspi->chips[chip->cs].ahb_window_sz = size;
 
 	if (aspi->data->adjust_window)
