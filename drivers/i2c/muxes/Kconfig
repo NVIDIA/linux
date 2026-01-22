@@ -135,6 +135,14 @@ config I2C_MUX_MULE
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-mux-mule.
 
+config VIRTUAL_MUX_HOST
+	tristate "I2C Bridge Host (virtual adapter forwarding)"
+	depends on I2C
+	help
+	  Registers a virtual I2C adapter that forwards i2c_transfer() over a link
+	  I2C bus to a remote bridge client. Intended for exposing remote FRU EEPROMs
+	  or other devices to stock drivers via a virtual bus.
+
 config VIRTUAL_MUX_CLIENT
 	tristate "I2C Bridge Client (target-side bridge)"
 	depends on I2C && I2C_SLAVE
