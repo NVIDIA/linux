@@ -210,6 +210,17 @@
             "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
             "B0_M0_BMC_TO_GPU_MCU_I2C_EN-O";
     };
+
+};
+
+&i2c3 {
+    // Host I2C bridge to remote FRU client (no children yet)
+    bridge@51 {
+        compatible = "virtual-mux-host";
+        reg = <0x51>;
+        virtual-bus-num = <90>;
+        status = "okay";
+    };
 };
 
 // I2C8 GPIO Expander
