@@ -347,6 +347,30 @@
     };
 };
 
+&i2c6 {
+    exp19: tca6408@20 {
+        compatible = "ti,tca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+
+        gpio-line-names =
+            "",
+            "",
+            "HMC_EROT_FATAL_ERROR_L-I",
+            "",
+            "",
+            "HMC_EROT_RECOVERY_L-O",
+            "HMC_EROT_RESET_L-O",
+            "";
+    };
+};
+
 // I2C9 PDB GPIO Expander
 &i2c9 {
     exp6: pca9555@20 {
