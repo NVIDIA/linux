@@ -192,6 +192,8 @@
 #define AST2600_I2CS_TX_NAK				BIT(1)
 #define AST2600_I2CS_TX_ACK				BIT(0)
 
+#define I2C_ACTIVE_SLVADDR_MASK			(AST2600_I2CS_ADDR_INDICATE_MASK | AST2600_I2CS_ADDR_MASK)
+
 /* 0x28 : I2CS Target CMD/Status Register   */
 #define AST2600_I2CS_CMD_STS		0x28
 #define AST2600_I2CS_ACTIVE_ALL			GENMASK(18, 17)
@@ -1457,7 +1459,7 @@ static int ast2600_i2c_setup_buff_tx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 		 * Therefore, write dwords to the buffer register in a 4-byte aligned,
 		 * and write the remaining unaligned data at the end.
 		 */
-		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 			return -ENOMEM;
 		for (i = 0; i < xfer_len; i += 4) {
 			int xfer_cnt = i2c_bus->controller_xfer_cnt + i;
@@ -1478,13 +1480,13 @@ static int ast2600_i2c_setup_buff_tx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 			}
 			writel(wbuf_dword, i2c_bus->buf_base + i);
 		}
-		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 			return -ENOMEM;
 		writel(AST2600_I2CC_SET_TX_BUF_LEN(xfer_len),
 		       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
 	}
 
-	if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR))
+	if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK)
 		return -ENOMEM;
 
 	writel(cmd, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
@@ -1935,7 +1937,7 @@ static int ast2600_i2c_controller_xfer(struct i2c_adapter *adap, struct i2c_msg 
 			return -EBUSY;
 		/* disable target isr */
 		writel(0, i2c_bus->reg_base + AST2600_I2CS_IER);
-		if (readl(i2c_bus->reg_base + AST2600_I2CS_ISR) || i2c_bus->target_operate) {
+		if ((readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK) || i2c_bus->target_operate) {
 			writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_IER);
 			return -EBUSY;
 		}
