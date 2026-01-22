@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/i2c/virtual-mux-host.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Virtual I2C Mux Host (Remote I2C FRU Host Adapter)
+
+maintainers:
+  - Radivoje (Ogi) Jovanovic <rjovanovic@nvidia.com>
+
+description: |
+  The virtual-mux-host is an I2C client on a link bus that exposes a virtual
+  I2C adapter to Linux. Transfers submitted to the virtual adapter are framed
+  and forwarded over the link bus to a remote bridge target.
+
+properties:
+  compatible:
+    const: virtual-mux-host
+
+  reg:
+    maxItems: 1
+    description: I2C address of the remote bridge target on the link bus.
+
+  use-crc16:
+    type: boolean
+    description:
+      Enable CRC16 framing for requests and responses.
+
+  virtual-bus-num:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description:
+      Optional fixed bus number for the virtual adapter.
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    i2c@0 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        bridge@52 {
+            compatible = "virtual-mux-host";
+            reg = <0x52>;
+            use-crc16;
+            virtual-bus-num = <12>;
+        };
+    };
