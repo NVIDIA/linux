@@ -135,4 +135,12 @@ config I2C_MUX_MULE
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-mux-mule.
 
+config VIRTUAL_MUX_CLIENT
+	tristate "I2C Bridge Client (target-side bridge)"
+	depends on I2C && I2C_SLAVE
+	help
+	  Registers an I2C slave/target device that accepts remote I2C transfer
+	  frames and replays them on a downstream I2C adapter selected either
+	  by DT or by a bus id provided by the host.
+
 endmenu

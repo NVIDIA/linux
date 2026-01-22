@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/i2c/virtual-mux-client.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Virtual I2C Mux Client (Remote I2C FRU Bridge Target)
+
+maintainers:
+  - Radivoje (Ogi) Jovanovic <rjovanovic@nvidia.com>
+
+description: |
+  The virtual-mux-client is an I2C target/slave on a link bus. It receives
+  framed I2C requests from a virtual-mux-host and executes them on a mapped
+  downstream I2C adapter. Downstream address and bus mappings are provided
+  by child nodes.
+
+properties:
+  compatible:
+    const: virtual-mux-client
+
+  reg:
+    maxItems: 1
+    description: I2C address of the target on the link bus.
+
+  use-crc16:
+    type: boolean
+    description:
+      Enable CRC16 framing for requests and responses.
+
+patternProperties:
+  "^map@[0-9a-f]+$":
+    type: object
+    description: |
+      Mapping from a virtual I2C address to a downstream bus and address.
+    properties:
+      reg:
+        description: Virtual I2C address (7-bit).
+        maxItems: 1
+      downstream-bus:
+        $ref: /schemas/types.yaml#/definitions/uint32
+        description: Downstream I2C bus number to execute transfers on.
+      downstream-addr:
+        $ref: /schemas/types.yaml#/definitions/uint32
+        description: Downstream 7-bit I2C address.
+    required:
+      - reg
+      - downstream-bus
+      - downstream-addr
+    additionalProperties: false
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    i2c@0 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        bridge@52 {
+            compatible = "virtual-mux-client";
+            reg = <0x52>;
+            use-crc16;
+
+            map@50 {
+                reg = <0x50>;
+                downstream-bus = <3>;
+                downstream-addr = <0x50>;
+            };
+        };
+    };
