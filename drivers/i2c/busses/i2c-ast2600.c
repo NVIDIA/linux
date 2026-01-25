@@ -376,6 +376,7 @@ struct ast2600_i2c_bus {
 	 */
 	u32 tck_thddat;
 	u32 tout_baseclk_div;
+	u32 tout_ticks;
 };
 
 static u32 ast2600_fix_tout_baseclk_div(struct ast2600_i2c_bus *i2c_bus)
@@ -459,12 +460,13 @@ static void ast2600_i2c_ac_timing_config(struct ast2600_i2c_bus *i2c_bus)
 
 	if (i2c_bus->timeout) {
 		u32 tout_clkdiv = ast2600_fix_tout_baseclk_div(i2c_bus);
-		u32 tout_ticks = ast2600_calc_timeout_timer(i2c_bus);
+
+		i2c_bus->tout_ticks = ast2600_calc_timeout_timer(i2c_bus);
 
 		/* ast2600 only have [4:0] range */
-		if (tout_ticks > 31)
-			tout_ticks = 31;
-		data |= AST2600_I2CC_TTIMEOUT(tout_ticks);
+		if (i2c_bus->tout_ticks > 31)
+			i2c_bus->tout_ticks = 31;
+		data |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		data |= AST2600_I2CC_TOUTBASECLK(tout_clkdiv);
 	}
 
@@ -1043,7 +1045,7 @@ static void ast2600_i2c_target_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u
 				AST2600_I2CC_AC_TIMING_MASK;
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		/* set rx dma length ,re-send target trigger command and clear irq status */
 		writel(AST2600_I2CS_SET_RX_DMA_LEN(I2C_TARGET_MSG_BUF_SIZE),
@@ -1188,7 +1190,7 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 				AST2600_I2CC_AC_TIMING_MASK;
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		/* Re-send target trigger command and clear irq */
 		writel(TARGET_TRIGGER_CMD, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
@@ -1402,7 +1404,7 @@ static void ast2600_i2c_target_byte_irq(struct ast2600_i2c_bus *i2c_bus, u32 sts
 				AST2600_I2CC_AC_TIMING_MASK;
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		/* Re-send target trigger command and clear irq */
 		writel(AST2600_I2CS_ACTIVE_ALL, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
