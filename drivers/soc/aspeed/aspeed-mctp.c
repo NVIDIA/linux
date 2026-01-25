@@ -2288,7 +2288,8 @@ static int aspeed_mctp_dma_init(struct aspeed_mctp *priv)
 	struct mctp_channel *tx = &priv->tx;
 	struct mctp_channel *rx = &priv->rx;
 	size_t alloc_size;
-	int ret = -ENOMEM;
+	int ret;
+	bool use_reserved_mem = false;
 
 	BUILD_BUG_ON(TX_PACKET_COUNT >= TX_MAX_PACKET_COUNT);
 	BUILD_BUG_ON(RX_PACKET_COUNT >= RX_MAX_PACKET_COUNT);
@@ -2300,16 +2301,21 @@ static int aspeed_mctp_dma_init(struct aspeed_mctp *priv)
 	}
 
 	ret = of_reserved_mem_device_init(priv->dev);
-	if (ret) {
-		dev_err(priv->dev, "device does not have specific DMA pool: %d\n",
-			ret);
+	if (ret && ret != -ENODEV) {
+		dev_err(priv->dev, "Failed to check reserved DMA pool: %d\n", ret);
 		return ret;
 	}
 
-	ret = devm_add_action_or_reset(priv->dev, aspeed_release_rmem,
-				       priv->dev);
-	if (ret)
-		return ret;
+	if (!ret) {
+		/* Reserved memory found, register cleanup action */
+		use_reserved_mem = true;
+		ret = devm_add_action_or_reset(priv->dev, aspeed_release_rmem,
+					       priv->dev);
+		if (ret)
+			return ret;
+	}
+
+	dev_info(priv->dev, "%s DMA pool\n", use_reserved_mem ? "Reserved" : "Dynamic");
 
 	alloc_size = PAGE_ALIGN(priv->rx_packet_count * priv->match_data->packet_unit_size);
 	rx->data.vaddr =
