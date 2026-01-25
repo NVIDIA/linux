@@ -353,6 +353,13 @@ struct ast2600_i2c_bus {
 	struct i2c_client		*multi_target[AST2600_I2C_TARGET_COUNT];
 	struct i2c_client		*target;
 #endif
+	/* Manual tCK* and HDDAT setting for the ICC04 register
+	 * ICC04[11:10]: Hold Time of Master/Slave Data
+	 * ICC04[15:12]: tCKLow
+	 * ICC04[19:16]: tCKHigh
+	 * ICC04[23:20]: tCkHighMin
+	 */
+	u32 tck_thddat;
 };
 
 static void ast2600_i2c_ac_timing_config(struct ast2600_i2c_bus *i2c_bus)
@@ -384,9 +391,13 @@ static void ast2600_i2c_ac_timing_config(struct ast2600_i2c_bus *i2c_bus)
 
 	baseclk_idx = min(baseclk_idx, 15);
 	divisor = min(divisor, 32);
-	scl_low = min(divisor * 9 / 16 - 1, 15);
-	scl_high = (divisor - scl_low - 2) & GENMASK(3, 0);
-	data = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
+	if (i2c_bus->tck_thddat == 0) {
+		scl_low = min(divisor * 9 / 16 - 1, 15);
+		scl_high = (divisor - scl_low - 2) & GENMASK(3, 0);
+		data = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
+	} else {
+		data = i2c_bus->tck_thddat | baseclk_idx;
+	}
 
 	if (i2c_bus->timeout) {
 		i2c_bus->timeout = min(i2c_bus->timeout, 31);
@@ -2334,6 +2345,14 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 		if (!i2c_bus->timeout)
 			i2c_bus->timeout = 1;
 	}
+
+	/*
+	 * i2c timeout counter: use base clk4 1Mhz,
+	 * per unit: 1/(1000/1024) = 1024us
+	 */
+	ret = device_property_read_u32(dev, "i2c-tck-thddat-config", &i2c_bus->tck_thddat);
+	if (!ret)
+		dev_info(&pdev->dev, "Manual tCLK* & tHDDAT settings: %#08x", i2c_bus->tck_thddat);
 
 	init_completion(&i2c_bus->cmd_complete);
 
