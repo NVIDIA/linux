@@ -157,8 +157,8 @@
 #define RX_MAX_PACKET_COUNT	(RX_BUF_RD_PTR_MASK + 1)
 
 /* Per client packet cache sizes */
-#define RX_RING_COUNT		64
-#define TX_RING_COUNT		64
+#define RX_RING_COUNT		512
+#define TX_RING_COUNT		512
 
 /* PCIe Host Controller registers */
 #define ASPEED_PCIE_LINK	0x0c0
