@@ -111,6 +111,12 @@ config AL_FIC
 	help
 	  Support Amazon's Annapurna Labs Fabric Interrupt Controller.
 
+config ASPEED_AST2700_INTC
+	bool
+	depends on OF
+	depends on ARCH_ASPEED || COMPILE_TEST
+	select IRQ_DOMAIN_HIERARCHY
+
 config ATMEL_AIC_IRQ
 	bool
 	select GENERIC_IRQ_CHIP
@@ -793,9 +799,6 @@ config APPLE_AIC
 	help
 	  Support for the Apple Interrupt Controller found on Apple Silicon SoCs,
 	  such as the M1.
-
-config AST2700_IRQ
-	bool
 
 config MCHP_EIC
 	bool "Microchip External Interrupt Controller"

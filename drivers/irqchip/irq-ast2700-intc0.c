@@ -17,40 +17,43 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 #define INT_NUM			480
-#define SWINT_NUM		16
 #define INTM_NUM		50
+#define SWINT_NUM		16
 
-#define SWINT_BASE		(INT_NUM)
-#define INTM_BASE		(INT_NUM + SWINT_NUM)
-#define INT0_NUM		(INT_NUM + SWINT_NUM + INTM_NUM)
+#define INTM_BASE		(INT_NUM)
+#define SWINT_BASE		(INT_NUM + INTM_NUM)
+#define INT0_NUM		(INT_NUM + INTM_NUM + SWINT_NUM)
 
 #define GIC_P2P_SPI_END		128
 #define GIC_SWINT_SPI_BASE	144
 #define GIC_SWINT_SPI_NUM	16
-#define GIC_INTM_SPI_BASE	192
+#define GIC_INTM0_SPI_BASE	192
+#define GIC_INTM30_SPI_BASE	208
+#define GIC_INTM40_SPI_BASE	224
 
 #define INTC0_SWINT_IER		0x10
 #define INTC0_SWINT_ISR		0x14
 #define INTC0_INTBANKX_IER		0x1000
 #define INTC0_INTBANK_GROUPS	11
 #define INTC0_INTBANKS_PER_GRP	3
-#define INTC0_IMTMX_IER		0x1b00
-#define INTC0_IMTMX_ISR		0x1b04
-#define INTC0_IMTM_BANK_NUM	3
+#define INTC0_INTMX_IER		0x1b00
+#define INTC0_INTMX_ISR		0x1b04
+#define INTC0_INTM_BANK_NUM	3
 #define INTM_IRQS_PER_BANK	10
 
-struct intc0_pin_region {
+struct intc0_pin_range {
 	u32 int_base;
 	u32 gic_base;
 	u32 cnt;
 };
 
 struct aspeed_intc_ic {
+	struct device		*dev;
 	void __iomem		*base;
 	raw_spinlock_t		intc_lock;
 	struct irq_domain	*irq_domain;
-	struct intc0_pin_region	*pin_region;
-	int			pin_region_cnt;
+	struct intc0_pin_range	*pin_ranges;
+	unsigned int		pin_range_cnt;
 };
 
 static void aspeed_swint_irq_mask(struct irq_data *data)
@@ -103,8 +106,8 @@ static void aspeed_intc0_irq_mask(struct irq_data *data)
 	unsigned int mask;
 
 	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
-	mask = readl(intc_ic->base + INTC0_IMTMX_IER + bank * 0x10) & ~BIT(bit);
-	writel(mask, intc_ic->base + INTC0_IMTMX_IER + bank * 0x10);
+	mask = readl(intc_ic->base + INTC0_INTMX_IER + bank * 0x10) & ~BIT(bit);
+	writel(mask, intc_ic->base + INTC0_INTMX_IER + bank * 0x10);
 	irq_chip_mask_parent(data);
 }
 
@@ -116,8 +119,8 @@ static void aspeed_intc0_irq_unmask(struct irq_data *data)
 	unsigned int unmask;
 
 	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
-	unmask = readl(intc_ic->base + INTC0_IMTMX_IER + bank * 0x10) | BIT(bit);
-	writel(unmask, intc_ic->base + INTC0_IMTMX_IER + bank * 0x10);
+	unmask = readl(intc_ic->base + INTC0_INTMX_IER + bank * 0x10) | BIT(bit);
+	writel(unmask, intc_ic->base + INTC0_INTMX_IER + bank * 0x10);
 	irq_chip_unmask_parent(data);
 }
 
@@ -127,14 +130,7 @@ static void aspeed_intc0_irq_eoi(struct irq_data *data)
 	int bank = (data->hwirq - INTM_BASE) / INTM_IRQS_PER_BANK;
 	int bit = (data->hwirq - INTM_BASE) % INTM_IRQS_PER_BANK;
 
-	/*
-	 * TODO: This a WA to prevnet potential race conditions when
-	 * multiple interrupts are processed in multi-core environment.
-	 */
-	raw_spin_lock(&intc_ic->intc_lock);
-	writel(BIT(bit), intc_ic->base + INTC0_IMTMX_ISR + bank * 0x10);
-	raw_spin_unlock(&intc_ic->intc_lock);
-
+	writel(BIT(bit), intc_ic->base + INTC0_INTMX_ISR + bank * 0x10);
 	irq_chip_eoi_parent(data);
 }
 
@@ -162,10 +158,10 @@ static int aspeed_intc_ic0_map_irq_domain(struct irq_domain *domain, unsigned in
 {
 	if (hwirq < GIC_P2P_SPI_END)
 		irq_set_chip_and_handler(irq, &linear_intr_irq_chip, handle_level_irq);
-	else if (hwirq < SWINT_BASE)
-		return -EINVAL;
 	else if (hwirq < INTM_BASE)
 		irq_set_chip_and_handler(irq, &aspeed_swint_chip, handle_level_irq);
+	else if (hwirq < SWINT_BASE)
+		return -EINVAL;
 	else if (hwirq < INT0_NUM)
 		irq_set_chip_and_handler(irq, &aspeed_intm_chip, handle_level_irq);
 	else
@@ -188,19 +184,34 @@ static int aspeed_intc0_irq_domain_translate(struct irq_domain *domain,
 	return 0;
 }
 
-static int get_parent_hwirq(struct aspeed_intc_ic *intc_ic,
-			    u32 local_hwirq,
+static int get_parent_hwirq(struct aspeed_intc_ic *intc_ic, u32 local_hwirq,
 			    irq_hw_number_t *parent_hwirq)
 {
-	int i;
+	u32 out_hwirq;
 
-	for (i = 0; i < intc_ic->pin_region_cnt; i++) {
-		u32 int_base = intc_ic->pin_region[i].int_base;
-		u32 cnt = intc_ic->pin_region[i].cnt;
+	if (local_hwirq < GIC_P2P_SPI_END)
+		out_hwirq = local_hwirq;
+	else if (local_hwirq < INTM_BASE)
+		return -EINVAL;
+	else if (local_hwirq < INTM_BASE + 10)
+		out_hwirq = local_hwirq - INTM_BASE + GIC_INTM0_SPI_BASE;
+	else if (local_hwirq < INTM_BASE + 30)
+		return -EINVAL;
+	else if (local_hwirq < INTM_BASE + 40)
+		out_hwirq = local_hwirq - (INTM_BASE + 30) + GIC_INTM30_SPI_BASE;
+	else if (local_hwirq < INTM_BASE + 50)
+		out_hwirq = local_hwirq - (INTM_BASE + 40) + GIC_INTM40_SPI_BASE;
+	else if (local_hwirq < SWINT_BASE + SWINT_NUM)
+		out_hwirq = local_hwirq - SWINT_BASE + GIC_SWINT_SPI_BASE;
+	else
+		return -EINVAL;
 
-		if (local_hwirq >= int_base && local_hwirq < int_base + cnt) {
-			*parent_hwirq = intc_ic->pin_region[i].gic_base +
-				(local_hwirq - int_base);
+	for (int i = 0; i < intc_ic->pin_range_cnt; i++) {
+		u32 int_base = intc_ic->pin_ranges[i].int_base;
+		u32 cnt = intc_ic->pin_ranges[i].cnt;
+
+		if (out_hwirq >= int_base && out_hwirq < int_base + cnt) {
+			*parent_hwirq = out_hwirq;
 			return 0;
 		}
 	}
@@ -227,18 +238,19 @@ static int aspeed_intc0_irq_domain_alloc(struct irq_domain *domain, unsigned int
 	if (hwirq >= GIC_P2P_SPI_END && hwirq < INT_NUM)
 		return -EINVAL;
 
-	if (hwirq < SWINT_BASE)
+	if (hwirq < INTM_BASE)
 		chip = &linear_intr_irq_chip;
-	else if (hwirq < INTM_BASE)
-		chip = &aspeed_swint_chip;
-	else
+	else if (hwirq < SWINT_BASE)
 		chip = &aspeed_intm_chip;
+	else
+		chip = &aspeed_swint_chip;
 
 	ret = get_parent_hwirq(intc_ic, (u32)hwirq, &parent_hwirq);
 	if (ret)
-		return irq_domain_disconnect_hierarchy(domain->parent, virq);
+		return ret;
 
 	parent_fwspec.fwnode = domain->parent->fwnode;
+	/* The driver assumes parent is GICv3 */
 	parent_fwspec.param_count = 3;
 	parent_fwspec.param[0] = GIC_SPI;
 	parent_fwspec.param[1] = parent_hwirq;
@@ -298,129 +310,124 @@ static const struct irq_domain_ops aspeed_intc0_ic_irq_domain_ops = {
 	.activate = aspeed_intc0_irq_domain_activate,
 };
 
+static int aspeed_intc0_parse_ranges(struct device_node *node,
+				     struct device_node *parent_node,
+				     struct intc0_pin_range *pin_ranges,
+				     unsigned int *range_cnt)
+{
+	const __be32 *ranges;
+	const __be32 *ranges_end;
+	int len;
+	unsigned int count = 0;
+
+	ranges = of_get_property(node, "aspeed,interrupt-ranges", &len);
+	if (!ranges)
+		return -EINVAL;
+
+	if (len % sizeof(__be32))
+		return -EINVAL;
+
+	if (!pin_ranges) {
+		*range_cnt = len / (3 * sizeof(__be32));
+		return 0;
+	}
+
+	ranges_end = ranges + (len / sizeof(__be32));
+	for (; ranges + 3 <= ranges_end; ) {
+		struct device_node *target;
+		phandle parent_handle;
+		u32 target_cells;
+		u32 range_size;
+		u32 pin_out;
+		u32 gic_type;
+		u32 gic_base;
+		u32 gic_flags;
+
+		pin_out = be32_to_cpu(ranges[0]);
+		range_size = be32_to_cpu(ranges[1]);
+		parent_handle = be32_to_cpu(ranges[2]);
+
+		target = of_find_node_by_phandle(parent_handle);
+		if (!target)
+			return -EINVAL;
+
+		if (of_property_read_u32(target, "#interrupt-cells", &target_cells)) {
+			of_node_put(target);
+			return -EINVAL;
+		}
+
+		if (ranges + 3 + target_cells > ranges_end) {
+			of_node_put(target);
+			return -EINVAL;
+		}
+
+		if (target != parent_node) {
+			of_node_put(target);
+			ranges += 3 + target_cells;
+			continue;
+		}
+
+		if (target_cells != 3) {
+			of_node_put(target);
+			return -EINVAL;
+		}
+
+		gic_type = be32_to_cpu(ranges[3]);
+		gic_base = be32_to_cpu(ranges[4]);
+		gic_flags = be32_to_cpu(ranges[5]);
+
+		if (gic_type == GIC_SPI && gic_flags == IRQ_TYPE_LEVEL_HIGH) {
+			pin_ranges[count].int_base = pin_out;
+			pin_ranges[count].cnt = range_size;
+			pin_ranges[count].gic_base = gic_base;
+			count++;
+		}
+
+		of_node_put(target);
+		ranges += 3 + target_cells;
+	}
+
+	*range_cnt = count;
+	return 0;
+}
+
 static int aspeed_intc0_init_gic_ranges(struct aspeed_intc_ic *intc_ic,
 					struct device_node *node,
 					struct device_node *parent_node)
 {
-	struct intc0_pin_region *pin_region;
-	int region_cnt = 0;
-	int i, n, ret;
+	struct intc0_pin_range *pin_ranges;
+	unsigned int range_cnt = 0;
+	int ret;
 
 	if (!of_device_is_compatible(parent_node, "arm,gic-v3"))
-		return -ENOENT;
+		return -ENOTSUPP;
 
-	n = of_property_count_elems_of_size(node, "aspeed,interrupt-ranges", sizeof(u32));
-	if (n <= 0 || n % 6)
+	ret = aspeed_intc0_parse_ranges(node, parent_node, NULL, &range_cnt);
+	if (ret)
+		return ret;
+
+	if (!range_cnt)
 		return -EINVAL;
 
-	/*
-	 * Each range is described as:
-	 * <int_pin count phandle type parent_irq flags>
-	 * and we only care about ranges whose phandle matches
-	 * this controller's interrupt-parent (&gic).
-	 */
-	for (i = 0; i < n / 6; i++) {
-		struct device_node *target;
-		phandle parent_handle;
-		u32 gic_type;
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 2, &parent_handle);
-		if (ret)
-			return ret;
-
-		target = of_find_node_by_phandle(parent_handle);
-		if (!target)
-			continue;
-
-		if (target != parent_node) {
-			of_node_put(target);
-			continue;
-		}
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 3, &gic_type);
-		of_node_put(target);
-		if (ret)
-			return ret;
-
-		if (gic_type != GIC_SPI)
-			continue;
-
-		region_cnt++;
-	}
-
-	if (!region_cnt)
-		return -EINVAL;
-
-	pin_region = kcalloc(region_cnt, sizeof(*pin_region), GFP_KERNEL);
-	if (!pin_region)
+	pin_ranges = devm_kmalloc_array(intc_ic->dev, range_cnt,
+					sizeof(*pin_ranges), GFP_KERNEL);
+	if (!pin_ranges)
 		return -ENOMEM;
 
-	intc_ic->pin_region_cnt = region_cnt;
-	intc_ic->pin_region = pin_region;
+	ret = aspeed_intc0_parse_ranges(node, parent_node, pin_ranges, &range_cnt);
+	if (ret)
+		return ret;
 
-	region_cnt = 0;
-	for (i = 0; i < n / 6; i++) {
-		struct device_node *target;
-		phandle parent_handle;
-		u32 gic_flags;
-		u32 gic_type;
+	if (!range_cnt)
+		return -EINVAL;
 
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 2, &parent_handle);
-		if (ret)
-			return ret;
+	pin_ranges = devm_krealloc_array(intc_ic->dev, pin_ranges, range_cnt,
+					 sizeof(*pin_ranges), GFP_KERNEL);
+	if (!pin_ranges)
+		return -ENOMEM;
 
-		target = of_find_node_by_phandle(parent_handle);
-		if (!target)
-			continue;
-
-		if (target != parent_node) {
-			of_node_put(target);
-			continue;
-		}
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 0,
-						 &pin_region[region_cnt].int_base);
-		if (ret)
-			goto out_put;
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 1,
-						 &pin_region[region_cnt].cnt);
-		if (ret)
-			goto out_put;
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 3, &gic_type);
-		if (ret)
-			goto out_put;
-
-		if (gic_type != GIC_SPI)
-			goto out_put;
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 4,
-						 &pin_region[region_cnt].gic_base);
-		if (ret)
-			goto out_put;
-
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 6 + 5, &gic_flags);
-		if (ret)
-			goto out_put;
-
-		if (gic_flags != IRQ_TYPE_LEVEL_HIGH)
-			goto out_put;
-
-		region_cnt++;
-out_put:
-		of_node_put(target);
-		if (ret)
-			return ret;
-	}
+	intc_ic->pin_range_cnt = range_cnt;
+	intc_ic->pin_ranges = pin_ranges;
 
 	return 0;
 }
@@ -447,8 +454,8 @@ static void aspeed_intc0_disable_intm(struct aspeed_intc_ic *intc_ic)
 {
 	int i;
 
-	for (i = 0; i < INTC0_IMTM_BANK_NUM; i++)
-		writel(0, intc_ic->base + INTC0_IMTMX_IER + (0x10 * i));
+	for (i = 0; i < INTC0_INTM_BANK_NUM; i++)
+		writel(0, intc_ic->base + INTC0_INTMX_IER + (0x10 * i));
 }
 
 static int aspeed_intc0_ic_probe(struct platform_device *pdev, struct device_node *parent)
@@ -467,6 +474,7 @@ static int aspeed_intc0_ic_probe(struct platform_device *pdev, struct device_nod
 	if (!intc_ic)
 		return -ENOMEM;
 
+	intc_ic->dev = &pdev->dev;
 	intc_ic->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(intc_ic->base))
 		return PTR_ERR(intc_ic->base);
@@ -493,7 +501,7 @@ static int aspeed_intc0_ic_probe(struct platform_device *pdev, struct device_nod
 	ret = aspeed_intc0_init_gic_ranges(intc_ic, node, parent);
 	if (ret < 0) {
 		irq_domain_remove(intc_ic->irq_domain);
-		return -ENOENT;
+		return ret;
 	}
 
 	return 0;

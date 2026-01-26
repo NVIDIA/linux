@@ -51,8 +51,8 @@ static void aspeed_intc1_ic_irq_handler(struct irq_desc *desc)
 static void aspeed_intc1_irq_mask(struct irq_data *data)
 {
 	struct aspeed_intc_ic *intc_ic = irq_data_get_irq_chip_data(data);
-	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	int bank = data->hwirq / INTC1_IRQS_PER_BANK;
+	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	unsigned int mask;
 
 	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
@@ -63,8 +63,8 @@ static void aspeed_intc1_irq_mask(struct irq_data *data)
 static void aspeed_intc1_irq_unmask(struct irq_data *data)
 {
 	struct aspeed_intc_ic *intc_ic = irq_data_get_irq_chip_data(data);
-	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	int bank = data->hwirq / INTC1_IRQS_PER_BANK;
+	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	unsigned int unmask;
 
 	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
@@ -130,57 +130,66 @@ static int aspeed_intc1_interrupt_ranges(struct aspeed_intc_ic *intc_ic,
 					 struct device_node *parent_node)
 {
 	struct of_phandle_args parent_irq;
-	int i, j, n, ret;
+	const __be32 *ranges;
+	const __be32 *ranges_end;
+	int len;
 
 	if (!of_device_is_compatible(parent_node, "aspeed,ast2700-intc0-ic"))
-		return -ENOENT;
+		return -ENOTSUPP;
 
-	n = of_property_count_elems_of_size(node, "aspeed,interrupt-ranges", sizeof(u32));
-	if (n <= 0 || n % 4)
+	ranges = of_get_property(node, "aspeed,interrupt-ranges", &len);
+	if (!ranges)
 		return -EINVAL;
 
-	/*
-	 * Each range is described as:
-	 * <intm_pin count phandle base_irq>
-	 * and we only care about ranges whose phandle matches
-	 * this controller's interrupt-parent (&intc0).
-	 */
-	for (i = 0; i < n / 4; i++) {
+	if (len % sizeof(__be32))
+		return -EINVAL;
+
+	ranges_end = ranges + (len / sizeof(__be32));
+	for (; ranges + 3 <= ranges_end; ) {
 		struct device_node *target;
 		phandle parent_handle;
-		u32 base_irq;
+		u32 target_cells;
+		u32 pin_out;
 		u32 count;
+		u32 irq_base;
 
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 4 + 2, &parent_handle);
-		if (ret)
-			return ret;
+		pin_out = be32_to_cpu(ranges[0]);
+		count = be32_to_cpu(ranges[1]);
+		parent_handle = be32_to_cpu(ranges[2]);
 
 		target = of_find_node_by_phandle(parent_handle);
 		if (!target)
-			continue;
+			return -EINVAL;
+
+		if (of_property_read_u32(target, "#interrupt-cells", &target_cells)) {
+			of_node_put(target);
+			return -EINVAL;
+		}
+
+		if (ranges + 3 + target_cells > ranges_end) {
+			of_node_put(target);
+			return -EINVAL;
+		}
 
 		if (target != parent_node) {
 			of_node_put(target);
+			ranges += 3 + target_cells;
 			continue;
 		}
 
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 4 + 1, &count);
-		if (ret)
-			return ret;
+		if (target_cells != 1) {
+			of_node_put(target);
+			return -EINVAL;
+		}
 
-		ret = of_property_read_u32_index(node, "aspeed,interrupt-ranges",
-						 i * 4 + 3, &base_irq);
-		if (ret)
-			return ret;
+		irq_base = be32_to_cpu(ranges[3]);
 
-		for (j = 0; j < count; j++) {
+		for (u32 j = 0; j < count; j++) {
 			int irq;
 
 			parent_irq.np = parent_node;
 			parent_irq.args_count = 1;
-			parent_irq.args[0] = base_irq + j;
+			parent_irq.args[0] = irq_base + j;
 			irq = irq_create_of_mapping(&parent_irq);
 			if (!irq)
 				continue;
@@ -191,6 +200,7 @@ static int aspeed_intc1_interrupt_ranges(struct aspeed_intc_ic *intc_ic,
 		}
 
 		of_node_put(target);
+		ranges += 3 + target_cells;
 	}
 
 	return 0;
@@ -206,7 +216,7 @@ static int aspeed_intc1_ic_probe(struct platform_device *pdev, struct device_nod
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct aspeed_intc_ic *intc_ic;
-	int ret = 0;
+	int ret;
 
 	if (!parent) {
 		pr_err("missing parent interrupt node\n");
@@ -224,9 +234,10 @@ static int aspeed_intc1_ic_probe(struct platform_device *pdev, struct device_nod
 	if (IS_ERR(intc_ic->base))
 		return PTR_ERR(intc_ic->base);
 
+	aspeed_intc1_disable_int(intc_ic);
+
 	raw_spin_lock_init(&intc_ic->intc_lock);
 
-	aspeed_intc1_disable_int(intc_ic);
 	intc_ic->irq_domain = irq_domain_create_linear(of_fwnode_handle(node),
 						       INTC1_BANK_NUM * INTC1_IRQS_PER_BANK,
 						       &aspeed_intc1_ic_irq_domain_ops, intc_ic);
@@ -236,7 +247,7 @@ static int aspeed_intc1_ic_probe(struct platform_device *pdev, struct device_nod
 	ret = aspeed_intc1_interrupt_ranges(intc_ic, node, parent);
 	if (ret < 0) {
 		irq_domain_remove(intc_ic->irq_domain);
-		return -ENOENT;
+		return ret;
 	}
 
 	return 0;
