@@ -19,6 +19,10 @@
 		i2c70	= &i2c70;
 		i2c71	= &i2c71;
 		i2c72	= &i2c72;
+		i2c73	= &i2c73;
+		i2c74	= &i2c74;
+		i2c75	= &i2c75;
+		i2c76	= &i2c76;
 	};
 
 	chosen {
@@ -305,6 +309,11 @@
                             "IOB1_GLOBAL_ADDR_U_D-O",
                             "IOB1_PWR_EN-O",
                             "IOB1_MCU_READY_STATUS-I";
+
+                        i2c74: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
 		            };
                 };
                 hub@4 {
@@ -325,6 +334,11 @@
                             "IOB0_GLOBAL_ADDR_U_D-O",
                             "IOB0_PWR_EN-O",
                             "IOB0_MCU_READY_STATUS-I";
+
+                        i2c73: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
 		            };
                 };
                 device@1 {
@@ -520,6 +534,11 @@
                             "IOB2_GLOBAL_ADDR_U_D-O",
                             "IOB2_PWR_EN-O",
                             "IOB2_MCU_READY_STATUS-I";
+
+                        i2c75: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
 		            };
                 };
                 hub@4 {
@@ -540,6 +559,11 @@
                             "IOB3_GLOBAL_ADDR_U_D-O",
                             "IOB3_PWR_EN-O",
                             "IOB3_MCU_READY_STATUS-I";
+
+                        i2c76: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
 		            };
                 };
                 device@1 {
