@@ -80,11 +80,11 @@ struct mctp_spi {
 	 *
 	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
 	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
-	 * - EID 254 (MCTP_EID_UNKNOWN): errors where EID could not be determined
+	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be determined
 	 *   (GPIO interrupts, SPI transfer errors, allocation failures)
 	 */
 	struct {
-		DECLARE_BITMAP(active, 256);  /* Which EIDs have activity */
+		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
 		struct mctp_spi_eid_stats {
 			/* RX stats */
 			u64 rx_drop_no_memory;
@@ -102,7 +102,7 @@ struct mctp_spi {
 			
 			/* GPIO interrupt tracking (UNKNOWN - no EID context) */
 			u64 gpio_interrupts;
-		} eid[256];
+		} eid[257];
 	} eid_stats;
 };
 
@@ -338,7 +338,7 @@ static void mctp_spi_get_strings(struct net_device *ndev, u32 stringset,
 	data += ETH_GSTRING_LEN;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+	for_each_set_bit(eid, midev->eid_stats.active, 257) {
 		struct mctp_spi_eid_stats *es = &midev->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_spi_count_eid_nonzero(midev, eid);
@@ -398,7 +398,7 @@ static void mctp_spi_get_ethtool_stats(struct net_device *ndev,
 	for (i = 0; i < MCTP_SPI_EID_NUM_STATS; i++) {
 		u64 total = 0;
 		
-		for_each_set_bit(eid, midev->eid_stats.active, 256) {
+		for_each_set_bit(eid, midev->eid_stats.active, 257) {
 			u8 *base = (u8 *)&midev->eid_stats.eid[eid];
 			total += *(u64 *)(base + mctp_spi_eid_stat_descs[i].offset);
 		}
@@ -409,7 +409,7 @@ static void mctp_spi_get_ethtool_stats(struct net_device *ndev,
 	data[idx++] = 0;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+	for_each_set_bit(eid, midev->eid_stats.active, 257) {
 		struct mctp_spi_eid_stats *es = &midev->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_spi_count_eid_nonzero(midev, eid);

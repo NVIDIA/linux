@@ -76,11 +76,11 @@ struct mctp_i3c_bus {
 	 *
 	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
 	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
-	 * - EID 254 (MCTP_EID_UNKNOWN): errors where EID could not be determined
+	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be determined
 	 *   (IBI events, device hotplug, allocation failures, pre-parse errors)
 	 */
 	struct {
-		DECLARE_BITMAP(active, 256);  /* Which EIDs have activity */
+		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
 		struct mctp_i3c_eid_stats {
 			/* RX stats */
 			u64 rx_drop_no_memory;
@@ -108,7 +108,7 @@ struct mctp_i3c_bus {
 			u64 devices_active;          /* Current active devices */
 			u64 devices_added;           /* Total devices added */
 			u64 devices_removed;         /* Total devices removed */
-		} eid[256];
+		} eid[257];
 	} eid_stats;
 };
 
@@ -715,7 +715,7 @@ static void mctp_i3c_get_strings(struct net_device *ndev, u32 stringset,
 	data += ETH_GSTRING_LEN;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, mbus->eid_stats.active, 256) {
+	for_each_set_bit(eid, mbus->eid_stats.active, 257) {
 		struct mctp_i3c_eid_stats *es = &mbus->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_i3c_count_eid_nonzero(mbus, eid);
@@ -775,7 +775,7 @@ static void mctp_i3c_get_ethtool_stats(struct net_device *ndev,
 	for (i = 0; i < MCTP_I3C_EID_NUM_STATS; i++) {
 		u64 total = 0;
 		
-		for_each_set_bit(eid, mbus->eid_stats.active, 256) {
+		for_each_set_bit(eid, mbus->eid_stats.active, 257) {
 			u8 *base = (u8 *)&mbus->eid_stats.eid[eid];
 			total += *(u64 *)(base + mctp_i3c_eid_stat_descs[i].offset);
 		}
@@ -786,7 +786,7 @@ static void mctp_i3c_get_ethtool_stats(struct net_device *ndev,
 	data[idx++] = 0;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, mbus->eid_stats.active, 256) {
+	for_each_set_bit(eid, mbus->eid_stats.active, 257) {
 		struct mctp_i3c_eid_stats *es = &mbus->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_i3c_count_eid_nonzero(mbus, eid);

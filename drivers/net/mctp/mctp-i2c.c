@@ -95,11 +95,11 @@ struct mctp_i2c_dev {
 	 *
 	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
 	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
-	 * - EID 254 (MCTP_EID_UNKNOWN): errors where EID could not be determined
+	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be determined
 	 *   (pre-parse errors, allocation failures, etc.)
 	 */
 	struct {
-		DECLARE_BITMAP(active, 256);  /* Which EIDs have activity */
+		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
 		struct mctp_i2c_eid_stats {
 			/* RX stats */
 			u64 rx_drop_invalid_cmd;      /* Invalid I2C command (tracked as UNKNOWN) */
@@ -109,27 +109,31 @@ struct mctp_i2c_dev {
 			u64 rx_drop_not_ready;
 			u64 rx_early_exit_no_rx;      /* RX not allowed (tracked as UNKNOWN) */
 			
-			/* TX stats */
-			u64 tx_drop_io_error;
-			u64 tx_drop_no_memory;
-			u64 tx_drop_busy;
-			u64 tx_drop_invalid_len;
-			u64 tx_drop_queue_full;
-			u64 tx_drop_flow_invalid;
-			u64 tx_drop_no_device;
-			u64 tx_drop_arbitration_lost;
-			u64 tx_drop_proto_error;
-			u64 tx_drop_timeout;
-			u64 tx_drop_eopnotsupp;
-			u64 tx_drop_einval;
-			u64 tx_early_exit_stopped;    /* TX thread stopped (tracked as UNKNOWN) */
+		/* TX stats */
+		u64 tx_drop_no_memory;             /* -ENOMEM: Memory allocation failure */
+		u64 tx_drop_busy;                  /* -EBUSY: Bus busy too long */
+		u64 tx_drop_no_device;             /* -ENXIO: No device at address (no ACK) */
+		u64 tx_drop_enodev;                /* -ENODEV: Device not found */
+		u64 tx_drop_arbitration_lost;      /* -EAGAIN: Lost arbitration */
+		u64 tx_drop_proto_error;           /* -EPROTO: Protocol violation */
+		u64 tx_drop_timeout;               /* -ETIMEDOUT: Transfer timeout */
+		u64 tx_drop_eopnotsupp;            /* -EOPNOTSUPP: Operation not supported */
+		u64 tx_drop_einval;                /* -EINVAL: Invalid parameter */
+		u64 tx_drop_eafnosupport;          /* -EAFNOSUPPORT: 10-bit address not supported */
+		u64 tx_drop_ebadmsg;               /* -EBADMSG: Invalid SMBus PEC */
+		u64 tx_drop_eshutdown;             /* -ESHUTDOWN: Adapter suspended */
+		u64 tx_drop_eio;                   /* -EIO: Generic I/O error */
+		u64 tx_drop_invalid_len;           /* Invalid packet length */
+		u64 tx_drop_queue_full;            /* TX queue full */
+		u64 tx_drop_flow_invalid;          /* Invalid flow state */
+		u64 tx_early_exit_stopped;         /* TX thread stopped (tracked as UNKNOWN) */
 			
 			/* Retry/requeue */
 			u64 tx_retries_attempted;
 			u64 tx_retry_success;
 			u64 tx_retry_exhausted;
 			u64 tx_requeued;
-		} eid[256];
+		} eid[257];
 	} eid_stats;
 
 };
@@ -685,28 +689,40 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 			sock_put(sk);
 		}
 		
-		stats->tx_errors++;
+	stats->tx_errors++;
 
-		/* Track specific error types per-EID */
-		if (rc == -ENXIO) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_no_device);
-		} else if (rc == -EAGAIN) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_arbitration_lost);
-		} else if (rc == -EPROTO) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_proto_error);
-		} else if (rc == -ETIMEDOUT) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_timeout);
-		} else if (rc == -EBUSY) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_busy);
-		} else if (rc == -EOPNOTSUPP) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_eopnotsupp);
-		} else if (rc == -EINVAL) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
-		} else if (rc == -ENOMEM) {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_no_memory);
-		} else {
-			MCTP_STAT_INC(midev, dest_eid, tx_drop_io_error);
-		}
+	/* Track specific error types per-EID */
+	if (rc == -ENOMEM) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_no_memory);
+	} else if (rc == -EBUSY) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_busy);
+	} else if (rc == -ENXIO) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_no_device);
+	} else if (rc == -ENODEV) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_enodev);
+	} else if (rc == -EAGAIN) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_arbitration_lost);
+	} else if (rc == -EPROTO) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_proto_error);
+	} else if (rc == -ETIMEDOUT) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_timeout);
+	} else if (rc == -EOPNOTSUPP) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_eopnotsupp);
+	} else if (rc == -EINVAL) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
+	} else if (rc == -EAFNOSUPPORT) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_eafnosupport);
+	} else if (rc == -EBADMSG) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_ebadmsg);
+	} else if (rc == -ESHUTDOWN) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_eshutdown);
+	} else if (rc == -EIO) {
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+	} else {
+		/* Unexpected error - shouldn't happen with comprehensive I2C error coverage */
+		netdev_warn(midev->ndev, "MCTP I2C: Unhandled TX error code %d\n", rc);
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+	}
 		netdev_dbg(midev->ndev, "MCTP I2C: TX failed to 0x%02x, error=%d\n",
 			   hdr->dest_slave >> 1, rc);
 		trace_mctp_transport_error("i2c", midev->ndev, "i2c_transfer_failed", rc);
@@ -877,25 +893,36 @@ struct mctp_i2c_eid_stat_desc {
 }
 
 static const struct mctp_i2c_eid_stat_desc mctp_i2c_eid_stat_descs[] = {
+	/* RX stats */
 	MCTP_I2C_EID_STAT("rx_drop_invalid_cmd",        rx_drop_invalid_cmd),
 	MCTP_I2C_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
 	MCTP_I2C_EID_STAT("rx_drop_invalid_pec",        rx_drop_invalid_pec),
 	MCTP_I2C_EID_STAT("rx_drop_fragment_error",     rx_drop_fragment_error),
 	MCTP_I2C_EID_STAT("rx_drop_not_ready",          rx_drop_not_ready),
 	MCTP_I2C_EID_STAT("rx_early_exit_no_rx",        rx_early_exit_no_rx),
-	MCTP_I2C_EID_STAT("tx_drop_io_error",           tx_drop_io_error),
+	
+	/* TX stats - I2C-specific error codes */
 	MCTP_I2C_EID_STAT("tx_drop_no_memory",          tx_drop_no_memory),
 	MCTP_I2C_EID_STAT("tx_drop_busy",               tx_drop_busy),
-	MCTP_I2C_EID_STAT("tx_drop_invalid_len",        tx_drop_invalid_len),
-	MCTP_I2C_EID_STAT("tx_drop_queue_full",         tx_drop_queue_full),
-	MCTP_I2C_EID_STAT("tx_drop_flow_invalid",       tx_drop_flow_invalid),
 	MCTP_I2C_EID_STAT("tx_drop_no_device",          tx_drop_no_device),
+	MCTP_I2C_EID_STAT("tx_drop_enodev",             tx_drop_enodev),
 	MCTP_I2C_EID_STAT("tx_drop_arbitration_lost",   tx_drop_arbitration_lost),
 	MCTP_I2C_EID_STAT("tx_drop_proto_error",        tx_drop_proto_error),
 	MCTP_I2C_EID_STAT("tx_drop_timeout",            tx_drop_timeout),
 	MCTP_I2C_EID_STAT("tx_drop_eopnotsupp",         tx_drop_eopnotsupp),
 	MCTP_I2C_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_I2C_EID_STAT("tx_drop_eafnosupport",       tx_drop_eafnosupport),
+	MCTP_I2C_EID_STAT("tx_drop_ebadmsg",            tx_drop_ebadmsg),
+	MCTP_I2C_EID_STAT("tx_drop_eshutdown",          tx_drop_eshutdown),
+	MCTP_I2C_EID_STAT("tx_drop_eio",                tx_drop_eio),
+	
+	/* TX stats - General */
+	MCTP_I2C_EID_STAT("tx_drop_invalid_len",        tx_drop_invalid_len),
+	MCTP_I2C_EID_STAT("tx_drop_queue_full",         tx_drop_queue_full),
+	MCTP_I2C_EID_STAT("tx_drop_flow_invalid",       tx_drop_flow_invalid),
 	MCTP_I2C_EID_STAT("tx_early_exit_stopped",      tx_early_exit_stopped),
+	
+	/* Retry/requeue stats */
 	MCTP_I2C_EID_STAT("tx_retries_attempted",       tx_retries_attempted),
 	MCTP_I2C_EID_STAT("tx_retry_success",           tx_retry_success),
 	MCTP_I2C_EID_STAT("tx_retry_exhausted",         tx_retry_exhausted),
@@ -929,7 +956,7 @@ static void mctp_i2c_get_strings(struct net_device *ndev, u32 stringset,
 	data += ETH_GSTRING_LEN;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+	for_each_set_bit(eid, midev->eid_stats.active, 257) {
 		struct mctp_i2c_eid_stats *es = &midev->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_i2c_count_eid_nonzero(midev, eid);
@@ -989,7 +1016,7 @@ static void mctp_i2c_get_ethtool_stats(struct net_device *ndev,
 	for (i = 0; i < MCTP_I2C_EID_NUM_STATS; i++) {
 		u64 total = 0;
 		
-		for_each_set_bit(eid, midev->eid_stats.active, 256) {
+		for_each_set_bit(eid, midev->eid_stats.active, 257) {
 			u8 *base = (u8 *)&midev->eid_stats.eid[eid];
 			total += *(u64 *)(base + mctp_i2c_eid_stat_descs[i].offset);
 		}
@@ -1000,7 +1027,7 @@ static void mctp_i2c_get_ethtool_stats(struct net_device *ndev,
 	data[idx++] = 0;
 
 	/* Output per-EID stats (only for active EIDs with non-zero stats) */
-	for_each_set_bit(eid, midev->eid_stats.active, 256) {
+	for_each_set_bit(eid, midev->eid_stats.active, 257) {
 		struct mctp_i2c_eid_stats *es = &midev->eid_stats.eid[eid];
 		u8 *base = (u8 *)es;
 		int nz = mctp_i2c_count_eid_nonzero(midev, eid);
