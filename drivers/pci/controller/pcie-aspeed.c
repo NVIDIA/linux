@@ -235,17 +235,6 @@ struct aspeed_pcie_rc_platform {
 	u32 msi_address;
 };
 
-static void aspeed_pcie_intx_irq_ack(struct irq_data *d)
-{
-	struct aspeed_pcie *pcie = irq_data_get_irq_chip_data(d);
-	int intx_en = pcie->platform->reg_intx_en;
-	u32 en;
-
-	en = readl(pcie->reg + intx_en);
-	en |= BIT(d->hwirq);
-	writel(en, pcie->reg + intx_en);
-}
-
 static void aspeed_pcie_intx_irq_mask(struct irq_data *d)
 {
 	struct aspeed_pcie *pcie = irq_data_get_irq_chip_data(d);
@@ -270,7 +259,6 @@ static void aspeed_pcie_intx_irq_unmask(struct irq_data *d)
 
 static struct irq_chip aspeed_intx_irq_chip = {
 	.name = "INTx",
-	.irq_ack = aspeed_pcie_intx_irq_ack,
 	.irq_mask = aspeed_pcie_intx_irq_mask,
 	.irq_unmask = aspeed_pcie_intx_irq_unmask,
 };
