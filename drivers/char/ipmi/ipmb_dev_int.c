@@ -321,8 +321,13 @@ static int ipmb_probe(struct i2c_client *client)
 
 	device_property_read_u32(&client->dev, "reg", &inst_slave_addr);
 	ipmb_dev->miscdev.name = devm_kasprintf(&client->dev, GFP_KERNEL,
+<<<<<<< HEAD
 					"%s%d-%x", "ipmb-",
 					client->adapter->nr, inst_slave_addr & 0xFF);
+=======
+						"%s%d", "ipmb-",
+						client->adapter->nr);
+>>>>>>> dev-6.12.59
 	if (!ipmb_dev->miscdev.name)
 		return -ENOMEM;
 

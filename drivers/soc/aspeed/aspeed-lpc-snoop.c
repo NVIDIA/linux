@@ -72,7 +72,10 @@ struct aspeed_lpc_snoop_channel_cfg {
 };
 
 struct aspeed_lpc_snoop_channel {
+<<<<<<< HEAD
 	const struct aspeed_lpc_snoop_channel_cfg *cfg;
+=======
+>>>>>>> dev-6.12.59
 	bool enabled;
 	struct kfifo		fifo;
 	wait_queue_head_t	wq;
@@ -224,6 +227,7 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 	const struct aspeed_lpc_snoop_model_data *model_data;
 	int rc = 0;
 
+<<<<<<< HEAD
 	if (WARN_ON(channel->enabled))
 		return -EBUSY;
 
@@ -244,24 +248,77 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 		return rc;
 
 	rc = misc_register(&channel->miscdev);
+=======
+	if (WARN_ON(lpc_snoop->chan[channel].enabled))
+		return -EBUSY;
+
+	init_waitqueue_head(&lpc_snoop->chan[channel].wq);
+	/* Create FIFO datastructure */
+	rc = kfifo_alloc(&lpc_snoop->chan[channel].fifo,
+			 SNOOP_FIFO_SIZE, GFP_KERNEL);
+	if (rc)
+		return rc;
+
+	lpc_snoop->chan[channel].miscdev.minor = MISC_DYNAMIC_MINOR;
+	lpc_snoop->chan[channel].miscdev.name =
+		devm_kasprintf(dev, GFP_KERNEL, "%s%d", DEVICE_NAME, channel);
+	if (!lpc_snoop->chan[channel].miscdev.name) {
+		rc = -ENOMEM;
+		goto err_free_fifo;
+	}
+	lpc_snoop->chan[channel].miscdev.fops = &snoop_fops;
+	lpc_snoop->chan[channel].miscdev.parent = dev;
+	rc = misc_register(&lpc_snoop->chan[channel].miscdev);
+>>>>>>> dev-6.12.59
 	if (rc)
 		goto err_free_fifo;
 
 	/* Enable LPC snoop channel at requested port */
+<<<<<<< HEAD
 	regmap_set_bits(lpc_snoop->regmap, HICR5, cfg->hicr5_en);
 	regmap_update_bits(lpc_snoop->regmap, SNPWADR, cfg->snpwadr_mask,
 		lpc_port << cfg->snpwadr_shift);
+=======
+	switch (channel) {
+	case 0:
+		hicr5_en = HICR5_EN_SNP0W | HICR5_ENINT_SNP0W;
+		snpwadr_mask = SNPWADR_CH0_MASK;
+		snpwadr_shift = SNPWADR_CH0_SHIFT;
+		hicrb_en = HICRB_ENSNP0D;
+		break;
+	case 1:
+		hicr5_en = HICR5_EN_SNP1W | HICR5_ENINT_SNP1W;
+		snpwadr_mask = SNPWADR_CH1_MASK;
+		snpwadr_shift = SNPWADR_CH1_SHIFT;
+		hicrb_en = HICRB_ENSNP1D;
+		break;
+	default:
+		rc = -EINVAL;
+		goto err_misc_deregister;
+	}
+>>>>>>> dev-6.12.59
 
 	model_data = of_device_get_match_data(dev);
 	if (model_data && model_data->has_hicrb_ensnp)
 		regmap_set_bits(lpc_snoop->regmap, HICRB, cfg->hicrb_en);
 
+<<<<<<< HEAD
 	channel->enabled = true;
 
 	return 0;
 
 err_free_fifo:
 	kfifo_free(&channel->fifo);
+=======
+	lpc_snoop->chan[channel].enabled = true;
+
+	return 0;
+
+err_misc_deregister:
+	misc_deregister(&lpc_snoop->chan[channel].miscdev);
+err_free_fifo:
+	kfifo_free(&lpc_snoop->chan[channel].fifo);
+>>>>>>> dev-6.12.59
 	return rc;
 }
 
@@ -269,9 +326,28 @@ __attribute__((nonnull))
 static void aspeed_lpc_disable_snoop(struct aspeed_lpc_snoop *lpc_snoop,
 				     struct aspeed_lpc_snoop_channel *channel)
 {
+<<<<<<< HEAD
 	if (!channel->enabled)
+=======
+	if (!lpc_snoop->chan[channel].enabled)
 		return;
 
+	switch (channel) {
+	case 0:
+		regmap_update_bits(lpc_snoop->regmap, HICR5,
+				   HICR5_EN_SNP0W | HICR5_ENINT_SNP0W,
+				   0);
+		break;
+	case 1:
+		regmap_update_bits(lpc_snoop->regmap, HICR5,
+				   HICR5_EN_SNP1W | HICR5_ENINT_SNP1W,
+				   0);
+		break;
+	default:
+>>>>>>> dev-6.12.59
+		return;
+
+<<<<<<< HEAD
 	/* Disable interrupts along with the device */
 	regmap_clear_bits(lpc_snoop->regmap, HICR5, channel->cfg->hicr5_en);
 
@@ -288,6 +364,12 @@ static void aspeed_lpc_snoop_remove(struct platform_device *pdev)
 	/* Disable both snoop channels */
 	aspeed_lpc_disable_snoop(lpc_snoop, &lpc_snoop->chan[0]);
 	aspeed_lpc_disable_snoop(lpc_snoop, &lpc_snoop->chan[1]);
+=======
+	lpc_snoop->chan[channel].enabled = false;
+	/* Consider improving safety wrt concurrent reader(s) */
+	misc_deregister(&lpc_snoop->chan[channel].miscdev);
+	kfifo_free(&lpc_snoop->chan[channel].fifo);
+>>>>>>> dev-6.12.59
 }
 
 static int aspeed_lpc_snoop_probe(struct platform_device *pdev)

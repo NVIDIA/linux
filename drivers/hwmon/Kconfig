@@ -422,6 +422,7 @@ config SENSORS_ASPEED_G6
 
 	  This driver can also be built as a module. If so, the module
 	  will be called aspeed_g6_pwm_tach.
+<<<<<<< HEAD
 
 config SENSORS_ASPEED_CHASSIS
 	tristate "ASPEED CHASSIS Driver"
@@ -432,6 +433,8 @@ config SENSORS_ASPEED_CHASSIS
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called aspeed-chassis.
+=======
+>>>>>>> dev-6.12.59
 
 config SENSORS_ATXP1
 	tristate "Attansic ATXP1 VID controller"
