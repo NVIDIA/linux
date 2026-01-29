@@ -905,15 +905,6 @@
 &i2c8 {
     status = "okay";
     clock-frequency = <400000>;
-    disable-master = <1>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-    ssif-bmc@10 {
-        compatible = "ssif-bmc";
-        pulse_width_us = <5>;
-        timeout_ms = <4995>;
-        reg = <0x10>;
-        };
 };
 
 // I2C10
