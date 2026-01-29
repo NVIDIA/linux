@@ -214,7 +214,8 @@
 &i2c0 {
 	status = "okay";
 	multi-master;
-	i2c-scl-clk-low-timeout-us = <32768>;
+	tout-baseclk-div = <8192>;
+	i2c-scl-clk-low-timeout-us = <253952>;
 	// BF to BMC
 	ipmb-0@10 {
 		compatible = "ipmb-dev";
@@ -243,7 +244,8 @@
 	status = "okay";
         mctp-controller;
 	multi-master;
-	i2c-scl-clk-low-timeout-us = <32768>;
+	tout-baseclk-div = <8192>;
+	i2c-scl-clk-low-timeout-us = <253952>;
 	mctp@32 {
 		compatible = "mctp-i2c-controller";
 		reg = <(0x32 | I2C_OWN_SLAVE_ADDRESS)>;
@@ -254,7 +256,8 @@
 &i2c9 {
         status = "okay";
 	multi-master;
-	i2c-scl-clk-low-timeout-us = <32768>;
+	tout-baseclk-div = <8192>;
+	i2c-scl-clk-low-timeout-us = <253952>;
         // BMC to BF
         ipmb-9@20 {
                 compatible = "ipmb-dev";
