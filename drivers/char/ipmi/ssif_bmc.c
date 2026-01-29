@@ -456,40 +456,6 @@ static const struct file_operations ssif_bmc_fops = {
 };
 
 /* Called with ssif_bmc->lock held. */
-<<<<<<< HEAD
-=======
-static void complete_response(struct ssif_bmc_ctx *ssif_bmc)
-{
-	/* Invalidate response in buffer to denote it having been sent. */
-	ssif_bmc->response.len = 0;
-	ssif_bmc->response_in_progress = false;
-	ssif_bmc->nbytes_processed = 0;
-	ssif_bmc->remain_len = 0;
-	ssif_bmc->busy = false;
-	wake_up_all(&ssif_bmc->wait_queue);
-}
-
-static void response_timeout(struct timer_list *t)
-{
-	struct ssif_bmc_ctx *ssif_bmc = from_timer(ssif_bmc, t, response_timer);
-	unsigned long flags;
-
-	spin_lock_irqsave(&ssif_bmc->lock, flags);
-
-	/* Do nothing if the response is in progress */
-	if (!ssif_bmc->response_in_progress) {
-		/* Recover ssif_bmc from busy */
-		ssif_bmc->busy = false;
-		ssif_bmc->response_timer_inited = false;
-		/* Set aborting flag */
-		ssif_bmc->aborting = true;
-	}
-
-	spin_unlock_irqrestore(&ssif_bmc->lock, flags);
-}
-
-/* Called with ssif_bmc->lock held. */
->>>>>>> dev-6.12.59
 static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 {
 	unsigned long flags = 0;
@@ -987,14 +953,6 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			ssif_bmc->aborting = true;
 		}
 	} else if (ssif_bmc->state == SSIF_RES_SENDING) {
-<<<<<<< HEAD
-=======
-		if (ssif_bmc->is_singlepart_read || ssif_bmc->block_num == 0xFF) {
-			memset(&ssif_bmc->part_buf, 0, sizeof(struct ssif_part_buffer));
-			/* Invalidate response buffer to denote it is sent */
-			complete_response(ssif_bmc);
-		}
->>>>>>> dev-6.12.59
 		ssif_bmc->state = SSIF_READY;
 	}
 

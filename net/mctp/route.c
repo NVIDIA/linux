@@ -384,7 +384,6 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 
 	exp_seq = (key->last_seq + 1) & MCTP_HDR_SEQ_MASK;
 
-<<<<<<< HEAD
 	if (this_seq != exp_seq) {
 		rc = -EINVAL;
 		goto err_free;
@@ -394,13 +393,6 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 		rc = -EMSGSIZE;
 		goto err_free;
 	}
-=======
-	if (this_seq != exp_seq)
-		goto err_free;
-
-	if (key->reasm_head->len + skb->len > mctp_message_maxlen)
-		goto err_free;
->>>>>>> dev-6.12.59
 
 	skb->next = NULL;
 	skb->sk = NULL;
@@ -413,7 +405,6 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 	key->reasm_head->len += skb->len;
 	key->reasm_head->truesize += skb->truesize;
 
-<<<<<<< HEAD
 	return rc;
 
 err_free:
@@ -539,13 +530,6 @@ static void mctp_report_rx_sequence_error(struct mctp_sk_key *key,
 
 	/* Re-acquire key->lock for caller */
 	spin_lock_irqsave(&key->lock, *flags);
-=======
-	return 0;
-
-err_free:
-	kfree_skb(skb);
-	return -EINVAL;
->>>>>>> dev-6.12.59
 }
 
 static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
@@ -664,7 +648,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			* key isn't observable yet
 			*/
 			mctp_frag_queue(key, skb);
-<<<<<<< HEAD
 			
 			/* Cache message type and payload from first fragment (SOM) for error reporting.
 			* If middle/end fragments are missing (timeout), we can still report
@@ -688,8 +671,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				}
 			}
 
-=======
->>>>>>> dev-6.12.59
 			skb = NULL;
 
 			/* if the key_add fails, we've raced with another
@@ -729,7 +710,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 		/* we need to be continuing an existing reassembly... */
 		if (!key->reasm_head) {
 			rc = -EINVAL;
-<<<<<<< HEAD
 			mctp_report_rx_missing_som(key, skb, mh, tag, &f);
 		} else {
 			rc = mctp_frag_queue(key, skb);
@@ -739,10 +719,6 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 				mctp_report_rx_sequence_error(key, skb, mh, tag, &f, rc);
 			}
 
-=======
-		} else {
-			rc = mctp_frag_queue(key, skb);
->>>>>>> dev-6.12.59
 			skb = NULL;
 		}
 
