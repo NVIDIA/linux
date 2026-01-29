@@ -42,6 +42,32 @@ static DEFINE_IDA(mctp_spi_ida);
 
 #define ERR_SPI_RX_NO_DATA -2
 
+/**
+ * spb_ap_status_to_errno - Convert SPB AP status codes to Linux error codes
+ * @status: SPB AP status code from spb_ap_send() or other SPB AP functions
+ *
+ * Translates positive SPB AP status codes to negative Linux errno values
+ * for consistent error handling throughout the driver.
+ *
+ * Note: SPB_AP_MESSAGE_AVAILABLE is a success status (not an error) that
+ * indicates a message is available to read after a successful send.
+ */
+static inline int spb_ap_status_to_errno(SpbApStatus status)
+{
+	switch (status) {
+	case SPB_AP_OK:
+	case SPB_AP_MESSAGE_AVAILABLE:
+		return 0;
+	case SPB_AP_ERROR_TIMEOUT:
+		return -ETIMEDOUT;
+	case SPB_AP_ERROR_INVALID_ARGUMENT:
+		return -EINVAL;
+	case SPB_AP_ERROR_UNKNOWN:
+	default:
+		return -EIO;
+	}
+}
+
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
 
@@ -160,11 +186,13 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 
 	status = spb_ap_recv(midev->ap, RX_BUFFER_SIZE, tmp_rx_buffer);
 	if(status != SPB_AP_OK) {
+		int err = spb_ap_status_to_errno(status);
+		
 		midev->ndev->stats.rx_dropped++;
 		/* Can't extract EID - SPI receive failed, no data */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_spi_error);
-		netdev_dbg(midev->ndev, "MCTP SPI: RX error %d\n", status);
-		trace_mctp_transport_error("spi", midev->ndev, "rx_spi_error", status);
+		netdev_dbg(midev->ndev, "MCTP SPI: RX error, SPB status=%d, errno=%d\n", status, err);
+		trace_mctp_transport_error("spi", midev->ndev, "rx_spi_error", err);
 		return ERR_SPI_RX_NO_DATA;
 	}
 
@@ -231,13 +259,10 @@ static const struct mctp_spi_eid_stat_desc mctp_spi_eid_stat_descs[] = {
 	MCTP_SPI_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
 	MCTP_SPI_EID_STAT("rx_drop_not_ready",          rx_drop_not_ready),
 	MCTP_SPI_EID_STAT("rx_drop_spi_error",          rx_drop_spi_error),
-	MCTP_SPI_EID_STAT("tx_drop_spi_error",          tx_drop_spi_error),
-	MCTP_SPI_EID_STAT("tx_drop_ebusy",              tx_drop_ebusy),
 	MCTP_SPI_EID_STAT("tx_drop_etimedout",          tx_drop_etimedout),
-	MCTP_SPI_EID_STAT("tx_drop_eio",                tx_drop_eio),
 	MCTP_SPI_EID_STAT("tx_drop_einval",             tx_drop_einval),
-	MCTP_SPI_EID_STAT("tx_drop_enomem",             tx_drop_enomem),
-	MCTP_SPI_EID_STAT("tx_drop_emsgsize",           tx_drop_emsgsize),
+	MCTP_SPI_EID_STAT("tx_drop_eio",                tx_drop_eio),
+	MCTP_SPI_EID_STAT("tx_drop_spi_error",          tx_drop_spi_error),
 	MCTP_SPI_EID_STAT("gpio_interrupts",            gpio_interrupts),
 };
 
@@ -486,30 +511,28 @@ static int mctp_spi_tx_thread(void *data)
 				status = spb_ap_send(midev->ap, skb->len, txbuf);
 			}
 			
-		if(status == SPB_AP_OK) {
-			midev->ndev->stats.tx_packets++;
-			midev->ndev->stats.tx_bytes += skb->len;
-			netdev_dbg(midev->ndev, "MCTP SPI: TX success, %u bytes\n", skb->len);
-			trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
+	if(status == SPB_AP_OK) {
+		midev->ndev->stats.tx_packets++;
+		midev->ndev->stats.tx_bytes += skb->len;
+		netdev_dbg(midev->ndev, "MCTP SPI: TX success, %u bytes\n", skb->len);
+		trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
+	} else {
+		int err = spb_ap_status_to_errno(status);
+		
+		midev->ndev->stats.tx_dropped++;
+		/* SPB AP only returns: TIMEOUT, INVALID_ARGUMENT, or UNKNOWN */
+		if (err == -ETIMEDOUT) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_etimedout);
+		} else if (err == -EINVAL) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
+		} else if (err == -EIO) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
 		} else {
-			midev->ndev->stats.tx_dropped++;
-			if (status == -EBUSY) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_ebusy);
-			} else if (status == -ETIMEDOUT) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_etimedout);
-			} else if (status == -EIO) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
-			} else if (status == -EINVAL) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
-			} else if (status == -ENOMEM) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_enomem);
-			} else if (status == -EMSGSIZE) {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_emsgsize);
-			} else {
-				MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
-			}
-			netdev_dbg(midev->ndev, "MCTP SPI: TX failed, status=%d\n", status);
-			trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", status);
+			/* Catch-all for any unmapped errors */
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
+		}
+		netdev_dbg(midev->ndev, "MCTP SPI: TX failed, SPB status=%d, errno=%d\n", status, err);
+		trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", err);
 
 			/* TX ERROR: Report to application via error queue */
 			struct sock *sk;

@@ -70,14 +70,11 @@ struct mctp_spi {
 			u64 rx_drop_not_ready;       /* Tracked as UNKNOWN (before EID known) */
 			u64 rx_drop_spi_error;       /* Tracked as UNKNOWN */
 			
-			/* TX stats */
-			u64 tx_drop_spi_error;
-			u64 tx_drop_ebusy;
-			u64 tx_drop_etimedout;
-			u64 tx_drop_eio;
-			u64 tx_drop_einval;
-			u64 tx_drop_enomem;
-			u64 tx_drop_emsgsize;
+			/* TX stats - SPB AP specific errors */
+			u64 tx_drop_etimedout;       /* SPB_AP_ERROR_TIMEOUT */
+			u64 tx_drop_einval;          /* SPB_AP_ERROR_INVALID_ARGUMENT */
+			u64 tx_drop_eio;             /* SPB_AP_ERROR_UNKNOWN */
+			u64 tx_drop_spi_error;       /* Catch-all for unmapped errors */
 			
 			/* GPIO interrupt tracking (UNKNOWN - no EID context) */
 			u64 gpio_interrupts;
