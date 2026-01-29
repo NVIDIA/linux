@@ -228,8 +228,8 @@
 
 &emmc {
     non-removable;
-    pinctrl-0 = <&pinctrl_emmcg5_default>;
-    bus-width = <4>;
+    pinctrl-0 = <&pinctrl_emmcg9_default>;
+    bus-width = <8>;
     max-frequency = <52000000>;
     clk-phase-mmc-hs200 = <9>, <225>;
 };
