@@ -439,6 +439,10 @@ static int mctp_usbg_enable(struct usb_composite_dev *cdev, struct f_mctp *mctp)
 	list_add(&in_req->list, &mctp->tx_reqs);
 	spin_unlock_irqrestore(&mctp->lock, flags);
 
+	netif_carrier_on(mctp->dev);
+	netif_wake_queue(mctp->dev);
+	dev_info(&cdev->gadget->dev, "mctp-usb: enabled\n");
+
 	return 0;
 
 
@@ -463,6 +467,7 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	struct usb_request *req;
 	unsigned long flags;
 	unsigned int plen;
+	int rc;
 
 	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
 		goto drop;
@@ -470,16 +475,15 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	spin_lock_irqsave(&mctp->lock, flags);
 	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
 
-	if (req) {
+	if (req)
 		list_del(&req->list);
-		if (list_empty(&mctp->tx_reqs))
-			netif_stop_queue(dev);
-	}
+	if (list_empty(&mctp->tx_reqs))
+		netif_stop_queue(dev);
 
 	spin_unlock_irqrestore(&mctp->lock, flags);
 
 	if (!req) {
-		netdev_err(dev, "no tx reqs available!\n");
+		netdev_warn(dev, "no tx reqs available\n");
 		goto drop;
 	}
 
@@ -494,7 +498,17 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	req->buf = skb->data;
 	req->length = skb->len;
 
-	usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
+	rc = usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
+	if (rc) {
+		netdev_warn(dev, "tx queue failed: %d\n", rc);
+		req->context = NULL;
+		req->buf = NULL;
+		spin_lock_irqsave(&mctp->lock, flags);
+		list_add(&req->list, &mctp->tx_reqs);
+		netif_wake_queue(dev);
+		spin_unlock_irqrestore(&mctp->lock, flags);
+		goto drop;
+	}
 
 	netdev->stats.tx_bytes += skb->len;
 	netdev->stats.tx_packets++;
@@ -529,11 +543,35 @@ static void __mctp_usbg_disable(struct f_mctp *mctp)
 	usb_ep_disable(mctp->out_ep);
 }
 
+static void mctp_usbg_purge_tx_reqs(struct f_mctp *mctp)
+{
+	LIST_HEAD(reqs);
+	struct usb_request *req, *tmp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mctp->lock, flags);
+	list_splice_init(&mctp->tx_reqs, &reqs);
+	spin_unlock_irqrestore(&mctp->lock, flags);
+
+	list_for_each_entry_safe(req, tmp, &reqs, list) {
+		list_del(&req->list);
+		usb_ep_free_request(mctp->in_ep, req);
+	}
+}
+
 static void mctp_usbg_disable(struct usb_function *f)
 {
 	struct f_mctp *mctp = func_to_mctp(f);
+	struct usb_composite_dev *cdev = mctp->function.config->cdev;
 
 	__mctp_usbg_disable(mctp);
+
+	cancel_work_sync(&mctp->prealloc_work);
+	mctp_usbg_purge_tx_reqs(mctp);
+
+	netif_stop_queue(mctp->dev);
+	netif_carrier_off(mctp->dev);
+	dev_info(&cdev->gadget->dev, "mctp-usb: disabled\n");
 }
 
 static int mctp_usbg_set_alt(struct usb_function *f,
