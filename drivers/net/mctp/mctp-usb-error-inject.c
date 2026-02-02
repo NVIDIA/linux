@@ -179,11 +179,37 @@ int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb,
 	if (!ei->enable_tx || ei->urb_tx_async_error_code == 0)
 		return original_status;
 	
-	/* Note: EID filtering is NOT checked for async errors because:
-	 * 1. URB may contain multiple packets (batching)
-	 * 2. Packets may have different source/dest EIDs
-	 * 3. Filtering happens at TX sync (before batching) where per-packet control is possible
+	/* Check EID filter if enabled.
+	 * For batched URBs: All fragments in batch are from SAME message (same EID pair).
+	 * We parse the first packet's MCTP header to get src/dest EID for filtering.
 	 */
+	if (ei->eid_filter.enabled) {
+		/* Parse first packet in URB buffer to get EID.
+		 * Use transfer_buffer_length (size we allocated) not actual_length (may be 0 on error).
+		 */
+		if (urb->transfer_buffer && urb->transfer_buffer_length >= sizeof(struct mctp_usb_hdr) + sizeof(struct mctp_hdr)) {
+			struct mctp_usb_hdr *usb_hdr = (struct mctp_usb_hdr *)urb->transfer_buffer;
+			struct mctp_hdr *mctp_hdr = (struct mctp_hdr *)(usb_hdr + 1);
+			
+			/* Apply EID filter (check both src and dest) */
+			if ((ei->eid_filter.eid != mctp_hdr->src) && 
+			    (ei->eid_filter.eid != mctp_hdr->dest)) {
+				netdev_dbg(mctp_usb->netdev,
+				          "Error injection: TX URB async - EID filter mismatch (filter=%u, src=%u, dest=%u), not injecting\n",
+				          ei->eid_filter.eid, mctp_hdr->src, mctp_hdr->dest);
+				return original_status;
+			}
+			
+			netdev_dbg(mctp_usb->netdev,
+			          "Error injection: TX URB async - EID filter match (filter=%u, src=%u, dest=%u)\n",
+			          ei->eid_filter.eid, mctp_hdr->src, mctp_hdr->dest);
+		} else {
+			/* Buffer too small to parse - can't apply filter, skip injection */
+			netdev_dbg(mctp_usb->netdev,
+			          "Error injection: TX URB async - buffer too small for EID parsing, not injecting\n");
+			return original_status;
+		}
+	}
 	
 	if (!mctp_should_inject_error(ei, ei->urb_tx_error_rate,
 	                              &ei->urb_tx_async_inject_count)) {

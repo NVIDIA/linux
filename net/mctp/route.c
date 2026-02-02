@@ -2211,47 +2211,14 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 		return sk;
 	}
 
-	/* Method 2: Check skb->sk directly (fast path for TX errors)
+	/* Method 2: TX key lookup (best effort to get key with orig_payload)
 	 * 
-	 * If SKB has socket pointer (from sendmsg), use it directly.
-	 * This is much faster than TX key lookup (no hash table search).
-	 * Works for both requests and responses (if skb->sk is preserved).
+	 * Try to find TX key first because it provides:
+	 * 1. Socket for error reporting
+	 * 2. orig_payload for accurate error message content
 	 * 
-	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
-	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
-	 * We skip to be consistent with Method 3 (TX key lookup).
-	 */
-	if (!key && skb->sk && skb->sk->sk_family == AF_MCTP) {
-		struct mctp_sock *msk = container_of(skb->sk, struct mctp_sock, sk);
-		
-		/* Check if socket is still valid and open */
-		if (sock_flag(&msk->sk, SOCK_DEAD)) {
-			pr_debug("MCTP error: skb->sk socket is dead (closed)\n");
-			return NULL;
-		}
-		
-		/* Skip if this socket doesn't have error queue enabled */
-		if (!msk->enable_errqueue) {
-			pr_debug("MCTP error: skb->sk socket found but error queue disabled (src=%u, dest=%u)\n",
-				 mh->src, mh->dest);
-			return NULL;
-		}
-		
-		/* This is the socket that sent this packet - safe to report error */
-		sock_hold(skb->sk);
-		pr_debug("MCTP error: socket via skb->sk (src=%u, dest=%u) - fast path\n",
-			 mh->src, mh->dest);
-		return skb->sk;
-	}
-
-	/* Method 3: TX key lookup (slower fallback for TX errors)
-	 * 
-	 * If skb->sk not available, search for TX keys by (netid, local_eid, peer_eid, tag).
 	 * TX key existence indicates operation WE initiated (request packet).
-	 * No TX key = not our transaction = don't report error.
-	 * 
-	 * This is slower than Method 2 (requires hash table lookup + lock),
-	 * but needed when skb->sk is lost (e.g., old drivers, special cases).
+	 * This is the preferred method for TX errors because it gives complete context.
 	 * 
 	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
 	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
@@ -2284,14 +2251,51 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 			if (found_key)
 				*found_key = tx_key;
 			
-			pr_debug("MCTP error: socket via TX key lookup (src=%u, dest=%u, tag=%u)\n",
+			pr_debug("MCTP error: socket via TX key lookup (src=%u, dest=%u, tag=%u) with orig_payload\n",
 				 mh->src, mh->dest, tag);
 			return sk;
 		}
 		
-		/* No TX key found and no skb->sk = not our transaction or response without TX key */
-		pr_debug("MCTP error: No TX key found, not our transaction (src=%u, dest=%u, tag=%u)\n",
+		/* No TX key found - fall through to Method 3 (skb->sk fallback) */
+		pr_debug("MCTP error: No TX key found, trying skb->sk fallback (src=%u, dest=%u, tag=%u)\n",
 			 mh->src, mh->dest, tag);
+	}
+
+	/* Method 3: Check skb->sk directly (fallback for TX errors without key)
+	 * 
+	 * If TX key lookup failed but SKB has socket pointer, use it as fallback.
+	 * This is faster than TX key lookup but provides NO key (no orig_payload).
+	 * Only used when TX key doesn't exist (e.g., response packets, old code paths).
+	 * 
+	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
+	 * as this indicates call from __mctp_key_remove() which holds keys_lock.
+	 * 
+	 * NOTE: found_key will be NULL when returning via this path.
+	 * Error reporting will work but without orig_payload context.
+	 */
+	if (!key && skb->sk && skb->sk->sk_family == AF_MCTP) {
+		struct mctp_sock *msk = container_of(skb->sk, struct mctp_sock, sk);
+		
+		/* Check if socket is still valid and open */
+		if (sock_flag(&msk->sk, SOCK_DEAD)) {
+			pr_debug("MCTP error: skb->sk socket is dead (closed)\n");
+			return NULL;
+		}
+		
+		/* Skip if this socket doesn't have error queue enabled */
+		if (!msk->enable_errqueue) {
+			pr_debug("MCTP error: skb->sk socket found but error queue disabled (src=%u, dest=%u)\n",
+				 mh->src, mh->dest);
+			return NULL;
+		}
+		
+		/* This is the socket that sent this packet - safe to report error.
+		 * NOTE: found_key stays NULL - no orig_payload available.
+		 */
+		sock_hold(skb->sk);
+		pr_debug("MCTP error: socket via skb->sk fallback (src=%u, dest=%u) - no key, no orig_payload\n",
+			 mh->src, mh->dest);
+		return skb->sk;
 	}
 
 	/* If we reach here:
@@ -2364,7 +2368,7 @@ static struct mctp_sk_key *mctp_lookup_tx_key_for_rx_error(struct net *net,
  * @dev: Network device (used to extract MCTP network ID)
  * @direction: MCTP_DIR_TX or MCTP_DIR_RX
  * @binding: enum mctp_phys_binding value (MCTP_PHYS_BINDING_USB, MCTP_PHYS_BINDING_SMBUS, etc.)
- * @rx_key: For RX errors, the RX key (provides addressing). For TX errors, the TX key.
+ * @key: Key for error context. TX key for TX errors, RX key for RX errors (may be TX key).
  *
  * Builds an mctp_error structure and queues it to the socket's error queue.
  * Applications can read this via recvmsg(MSG_ERRQUEUE).
@@ -2384,7 +2388,7 @@ static struct mctp_sk_key *mctp_lookup_tx_key_for_rx_error(struct net *net,
  */
 void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 		      int error_code, struct net_device *dev, u8 direction, u8 binding,
-		      struct mctp_sk_key *rx_key)
+		      struct mctp_sk_key *key)
 {
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
 	struct mctp_sk_key *tx_key = NULL;
@@ -2434,7 +2438,7 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 		 *   2. RESPONSE packets (owner=0) - No TX key, extract from SKB
 		 *   3. Fragmented packets - Middle/end need key, first has SKB payload
 		 */
-		tx_key = rx_key;  /* rx_key parameter actually holds TX key for TX errors */
+		tx_key = key;  /* For TX errors, key parameter holds TX key */
 		
 		if (tx_key && tx_key->orig_payload_len > 0) {
 			/* Have TX key with payload - use it (fragmented requests) */
@@ -2465,7 +2469,7 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 			 * RX key IS the TX key (same object, reused for response tracking).
 			 * It contains orig_payload from when we sent the original REQUEST.
 			 */
-			tx_key = rx_key;  /* RX key = TX key */
+			tx_key = key;  /* For RX timeout, key parameter holds RX key (which is TX key) */
 			
 			if (tx_key && tx_key->orig_payload_len > 0) {
 				key_found = true;
