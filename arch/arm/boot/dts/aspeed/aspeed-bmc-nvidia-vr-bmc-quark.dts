@@ -213,11 +213,7 @@
 };
 
 &mac2 {
-    status = "okay";
-    phy-mode = "rmii";
-    use-ncsi;
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_rmii3_default>;
+    status = "disabled";
 };
 
 
