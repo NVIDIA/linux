@@ -23,8 +23,6 @@
 #include <linux/reset.h>
 #include <linux/slab.h>
 #include <linux/string_helpers.h>
-#include <linux/timer.h>
-#include <linux/jiffies.h>
 #include <linux/unaligned.h>
 
 #define AST2600_I2CG_ISR			0x00
@@ -333,7 +331,6 @@ struct ast2600_i2c_bus {
 	struct i2c_adapter		adap;
 	struct device			*dev;
 	void __iomem			*reg_base;
-	spinlock_t			lock;
 	struct regmap			*global_regs;
 	struct reset_control		*rst;
 	struct clk			*clk;
@@ -380,12 +377,6 @@ struct ast2600_i2c_bus {
 	u32 tck_thddat;
 	u32 tout_baseclk_div;
 	u32 tout_ticks;
-#if IS_ENABLED(CONFIG_I2C_SLAVE)
-	/* Software watchdog timer for target operations */
-	struct timer_list target_wdt_timer;
-	/* Watchdog timeout in milliseconds */
-	u32 target_wdt_timeout_ms;
-#endif
 };
 
 static u32 ast2600_fix_tout_baseclk_div(struct ast2600_i2c_bus *i2c_bus)
@@ -549,7 +540,6 @@ static int ast2600_i2c_recover_bus(struct ast2600_i2c_bus *i2c_bus)
 
 	dev_dbg(i2c_bus->dev, "%d-bus recovery bus [%x]\n", i2c_bus->adap.nr, state);
 
-	spin_lock_init(&i2c_bus->lock);
 	reinit_completion(&i2c_bus->cmd_complete);
 	i2c_bus->cmd_err = 0;
 
@@ -578,45 +568,6 @@ static int ast2600_i2c_recover_bus(struct ast2600_i2c_bus *i2c_bus)
 }
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
-static void ast2600_i2c_target_packet_buff_timeout_handler(struct ast2600_i2c_bus *i2c_bus)
-{
-	u8 value = 0;
-
-	/* Reset time out counter */
-	u32 ac_timing = readl(i2c_bus->reg_base + AST2600_I2CC_AC_TIMING) &
-			AST2600_I2CC_AC_TIMING_MASK;
-
-	writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-	ac_timing = readl(i2c_bus->reg_base + AST2600_I2CC_AC_TIMING) & AST2600_I2CC_AC_TIMING_MASK;
-	ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
-	writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-	/* Clear irq and re-send target trigger command */
-	writel(TARGET_TRIGGER_CMD, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
-	writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_ISR);
-	if (i2c_bus->target)
-		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
-	i2c_bus->target_operate = 0;
-}
-
-/* Software watchdog timer handler for target operations */
-static void ast2600_target_sw_timeout(struct timer_list *t)
-{
-	struct ast2600_i2c_bus *i2c_bus = from_timer(i2c_bus, t, target_wdt_timer);
-	unsigned long flags;
-
-	spin_lock_irqsave(&i2c_bus->lock, flags);
-
-	/* Check if target is still stuck */
-	if (i2c_bus->target_operate && i2c_bus->target) {
-		dev_warn(i2c_bus->dev,
-			 "SW Target Timeout: forcing reset\n");
-
-		ast2600_i2c_target_packet_buff_timeout_handler(i2c_bus);
-	}
-
-	spin_unlock_irqrestore(&i2c_bus->lock, flags);
-}
-
 static void ast2700_i2c_get_target(struct ast2600_i2c_bus *i2c_bus, u8 addr)
 {
 	u8 i = 0;
@@ -1234,20 +1185,25 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 
 	/* Handle i2c target timeout condition */
 	if (AST2600_I2CS_INACTIVE_TO & sts) {
-		/* Stop software watchdog timer */
-		del_timer(&i2c_bus->target_wdt_timer);
-		ast2600_i2c_target_packet_buff_timeout_handler(i2c_bus);
+		/* Reset time out counter */
+		u32 ac_timing = readl(i2c_bus->reg_base + AST2600_I2CC_AC_TIMING) &
+				AST2600_I2CC_AC_TIMING_MASK;
+
+		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
+		ac_timing |= AST2600_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
+		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
+		/* Re-send target trigger command and clear irq */
+		writel(TARGET_TRIGGER_CMD, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
+		writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_ISR);
+		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
+		i2c_bus->target_operate = 0;
 		return;
 	}
 
 	sts &= ~(AST2600_I2CS_PKT_DONE | AST2600_I2CS_PKT_ERROR | AST2600_I2CS_ADDR_INDICATE_MASK);
 
-	if (sts & AST2600_I2CS_SLAVE_MATCH) {
+	if (sts & AST2600_I2CS_SLAVE_MATCH)
 		i2c_bus->target_operate = 1;
-		/* Start software watchdog timer on SLAVE_MATCH */
-		mod_timer(&i2c_bus->target_wdt_timer,
-			  jiffies + msecs_to_jiffies(i2c_bus->target_wdt_timeout_ms));
-	}
 
 	switch (sts) {
 	case AST2600_I2CS_SLAVE_PENDING | AST2600_I2CS_WAIT_RX_DMA |
@@ -1256,8 +1212,6 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 		 AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_RX_DONE | AST2600_I2CS_STOP:
 	case AST2600_I2CS_SLAVE_PENDING |
 		 AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_STOP:
-		/* Stop software watchdog timer */
-		del_timer(&i2c_bus->target_wdt_timer);
 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
 		fallthrough;
 	case AST2600_I2CS_SLAVE_PENDING |
@@ -1407,8 +1361,6 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 		AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_RX_DONE:
 	case AST2600_I2CS_SLAVE_PENDING | AST2600_I2CS_TX_NAK | AST2600_I2CS_STOP |
 		AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_RX_DONE | AST2600_I2CS_WAIT_RX_DMA:
-		/* Stop software watchdog timer for previous target */
-		del_timer(&i2c_bus->target_wdt_timer);
 		cmd = TARGET_TRIGGER_CMD;
 		i2c_bus->target = i2c_bus->multi_target[i2c_bus->previous_idx];
 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
@@ -1416,8 +1368,6 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 		break;
 	case AST2600_I2CS_TX_NAK | AST2600_I2CS_STOP:
 	case AST2600_I2CS_STOP:
-		/* Stop software watchdog timer */
-		del_timer(&i2c_bus->target_wdt_timer);
 		cmd = TARGET_TRIGGER_CMD;
 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
 		break;
@@ -1432,13 +1382,10 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 	writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_ISR);
 	readl(i2c_bus->reg_base + AST2600_I2CS_ISR);
 
-	if ((sts & AST2600_I2CS_STOP) && !(sts & AST2600_I2CS_SLAVE_PENDING)) {
-		/* Stop software watchdog timer */
-		del_timer(&i2c_bus->target_wdt_timer);
+	if ((sts & AST2600_I2CS_STOP) && !(sts & AST2600_I2CS_SLAVE_PENDING))
 		i2c_bus->target_operate = 0;
-	} else {
+	else
 		i2c_bus->previous_idx = AST2600_I2CS_GET_TARGET(sts);
-	}
 }
 
 static void ast2600_i2c_target_byte_irq(struct ast2600_i2c_bus *i2c_bus, u32 sts)
@@ -2379,11 +2326,6 @@ static int ast2600_i2c_unreg_target(struct i2c_client *client)
 
 	/* Turn off target mode */
 	if (i2c_bus->target_attached == 0x0) {
-		/* Stop watchdog timer and reset flags when last target unregistered */
-		if (i2c_bus->mode == BUFF_MODE)
-			del_timer_sync(&i2c_bus->target_wdt_timer);
-		i2c_bus->target_operate = 0;
-
 		writel(~AST2600_I2CC_SLAVE_EN & readl(i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL),
 		       i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
 	}
@@ -2490,15 +2432,6 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 
 	init_completion(&i2c_bus->cmd_complete);
 
-#if IS_ENABLED(CONFIG_I2C_SLAVE)
-	/* Read watchdog timeout from device tree, default to 100ms */
-	if (device_property_read_u32(dev, "slave-wdt-timeout-ms", &i2c_bus->target_wdt_timeout_ms))
-		i2c_bus->target_wdt_timeout_ms = 100;
-
-	/* Initialize software watchdog timer for target operations (buff mode only) */
-	timer_setup(&i2c_bus->target_wdt_timer, ast2600_target_sw_timeout, 0);
-#endif
-
 	i2c_bus->irq = platform_get_irq(pdev, 0);
 	if (i2c_bus->irq < 0)
 		return i2c_bus->irq;
@@ -2562,11 +2495,6 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 static void ast2600_i2c_remove(struct platform_device *pdev)
 {
 	struct ast2600_i2c_bus *i2c_bus = platform_get_drvdata(pdev);
-
-#if IS_ENABLED(CONFIG_I2C_SLAVE)
-	/* Ensure watchdog timer is stopped */
-	del_timer_sync(&i2c_bus->target_wdt_timer);
-#endif
 
 	/* Disable everything. */
 	writel(0, i2c_bus->reg_base + AST2600_I2CC_FUN_CTRL);
