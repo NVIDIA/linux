@@ -232,6 +232,7 @@ struct aspeed_pcie_rc_platform {
 	int reg_intx_sts;
 	int reg_msi_en;
 	int reg_msi_sts;
+	bool msi_support;
 	u32 msi_address;
 };
 
@@ -700,6 +701,9 @@ static const struct msi_parent_ops aspeed_msi_parent_ops = {
 
 static int aspeed_pcie_msi_init(struct aspeed_pcie *pcie)
 {
+	if (!pcie->platform->msi_support)
+		return 0;
+
 	writel(~0, pcie->reg + pcie->platform->reg_msi_en);
 	writel(~0, pcie->reg + pcie->platform->reg_msi_en + 0x04);
 	writel(~0, pcie->reg + pcie->platform->reg_msi_sts);
@@ -1193,6 +1197,7 @@ static const struct aspeed_pcie_rc_platform pcie_rc_ast2600 = {
 	.reg_intx_sts = 0xc8,
 	.reg_msi_en = 0xe0,
 	.reg_msi_sts = 0xe8,
+	.msi_support = false,
 	.msi_address = 0x1e77005c,
 };
 
@@ -1203,6 +1208,7 @@ static const struct aspeed_pcie_rc_platform pcie_rc_ast2700 = {
 	.reg_intx_sts = 0x48,
 	.reg_msi_en = 0x50,
 	.reg_msi_sts = 0x58,
+	.msi_support = true,
 	.msi_address = 0x000000f0,
 };
 
