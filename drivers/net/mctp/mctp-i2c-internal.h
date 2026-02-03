@@ -57,6 +57,7 @@ struct mctp_i2c_dev {
 	int release_count;
 	/* Indicates that the netif is ready to receive incoming packets */
 	bool allow_rx;
+	bool flows_enabled; /* Runtime flow control */
 
 	/* Error injection support */
 	struct mctp_i2c_error_inject error_inject;

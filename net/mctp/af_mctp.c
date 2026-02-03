@@ -659,7 +659,8 @@ static int mctp_ioctl_alloctag(struct mctp_sock *msk, bool tagv2,
 		return -EINVAL;
 
 	key = mctp_alloc_local_tag(msk, ctl.net, MCTP_ADDR_ANY,
-				   ctl.peer_addr, true, &tag);
+				   ctl.peer_addr, true, &tag,
+				   MCTP_DEFAULT_LIFETIME);
 	if (IS_ERR(key))
 		return PTR_ERR(key);
 

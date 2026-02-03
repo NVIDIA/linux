@@ -2085,7 +2085,10 @@ static int ast2600_i2c_controller_xfer(struct i2c_adapter *adap, struct i2c_msg 
 	struct ast2600_i2c_bus *i2c_bus = i2c_get_adapdata(adap);
 	unsigned long timeout;
 	int ret;
+	int try = 0;
 
+retry:
+	ret = 0;
 	if (!i2c_bus->multi_master &&
 	    (readl(i2c_bus->reg_base + AST2600_I2CC_STS_AND_BUFF) & AST2600_I2CC_BUS_BUSY_STS)) {
 		ret = ast2600_i2c_recover_bus(i2c_bus);
@@ -2095,13 +2098,16 @@ static int ast2600_i2c_controller_xfer(struct i2c_adapter *adap, struct i2c_msg 
 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	if (i2c_bus->mode == BUFF_MODE) {
-		if (i2c_bus->target_operate)
-			return -EAGAIN;
+		if (i2c_bus->target_operate) {
+			ret = -EAGAIN;
+			goto check_retry;
+		}
 		/* disable target isr */
 		writel(0, i2c_bus->reg_base + AST2600_I2CS_IER);
 		if ((readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK) || i2c_bus->target_operate) {
 			writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_IER);
-			return -EAGAIN;
+			ret = -EAGAIN;
+			goto check_retry;
 		}
 	}
 #endif
@@ -2178,6 +2184,12 @@ controller_out:
 			i2c_put_dma_safe_msg_buf(i2c_bus->controller_safe_buf, msg, true);
 			i2c_bus->controller_safe_buf = NULL;
 		}
+	}
+
+check_retry:
+	if ((ret == -EAGAIN || ret == -EBUSY) && try++ < adap->retries) {
+		usleep_range(1000, 2000);
+		goto retry;
 	}
 
 	return ret;
@@ -2427,6 +2439,7 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	const char *xfer_mode;
 	struct resource *res;
 	u32 global_ctrl;
+	u32 dt_val;
 	int ret;
 
 	i2c_bus = devm_kzalloc(dev, sizeof(*i2c_bus), GFP_KERNEL);
@@ -2531,6 +2544,12 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	i2c_bus->adap.owner = THIS_MODULE;
 	i2c_bus->adap.algo = &i2c_ast2600_algorithm;
 	i2c_bus->adap.retries = 0;
+	if (!device_property_read_u32(dev, "i2c-retries", &dt_val))
+		i2c_bus->adap.retries = dt_val;
+
+	if (!device_property_read_u32(dev, "i2c-timeout-ms", &dt_val))
+		i2c_bus->adap.timeout = msecs_to_jiffies(dt_val);
+
 	i2c_bus->adap.dev.parent = i2c_bus->dev;
 	device_set_node(&i2c_bus->adap.dev, dev_fwnode(dev));
 	i2c_bus->adap.algo_data = i2c_bus;
@@ -2566,9 +2585,10 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 		i2c_bus->alert_enable = false;
 	}
 
-	dev_info(dev, "%s [%d]: adapter [%d KHz] mode [%d] version [%d]\n",
+	dev_info(dev, "%s [%d]: adapter [%d KHz] mode [%d] version [%d] timeout [%d ms] retries [%d]\n",
 		 dev->of_node->name, i2c_bus->adap.nr, i2c_bus->timing_info.bus_freq_hz / 1000,
-		 i2c_bus->mode, i2c_bus->version);
+		 i2c_bus->mode, i2c_bus->version, jiffies_to_msecs(i2c_bus->adap.timeout),
+		 i2c_bus->adap.retries);
 
 	return 0;
 }
@@ -2587,6 +2607,53 @@ static void ast2600_i2c_remove(struct platform_device *pdev)
 	writel(0, i2c_bus->reg_base + AST2600_I2CM_IER);
 }
 
+static ssize_t i2c_retries_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ast2600_i2c_bus *i2c_bus = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", i2c_bus->adap.retries);
+}
+
+static ssize_t i2c_retries_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ast2600_i2c_bus *i2c_bus = dev_get_drvdata(dev);
+	int val;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	i2c_bus->adap.retries = val;
+	return count;
+}
+static DEVICE_ATTR_RW(i2c_retries);
+
+static ssize_t i2c_timeout_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ast2600_i2c_bus *i2c_bus = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", jiffies_to_msecs(i2c_bus->adap.timeout));
+}
+
+static ssize_t i2c_timeout_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ast2600_i2c_bus *i2c_bus = dev_get_drvdata(dev);
+	int val;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	i2c_bus->adap.timeout = msecs_to_jiffies(val);
+	return count;
+}
+static DEVICE_ATTR_RW(i2c_timeout);
+
+static struct attribute *ast2600_i2c_attrs[] = {
+	&dev_attr_i2c_retries.attr,
+	&dev_attr_i2c_timeout.attr,
+	NULL
+};
+ATTRIBUTE_GROUPS(ast2600_i2c);
+
 static const struct of_device_id ast2600_i2c_bus_of_table[] = {
 	{ .compatible = "aspeed,ast2600-i2cv2",  .data = (const void *)AST2600, },
 	{ .compatible = "aspeed,ast2700-i2c",  .data = (const void *)AST2700, },
@@ -2600,6 +2667,7 @@ static struct platform_driver ast2600_i2c_bus_driver = {
 	.driver = {
 		.name = KBUILD_MODNAME,
 		.of_match_table = ast2600_i2c_bus_of_table,
+		.dev_groups = ast2600_i2c_groups,
 	},
 };
 
