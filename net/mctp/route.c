@@ -27,7 +27,6 @@
 #include <trace/events/mctp.h>
 
 static const unsigned int mctp_message_maxlen = 64 * 1024;
-static const unsigned long mctp_key_lifetime = 6 * CONFIG_HZ;
 
 /* Helper to determine binding type from network device
  * Returns the physical binding type from mctp_dev, which is set during
@@ -240,7 +239,8 @@ void mctp_key_unref(struct mctp_sk_key *key)
 	kfree(key);
 }
 
-static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk)
+static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk,
+			unsigned long lifetime)
 {
 	struct net *net = sock_net(&msk->sk);
 	struct mctp_sk_key *tmp;
@@ -268,7 +268,7 @@ static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk)
 
 	if (!rc) {
 		refcount_inc(&key->refs);
-		key->expiry = jiffies + mctp_key_lifetime;
+		key->expiry = jiffies + lifetime;
 		timer_reduce(&msk->key_expiry, key->expiry);
 
 		hlist_add_head(&key->hlist, &net->mctp.keys);
@@ -637,6 +637,14 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 		 * packets for this message
 		 */
 		if (!key) {
+			struct mctp_dev *mdev;
+			unsigned long lifetime;
+
+			mdev = __mctp_dev_get(skb->dev);
+			lifetime = mdev ? mdev->key_lifetime : MCTP_DEFAULT_LIFETIME;
+			if (mdev)
+				mctp_dev_put(mdev);
+
 			key = mctp_key_alloc(msk, netid, mh->dest, mh->src,
 					     tag, GFP_ATOMIC);
 			if (!key) {
@@ -678,7 +686,7 @@ static int mctp_route_input(struct mctp_route *route, struct sk_buff *skb)
 			 * no way to distinguish future packets, so all we
 			 * can do is drop.
 			 */
-			rc = mctp_key_add(key, msk);
+			rc = mctp_key_add(key, msk, lifetime);
 			if (!rc)
 				trace_mctp_key_acquire(key);
 
@@ -873,13 +881,13 @@ int mctp_default_net_set(struct net *net, unsigned int index)
 
 /* tag management */
 static void mctp_reserve_tag(struct net *net, struct mctp_sk_key *key,
-			     struct mctp_sock *msk)
+			     struct mctp_sock *msk, unsigned long lifetime)
 {
 	struct netns_mctp *mns = &net->mctp;
 
 	lockdep_assert_held(&mns->keys_lock);
 
-	key->expiry = jiffies + mctp_key_lifetime;
+	key->expiry = jiffies + lifetime;
 	timer_reduce(&msk->key_expiry, key->expiry);
 
 	/* we hold the net->key_lock here, allowing updates to both
@@ -896,7 +904,8 @@ static void mctp_reserve_tag(struct net *net, struct mctp_sk_key *key,
 struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 					 unsigned int netid,
 					 mctp_eid_t local, mctp_eid_t peer,
-					 bool manual, u8 *tagp)
+					 bool manual, u8 *tagp,
+					 unsigned long lifetime)
 {
 	struct net *net = sock_net(&msk->sk);
 	struct netns_mctp *mns = &net->mctp;
@@ -960,7 +969,7 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 
 	if (tagbits) {
 		key->tag = __ffs(tagbits);
-		mctp_reserve_tag(net, key, msk);
+		mctp_reserve_tag(net, key, msk, lifetime);
 		trace_mctp_key_acquire(key);
 
 		key->manual_alloc = manual;
@@ -1427,9 +1436,15 @@ int mctp_local_output(struct sock *sk, struct mctp_route *rt,
 		if (req_tag & MCTP_TAG_PREALLOC)
 			key = mctp_lookup_prealloc_tag(msk, netid, daddr,
 						       req_tag, &tag);
-		else
+		else {
+			unsigned long lifetime = MCTP_DEFAULT_LIFETIME;
+
+			if (rt->dev)
+				lifetime = rt->dev->key_lifetime;
+
 			key = mctp_alloc_local_tag(msk, netid, saddr, daddr,
-						   false, &tag);
+						   false, &tag, lifetime);
+		}
 
 		if (IS_ERR(key)) {
 			rc = PTR_ERR(key);
