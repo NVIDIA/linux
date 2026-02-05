@@ -1,47 +1,66 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- *  Aspeed Interrupt Controller.
+ *  Aspeed AST2700 Interrupt Controller.
  *
  *  Copyright (C) 2023 ASPEED Technology Inc.
  */
 
+#include "linux/dev_printk.h"
+#include "linux/device/devres.h"
+#include "linux/property.h"
 #include <linux/bitops.h>
+#include <linux/device.h>
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/irqchip.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/spinlock.h>
 
-#define INTC1_IER	0x100
-#define INTC1_ISR	0x104
-#define INTC1_IRQS_PER_BANK	32
-#define INTC1_BANK_NUM		6
+#include "irq-ast2700.h"
 
-struct aspeed_intc_ic {
-	void __iomem		*base;
-	raw_spinlock_t		intc_lock;
-	struct irq_domain	*irq_domain;
+#define INTC1_IER 0x100
+#define INTC1_ISR 0x104
+#define INTC1_IRQS_PER_BANK 32
+#define INTC1_BANK_NUM 6
+#define INTC1_ROUTE_NUM 7
+
+struct aspeed_intc1 {
+	struct device *dev;
+	void __iomem *base;
+	raw_spinlock_t intc_lock;
+	struct irq_domain *local;
+	struct irq_domain *upstream;
+	struct aspeed_intc_interrupt_ranges ranges;
 };
+
+static void aspeed_intc1_disable_int(struct aspeed_intc1 *intc1)
+{
+	for (int i = 0; i < INTC1_BANK_NUM; i++)
+		writel(0x0, intc1->base + INTC1_IER + (0x10 * i));
+}
 
 static void aspeed_intc1_ic_irq_handler(struct irq_desc *desc)
 {
-	struct aspeed_intc_ic *intc_ic = irq_desc_get_handler_data(desc);
+	struct aspeed_intc1 *intc1 = irq_desc_get_handler_data(desc);
 	struct irq_chip *chip = irq_desc_get_chip(desc);
 	unsigned long bit, status;
 
 	chained_irq_enter(chip, desc);
 
 	for (int bank = 0; bank < INTC1_BANK_NUM; bank++) {
-		status = readl(intc_ic->base + INTC1_ISR + (0x10 * bank));
+		status = readl(intc1->base + INTC1_ISR + (0x10 * bank));
 		if (!status)
 			continue;
 
 		for_each_set_bit(bit, &status, INTC1_IRQS_PER_BANK) {
-			generic_handle_domain_irq(intc_ic->irq_domain,
-						  (bank * INTC1_IRQS_PER_BANK) + bit);
-			writel(BIT(bit), intc_ic->base + INTC1_ISR + (0x10 * bank));
+			generic_handle_domain_irq(intc1->local,
+						  (bank * INTC1_IRQS_PER_BANK) +
+							  bit);
+			writel(BIT(bit),
+			       intc1->base + INTC1_ISR + (0x10 * bank));
 		}
 	}
 
@@ -50,36 +69,38 @@ static void aspeed_intc1_ic_irq_handler(struct irq_desc *desc)
 
 static void aspeed_intc1_irq_mask(struct irq_data *data)
 {
-	struct aspeed_intc_ic *intc_ic = irq_data_get_irq_chip_data(data);
+	struct aspeed_intc1 *intc1 = irq_data_get_irq_chip_data(data);
 	int bank = data->hwirq / INTC1_IRQS_PER_BANK;
 	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	unsigned int mask;
 
-	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
-	mask = readl(intc_ic->base + INTC1_IER + (0x10 * bank)) & ~BIT(bit);
-	writel(mask, intc_ic->base + INTC1_IER + (0x10 * bank));
+	guard(raw_spinlock_irqsave)(&intc1->intc_lock);
+	mask = readl(intc1->base + INTC1_IER + (0x10 * bank)) & ~BIT(bit);
+	writel(mask, intc1->base + INTC1_IER + (0x10 * bank));
 }
 
 static void aspeed_intc1_irq_unmask(struct irq_data *data)
 {
-	struct aspeed_intc_ic *intc_ic = irq_data_get_irq_chip_data(data);
+	struct aspeed_intc1 *intc1 = irq_data_get_irq_chip_data(data);
 	int bank = data->hwirq / INTC1_IRQS_PER_BANK;
 	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	unsigned int unmask;
 
-	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
-	unmask = readl(intc_ic->base + INTC1_IER + (0x10 * bank)) | BIT(bit);
-	writel(unmask, intc_ic->base + INTC1_IER + (0x10 * bank));
+	guard(raw_spinlock_irqsave)(&intc1->intc_lock);
+	unmask = readl(intc1->base + INTC1_IER + (0x10 * bank)) | BIT(bit);
+	writel(unmask, intc1->base + INTC1_IER + (0x10 * bank));
 }
 
 static struct irq_chip aspeed_intc_chip = {
-	.name			= "ASPEED INTC1",
-	.irq_mask		= aspeed_intc1_irq_mask,
-	.irq_unmask		= aspeed_intc1_irq_unmask,
+	.name = "ASPEED INTC1",
+	.irq_mask = aspeed_intc1_irq_mask,
+	.irq_unmask = aspeed_intc1_irq_unmask,
 };
 
-static int aspeed_intc1_irq_domain_translate(struct irq_domain *domain, struct irq_fwspec *fwspec,
-					     unsigned long *hwirq, unsigned int *type)
+static int aspeed_intc1_irq_domain_translate(struct irq_domain *domain,
+					     struct irq_fwspec *fwspec,
+					     unsigned long *hwirq,
+					     unsigned int *type)
 {
 	if (fwspec->param_count != 1)
 		return -EINVAL;
@@ -89,7 +110,8 @@ static int aspeed_intc1_irq_domain_translate(struct irq_domain *domain, struct i
 	return 0;
 }
 
-static int aspeed_intc1_ic_map_irq_domain(struct irq_domain *domain, unsigned int irq,
+static int aspeed_intc1_ic_map_irq_domain(struct irq_domain *domain,
+					  unsigned int irq,
 					  irq_hw_number_t hwirq)
 {
 	irq_domain_set_info(domain, irq, hwirq, &aspeed_intc_chip,
@@ -97,158 +119,223 @@ static int aspeed_intc1_ic_map_irq_domain(struct irq_domain *domain, unsigned in
 	return 0;
 }
 
+#define INTC1_IN_NUM 192
+
+/*
+ * In-bound interrupts are progressively merged into one out-bound interrupt in
+ * groups of 32. Apply this fact to compress the route table in corresponding
+ * groups of 32.
+ */
+static const aspeed_intc_output_t aspeed_intc1_routes[INTC1_IN_NUM / 32][INTC1_ROUTE_NUM] = {
+	[0] = {
+		[0b000] = 0,
+		[0b001] = AST2700_INTC_INVALID_ROUTE, /* path not verified */
+		[0b010] = 10,
+		[0b011] = 20,
+		[0b100] = 30,
+		[0b101] = 40,
+		[0b110] = 50,
+	},
+	[1] = {
+		[0b000] = 1,
+		[0b001] = AST2700_INTC_INVALID_ROUTE,
+		[0b010] = 11,
+		[0b011] = 21,
+		[0b100] = 31,
+		[0b101] = 41,
+		[0b110] = 50,
+	},
+	[2] = {
+		[0b000] = 2,
+		[0b001] = AST2700_INTC_INVALID_ROUTE,
+		[0b010] = 12,
+		[0b011] = 22,
+		[0b100] = 32,
+		[0b101] = 42,
+		[0b110] = 50,
+	},
+	[3] = {
+		[0b000] = 3,
+		[0b001] = AST2700_INTC_INVALID_ROUTE,
+		[0b010] = 13,
+		[0b011] = 23,
+		[0b100] = 33,
+		[0b101] = 43,
+		[0b110] = 50,
+	},
+	[4] = {
+		[0b000] = 4,
+		[0b001] = AST2700_INTC_INVALID_ROUTE,
+		[0b010] = 14,
+		[0b011] = 24,
+		[0b100] = 34,
+		[0b101] = 44,
+		[0b110] = 50,
+	},
+	[5] = {
+		[0b000] = 5,
+		[0b001] = AST2700_INTC_INVALID_ROUTE,
+		[0b010] = 15,
+		[0b011] = 25,
+		[0b100] = 35,
+		[0b101] = 45,
+		[0b110] = 50,
+	},
+};
+
+#define INTC1_BOOTMCU_ROUTE 0b110
+
+static int aspeed_intc1_parent_is_bootmcu(const struct irq_domain *upstream)
+{
+	if (!upstream || !upstream->fwnode)
+		return 0;
+
+	return fwnode_device_is_compatible(upstream->fwnode, "riscv,aplic");
+}
+
 static int aspeed_intc1_irq_domain_activate(struct irq_domain *domain,
 					    struct irq_data *data, bool reserve)
 {
-	struct aspeed_intc_ic *intc_ic = irq_data_get_irq_chip_data(data);
+	struct aspeed_intc1 *intc1 = irq_data_get_irq_chip_data(data);
 	int bank = data->hwirq / INTC1_IRQS_PER_BANK;
+	struct aspeed_intc_interrupt_range resolved;
 	int bit = data->hwirq % INTC1_IRQS_PER_BANK;
 	u32 mask = BIT(bit);
+	int rc;
 
-	guard(raw_spinlock_irqsave)(&intc_ic->intc_lock);
-	for (int i = 0; i < 3; i++) {
-		void __iomem *sel = intc_ic->base + 0x80 + bank * 4 + 0x20 * i;
+	if (WARN_ON_ONCE((data->hwirq >> 5) >= ARRAY_SIZE(aspeed_intc1_routes)))
+		return -EINVAL;
 
-		if (readl(sel) & mask) {
-			writel(readl(sel) & ~mask, sel);
-			if (readl(sel) & mask)
-				return -EACCES;
+	dev_dbg(intc1->dev, "Activation request for hwirq %lu in domain %s\n",
+		data->hwirq, domain->name);
+
+	/*
+	 * outpin may be an error if the upstream is the BootMCU APLIC node, or
+	 * anything except a valid intc0 driver instance
+	 */
+	rc = aspeed_intc0_resolve_route(intc1->upstream, INTC1_ROUTE_NUM,
+					aspeed_intc1_routes[data->hwirq >> 5],
+					intc1->ranges.nranges,
+					intc1->ranges.ranges, &resolved);
+	if (rc < 0) {
+		if (!aspeed_intc1_parent_is_bootmcu(intc1->upstream)) {
+			dev_warn(intc1->dev,
+				 "Failed to resolve interrupt route for hwirq %lu in domain %s\n",
+				 data->hwirq, domain->name);
+			return rc;
 		}
+		rc = INTC1_BOOTMCU_ROUTE;
 	}
+
+	guard(raw_spinlock_irqsave)(&intc1->intc_lock);
+	/* Route selector uses 3 bits across the selector registers. */
+	for (int i = 0; i < 3; i++) {
+		void __iomem *sel = intc1->base + 0x80 + bank * 4 + 0x20 * i;
+		u32 reg = readl(sel);
+
+		if (rc & BIT(i))
+			reg |= mask;
+		else
+			reg &= ~mask;
+
+		writel(reg, sel);
+		if (readl(sel) != reg)
+			return -EACCES;
+	}
+
+	dev_dbg(intc1->dev,
+		"Routed hwirq %lu in domain %s to output %u via route %d\n",
+		data->hwirq, domain->name, resolved.start, rc);
 
 	return 0;
 }
 
 static const struct irq_domain_ops aspeed_intc1_ic_irq_domain_ops = {
 	.map = aspeed_intc1_ic_map_irq_domain,
-	.translate	= aspeed_intc1_irq_domain_translate,
+	.translate = aspeed_intc1_irq_domain_translate,
 	.activate = aspeed_intc1_irq_domain_activate,
 };
 
-static int aspeed_intc1_interrupt_ranges(struct aspeed_intc_ic *intc_ic,
-					 struct device_node *node,
-					 struct device_node *parent_node)
+static void aspeed_intc1_request_interrupts(struct aspeed_intc1 *intc1)
 {
-	struct of_phandle_args parent_irq;
-	const __be32 *ranges;
-	const __be32 *ranges_end;
-	int len;
+	unsigned int i;
 
-	if (!of_device_is_compatible(parent_node, "aspeed,ast2700-intc0-ic"))
-		return -ENOTSUPP;
+	for (i = 0; i < intc1->ranges.nranges; i++) {
+		struct aspeed_intc_interrupt_range *r =
+			&intc1->ranges.ranges[i];
 
-	ranges = of_get_property(node, "aspeed,interrupt-ranges", &len);
-	if (!ranges)
-		return -EINVAL;
-
-	if (len % sizeof(__be32))
-		return -EINVAL;
-
-	ranges_end = ranges + (len / sizeof(__be32));
-	for (; ranges + 3 <= ranges_end; ) {
-		struct device_node *target;
-		phandle parent_handle;
-		u32 target_cells;
-		u32 pin_out;
-		u32 count;
-		u32 irq_base;
-
-		pin_out = be32_to_cpu(ranges[0]);
-		count = be32_to_cpu(ranges[1]);
-		parent_handle = be32_to_cpu(ranges[2]);
-
-		target = of_find_node_by_phandle(parent_handle);
-		if (!target)
-			return -EINVAL;
-
-		if (of_property_read_u32(target, "#interrupt-cells", &target_cells)) {
-			of_node_put(target);
-			return -EINVAL;
-		}
-
-		if (ranges + 3 + target_cells > ranges_end) {
-			of_node_put(target);
-			return -EINVAL;
-		}
-
-		if (target != parent_node) {
-			of_node_put(target);
-			ranges += 3 + target_cells;
+		if (intc1->upstream !=
+		    irq_find_matching_fwspec(&r->upstream,
+					     intc1->upstream->bus_token))
 			continue;
-		}
 
-		if (target_cells != 1) {
-			of_node_put(target);
-			return -EINVAL;
-		}
-
-		irq_base = be32_to_cpu(ranges[3]);
-
-		for (u32 j = 0; j < count; j++) {
+		for (u32 k = 0; k < r->count; k++) {
+			struct of_phandle_args parent_irq;
 			int irq;
 
-			parent_irq.np = parent_node;
+			parent_irq.np = to_of_node(r->upstream.fwnode);
 			parent_irq.args_count = 1;
-			parent_irq.args[0] = irq_base + j;
+			parent_irq.args[0] =
+				intc1->ranges.ranges[i].upstream.param[0] + k;
+
 			irq = irq_create_of_mapping(&parent_irq);
 			if (!irq)
 				continue;
 
 			irq_set_chained_handler_and_data(irq,
-							 aspeed_intc1_ic_irq_handler,
-							 intc_ic);
+							 aspeed_intc1_ic_irq_handler, intc1);
+			dev_dbg(intc1->dev, "Mapped irq %d\n", parent_irq.args[0]);
 		}
-
-		of_node_put(target);
-		ranges += 3 + target_cells;
 	}
-
-	return 0;
 }
 
-static void aspeed_intc1_disable_int(struct aspeed_intc_ic *intc_ic)
-{
-	for (int i = 0; i < INTC1_BANK_NUM; i++)
-		writel(0x0, intc_ic->base + INTC1_IER + (0x10 * i));
-}
-
-static int aspeed_intc1_ic_probe(struct platform_device *pdev, struct device_node *parent)
+static int aspeed_intc1_ic_probe(struct platform_device *pdev,
+				 struct device_node *parent)
 {
 	struct device_node *node = pdev->dev.of_node;
-	struct aspeed_intc_ic *intc_ic;
+	struct aspeed_intc1 *intc1;
+	struct irq_domain *host;
 	int ret;
 
 	if (!parent) {
-		pr_err("missing parent interrupt node\n");
+		dev_err(&pdev->dev, "missing parent interrupt node\n");
 		return -ENODEV;
 	}
 
-	if (!irq_find_host(parent))
+	if (!of_device_is_compatible(parent, "aspeed,ast2700-intc0-ic"))
 		return -ENODEV;
 
-	intc_ic = devm_kzalloc(&pdev->dev, sizeof(*intc_ic), GFP_KERNEL);
-	if (!intc_ic)
+	host = irq_find_host(parent);
+	if (!host)
+		return -ENODEV;
+
+	intc1 = devm_kzalloc(&pdev->dev, sizeof(*intc1), GFP_KERNEL);
+	if (!intc1)
 		return -ENOMEM;
 
-	intc_ic->base = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(intc_ic->base))
-		return PTR_ERR(intc_ic->base);
+	intc1->dev = &pdev->dev;
+	intc1->upstream = host;
+	intc1->base = devm_platform_ioremap_resource(pdev, 0);
+	if (IS_ERR(intc1->base))
+		return PTR_ERR(intc1->base);
 
-	aspeed_intc1_disable_int(intc_ic);
+	aspeed_intc1_disable_int(intc1);
 
-	raw_spin_lock_init(&intc_ic->intc_lock);
+	raw_spin_lock_init(&intc1->intc_lock);
 
-	intc_ic->irq_domain = irq_domain_create_linear(of_fwnode_handle(node),
-						       INTC1_BANK_NUM * INTC1_IRQS_PER_BANK,
-						       &aspeed_intc1_ic_irq_domain_ops, intc_ic);
-	if (!intc_ic->irq_domain)
+	intc1->local = irq_domain_create_linear(of_fwnode_handle(node),
+						INTC1_BANK_NUM * INTC1_IRQS_PER_BANK,
+						&aspeed_intc1_ic_irq_domain_ops, intc1);
+	if (!intc1->local)
 		return -ENOMEM;
 
-	ret = aspeed_intc1_interrupt_ranges(intc_ic, node, parent);
+	ret = aspeed_intc_populate_ranges(&pdev->dev, &intc1->ranges);
 	if (ret < 0) {
-		irq_domain_remove(intc_ic->irq_domain);
+		irq_domain_remove(intc1->local);
 		return ret;
 	}
+
+	aspeed_intc1_request_interrupts(intc1);
 
 	return 0;
 }

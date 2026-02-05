@@ -112,10 +112,15 @@ config AL_FIC
 	  Support Amazon's Annapurna Labs Fabric Interrupt Controller.
 
 config ASPEED_AST2700_INTC
-	bool
+	bool "ASPEED AST2700 Interrupt Controller support"
 	depends on OF
 	depends on ARCH_ASPEED || COMPILE_TEST
 	select IRQ_DOMAIN_HIERARCHY
+
+config ASPEED_AST2700_INTC_TEST
+	bool "Tests for the ASPEED AST2700 Interrupt Controller"
+	depends on ASPEED_AST2700_INTC && KUNIT=y
+	default KUNIT_ALL_TESTS
 
 config ATMEL_AIC_IRQ
 	bool
