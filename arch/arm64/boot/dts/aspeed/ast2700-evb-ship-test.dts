@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "ast2700-evb.dts"
+
+/ {
+	model = "AST2700 EVB Ship Test";
+};
+
+&pcie2 {
+	status = "okay";
+};
