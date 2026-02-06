@@ -320,6 +320,21 @@ void mctp_dev_hold(struct mctp_dev *mdev)
 void mctp_dev_put(struct mctp_dev *mdev)
 {
 	if (mdev && refcount_dec_and_test(&mdev->refs)) {
+		unsigned int i;
+		struct mctp_nf_track_entry *entry;
+		struct hlist_node *tmp;
+
+		spin_lock_bh(&mdev->nf_track.lock);
+		for (i = 0; i < MCTP_NF_TRACK_BUCKETS; i++) {
+			hlist_for_each_entry_safe(entry, tmp,
+						  &mdev->nf_track.buckets[i],
+						  node) {
+				hlist_del(&entry->node);
+				kfree(entry);
+			}
+		}
+		spin_unlock_bh(&mdev->nf_track.lock);
+
 		kfree(mdev->addrs);
 		dev_put(mdev->dev);
 		kfree_rcu(mdev, rcu);
@@ -348,6 +363,7 @@ void mctp_dev_set_key(struct mctp_dev *dev, struct mctp_sk_key *key)
 static struct mctp_dev *mctp_add_dev(struct net_device *dev)
 {
 	struct mctp_dev *mdev;
+	unsigned int i;
 
 	ASSERT_RTNL();
 
@@ -356,6 +372,10 @@ static struct mctp_dev *mctp_add_dev(struct net_device *dev)
 		return ERR_PTR(-ENOMEM);
 
 	spin_lock_init(&mdev->addrs_lock);
+	spin_lock_init(&mdev->nf_track.lock);
+	for (i = 0; i < MCTP_NF_TRACK_BUCKETS; i++)
+		INIT_HLIST_HEAD(&mdev->nf_track.buckets[i]);
+	mdev->nf_track.count = 0;
 
 	mdev->net = mctp_default_net(dev_net(dev));
 	mdev->key_lifetime = MCTP_DEFAULT_LIFETIME;

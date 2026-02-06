@@ -16,6 +16,24 @@
 
 struct mctp_sk_key;
 
+#define MCTP_NF_TRACK_BUCKETS	64
+#define MCTP_NF_TRACK_MAX	1024
+
+struct mctp_nf_track_entry {
+	struct hlist_node node;
+	mctp_eid_t src;
+	mctp_eid_t dst;
+	u8 tag;
+	u8 verdict;
+	unsigned long expires;
+};
+
+struct mctp_nf_track_table {
+	struct hlist_head buckets[MCTP_NF_TRACK_BUCKETS];
+	spinlock_t lock;
+	unsigned int count;
+};
+
 struct mctp_dev {
 	struct net_device	*dev;
 
@@ -37,6 +55,9 @@ struct mctp_dev {
 	bool tx_batching_enabled;
 	unsigned int tx_batch_hdr_len; /* per-packet header overhead */
 	unsigned int tx_batch_max_xfer; /* max batch transfer size */
+
+	/* MCTP netdev netfilter fragment tracking (per-netdev) */
+	struct mctp_nf_track_table nf_track;
 
 	struct rcu_head		rcu;
 };
