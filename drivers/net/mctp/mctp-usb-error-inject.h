@@ -81,7 +81,7 @@ void mctp_usb_error_inject_init(struct mctp_usb *mctp_usb);
 void mctp_usb_error_inject_cleanup(struct mctp_usb *mctp_usb);
 
 int mctp_usb_error_inject_tx_sync(struct mctp_usb *mctp_usb, struct sk_buff *skb);
-int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb, int original_status);
+int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb, struct urb *urb);
 int mctp_usb_error_inject_rx(struct mctp_usb *mctp_usb, int original_status);
 int mctp_usb_error_inject_fragment(struct mctp_usb *mctp_usb, struct sk_buff *skb);
 

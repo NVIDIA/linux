@@ -218,9 +218,10 @@ static void mctp_usb_out_complete(struct urb *urb)
 	status = urb->status;
 	
 	/* ERROR INJECTION POINT: TX URB completion (asynchronous error)
-	 * Note: Injection happens at URB level (may affect multiple batched packets)
+	 * Note: Injection happens at URB level (may affect multiple batched packets).
+	 * Pass urb so async path can apply EID filter from first packet.
 	 */
-	status = mctp_usb_error_inject_tx_async(mctp_usb, status);
+	status = mctp_usb_error_inject_tx_async(mctp_usb, urb);
 
 	/* Handle TX URB status and update statistics */
 	mctp_usb_handle_tx_urb_status(mctp_usb, netdev, status,

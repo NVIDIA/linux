@@ -157,15 +157,20 @@ int mctp_usb_error_inject_tx_sync(struct mctp_usb *mctp_usb, struct sk_buff *skb
 }
 EXPORT_SYMBOL_GPL(mctp_usb_error_inject_tx_sync);
 
-/* TX asynchronous error injection (URB completion) 
- * Note: TX async injection happens at URB level, not packet level.
- * With batching, a single URB may contain multiple packets from different transactions.
- * Therefore, EID filtering is not applicable here - the error affects the entire URB.
+/* TX asynchronous error injection (URB completion)
+ * @mctp_usb: MCTP USB device
+ * @urb: The completed URB (used for status and, when EID filter enabled, to parse first packet)
+ *
+ * Returns: Status to use (original urb->status or injected error code).
+ *
+ * EID filtering: When eid_filter.enabled, we parse the first packet in the URB buffer
+ * and match src_eid/dest_eid (0 = any). Batched URBs contain fragments of one message
+ * (same EID pair), so checking the first packet is sufficient.
  */
-int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb,
-                                    int original_status)
+int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb, struct urb *urb)
 {
 	struct mctp_error_inject *ei = &mctp_usb->error_inject;
+	int original_status = urb->status;
 	
 	/* Only inject if original status was success */
 	if (original_status != 0) {
@@ -179,32 +184,26 @@ int mctp_usb_error_inject_tx_async(struct mctp_usb *mctp_usb,
 	if (!ei->enable_tx || ei->urb_tx_async_error_code == 0)
 		return original_status;
 	
-	/* Check EID filter if enabled.
-	 * For batched URBs: All fragments in batch are from SAME message (same EID pair).
-	 * We parse the first packet's MCTP header to get src/dest EID for filtering.
-	 */
+	/* EID filter: parse first packet and match src_eid/dest_eid (0 = any) */
 	if (ei->eid_filter.enabled) {
-		/* Parse first packet in URB buffer to get EID.
-		 * Use transfer_buffer_length (size we allocated) not actual_length (may be 0 on error).
-		 */
 		if (urb->transfer_buffer && urb->transfer_buffer_length >= sizeof(struct mctp_usb_hdr) + sizeof(struct mctp_hdr)) {
 			struct mctp_usb_hdr *usb_hdr = (struct mctp_usb_hdr *)urb->transfer_buffer;
 			struct mctp_hdr *mctp_hdr = (struct mctp_hdr *)(usb_hdr + 1);
+			u8 src = mctp_hdr->src;
+			u8 dest = mctp_hdr->dest;
+			bool src_ok = (ei->eid_filter.src_eid == 0 || ei->eid_filter.src_eid == src);
+			bool dest_ok = (ei->eid_filter.dest_eid == 0 || ei->eid_filter.dest_eid == dest);
 			
-			/* Apply EID filter (check both src and dest) */
-			if ((ei->eid_filter.eid != mctp_hdr->src) && 
-			    (ei->eid_filter.eid != mctp_hdr->dest)) {
+			if (!src_ok || !dest_ok) {
 				netdev_dbg(mctp_usb->netdev,
-				          "Error injection: TX URB async - EID filter mismatch (filter=%u, src=%u, dest=%u), not injecting\n",
-				          ei->eid_filter.eid, mctp_hdr->src, mctp_hdr->dest);
+				          "Error injection: TX URB async - EID filter mismatch (src_eid=%u, dest_eid=%u, pkt src=%u dest=%u), not injecting\n",
+				          ei->eid_filter.src_eid, ei->eid_filter.dest_eid, src, dest);
 				return original_status;
 			}
-			
 			netdev_dbg(mctp_usb->netdev,
-			          "Error injection: TX URB async - EID filter match (filter=%u, src=%u, dest=%u)\n",
-			          ei->eid_filter.eid, mctp_hdr->src, mctp_hdr->dest);
+			          "Error injection: TX URB async - EID filter match (src=%u dest=%u)\n",
+			          src, dest);
 		} else {
-			/* Buffer too small to parse - can't apply filter, skip injection */
 			netdev_dbg(mctp_usb->netdev,
 			          "Error injection: TX URB async - buffer too small for EID parsing, not injecting\n");
 			return original_status;
