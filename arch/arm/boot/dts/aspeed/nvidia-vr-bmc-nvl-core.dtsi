@@ -456,6 +456,12 @@
         gpio-controller;
         #gpio-cells = <2>;
 
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         gpio-line-names =
             "SSD0_PRSNT_L-I",
             "E1S_PWR_EN-O",
