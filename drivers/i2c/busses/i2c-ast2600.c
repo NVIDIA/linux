@@ -1484,6 +1484,7 @@ static void ast2600_i2c_target_byte_irq(struct ast2600_i2c_bus *i2c_bus, u32 sts
 		writel(sts, i2c_bus->reg_base + AST2600_I2CS_ISR);
 		readl(i2c_bus->reg_base + AST2600_I2CS_ISR);
 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
+		i2c_bus->target_operate = 0;
 		return;
 	}
 
