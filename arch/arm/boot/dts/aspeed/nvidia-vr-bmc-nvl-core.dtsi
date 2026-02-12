@@ -353,7 +353,7 @@
             "USB_PWR_EN-O",
             "RTC_CLR_L-O",
             "I2C_RTC_ALERT_L-I",
-            "I2C_PDB_ALERT_L-I",
+            "X86_TPM_RST_SEL_L-O",
             "BMC_MUX_PI3DP_SEL-O";
     };
 };
