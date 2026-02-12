@@ -906,10 +906,19 @@ static int mctp_usb_stop(struct net_device *dev)
 	/* prevent RX submission retry */
 	WRITE_ONCE(mctp_usb->stopped, true);
 
-	usb_kill_anchored_urbs(&mctp_usb->rx_anchor);
-	usb_kill_anchored_urbs(&mctp_usb->tx_anchor);
-
+	/* Cancel retry work before unlinking so no new URBs are submitted */
 	cancel_delayed_work_sync(&mctp_usb->rx_retry_work);
+
+	/*
+	 * Unlink URBs asynchronously. Do not use usb_kill_anchored_urbs() here
+	 * as it waits indefinitely for each URB and can block under RTNL (e.g.
+	 * "ip link set mctpusbx down") long enough to trigger RCU stalls if the
+	 * USB host or device is slow to complete the unlink. Completions will
+	 * run later with -ENOENT/-ECONNRESET and clean up. Safe even if the
+	 * device is brought up again immediately.
+	 */
+	usb_unlink_anchored_urbs(&mctp_usb->rx_anchor);
+	usb_unlink_anchored_urbs(&mctp_usb->tx_anchor);
 
 	return 0;
 }
