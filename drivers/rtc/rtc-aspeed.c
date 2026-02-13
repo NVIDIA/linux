@@ -257,7 +257,7 @@ static int aspeed_rtc_probe(struct platform_device *pdev)
 	struct aspeed_rtc *rtc;
 	unsigned int irq;
 	int rc;
-	u32 ctrl;
+	u32 ctrl, time_reg, year_reg;
 
 	rtc = devm_kzalloc(&pdev->dev, sizeof(*rtc), GFP_KERNEL);
 	if (!rtc)
@@ -296,26 +296,49 @@ static int aspeed_rtc_probe(struct platform_device *pdev)
 	rtc->rtc_dev->range_max = 38814989399LL; /* 3199-12-31 23:59:59 */
 
 	/*
-	 * In devm_rtc_register_device,
-	 * rtc_hctosys read time from RTC to check hardware status.
-	 * In rtc_read_time, run aspeed_rtc_read_time and check the rtc_time.
-	 * As a result, need to enable and initialize RTC time.
+	 * Check if RTC has valid time to distinguish cold boot from warm reboot.
+	 * Strategy: Read existing time registers before any modification.
+	 * - If time is non-zero: Warm reboot, preserve by not touching registers
+	 * - If time is zero: Cold boot, initialize to 1970-01-01T01:01:01
 	 *
-	 * Enable and unlock RTC to initialize RTC time to 1970-01-01T01:01:01
-	 * and re-lock and ensure enable is set now that a time is programmed.
+	 * This approach is more robust than checking only RTC_ENABLE, as it
+	 * handles cases where RTC_ENABLE might be cleared by bootloader or
+	 * hardware reset, but time registers still contain valid data.
 	 */
 	ctrl = readl(rtc->base + RTC_CTRL);
-	writel(ctrl | RTC_UNLOCK, rtc->base + RTC_CTRL);
 
-	/*
-	 * Initial value set to year:70,mon:0,mday:1,hour:1,min:1,sec:1
-	 * rtc_valid_tm check whether in suitable range or not.
-	 */
-	writel(0x01010101, rtc->base + RTC_TIME);
-	writel(0x00134601, rtc->base + RTC_YEAR);
+	/* Read current time registers to check if already initialized */
+	time_reg = readl(rtc->base + RTC_TIME);
+	year_reg = readl(rtc->base + RTC_YEAR);
 
-	/* Re-lock and ensure enable is set now that a time is programmed */
-	writel(ctrl | RTC_ENABLE, rtc->base + RTC_CTRL);
+	if (time_reg == 0 && year_reg == 0) {
+		/* Cold boot or uninitialized - set default time */
+		dev_info(&pdev->dev, "RTC uninitialized (time=0), setting to 1970-01-01\n");
+
+		writel(ctrl | RTC_UNLOCK, rtc->base + RTC_CTRL);
+
+		/*
+		 * Initial value set to year:70,mon:0,mday:1,hour:1,min:1,sec:1
+		 * rtc_valid_tm check whether in suitable range or not.
+		 */
+		writel(0x01010101, rtc->base + RTC_TIME);
+		writel(0x00134601, rtc->base + RTC_YEAR);
+
+		writel(ctrl | RTC_ENABLE, rtc->base + RTC_CTRL);
+	} else {
+		/* Warm reboot - RTC has valid time, preserve it by not touching it */
+		dev_info(&pdev->dev, "RTC has valid time (0x%08x/0x%08x), preserving\n",
+			 time_reg, year_reg);
+
+		/*
+		 * Just ensure RTC_ENABLE is set. Don't unlock or write to time
+		 * registers - they already contain the correct value.
+		 */
+		if (!(ctrl & RTC_ENABLE)) {
+			dev_info(&pdev->dev, "Enabling RTC without modifying time\n");
+			writel(ctrl | RTC_ENABLE, rtc->base + RTC_CTRL);
+		}
+	}
 
 	rc = devm_rtc_register_device(rtc->rtc_dev);
 	if (rc) {
