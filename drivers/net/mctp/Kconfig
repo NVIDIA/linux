@@ -74,6 +74,19 @@ config MCTP_TRANSPORT_PCIE_VDM
 	help
 	  Provides a driver to access MCTP devices over PCIe VDM transport,
 	  from DMTF specification DSP0238.
+config NVIDIA_AST27XX_IROT
+	tristate "NVIDIA AST27XX IROT support"
+	depends on ARCH_ASPEED
+	help
+	  Enable support for NVIDIA AST27XX IRoT. Select this option if you want
+	  to use the NVIDIA IRoT functionality on systems based on the ASPEED architecture.
+
+config NVIDIA_OPTEE_VROT
+	tristate "NVIDIA OPTEE VROT support"
+	depends on OPTEE
+	help
+	  Enable support for NVIDIA OPTEE VRoT. Select this option if you want
+	  to use the NVIDIA VRoT functionality running on OPTEE.
 
 endmenu
 
