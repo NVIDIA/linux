@@ -886,6 +886,30 @@
     };
 };
 
+// E1S Backplane GPIO Expander
+&i2c_mcio_c0c1_north6 {
+    // E1S Backplane, Expander @0x20
+    exp22: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "E1S_MCU_RESET_L-O",
+            "E1S_MCU_RECOVERY_L-O",
+            "",
+            "",
+            "",
+            "",
+            "E1S_LOWER_PERST-O",
+            "E1S_UPPER_PERST-O";
+    };
+};
+
 // PCIe RC
 &pcie {
     status = "okay";
