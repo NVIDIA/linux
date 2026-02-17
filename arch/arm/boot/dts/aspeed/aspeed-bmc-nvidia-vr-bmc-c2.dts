@@ -450,7 +450,7 @@
                                     "JTAG_TRST_L_MCU-O",
                                     "CPU0_SSIF_ALERT_L_3V3-I",
                                     "CPU1_SSIF_ALERT_L_1V8-I",
-                                    "",
+                                    "USB_HMC_TO_CPU_FORCE_EN_L-O",
                                     "",
                                     "",
                                     "",
