@@ -23,6 +23,7 @@
 #include <linux/i2c-mux.h>
 #include <linux/if_arp.h>
 #include <linux/ethtool.h>
+#include <linux/delay.h>
 
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
@@ -44,6 +45,11 @@
 #define MCTP_I2C_TX_QUEUE_LEN 1100
 
 #define MCTP_I2C_OF_PROP "mctp-controller"
+
+#define NACK_RETRY_MAX           100
+#define NACK_RETRY_DELAY_MAX_US  1000
+#define NACK_RETRY_DELAY_SLACK_US 1000
+#define NACK_RETRY_ADDR_DISABLED 0xFFFFFFFF
 
 enum {
 	MCTP_I2C_FLOW_STATE_NEW = 0,
@@ -506,6 +512,65 @@ static void mctp_i2c_invalidate_tx_flow(struct mctp_i2c_dev *midev,
 		mctp_i2c_unlock_nest(midev);
 }
 
+/* Helper function to perform I2C transfer with retries */
+static int mctp_i2c_transfer_with_retry(struct mctp_i2c_dev *midev,
+					struct i2c_msg *msg, u8 dest_eid)
+{
+	int retries = 0;
+	int rc;
+
+	do {
+		rc = __i2c_transfer(midev->adapter, msg, 1);
+
+		/* Success */
+		if (rc >= 0) {
+			if (retries > 0) {
+				midev->nack_recovered++;
+				if (retries > midev->eid_stats.eid[dest_eid].tx_nack_retry_depth)
+					midev->eid_stats.eid[dest_eid].tx_nack_retry_depth = retries;
+			}
+			return rc;
+		}
+
+		/* Check for NACK (-ENXIO) and matching address */
+		if (rc == -ENXIO &&
+		    msg->addr == midev->nack_retry_addr &&
+		    retries < midev->nack_retries) {
+
+			if (retries == 0) {
+				MCTP_STAT_INC(midev, dest_eid, tx_nack);
+				set_bit(dest_eid, midev->eid_stats.active);
+			}
+			MCTP_STAT_INC(midev, dest_eid, tx_nack_retries);
+
+			midev->nack_total_retries++;
+			if (retries + 1 > midev->nack_max_depth)
+				midev->nack_max_depth = retries + 1;
+
+			if (midev->nack_retry_delay_us)
+				usleep_range(midev->nack_retry_delay_us,
+					     midev->nack_retry_delay_us + NACK_RETRY_DELAY_SLACK_US);
+
+			retries++;
+			continue;
+		}
+
+		/* Other error or retries exhausted */
+		if (retries > 0) {
+			midev->nack_failed++;
+			if (retries > midev->eid_stats.eid[dest_eid].tx_nack_retry_depth)
+				midev->eid_stats.eid[dest_eid].tx_nack_retry_depth = retries;
+			dev_warn_ratelimited(midev->ndev->dev.parent,
+					     "NACK retry exhausted after %d attempts (addr 0x%02x)\n",
+					     retries, msg->addr);
+		}
+		break;
+
+	} while (1);
+
+	return rc;
+}
+
 static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 {
 	struct net_device_stats *stats = &midev->ndev->stats;
@@ -560,8 +625,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
 		rc = mctp_i2c_error_inject_tx(midev, skb);
 		if (rc == 0)
-			rc = __i2c_transfer(midev->adapter, &msg, 1);
-		
+			rc = mctp_i2c_transfer_with_retry(midev, &msg, dest_eid);
 
 		mctp_i2c_unlock_nest(midev);
 		break;
@@ -580,7 +644,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
 		rc = mctp_i2c_error_inject_tx(midev, skb);
 		if (rc == 0)
-			rc = __i2c_transfer(midev->adapter, &msg, 1);
+			rc = mctp_i2c_transfer_with_retry(midev, &msg, dest_eid);
 
 		/* on tx errors, the flow can no longer be considered valid */
 		if (rc < 0)
@@ -847,6 +911,9 @@ static const struct mctp_i2c_eid_stat_desc mctp_i2c_eid_stat_descs[] = {
 	MCTP_I2C_EID_STAT("tx_retry_success",           tx_retry_success),
 	MCTP_I2C_EID_STAT("tx_retry_exhausted",         tx_retry_exhausted),
 	MCTP_I2C_EID_STAT("tx_requeued",                tx_requeued),
+	MCTP_I2C_EID_STAT("tx_nack",                    tx_nack),
+	MCTP_I2C_EID_STAT("tx_nack_retries",            tx_nack_retries),
+	MCTP_I2C_EID_STAT("tx_nack_retry_depth",        tx_nack_retry_depth),
 };
 
 #define MCTP_I2C_EID_NUM_STATS ARRAY_SIZE(mctp_i2c_eid_stat_descs)
@@ -1004,6 +1071,103 @@ static void mctp_i2c_net_setup(struct net_device *dev)
 	dev->ethtool_ops	= &mctp_i2c_ethtool_ops;
 }
 
+/* ---- sysfs attributes for NACK retry tuning ---- */
+
+static ssize_t nack_retries_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+
+	return sysfs_emit(buf, "%u\n", midev->nack_retries);
+}
+
+static ssize_t nack_retries_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+	u32 val;
+
+	if (kstrtou32(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > NACK_RETRY_MAX)
+		val = NACK_RETRY_MAX;
+
+	midev->nack_retries = val;
+	return count;
+}
+static DEVICE_ATTR_RW(nack_retries);
+
+static ssize_t nack_retry_delay_us_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+
+	return sysfs_emit(buf, "%u\n", midev->nack_retry_delay_us);
+}
+
+static ssize_t nack_retry_delay_us_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+	u32 val;
+
+	if (kstrtou32(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > NACK_RETRY_DELAY_MAX_US)
+		val = NACK_RETRY_DELAY_MAX_US;
+
+	midev->nack_retry_delay_us = val;
+	return count;
+}
+static DEVICE_ATTR_RW(nack_retry_delay_us);
+
+static ssize_t nack_retry_addr_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+
+	return sysfs_emit(buf, "0x%02x\n", midev->nack_retry_addr);
+}
+
+static ssize_t nack_retry_addr_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct net_device *ndev = to_net_dev(dev);
+	struct mctp_i2c_dev *midev = netdev_priv(ndev);
+	u32 val;
+
+	if (kstrtou32(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > 0x7f)
+		val = NACK_RETRY_ADDR_DISABLED;
+
+	midev->nack_retry_addr = val;
+	return count;
+}
+static DEVICE_ATTR_RW(nack_retry_addr);
+
+static struct attribute *mctp_i2c_nack_attrs[] = {
+	&dev_attr_nack_retries.attr,
+	&dev_attr_nack_retry_delay_us.attr,
+	&dev_attr_nack_retry_addr.attr,
+	NULL,
+};
+
+static const struct attribute_group mctp_i2c_nack_group = {
+	.attrs = mctp_i2c_nack_attrs,
+};
+
 /* Populates the mctp_i2c_dev priv struct for a netdev.
  * Returns an error pointer on failure.
  */
@@ -1044,6 +1208,30 @@ static struct mctp_i2c_dev *mctp_i2c_midev_init(struct net_device *dev,
 	/* Start the worker thread */
 	wake_up_process(midev->tx_thread);
 
+	/* Read NACK retry params from the MCTP I2C client's DT node */
+	if (mcli->client->dev.of_node) {
+		if (of_property_read_u32(mcli->client->dev.of_node, "i2c-nack-retries", &midev->nack_retries))
+			midev->nack_retries = 0;
+		else if (midev->nack_retries > NACK_RETRY_MAX)
+			midev->nack_retries = NACK_RETRY_MAX;
+
+		if (of_property_read_u32(mcli->client->dev.of_node, "i2c-nack-retry-delay-us", &midev->nack_retry_delay_us))
+			midev->nack_retry_delay_us = 0;
+		else if (midev->nack_retry_delay_us > NACK_RETRY_DELAY_MAX_US)
+			midev->nack_retry_delay_us = NACK_RETRY_DELAY_MAX_US;
+
+		if (of_property_read_u32(mcli->client->dev.of_node, "i2c-nack-retry-addr", &midev->nack_retry_addr))
+			midev->nack_retry_addr = NACK_RETRY_ADDR_DISABLED;
+		else if (midev->nack_retry_addr > 0x7f)
+			midev->nack_retry_addr = NACK_RETRY_ADDR_DISABLED;
+	} else {
+		midev->nack_retry_addr = NACK_RETRY_ADDR_DISABLED;
+	}
+
+	netdev_info(dev, "NACK retry config: retries=%u delay=%uus addr=0x%02x\n",
+		    midev->nack_retries, midev->nack_retry_delay_us,
+		    midev->nack_retry_addr);
+
 	return midev;
 }
 
@@ -1060,6 +1248,8 @@ static void mctp_i2c_midev_free(struct mctp_i2c_dev *midev)
 
 	/* Unconditionally unlock on close */
 	mctp_i2c_unlock_reset(midev);
+
+	sysfs_remove_group(&midev->ndev->dev.kobj, &mctp_i2c_nack_group);
 
 	/* Remove the netdev from the parent i2c client. */
 	spin_lock_irqsave(&mcli->sel_lock, flags);
@@ -1173,6 +1363,9 @@ static int mctp_i2c_add_netdev(struct mctp_i2c_client *mcli,
 
 	/* Setup error injection after netdev registration (debugfs needs the netdev name) */
 	mctp_i2c_error_inject_init(midev);
+
+	if (sysfs_create_group(&ndev->dev.kobj, &mctp_i2c_nack_group))
+		dev_warn(&mcli->client->dev, "Failed to create NACK sysfs attrs\n");
 
 	spin_lock_irqsave(&midev->lock, flags);
 	midev->allow_rx = false;

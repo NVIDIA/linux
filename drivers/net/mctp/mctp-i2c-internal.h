@@ -42,6 +42,15 @@ struct mctp_i2c_dev {
 	/* A fake entry in our tx queue to perform an unlock operation */
 	struct sk_buff unlock_marker;
 
+	/* NACK retry parameters */
+	u32 nack_retries;
+	u32 nack_retry_delay_us;
+	u32 nack_retry_addr;
+	u32 nack_total_retries;
+	u32 nack_recovered;
+	u32 nack_failed;
+	u32 nack_max_depth;
+
 	/* Spinlock protects i2c_lock_count, release_count, allow_rx */
 	spinlock_t lock;
 	int i2c_lock_count;
@@ -95,6 +104,10 @@ struct mctp_i2c_dev {
 			u64 tx_retry_success;
 			u64 tx_retry_exhausted;
 			u64 tx_requeued;
+			/* NACK retry stats */
+			u64 tx_nack;
+			u64 tx_nack_retries;
+			u64 tx_nack_retry_depth;
 		} eid[257];
 	} eid_stats;	
 };
