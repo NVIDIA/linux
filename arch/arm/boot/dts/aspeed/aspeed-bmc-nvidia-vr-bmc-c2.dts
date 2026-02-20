@@ -905,6 +905,54 @@
     };
 };
 
+// GPU0 GPIO Expander
+&i2c_mcio_c0_south2 {
+    // GPU 0, Expander @0x20
+    exp23: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "GPU0_GLOBAL_WP-O",
+            "GPU0_OOB_RST_N-O",
+            "GPU0_OOB_RECOVERY-O",
+            "GPU0_MCU_RECOVERY_N-O",
+            "GPU0_MCU_RST_N-O",
+            "GPU0_MCU_BYPASS_N-O",
+            "GPU0_SMBUS_FRU_EEPROM_WP-O",
+            "";
+    };
+};
+
+// GPU1 GPIO Expander
+&i2c_mcio_c1_south0 {
+    // GPU 1, Expander @0x20
+    exp24: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "GPU1_GLOBAL_WP-O",
+            "GPU1_OOB_RST_N-O",
+            "GPU1_OOB_RECOVERY-O",
+            "GPU1_MCU_RECOVERY_N-O",
+            "GPU1_MCU_RST_N-O",
+            "GPU1_MCU_BYPASS_N-O",
+            "GPU1_SMBUS_FRU_EEPROM_WP-O",
+            "";
+    };
+};
+
 // PCIe RC
 &pcie0 {
     status = "okay";
