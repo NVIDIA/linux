@@ -450,6 +450,29 @@
 
 // I2C13 E1S/SSD  GPIO Expander
 &i2c13 {
+    exp20: pca9554@20 {
+        compatible = "nxp,pca9554";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "SSD0_PRSNT_L-I",
+            "E1S_PWR_EN-O",
+            "SSD0_PWRDIS-O",
+            "I2C_PDB_ALERT_L-I",
+            "BMC_SSD0_RST_L-O",
+            "GLOBAL_WP_E1S-O",
+            "12V_SSD0_PGD-I",
+            "SSD0_LED-O";
+    };
+
     exp18: pca9554@38 {
         compatible = "nxp,pca9554";
         reg = <0x38>;
