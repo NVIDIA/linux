@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config USB_LSTP
+	tristate "NVIDIA LSTP USB Adapter support"
+	depends on USB
+	depends on I2C
+	depends on SPI
+	help
+	  This adds support for the NVIDIA Low-Speed Transport Protocol (LSTP)
+	  USB adapter. The LSTP adapter provides USB-to-I2C, USB-to-SPI, and
+	  USB-to-IPMI interfaces for host communication with connected devices.
+
+	  This driver can also be built as a module. If so, the module will be
+	  called lstp.
+
+config SEPARATE_LSTP_IPMI_POSTCODES
+	bool "Separate LSTP IPMI post codes writes to another channel"
+	depends on USB_LSTP
+	help
+	  Enable this option to route IPMI post code writes to a separate
+	  miscdevice instead of the main IPMI message path. Since POST codes
+	  do not require a response, this allows faster processing by
+	  bypassing the standard IPMI request-response handling.
