@@ -498,11 +498,6 @@
     };
 };
 
-// USB 1.0
-&uhci {
-   status = "okay";
-};
-
 // I2C1, SSIF IPMI interface
 &i2c0 {
     status = "okay";
