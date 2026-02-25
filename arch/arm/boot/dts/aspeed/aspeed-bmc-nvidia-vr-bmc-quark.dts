@@ -664,23 +664,23 @@
         interrupt-controller;
         #interrupt-cells = <2>;
         interrupt-parent = <&gpio1>;
-	interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
 
         gpio-line-names =
             "BRD0_MCU_RESET_L-O",
             "BRD0_MCU_RECOVERY_L-O",
             "BRD0_GPU_MCU_RESET_L_3V3-O",
             "BRD0_GPU_MCU_RECOVERY_L_3V3-O",
-            "BRD0_CPU0_OVERT_L-I",
-            "BRD0_C0_THERM_WARN_N-I",
-            "BRD0_GPU_OVERT_L-I",
-            "BRD0_GPU_THERM_WARN_N-I",
+            "BRD0_THERM_OVERT_L-I",
+            "BRD0_THERM_WARN_L-I",
+            "BRD0_HMC_IST_PRE_RST_L-O",
+            "BRD0_CPLD_READY-I",
             "BRD0_MODULE_PWR_GOOD-I",
             "BRD0_MCU_HMC_ALERT_L-I",
             "BRD0_USB_HMC_HUB_RST_L-O",
             "BRD0_HPM_MCU_OK-I",
             "BRD0_CPU0_SHDN_OK_L_3V3-I",
-            "BRD0_PRIMARY_NODE_L-O",
+            "BRD0_CPLD_AUTH_FAIL_L-I",
             "BRD0_IST_SYS_RST_L-O",
             "BRD0_PWR_BRAKE_STATUS_L-I";
     };
