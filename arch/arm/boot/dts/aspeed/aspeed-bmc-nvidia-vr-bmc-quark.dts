@@ -649,6 +649,11 @@
     mctp@18 {
         compatible = "mctp-i2c-controller";
         reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+
+        /* NACK Retry Config */
+        i2c-nack-retries = <32>;
+        i2c-nack-retry-delay-us = <0>;
+        i2c-nack-retry-addr = <0x52>;
     };
 
     /* HBM MCU GPIOs on I2C_MGMT1 bus.
