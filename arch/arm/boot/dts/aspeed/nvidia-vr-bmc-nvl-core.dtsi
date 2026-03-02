@@ -215,9 +215,9 @@
 
 &i2c1 {
     // Host I2C bridge to remote FRU client (no children yet)
-    bridge@51 {
+    bridge@54 {
         compatible = "virtual-mux-host";
-        reg = <0x51>;
+        reg = <0x54>;
         virtual-bus-num = <90>;
         status = "okay";
     };
