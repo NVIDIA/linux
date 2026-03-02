@@ -2096,12 +2096,12 @@ static int ast2600_i2c_controller_xfer(struct i2c_adapter *adap, struct i2c_msg 
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	if (i2c_bus->mode == BUFF_MODE) {
 		if (i2c_bus->target_operate)
-			return -EBUSY;
+			return -EAGAIN;
 		/* disable target isr */
 		writel(0, i2c_bus->reg_base + AST2600_I2CS_IER);
 		if ((readl(i2c_bus->reg_base + AST2600_I2CS_ISR) & ~I2C_ACTIVE_SLVADDR_MASK) || i2c_bus->target_operate) {
 			writel(AST2600_I2CS_PKT_DONE, i2c_bus->reg_base + AST2600_I2CS_IER);
-			return -EBUSY;
+			return -EAGAIN;
 		}
 	}
 #endif
