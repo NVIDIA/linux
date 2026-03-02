@@ -35,6 +35,10 @@ struct mctp_usb_batch_ctx {
 	unsigned int num_packets;
 };
 
+/* TX watchdog timeout - abort stuck URBs after this time
+ */
+#define MCTP_USB_TX_TIMEOUT (6 * HZ)
+
 /**
  * mctp_usb_handle_tx_urb_status - Handle TX URB completion status
  * @mctp_usb: MCTP USB device
@@ -865,10 +869,18 @@ MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_usb, struct mctp_usb,
 			    struct mctp_usb_eid_stats, mctp_usb_eid_stat_descs,
 			    "UNKNOWN: URB/pre-parse errors ");
 
+static void mctp_usb_tx_timeout(struct net_device *netdev, unsigned int txqueue)
+{
+	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+	netdev_dbg(netdev, "TX WDT timeout, unlinking stuck URBs\n");
+	usb_unlink_anchored_urbs(&mctp_usb->tx_anchor);
+}
+
 static const struct net_device_ops mctp_usb_netdev_ops = {
 	.ndo_start_xmit = mctp_usb_start_xmit,
 	.ndo_open = mctp_usb_open,
 	.ndo_stop = mctp_usb_stop,
+	.ndo_tx_timeout = mctp_usb_tx_timeout,
 };
 
 static void mctp_usb_netdev_setup(struct net_device *dev)
@@ -884,6 +896,7 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN;
 	dev->flags = IFF_NOARP;
 	dev->netdev_ops = &mctp_usb_netdev_ops;
+	dev->watchdog_timeo = MCTP_USB_TX_TIMEOUT;
 }
 
 static int mctp_usb_probe(struct usb_interface *intf,
