@@ -23,6 +23,11 @@
 		i2c74	= &i2c74;
 		i2c75	= &i2c75;
 		i2c76	= &i2c76;
+		i2c77	= &i2c77;
+		i2c78	= &i2c78;
+		i2c79	= &i2c79;
+		i2c80	= &i2c80;
+		i2c81	= &i2c81;
 	};
 
 	chosen {
@@ -263,6 +268,16 @@
             reg = <1>;
             hub@4 {
                 reg = <4>;
+                device@1 {
+                    reg = <1>;
+                    interface@1 {
+                        reg = <1 1>;
+                        i2c77: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
+                    };
+                };
                 cp2112g: device@2 {
                     reg = <2>;
                     gpio-controller;
@@ -293,6 +308,16 @@
                 reg = <1>;
                 hub@3 {
                     reg = <3>;
+                    device@1 {
+                        reg = <1>;
+                        interface@1 {
+                            reg = <1 1>;
+                            i2c79: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
                     cp2112c: device@2 {
                         reg = <2>;
                         gpio-controller;
@@ -314,10 +339,20 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
                         };
-		            };
+                    };
                 };
                 hub@4 {
                     reg = <4>;
+                    device@1 {
+                        reg = <1>;
+                        interface@1 {
+                            reg = <1 1>;
+                            i2c78: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
                     cp2112d: device@2 {
                         reg = <2>;
                         gpio-controller;
@@ -339,7 +374,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
                         };
-		            };
+                    };
                 };
                 device@1 {
                     reg = <1>;
@@ -518,6 +553,16 @@
                 reg = <2>;
                 hub@3 {
                     reg = <3>;
+                    device@1 {
+                        reg = <1>;
+                        interface@1 {
+                            reg = <1 1>;
+                            i2c80: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
                     cp2112e: device@2 {
                         reg = <2>;
                         gpio-controller;
@@ -543,6 +588,16 @@
                 };
                 hub@4 {
                     reg = <4>;
+                    device@1 {
+                        reg = <1>;
+                        interface@1 {
+                            reg = <1 1>;
+                            i2c81: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
                     cp2112f: device@2 {
                         reg = <2>;
                         gpio-controller;
@@ -564,7 +619,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
                         };
-		            };
+                    };
                 };
                 device@1 {
                     reg = <1>;
