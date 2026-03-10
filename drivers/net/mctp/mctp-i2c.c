@@ -560,9 +560,9 @@ static int mctp_i2c_transfer_with_retry(struct mctp_i2c_dev *midev,
 			midev->nack_failed++;
 			if (retries > midev->eid_stats.eid[dest_eid].tx_nack_retry_depth)
 				midev->eid_stats.eid[dest_eid].tx_nack_retry_depth = retries;
-			dev_warn_ratelimited(midev->ndev->dev.parent,
-					     "NACK retry exhausted after %d attempts (addr 0x%02x)\n",
-					     retries, msg->addr);
+			dev_dbg(midev->ndev->dev.parent,
+				"NACK retry exhausted after %d attempts (addr 0x%02x)\n",
+				retries, msg->addr);
 		}
 		break;
 
