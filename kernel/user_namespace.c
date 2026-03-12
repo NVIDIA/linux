@@ -100,6 +100,14 @@ int create_user_ns(struct cred *new)
 	 * may be accessed that is specified by the root directory,
 	 * by verifying that the root directory is at the root of the
 	 * mount namespace which allows all files to be accessed.
+	 *
+	 * The chroot check prevents unprivileged users in a chroot jail 
+	 * from escaping via user namespaces (by mounting /proc etc.).
+	 * However, a caller with CAP_SYS_ADMIN in the parent user
+	 * namespace could trivially undo the chroot themselves, so
+	 * blocking them is pointless. This is the case for container
+	 * runtimes like systemd-nspawn that chroot into an overlay
+	 * rootfs before creating the inner child with CLONE_NEWUSER.
 	 */
 	ret = -EPERM;
 	if (current_chrooted()) {
@@ -111,8 +119,8 @@ int create_user_ns(struct cred *new)
 		is_real_chroot = !path_equal(&current->fs->root, &init_root);
 		path_put(&init_root);
 
-		/* Only block if this is a real chroot, not overlayfs false-positive */
-		if (is_real_chroot)
+		/* Allow if overlayfs false-positive or caller has CAP_SYS_ADMIN */
+		if (is_real_chroot && !ns_capable(parent_ns, CAP_SYS_ADMIN))
 			goto fail_dec;
 	}
 
