@@ -64,7 +64,7 @@ static int mctp_bind(struct socket *sock, struct sockaddr *addr, int addrlen)
 	if (addr->sa_family != AF_MCTP)
 		return -EAFNOSUPPORT;
 
-	if (!capable(CAP_NET_BIND_SERVICE))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_BIND_SERVICE))
 		return -EACCES;
 
 	/* it's a valid sockaddr for MCTP, cast and do protocol checks */
@@ -125,7 +125,7 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		return -EDESTADDRREQ;
 	}
 
-	if (!capable(CAP_NET_RAW))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_RAW))
 		return -EACCES;
 
 	/* Socket-level error injection - test application error handling
