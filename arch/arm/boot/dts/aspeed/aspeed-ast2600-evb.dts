@@ -536,6 +536,7 @@
 	};
 };
 
+<<<<<<< HEAD
 &spi2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2cs1_default
@@ -568,6 +569,12 @@
 		spi-rx-bus-width = <4>;
 		spi-max-frequency = <50000000>;
 	};
+=======
+&uart5 {
+	// Workaround for A0
+	compatible = "snps,dw-apb-uart";
+	/delete-property/ no-loopback-test;
+>>>>>>> dev-6.12.63
 };
 
 #if 0
@@ -741,10 +748,15 @@
 	status = "okay";
 	bus-width = <4>;
 	max-frequency = <100000000>;
+<<<<<<< HEAD
 	sdhci-drive-type = /bits/ 8 <3>;
 	sdhci-caps-mask = <0x6 0x0>;
 	sdhci,wp-inverted;
 	sd-uhs-sdr104; /* enable sdr104 to execute tuning */
+=======
+	sdhci-caps-mask = <0x7 0x0>;
+	wp-inverted;
+>>>>>>> dev-6.12.63
 	vmmc-supply = <&vcc_sdhci0>;
 	vqmmc-supply = <&vccq_sdhci0>;
 };
@@ -753,10 +765,15 @@
 	status = "okay";
 	bus-width = <4>;
 	max-frequency = <100000000>;
+<<<<<<< HEAD
 	sdhci-drive-type = /bits/ 8 <3>;
 	sdhci-caps-mask = <0x6 0x0>;
 	sdhci,wp-inverted;
 	sd-uhs-sdr104; /* enable sdr104 to execute tuning */
+=======
+	sdhci-caps-mask = <0x7 0x0>;
+	wp-inverted;
+>>>>>>> dev-6.12.63
 	vmmc-supply = <&vcc_sdhci1>;
 	vqmmc-supply = <&vccq_sdhci1>;
 };

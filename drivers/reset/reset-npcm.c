@@ -486,7 +486,11 @@ static int npcm_rc_probe(struct platform_device *pdev)
 	case BMC_NPCM8XX:
 		return npcm8xx_clock_controller_register(rc, "clk-npcm8xx");
 	default:
+<<<<<<< HEAD
 		return 0;
+=======
+		return ret;
+>>>>>>> dev-6.12.63
 	}
 }
 

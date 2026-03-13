@@ -76,6 +76,7 @@ static const struct spi_nor_fixups w25q256_fixups = {
 	.post_bfpt = w25q256_post_bfpt_fixups,
 };
 
+<<<<<<< HEAD
 static int spi_nor_read_w25q02gjv(struct mtd_info *mtd, loff_t from, size_t len,
 				  size_t *retlen, u_char *buf)
 {
@@ -127,6 +128,8 @@ static void w25q02gjv_post_fixups(struct spi_nor *nor)
 	mtd->_read = spi_nor_read_w25q02gjv;
 }
 
+=======
+>>>>>>> dev-6.12.63
 /**
  * winbond_nor_select_die() - Set active die.
  * @nor:	pointer to 'struct spi_nor'.
@@ -200,11 +203,14 @@ static const struct spi_nor_fixups winbond_nor_multi_die_fixups = {
 	.post_sfdp = winbond_nor_multi_die_post_sfdp_fixups,
 };
 
+<<<<<<< HEAD
 static const struct spi_nor_fixups winbond_nor_four_die_fixups = {
 	.post_sfdp = winbond_nor_multi_die_post_sfdp_fixups,
 	.post_fixups = w25q02gjv_post_fixups,
 };
 
+=======
+>>>>>>> dev-6.12.63
 static const struct flash_info winbond_nor_parts[] = {
 	{
 		.id = SNOR_ID(0xef, 0x30, 0x10),
@@ -290,6 +296,7 @@ static const struct flash_info winbond_nor_parts[] = {
 		.id = SNOR_ID(0xef, 0x40, 0x21),
 		.fixups = &winbond_nor_multi_die_fixups,
 	}, {
+<<<<<<< HEAD
 		.id = SNOR_ID(0xef, 0x70, 0x20),
 		.name = "w25q512jvbim",
 		.size = SZ_64M,
@@ -303,6 +310,8 @@ static const struct flash_info winbond_nor_parts[] = {
 		.id = SNOR_ID(0xef, 0x70, 0x21),
 		.fixups = &winbond_nor_multi_die_fixups,
 	}, {
+=======
+>>>>>>> dev-6.12.63
 		.id = SNOR_ID(0xef, 0x50, 0x12),
 		.name = "w25q20bw",
 		.size = SZ_256K,

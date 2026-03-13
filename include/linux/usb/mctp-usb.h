@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * mctp-usb.h - MCTP USB transport binding: common definitions.
@@ -5,6 +6,18 @@
  * These are shared between the host and gadget drivers.
  *
  * Copyright (C) 2024 Code Construct Pty Ltd
+=======
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * mctp-usb.h - MCTP USB transport binding: common definitions,
+ * based on DMTF0283 specification:
+ * https://www.dmtf.org/sites/default/files/standards/documents/DSP0283_1.0.1.pdf
+ *
+ * These are protocol-level definitions, that may be shared between host
+ * and gadget drivers.
+ *
+ * Copyright (C) 2024-2025 Code Construct Pty Ltd
+>>>>>>> dev-6.12.63
  */
 
 #ifndef __LINUX_USB_MCTP_USB_H
@@ -14,8 +27,13 @@
 
 struct mctp_usb_hdr {
 	__be16	id;
+<<<<<<< HEAD
 	__u8	rsvd;
 	__u8	len;
+=======
+	u8	rsvd;
+	u8	len;
+>>>>>>> dev-6.12.63
 } __packed;
 
 #define MCTP_USB_XFER_SIZE	512

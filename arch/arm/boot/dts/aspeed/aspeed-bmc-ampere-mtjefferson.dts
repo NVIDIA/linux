@@ -243,7 +243,11 @@
 				compatible = "ti,tmp75";
 				reg = <0x49>;
 			};
+<<<<<<< HEAD
 			temperature-sensor@4a{
+=======
+			temperature-sensor@4a {
+>>>>>>> dev-6.12.63
 				compatible = "ti,tmp75";
 				reg = <0x4a>;
 			};

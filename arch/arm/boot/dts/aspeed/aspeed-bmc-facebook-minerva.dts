@@ -207,6 +207,11 @@
 		reg = <0x43>;
 	};
 
+	power-monitor@43 {
+		compatible = "infineon,xdp710";
+		reg = <0x43>;
+	};
+
 	leds_gpio: gpio@19 {
 		compatible = "nxp,pca9555";
 		reg = <0x19>;
@@ -312,11 +317,9 @@
 				reg = <0x50>;
 			};
 
-			pwm@5e{
-				compatible = "max31790";
+			pwm@5e {
+				compatible = "maxim,max31790";
 				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
 			};
 
 			power-sensor@40 {
@@ -435,11 +438,9 @@
 				reg = <0x50>;
 			};
 
-			pwm@5e{
-				compatible = "max31790";
+			pwm@5e {
+				compatible = "maxim,max31790";
 				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
 			};
 
 			power-sensor@40 {
@@ -558,11 +559,9 @@
 				reg = <0x50>;
 			};
 
-			pwm@5e{
-				compatible = "max31790";
+			pwm@5e {
+				compatible = "maxim,max31790";
 				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
 			};
 
 			power-sensor@40 {
@@ -681,11 +680,17 @@
 				reg = <0x50>;
 			};
 
+<<<<<<< HEAD
 			pwm@5e{
 				compatible = "max31790";
 				reg = <0x5e>;
 				#address-cells = <1>;
 				#size-cells = <0>;
+=======
+			pwm@5e {
+				compatible = "maxim,max31790";
+				reg = <0x5e>;
+>>>>>>> dev-6.12.63
 			};
 
 			power-sensor@40 {
@@ -804,11 +809,9 @@
 				reg = <0x50>;
 			};
 
-			pwm@5e{
-				compatible = "max31790";
+			pwm@5e {
+				compatible = "maxim,max31790";
 				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
 			};
 
 			power-sensor@40 {
@@ -926,11 +929,9 @@
 				reg = <0x50>;
 			};
 
-			pwm@5e{
-				compatible = "max31790";
+			pwm@5e {
+				compatible = "maxim,max31790";
 				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
 			};
 
 			power-sensor@40 {

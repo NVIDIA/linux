@@ -90,6 +90,7 @@ Hardware Monitoring Kernel Drivers
    ibmpowernv
    ina209
    ina2xx
+   ina233
    ina238
    ina3221
    inspur-ipsps1
@@ -164,8 +165,10 @@ Hardware Monitoring Kernel Drivers
    menf21bmc
    mlxreg-fan
    mp2856
+   mp2869
    mp2888
    mp2891
+   mp29502
    mp2975
    mp2993
    mp5023
@@ -235,6 +238,7 @@ Hardware Monitoring Kernel Drivers
    tmp464
    tmp513
    tps23861
+   tps25990
    tps40422
    tps53679
    tps546d24

@@ -75,6 +75,7 @@ config ASPEED_SOCINFO
 	help
 	  Say yes to support decoding of ASPEED BMC information.
 
+<<<<<<< HEAD
 config ASPEED_XDMA
 	tristate "ASPEED XDMA Engine Driver"
 	select REGMAP
@@ -85,6 +86,8 @@ config ASPEED_XDMA
 	  SoCs. The XDMA engine can perform PCIe DMA operations between the BMC
 	  and a host processor.
 
+=======
+>>>>>>> dev-6.12.63
 config ASPEED_SBC
 	bool "ASPEED Secure Boot Controller driver"
 	default MACH_ASPEED_G6
@@ -92,6 +95,7 @@ config ASPEED_SBC
 	  Say yes to provide information about the secure boot controller in
 	  debugfs.
 
+<<<<<<< HEAD
 config ASPEED_OTP
 	tristate "Aspeed OTP Driver"
 	depends on MACH_ASPEED_G6
@@ -204,6 +208,18 @@ config AST2700_OTP
 	  Enable driver support for Aspeed AST2700 OTP driver.
 
 source "drivers/soc/aspeed/rvas/Kconfig"
+=======
+config ASPEED_XDMA
+	tristate "ASPEED XDMA Engine Driver"
+	select REGMAP
+	select MFD_SYSCON
+	depends on HAS_DMA
+	help
+	  Enables support for the XDMA Engine found on the ASPEED BMC
+	  SoCs. The XDMA engine can perform PCIe DMA operations between the BMC
+	  and a host processor. The driver provides ioctl() interface to reset
+	  and initialize engine.
+>>>>>>> dev-6.12.63
 
 endmenu
 
