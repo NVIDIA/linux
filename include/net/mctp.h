@@ -363,7 +363,6 @@ void mctp_routes_exit(void);
 int mctp_device_init(void);
 void mctp_device_exit(void);
 
-<<<<<<< HEAD
 /* Error queue support */
 u8 mctp_get_binding_type(struct net_device *dev);
 void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
@@ -376,8 +375,6 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 					struct mctp_sk_key *key,
 					struct mctp_sk_key **found_key);
 
-=======
->>>>>>> dev-6.12.63
 /* MCTP IDs and Codes from DMTF specification
  * "DSP0239 Management Component Transport Protocol (MCTP) IDs and Codes"
  * https://www.dmtf.org/sites/default/files/standards/documents/DSP0239_1.11.1.pdf

@@ -146,7 +146,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	if (msk->addr_ext && addrlen >= sizeof(struct sockaddr_mctp_ext)) {
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
 				 extaddr, msg->msg_name);
-<<<<<<< HEAD
 		struct net_device *dev;
 		int bound_dev_if;
 
@@ -165,21 +164,10 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 			}
 		}
 		rcu_read_unlock();
-=======
-
-		if (!mctp_sockaddr_ext_is_ok(extaddr))
-			return -EINVAL;
-
-		rc = mctp_dst_from_extaddr(&dst, sock_net(sk),
-					   extaddr->smctp_ifindex,
-					   extaddr->smctp_halen,
-					   extaddr->smctp_haddr);
->>>>>>> dev-6.12.63
 		if (rc)
 			return rc;
 
 	} else {
-<<<<<<< HEAD
 		int bound_dev_if;
 
 		rt = mctp_route_lookup(sock_net(sk), addr->smctp_network,
@@ -198,12 +186,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		}
 		
 		hlen = LL_RESERVED_SPACE(rt->dev->dev) + sizeof(struct mctp_hdr);
-=======
-		rc = mctp_route_lookup(sock_net(sk), addr->smctp_network,
-				       addr->smctp_addr.s_addr, &dst);
-		if (rc)
-			return rc;
->>>>>>> dev-6.12.63
 	}
 
 	hlen = LL_RESERVED_SPACE(dst.dev->dev) + sizeof(struct mctp_hdr);
@@ -226,7 +208,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	cb = __mctp_cb(skb);
 	cb->net = addr->smctp_network;
 
-<<<<<<< HEAD
 	if (!rt) {
 		/* fill extended address in cb */
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
@@ -246,9 +227,6 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 
 	trace_mctp_tx_packet(skb);
 	rc = mctp_local_output(sk, rt, skb, addr->smctp_addr.s_addr,
-=======
-	rc = mctp_local_output(sk, &dst, skb, addr->smctp_addr.s_addr,
->>>>>>> dev-6.12.63
 			       addr->smctp_tag);
 
 	mctp_dst_release(&dst);

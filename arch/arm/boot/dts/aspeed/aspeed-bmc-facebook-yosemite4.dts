@@ -203,14 +203,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT1_UART_SEL0","SLOT1_UART_SEL1",
 				"SLOT1_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -257,14 +254,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT2_UART_SEL0","SLOT2_UART_SEL1",
 				"SLOT2_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -311,14 +305,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT3_UART_SEL0","SLOT3_UART_SEL1",
 				"SLOT3_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -365,14 +356,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT4_UART_SEL0","SLOT4_UART_SEL1",
 				"SLOT4_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -419,14 +407,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT5_UART_SEL0","SLOT5_UART_SEL1",
 				"SLOT5_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -473,14 +458,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT6_UART_SEL0","SLOT6_UART_SEL1",
 				"SLOT6_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -527,14 +509,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT7_UART_SEL0","SLOT7_UART_SEL1",
 				"SLOT7_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -581,14 +560,11 @@
 		reg = <0x22>;
 		gpio-controller;
 		#gpio-cells = <2>;
-<<<<<<< HEAD
-=======
 		gpio-line-names = "SLOT8_UART_SEL0","SLOT8_UART_SEL1",
 				"SLOT8_UART_SEL2","","","","","",
 				"","","","","","","","",
 				"","","","","","","","",
 				"","","","","","","","";
->>>>>>> dev-6.12.63
 	};
 
 	gpio@23 {
@@ -1224,31 +1200,19 @@
 				ti,mode = /bits/ 8 <1>;
 			};
 
-<<<<<<< HEAD
-			pwm@20{
-=======
 			pwm@20 {
->>>>>>> dev-6.12.63
 				compatible = "maxim,max31790";
 				reg = <0x20>;
 			};
 
-<<<<<<< HEAD
-			gpio@22{
-=======
 			gpio@22 {
->>>>>>> dev-6.12.63
 				compatible = "ti,tca6424";
 				reg = <0x22>;
 				gpio-controller;
 				#gpio-cells = <2>;
 			};
 
-<<<<<<< HEAD
-			pwm@2f{
-=======
 			pwm@2f {
->>>>>>> dev-6.12.63
 				compatible = "maxim,max31790";
 				reg = <0x2f>;
 			};
@@ -1284,31 +1248,19 @@
 				ti,mode = /bits/ 8 <1>;
 			};
 
-<<<<<<< HEAD
-			pwm@20{
-=======
 			pwm@20 {
->>>>>>> dev-6.12.63
 				compatible = "maxim,max31790";
 				reg = <0x20>;
 			};
 
-<<<<<<< HEAD
-			gpio@22{
-=======
 			gpio@22 {
->>>>>>> dev-6.12.63
 				compatible = "ti,tca6424";
 				reg = <0x22>;
 				gpio-controller;
 				#gpio-cells = <2>;
 			};
 
-<<<<<<< HEAD
-			pwm@2f{
-=======
 			pwm@2f {
->>>>>>> dev-6.12.63
 				compatible = "maxim,max31790";
 				reg = <0x2f>;
 			};

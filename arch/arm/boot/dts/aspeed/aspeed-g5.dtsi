@@ -292,7 +292,6 @@
 				status = "disabled";
 			};
 
-<<<<<<< HEAD
 			mctp: mctp@1e6e8000 {
 				compatible = "aspeed,ast2500-mctp";
 				reg = <0x1e6e8000 0x30>;
@@ -304,8 +303,6 @@
 				status = "disabled";
 			};
 
-=======
->>>>>>> dev-6.12.63
 			adc: adc@1e6e9000 {
 				compatible = "aspeed,ast2500-adc";
 				reg = <0x1e6e9000 0xb0>;

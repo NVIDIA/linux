@@ -773,7 +773,6 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 	char *daddr = NULL;
 	int rc;
 
-<<<<<<< HEAD
 	/* Check if this is a tunneled packet from one net dev to another*/
 	bool is_tunnel = (skb->dev != route->dev->dev);
 
@@ -797,26 +796,12 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 			kfree_skb(skb);
 			return -EMSGSIZE;
 		}
-=======
-	skb->protocol = htons(ETH_P_MCTP);
-	skb->pkt_type = PACKET_OUTGOING;
-
-	if (skb->len > dst->mtu) {
-		kfree_skb(skb);
-		return -EMSGSIZE;
->>>>>>> dev-6.12.63
 	}
 	/* else: batched SKB keeps the marked protocol for the driver to detect */
 
-<<<<<<< HEAD
 	if (cb->ifindex && !is_tunnel) {
 		/* direct route; use the hwaddr we stashed in sendmsg */
 		if (cb->halen != skb->dev->addr_len) {
-=======
-	/* direct route; use the hwaddr we stashed in sendmsg */
-	if (dst->halen) {
-		if (dst->halen != skb->dev->addr_len) {
->>>>>>> dev-6.12.63
 			/* sanity check, sendmsg should have already caught this */
 			kfree_skb(skb);
 			return -EMSGSIZE;
@@ -1057,7 +1042,6 @@ static bool mctp_rt_compare_exact(struct mctp_route *rt1,
 				  struct mctp_route *rt2)
 {
 	ASSERT_RTNL();
-<<<<<<< HEAD
 
 	if (rt1->dev->net != rt2->dev->net)
 		return false;
@@ -1070,11 +1054,6 @@ static bool mctp_rt_compare_exact(struct mctp_route *rt1,
 		return false;
 
 	return true;
-=======
-	return mctp_route_netid(rt1) == mctp_route_netid(rt2) &&
-		rt1->min == rt2->min &&
-		rt1->max == rt2->max;
->>>>>>> dev-6.12.63
 }
 
 /* must only be called on a direct route, as the final output hop */
@@ -1190,7 +1169,6 @@ int mctp_route_lookup(struct net *net, unsigned int dnet,
 	return rc;
 }
 
-<<<<<<< HEAD
 /* Fragment and batch: pack multiple fragments into a single SKB with space
  * for transport headers. The transport driver will fill in headers and send.
  * This function may send multiple batches if the message is large.
@@ -1343,34 +1321,6 @@ static int mctp_do_fragment_route_batch(struct mctp_route *rt,
 }
 
 static int mctp_do_fragment_route(struct mctp_route *rt, struct sk_buff *skb,
-=======
-static int mctp_route_lookup_null(struct net *net, struct net_device *dev,
-				  struct mctp_dst *dst)
-{
-	int rc = -EHOSTUNREACH;
-	struct mctp_route *rt;
-
-	rcu_read_lock();
-
-	list_for_each_entry_rcu(rt, &net->mctp.routes, list) {
-		if (rt->dst_type != MCTP_ROUTE_DIRECT || rt->type != RTN_LOCAL)
-			continue;
-
-		if (rt->dev->dev != dev)
-			continue;
-
-		mctp_dst_from_route(dst, 0, 0, rt);
-		rc = 0;
-		break;
-	}
-
-	rcu_read_unlock();
-
-	return rc;
-}
-
-static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
->>>>>>> dev-6.12.63
 				  unsigned int mtu, u8 tag)
 {
 	const unsigned int hlen = sizeof(struct mctp_hdr);
@@ -1469,12 +1419,8 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 		skb_ext_copy(skb2, skb);
 
 		/* do route */
-<<<<<<< HEAD
 		trace_mctp_fragment(hdr->src, hdr->dest, seq, size, skb->len);
 		rc = rt->output(rt, skb2);
-=======
-		rc = dst->output(dst, skb2);
->>>>>>> dev-6.12.63
 		if (rc)
 			break;
 
@@ -1553,7 +1499,6 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	hdr->dest = daddr;
 	hdr->src = saddr;
 
-<<<<<<< HEAD
 	/* Capture original message header for error reporting on fragmented messages.
 	 * This ensures that if a middle or end fragment fails, we can still report
 	 * the original header (PLDM Instance ID, etc.) to the application.
@@ -1583,9 +1528,6 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	}
 
 	mtu = mctp_route_mtu(rt);
-=======
-	mtu = dst->mtu;
->>>>>>> dev-6.12.63
 
 	trace_mctp_local_output(saddr, daddr, tag, skb->len);
 	if (skb->len + sizeof(struct mctp_hdr) <= mtu) {
@@ -1818,7 +1760,6 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	rc = mctp_route_lookup(net, cb->net, mh->dest, &dst);
 
 	/* NULL EID, but addressed to our physical address */
-<<<<<<< HEAD
 	if (!rt && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST) {
 		rt = mctp_route_lookup_null(net, dev);
 		if (!rt) {
@@ -1833,12 +1774,6 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 
 	if (!rt) {
 		trace_mctp_drop_packet(skb, "no_route_found");
-=======
-	if (rc && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST)
-		rc = mctp_route_lookup_null(net, dev, &dst);
-
-	if (rc)
->>>>>>> dev-6.12.63
 		goto err_drop;
 	}
 

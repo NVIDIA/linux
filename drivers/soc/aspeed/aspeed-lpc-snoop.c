@@ -11,10 +11,6 @@
  */
 
 #include <linux/bitops.h>
-<<<<<<< HEAD
-=======
-#include <linux/clk.h>
->>>>>>> dev-6.12.63
 #include <linux/dev_printk.h>
 #include <linux/interrupt.h>
 #include <linux/fs.h>
@@ -86,29 +82,7 @@ struct aspeed_lpc_snoop_channel {
 struct aspeed_lpc_snoop {
 	struct regmap		*regmap;
 	int			irq;
-<<<<<<< HEAD
 	struct aspeed_lpc_snoop_channel chan[ASPEED_LPC_SNOOP_INDEX_MAX + 1];
-=======
-	struct clk		*clk;
-	struct aspeed_lpc_snoop_channel chan[ASPEED_LPC_SNOOP_INDEX_MAX + 1];
-};
-
-static const struct aspeed_lpc_snoop_channel_cfg channel_cfgs[ASPEED_LPC_SNOOP_INDEX_MAX + 1] = {
-	{
-		.index = ASPEED_LPC_SNOOP_INDEX_0,
-		.hicr5_en = HICR5_EN_SNP0W | HICR5_ENINT_SNP0W,
-		.snpwadr_mask = SNPWADR_CH0_MASK,
-		.snpwadr_shift = SNPWADR_CH0_SHIFT,
-		.hicrb_en = HICRB_ENSNP0D,
-	},
-	{
-		.index = ASPEED_LPC_SNOOP_INDEX_1,
-		.hicr5_en = HICR5_EN_SNP1W | HICR5_ENINT_SNP1W,
-		.snpwadr_mask = SNPWADR_CH1_MASK,
-		.snpwadr_shift = SNPWADR_CH1_SHIFT,
-		.hicrb_en = HICRB_ENSNP1D,
-	},
->>>>>>> dev-6.12.63
 };
 
 static const struct aspeed_lpc_snoop_channel_cfg channel_cfgs[ASPEED_LPC_SNOOP_INDEX_MAX + 1] = {
@@ -256,11 +230,7 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 				    u16 lpc_port)
 {
 	const struct aspeed_lpc_snoop_model_data *model_data;
-<<<<<<< HEAD
 	int rc = 0, id;
-=======
-	int rc = 0;
->>>>>>> dev-6.12.63
 
 	if (WARN_ON(channel->enabled))
 		return -EBUSY;
@@ -272,17 +242,12 @@ static int aspeed_lpc_enable_snoop(struct device *dev,
 	channel->miscdev.fops = &snoop_fops;
 	channel->miscdev.parent = dev;
 
-<<<<<<< HEAD
 	id = ida_alloc(&aspeed_lpc_snoop_ida, GFP_KERNEL);
 	if (id < 0)
 		return id;
 
 	channel->miscdev.name =
 		devm_kasprintf(dev, GFP_KERNEL, "%s%d", DEVICE_NAME, id);
-=======
-	channel->miscdev.name =
-		devm_kasprintf(dev, GFP_KERNEL, "%s%d", DEVICE_NAME, cfg->index);
->>>>>>> dev-6.12.63
 	if (!channel->miscdev.name)
 		return -ENOMEM;
 
@@ -359,13 +324,6 @@ static int aspeed_lpc_snoop_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, lpc_snoop);
 
-<<<<<<< HEAD
-=======
-	lpc_snoop->clk = devm_clk_get_enabled(dev, NULL);
-	if (IS_ERR(lpc_snoop->clk))
-		return dev_err_probe(dev, PTR_ERR(lpc_snoop->clk), "couldn't get clock");
-
->>>>>>> dev-6.12.63
 	rc = aspeed_lpc_snoop_config_irq(lpc_snoop, pdev);
 	if (rc)
 		return rc;

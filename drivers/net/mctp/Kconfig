@@ -47,14 +47,11 @@ config MCTP_TRANSPORT_I3C
 	  A MCTP protocol network device is created for each I3C bus
 	  having a "mctp-controller" devicetree property.
 
-<<<<<<< HEAD
 config MCTP_TRANSPORT_SPI
 	tristate "MCTP Over SPI Transprt"
 	help
 	  This is in Kernel mode Mctp Over Spi Driver.
 
-=======
->>>>>>> dev-6.12.63
 config MCTP_TRANSPORT_USB
 	tristate "MCTP USB transport"
 	depends on USB
@@ -65,7 +62,6 @@ config MCTP_TRANSPORT_USB
 	  MCTP-over-USB interfaces are peer-to-peer, so each interface
 	  represents a physical connection to one remote MCTP endpoint.
 
-<<<<<<< HEAD
 	  The driver supports TX packet batching, which can be controlled
 	  at runtime via sysfs (/sys/class/net/mctpusb*/tx_batching).
 	  Batching reduces USB overhead by packing multiple packets into
@@ -92,8 +88,6 @@ config NVIDIA_OPTEE_VROT
 	  Enable support for NVIDIA OPTEE VRoT. Select this option if you want
 	  to use the NVIDIA VRoT functionality running on OPTEE.
 
-=======
->>>>>>> dev-6.12.63
 endmenu
 
 endif

@@ -680,17 +680,9 @@
 				reg = <0x50>;
 			};
 
-<<<<<<< HEAD
-			pwm@5e{
-				compatible = "max31790";
-				reg = <0x5e>;
-				#address-cells = <1>;
-				#size-cells = <0>;
-=======
 			pwm@5e {
 				compatible = "maxim,max31790";
 				reg = <0x5e>;
->>>>>>> dev-6.12.63
 			};
 
 			power-sensor@40 {

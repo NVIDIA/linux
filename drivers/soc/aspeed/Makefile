@@ -12,7 +12,6 @@ obj-$(CONFIG_ASPEED_P2A_CTRL)		+= aspeed-p2a-ctrl.o
 obj-$(CONFIG_ASPEED_SOCINFO)		+= aspeed-socinfo.o
 obj-$(CONFIG_ASPEED_SBC)		+= aspeed-sbc.o
 obj-$(CONFIG_ASPEED_XDMA)		+= aspeed-xdma.o
-<<<<<<< HEAD
 obj-$(CONFIG_AST2500_ESPI)		+= ast2500-espi.o
 obj-$(CONFIG_AST2600_ESPI)		+= ast2600-espi.o
 obj-$(CONFIG_AST2700_ESPI)		+= ast2700-espi.o
@@ -27,5 +26,3 @@ obj-$(CONFIG_AST2700_RTC_OVER_ESPI)	+= ast2700-rtc-over-espi.o
 obj-$(CONFIG_AST2600_OTP)		+= ast2600-otp.o
 obj-$(CONFIG_AST2700_OTP)		+= ast2700-otp.o
 obj-y        += aspeed-2600-ara.o
-=======
->>>>>>> dev-6.12.63

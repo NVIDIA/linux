@@ -85,12 +85,13 @@
 			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>;
+		clocks = <&syscon ASPEED_CLK_HPLL>;
 		arm,cpu-registers-not-fw-configured;
 		always-on;
 	};
 
 	edac: sdram@1e6e0000 {
-		compatible = "aspeed,ast2600-sdram-edac";
+		compatible = "aspeed,ast2600-sdram-edac", "syscon";
 		reg = <0x1e6e0000 0x174>;
 		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -591,19 +592,6 @@
 				resets = <&syscon ASPEED_RESET_DEV_MCTP>;
 				aspeed,scu = <&syscon>;
 				aspeed,pcieh = <&pcie_phy0>;
-				status = "disabled";
-			};
-
-			xdma: xdma@1e6e7000 {
-				compatible = "aspeed,ast2600-xdma";
-				reg = <0x1e6e7000 0x100>;
-				clocks = <&syscon ASPEED_CLK_GATE_BCLK>;
-				resets = <&syscon ASPEED_RESET_DEV_XDMA>, <&syscon ASPEED_RESET_RC_XDMA>;
-				reset-names = "device", "root-complex";
-				interrupts-extended = <&gic GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>,
-						      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
-				aspeed,pcie-device = "bmc";
-				aspeed,scu = <&syscon>;
 				status = "disabled";
 			};
 
@@ -1336,7 +1324,6 @@
 				interrupt-controller;
 				status = "disabled";
 			};
-<<<<<<< HEAD
 
 			udma: dma-controller@1e79e000 {
 				compatible = "aspeed,ast2600-udma";
@@ -1365,8 +1352,6 @@
 				pcie2lpc;
 				status = "disabled";
 			};
-=======
->>>>>>> dev-6.12.63
 		};
 	};
 };

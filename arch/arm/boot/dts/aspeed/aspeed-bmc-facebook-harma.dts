@@ -676,11 +676,7 @@
 	/*T0-T7*/	"","","","","","","","",
 	/*U0-U7*/	"","","","","","","led-identify-gate","",
 	/*V0-V7*/	"","","","",
-<<<<<<< HEAD
-			"rtc-battery-voltage-read-enable","",
-=======
 			"","",
->>>>>>> dev-6.12.63
 			"","",
 	/*W0-W7*/	"","","","","","","","",
 	/*X0-X7*/	"","","","","","","","",
@@ -761,11 +757,7 @@
 	/*F4-F7 line 88-95*/
 	"presence-asic-modules-0","rt-cpu0-p1-force-enable",
 	"presence-asic-modules-1","bios-debug-msg-disable",
-<<<<<<< HEAD
-	"","uart-control-buffer-select",
-=======
 	"power-asic-good","uart-control-buffer-select",
->>>>>>> dev-6.12.63
 	"presence-cmm","ac-control-n",
 	/*G0-G3 line 96-103*/
 	"FM_CPU_CORETYPE2","",
@@ -817,11 +809,7 @@
 	"asic0-card-type-detection2-n","",
 	"uart-switch-lsb","",
 	"uart-switch-msb","",
-<<<<<<< HEAD
-	"","",
-=======
 	"power-12v-memory-good","",
->>>>>>> dev-6.12.63
 	/*M4-M7 line 200-207*/
 	"","","","","","","","",
 	/*N0-N3 line 208-215*/
