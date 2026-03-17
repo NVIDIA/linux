@@ -1381,8 +1381,17 @@ static void ftgmac100_reset(struct ftgmac100 *priv)
 
 	netdev_dbg(netdev, "Resetting NIC...\n");
 
-	/* Lock the world */
-	rtnl_lock();
+	/* If the interface is closing or another task holds the
+	 * RTNL lock (like ftgmac100_stop), we must bail out to
+	 * prevent a circular deadlock.
+	 */
+	if (!netif_running(netdev))
+		return;
+
+	if (!rtnl_trylock()) {
+		schedule_work(&priv->reset_task);
+		return;
+	}
 	if (netdev->phydev)
 		mutex_lock(&netdev->phydev->lock);
 	if (priv->mii_bus)
@@ -1661,6 +1670,11 @@ static int ftgmac100_stop(struct net_device *netdev)
 	free_irq(netdev->irq, netdev);
 	ftgmac100_free_buffers(priv);
 	ftgmac100_free_rings(priv);
+
+	/* With rtnl_trylock in reset, safe to cancel so a stale reset
+	 * never runs after the next ndo_open and breaks the interface.
+	 */
+	cancel_work_sync(&priv->reset_task);
 
 	return 0;
 }
