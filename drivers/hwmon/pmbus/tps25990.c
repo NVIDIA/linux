@@ -433,4 +433,4 @@ module_i2c_driver(tps25990_driver);
 MODULE_AUTHOR("Jerome Brunet <jbrunet@baylibre.com>");
 MODULE_DESCRIPTION("PMBUS driver for TPS25990 eFuse");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS("PMBUS");
+MODULE_IMPORT_NS(PMBUS);

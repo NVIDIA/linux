@@ -71,4 +71,4 @@ module_i2c_driver(crps_driver);
 MODULE_AUTHOR("Ninad Palsule");
 MODULE_DESCRIPTION("PMBus driver for Intel Common Redundant power supplies");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS("PMBUS");
+MODULE_IMPORT_NS(PMBUS);

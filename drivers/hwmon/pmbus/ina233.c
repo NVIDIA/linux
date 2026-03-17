@@ -188,4 +188,4 @@ module_i2c_driver(ina233_driver);
 MODULE_AUTHOR("Leo Yang <leo.yang.sy0@gmail.com>");
 MODULE_DESCRIPTION("PMBus driver for INA233 and compatible chips");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS("PMBUS");
+MODULE_IMPORT_NS(PMBUS);
