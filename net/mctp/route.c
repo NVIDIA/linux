@@ -1032,6 +1032,38 @@ static void mctp_reserve_tag(struct net *net, struct mctp_sk_key *key,
 	refcount_inc(&key->refs);
 }
 
+/* Persistent hint for incremental tag allocation per (net, peer).
+ * Survives key release so req-resp pairs get tag 0, 1, 2, ... over time.
+ *
+ * The hint is deliberately keyed on (net, peer) only, not on the local EID.
+ * The two callers of mctp_alloc_local_tag() disagree on 'local' for the same
+ * peer: mctp_local_output() passes a concrete source EID (saddr), while
+ * mctp_ioctl_alloctag() passes MCTP_ADDR_ANY. Tags for a given peer are drawn
+ * from a single shared 8-tag space on the wire, so keying on 'local' would
+ * fork one peer into several independent next_tag sequences. The hint only
+ * selects a starting point; the conflict walk above still guarantees the
+ * chosen tag is actually free, so sharing a sequence across local EIDs is safe.
+ */
+struct mctp_tag_hint {
+	unsigned int net;
+	mctp_eid_t peer;
+	u8 next_tag;
+	struct hlist_node hlist;
+};
+
+static struct mctp_tag_hint *mctp_tag_hint_find(struct netns_mctp *mns,
+					       unsigned int netid,
+					       mctp_eid_t peer)
+{
+	struct mctp_tag_hint *h;
+
+	hlist_for_each_entry(h, &mns->tag_hints, hlist) {
+		if (h->net == netid && h->peer == peer)
+			return h;
+	}
+	return NULL;
+}
+
 /* Allocate a locally-owned tag value for (local, peer), and reserve
  * it for the socket msk
  */
@@ -1065,7 +1097,9 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	spin_lock_irqsave(&mns->keys_lock, flags);
 
 	/* Walk through the existing keys, looking for potential conflicting
-	 * tags. If we find a conflict, clear that bit from tagbits
+	 * tags. If we find a conflict, clear that bit from tagbits.
+	 * This includes dynamically allocated and preallocated/reserved tags
+	 * (all are keys in the list); we must not allocate a tag already in use.
 	 */
 	hlist_for_each_entry(tmp, &mns->keys, hlist) {
 		/* We can check the lookup fields (*_addr, tag) without the
@@ -1105,7 +1139,36 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	}
 
 	if (tagbits) {
-		key->tag = __ffs(tagbits);
+		struct mctp_tag_hint *hint;
+		u8 start;
+		u8 tag;
+		int i;
+
+		/* Use persistent hint so req-resp pairs get 0, 1, 2, ... even after key release */
+		hint = mctp_tag_hint_find(mns, netid, peer);
+		start = hint ? hint->next_tag : 0;
+
+		/* Pick first free tag starting from hint (incremental per destination) */
+		for (i = 0; i < 8; i++) {
+			tag = (start + i) % 8;
+			if (tagbits & (1 << tag))
+				break;
+		}
+		key->tag = tag;
+
+		/* Update hint for next allocation */
+		if (hint) {
+			hint->next_tag = (tag + 1) % 8;
+		} else {
+			hint = kzalloc(sizeof(*hint), GFP_ATOMIC);
+			if (hint) {
+				hint->net = netid;
+				hint->peer = peer;
+				hint->next_tag = (tag + 1) % 8;
+				hlist_add_head(&hint->hlist, &mns->tag_hints);
+			}
+		}
+
 		mctp_reserve_tag(net, key, msk, lifetime);
 		trace_mctp_key_acquire(key);
 
@@ -2339,6 +2402,7 @@ static int __net_init mctp_routes_net_init(struct net *net)
 	hash_init(ns->binds);
 	mutex_init(&ns->bind_lock);
 	INIT_HLIST_HEAD(&ns->keys);
+	INIT_HLIST_HEAD(&ns->tag_hints);
 	spin_lock_init(&ns->keys_lock);
 	WARN_ON(mctp_default_net_set(net, MCTP_INITIAL_DEFAULT_NET));
 	return 0;
@@ -2346,7 +2410,18 @@ static int __net_init mctp_routes_net_init(struct net *net)
 
 static void __net_exit mctp_routes_net_exit(struct net *net)
 {
+	struct netns_mctp *ns = &net->mctp;
 	struct mctp_route *rt, *tmp;
+	struct mctp_tag_hint *hint;
+	struct hlist_node *hint_tmp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&ns->keys_lock, flags);
+	hlist_for_each_entry_safe(hint, hint_tmp, &ns->tag_hints, hlist) {
+		hlist_del(&hint->hlist);
+		kfree(hint);
+	}
+	spin_unlock_irqrestore(&ns->keys_lock, flags);
 
 	ASSERT_RTNL();
 

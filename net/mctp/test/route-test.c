@@ -1614,6 +1614,12 @@ static void mctp_test_routes_net_exit_unlinks_routes(struct kunit *test)
 	net = kunit_kzalloc(test, sizeof(*net), GFP_KERNEL);
 	KUNIT_ASSERT_NOT_NULL(test, net);
 	INIT_LIST_HEAD(&net->mctp.routes);
+	/* mctp_routes_net_exit() now takes keys_lock and walks tag_hints while
+	 * freeing tag hints; initialize both so this synthetic net does not trip
+	 * "spinlock bad magic" under CONFIG_DEBUG_SPINLOCK.
+	 */
+	spin_lock_init(&net->mctp.keys_lock);
+	INIT_HLIST_HEAD(&net->mctp.tag_hints);
 
 	rt1 = mctp_route_alloc();
 	KUNIT_ASSERT_NOT_NULL(test, rt1);
