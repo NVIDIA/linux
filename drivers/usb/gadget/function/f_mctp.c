@@ -14,6 +14,8 @@
 #include <linux/err.h>
 #include <linux/netdevice.h>
 #include <linux/list.h>
+#include <linux/ethtool.h>
+#include <linux/bitmap.h>
 
 #include <net/mctp.h>
 #include <net/pkt_sched.h>
@@ -24,6 +26,53 @@
 #include <uapi/linux/if_arp.h>
 
 #define MCTP_USB_PREALLOC	4
+
+/**
+ * MCTP_EID_UNKNOWN - Special EID for errors where EID is not yet known
+ *
+ * Value: 256 (out-of-band value to avoid conflict with valid MCTP EIDs 0-254,
+ *        and distinct from broadcast address 255)
+ *
+ * Used for pre-parse errors, allocation failures, and async EP completion
+ * callbacks where the actual endpoint ID cannot be determined.
+ */
+#define MCTP_EID_UNKNOWN 256
+
+/**
+ * MCTP_STAT_INC - Increment per-EID statistics and mark EID as active
+ * @dev_ptr: Pointer to f_mctp structure
+ * @eid_val: EID value (0-256) - use MCTP_EID_UNKNOWN if EID not yet known
+ * @stat_field: Name of the statistics field
+ */
+#define MCTP_STAT_INC(dev_ptr, eid_val, stat_field) do { \
+	typeof(dev_ptr) __dev = (dev_ptr); \
+	unsigned int __eid = (eid_val); \
+	set_bit(__eid, __dev->eid_stats.active); \
+	__dev->eid_stats.eid[__eid].stat_field++; \
+} while (0)
+
+/* Per-EID statistics structure for the gadget function */
+struct f_mctp_eid_stats {
+	/* RX stats */
+	u64 rx_drop_no_memory;		/* SKB allocation failure */
+	u64 rx_drop_invalid_id;		/* Invalid MCTP USB header ID */
+	u64 rx_drop_short_hdr;		/* Packet too short (header check) */
+	u64 rx_drop_short_xfer;		/* Packet too short (transfer) */
+	u64 rx_drop_parse_error;	/* Generic parse error (no hdr) */
+	u64 rx_drop_econnaborted;	/* EP completion: -ECONNABORTED */
+	u64 rx_drop_econnreset;		/* EP completion: -ECONNRESET */
+	u64 rx_drop_eshutdown;		/* EP completion: -ESHUTDOWN */
+	u64 rx_drop_unknown_error;	/* EP completion: other errors */
+	u64 rx_requeued;		/* RX requests requeued */
+	/* TX stats */
+	u64 tx_drop_too_large;		/* SKB too large for transfer */
+	u64 tx_drop_no_req;		/* No TX request available */
+	u64 tx_drop_ep_queue_error;	/* usb_ep_queue() failure */
+	u64 tx_drop_econnaborted;	/* EP completion: -ECONNABORTED */
+	u64 tx_drop_econnreset;		/* EP completion: -ECONNRESET */
+	u64 tx_drop_eshutdown;		/* EP completion: -ESHUTDOWN */
+	u64 tx_drop_unknown_error;	/* EP completion: other errors */
+};
 
 struct f_mctp {
 	struct usb_function	function;
@@ -42,6 +91,19 @@ struct f_mctp {
 	struct list_head	tx_reqs;
 
 	struct work_struct	prealloc_work;
+
+	/* Per-EID statistics tracking - SINGLE source of truth
+	 *
+	 * All statistics are tracked per-endpoint-ID (EID). Special EIDs:
+	 * - EID 0: "null endpoint" - valid packets with EID=0
+	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be
+	 *   determined (EP completion callbacks, allocation failures,
+	 *   pre-parse errors)
+	 */
+	struct {
+		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
+		struct f_mctp_eid_stats eid[257];
+	} eid_stats;
 };
 
 struct f_mctp_opts {
@@ -173,6 +235,8 @@ static void mctp_usbg_prealloc(struct f_mctp *mctp)
 		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_XFER_SIZE,
 					 GFP_KERNEL);
 		if (!skb) {
+			MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN,
+				      rx_drop_no_memory);
 			/* Put it back for next time */
 			spin_lock_irqsave(&mctp->lock, flags);
 			list_add(&req->list, &mctp->rx_reqs);
@@ -229,6 +293,7 @@ static int mctp_usbg_requeue(struct f_mctp *mctp, struct usb_ep *ep,
 		req->buf = skb->data;
 		req->context = skb;
 		rc = usb_ep_queue(ep, req, GFP_ATOMIC);
+		MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN, rx_requeued);
 	} else {
 		/* keep for later allocation */
 		list_add_tail(&req->list, &mctp->rx_reqs);
@@ -256,18 +321,44 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	__skb_put(skb, len);
 
 	hdr = skb_pull_data(skb, sizeof(*hdr));
-	if (!hdr)
+	if (!hdr) {
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN, rx_drop_parse_error);
 		goto err;
+	}
 
 	id = be16_to_cpu(hdr->id);
 	if (id != MCTP_USB_DMTF_ID) {
 		dev_dbg(dev, "%s: invalid id %04x\n", __func__, id);
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		/* Try to extract EID for per-EID tracking */
+		if (skb->len >= sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)skb->data;
+
+			MCTP_STAT_INC(mctp, mh->src, rx_drop_invalid_id);
+		} else {
+			MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN,
+				      rx_drop_invalid_id);
+		}
 		goto err;
 	}
 
 	if (hdr->len < sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
 		dev_dbg(dev, "%s: short packet (hdr) %d\n",
 			__func__, hdr->len);
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		/* USB hdr was pulled; try to extract EID from MCTP data */
+		if (skb->len >= sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)skb->data;
+
+			MCTP_STAT_INC(mctp, mh->src, rx_drop_short_hdr);
+		} else {
+			MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN,
+				      rx_drop_short_hdr);
+		}
 		goto err;
 	}
 
@@ -275,6 +366,17 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	if (hdr->len - sizeof(struct mctp_usb_hdr) < skb->len) {
 		dev_dbg(dev, "%s: short packet (xfer) %d, actual %d\n",
 			__func__, hdr->len, skb->len);
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		/* USB hdr was pulled, MCTP hdr should be accessible */
+		if (skb->len >= sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)skb->data;
+
+			MCTP_STAT_INC(mctp, mh->src, rx_drop_short_xfer);
+		} else {
+			MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN,
+				      rx_drop_short_xfer);
+		}
 		goto err;
 	}
 
@@ -292,11 +394,30 @@ err:
 	/* todo: return to free list */
 	kfree_skb(skb);
 }
+/* Try to extract source EID from partially-received RX buffer data.
+ * On error completion, __skb_put() was never called (skb->len == 0),
+ * but the raw buffer may contain data up to req->actual bytes.
+ * Returns MCTP_EID_UNKNOWN if not enough data was received.
+ */
+static unsigned int mctp_usbg_rx_eid_from_req(struct usb_request *req)
+{
+	unsigned int min_len = sizeof(struct mctp_usb_hdr) +
+			       sizeof(struct mctp_hdr);
+
+	if (req->actual >= min_len && req->buf) {
+		struct mctp_hdr *mh = (struct mctp_hdr *)
+			((u8 *)req->buf + sizeof(struct mctp_usb_hdr));
+		return mh->src;
+	}
+	return MCTP_EID_UNKNOWN;
+}
+
 static void mctp_usbg_out_ep_complete(struct usb_ep *ep,
 				      struct usb_request *req)
 {
 	struct f_mctp *mctp = ep->driver_data;
 	struct usb_composite_dev *cdev = mctp->function.config->cdev;
+	unsigned int eid;
 	int rc;
 
 	switch (req->status) {
@@ -314,14 +435,33 @@ static void mctp_usbg_out_ep_complete(struct usb_ep *ep,
 		break;
 
 	case -ECONNABORTED:
+		mctp->dev->stats.rx_dropped++;
+		eid = mctp_usbg_rx_eid_from_req(req);
+		MCTP_STAT_INC(mctp, eid, rx_drop_econnaborted);
+		kfree_skb(req->context);
+		usb_ep_free_request(ep, req);
+		break;
 	case -ECONNRESET:
+		mctp->dev->stats.rx_dropped++;
+		eid = mctp_usbg_rx_eid_from_req(req);
+		MCTP_STAT_INC(mctp, eid, rx_drop_econnreset);
+		kfree_skb(req->context);
+		usb_ep_free_request(ep, req);
+		break;
 	case -ESHUTDOWN:
+		mctp->dev->stats.rx_dropped++;
+		eid = mctp_usbg_rx_eid_from_req(req);
+		MCTP_STAT_INC(mctp, eid, rx_drop_eshutdown);
 		kfree_skb(req->context);
 		usb_ep_free_request(ep, req);
 		break;
 
 	default:
 		WARNING(cdev, "%s: invalid status %d?", __func__, req->status);
+		mctp->dev->stats.rx_dropped++;
+		eid = mctp_usbg_rx_eid_from_req(req);
+		MCTP_STAT_INC(mctp, eid, rx_drop_unknown_error);
+		kfree_skb(req->context);
 		usb_ep_free_request(ep, req);
 	}
 }
@@ -333,17 +473,31 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 	struct usb_composite_dev *cdev = mctp->function.config->cdev;
 	struct net_device *netdev = mctp->dev;
 	struct sk_buff *skb = req->context;
+	unsigned int tx_len;
 	unsigned long flags;
+	unsigned int dest_eid;
 
+	/* Save length and dest EID before freeing SKB.
+	 * The SKB contains [USB hdr | MCTP hdr | payload].
+	 * mctp_hdr() uses skb_network_header() which still points
+	 * to the MCTP header set by the upper stack.
+	 */
+	tx_len = skb ? skb->len : 0;
+	if (skb && skb->len >= sizeof(struct mctp_usb_hdr) +
+				sizeof(struct mctp_hdr)) {
+		struct mctp_hdr *mh = mctp_hdr(skb);
+		dest_eid = mh->dest;
+	} else {
+		// We cant extract the dest EID, so we set it to unknown
+		dest_eid = MCTP_EID_UNKNOWN;
+	}
 	kfree_skb(skb);
 	req->context = NULL;
 	req->buf = NULL;
 
-	/* todo: tx stats */
-
 	switch (req->status) {
 	case 0:
-		netdev->stats.tx_bytes += skb->len;
+		netdev->stats.tx_bytes += tx_len;
 		netdev->stats.tx_packets++;
 		spin_lock_irqsave(&mctp->lock, flags);
 		if (list_empty(&mctp->tx_reqs))
@@ -351,13 +505,25 @@ static void mctp_usbg_in_ep_complete(struct usb_ep *ep,
 		list_add(&req->list, &mctp->tx_reqs);
 		spin_unlock_irqrestore(&mctp->lock, flags);
 		break;
-	default:
-		WARNING(cdev, "%s: invalid status %d?", __func__, req->status);
-		fallthrough;
 	case -ECONNABORTED:
+		netdev->stats.tx_dropped++;
+		MCTP_STAT_INC(mctp, dest_eid, tx_drop_econnaborted);
+		usb_ep_free_request(ep, req);
+		break;
 	case -ECONNRESET:
+		netdev->stats.tx_dropped++;
+		MCTP_STAT_INC(mctp, dest_eid, tx_drop_econnreset);
+		usb_ep_free_request(ep, req);
+		break;
 	case -ESHUTDOWN:
 		netdev->stats.tx_dropped++;
+		MCTP_STAT_INC(mctp, dest_eid, tx_drop_eshutdown);
+		usb_ep_free_request(ep, req);
+		break;
+	default:
+		WARNING(cdev, "%s: invalid status %d?", __func__, req->status);
+		netdev->stats.tx_dropped++;
+		MCTP_STAT_INC(mctp, dest_eid, tx_drop_unknown_error);
 		usb_ep_free_request(ep, req);
 		break;
 	}
@@ -469,8 +635,13 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	unsigned int plen;
 	int rc;
 
-	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE)
+	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE) {
+		/* Extract EID for tracking before dropping */
+		struct mctp_hdr *mh = mctp_hdr(skb);
+
+		MCTP_STAT_INC(mctp, mh->dest, tx_drop_too_large);
 		goto drop;
+	}
 
 	spin_lock_irqsave(&mctp->lock, flags);
 	req = list_first_entry_or_null(&mctp->tx_reqs, struct usb_request, list);
@@ -483,7 +654,10 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	spin_unlock_irqrestore(&mctp->lock, flags);
 
 	if (!req) {
+		struct mctp_hdr *mh = mctp_hdr(skb);
+
 		netdev_warn(dev, "no tx reqs available\n");
+		MCTP_STAT_INC(mctp, mh->dest, tx_drop_no_req);
 		goto drop;
 	}
 
@@ -500,7 +674,10 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 
 	rc = usb_ep_queue(mctp->in_ep, req, GFP_ATOMIC);
 	if (rc) {
+		struct mctp_hdr *mh = mctp_hdr(skb);
+
 		netdev_warn(dev, "tx queue failed: %d\n", rc);
+		MCTP_STAT_INC(mctp, mh->dest, tx_drop_ep_queue_error);
 		req->context = NULL;
 		req->buf = NULL;
 		spin_lock_irqsave(&mctp->lock, flags);
@@ -530,6 +707,204 @@ static int mctp_usbg_stop(struct net_device *net)
 {
 	return 0;
 }
+
+/* ---- Ethtool statistics support ---- */
+
+/* Per-EID stat descriptors for ethtool */
+struct f_mctp_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define F_MCTP_EID_STAT(field) { \
+	.name = #field, \
+	.offset = offsetof(struct f_mctp_eid_stats, field) \
+}
+
+static const struct f_mctp_eid_stat_desc f_mctp_eid_stat_descs[] = {
+	F_MCTP_EID_STAT(rx_drop_no_memory),
+	F_MCTP_EID_STAT(rx_drop_invalid_id),
+	F_MCTP_EID_STAT(rx_drop_short_hdr),
+	F_MCTP_EID_STAT(rx_drop_short_xfer),
+	F_MCTP_EID_STAT(rx_drop_parse_error),
+	F_MCTP_EID_STAT(rx_drop_econnaborted),
+	F_MCTP_EID_STAT(rx_drop_econnreset),
+	F_MCTP_EID_STAT(rx_drop_eshutdown),
+	F_MCTP_EID_STAT(rx_drop_unknown_error),
+	F_MCTP_EID_STAT(rx_requeued),
+	F_MCTP_EID_STAT(tx_drop_too_large),
+	F_MCTP_EID_STAT(tx_drop_no_req),
+	F_MCTP_EID_STAT(tx_drop_ep_queue_error),
+	F_MCTP_EID_STAT(tx_drop_econnaborted),
+	F_MCTP_EID_STAT(tx_drop_econnreset),
+	F_MCTP_EID_STAT(tx_drop_eshutdown),
+	F_MCTP_EID_STAT(tx_drop_unknown_error),
+};
+
+#define F_MCTP_EID_NUM_STATS ARRAY_SIZE(f_mctp_eid_stat_descs)
+
+/* Helper: count non-zero stats for one EID */
+static int f_mctp_count_eid_nonzero(struct f_mctp *mctp, unsigned int eid)
+{
+	struct f_mctp_eid_stats *es = &mctp->eid_stats.eid[eid];
+	u8 *base = (u8 *)es;
+	int count = 0;
+	unsigned int i;
+
+	for (i = 0; i < F_MCTP_EID_NUM_STATS; i++) {
+		if (*(u64 *)(base + f_mctp_eid_stat_descs[i].offset) != 0)
+			count++;
+	}
+	return count;
+}
+
+/* Helper: count total ethtool entries for all active EIDs */
+static int f_mctp_count_eid_stats(struct f_mctp *mctp)
+{
+	int count = 0;
+	int eid;
+
+	for_each_set_bit(eid, mctp->eid_stats.active, 257) {
+		int nz = f_mctp_count_eid_nonzero(mctp, eid);
+
+		if (nz > 0)
+			count += 1 + nz;  /* header + non-zero stats */
+	}
+	return count;
+}
+
+/* Helper: sum all stats for one EID */
+static u64 f_mctp_eid_stats_total(struct f_mctp *mctp, unsigned int eid)
+{
+	struct f_mctp_eid_stats *es = &mctp->eid_stats.eid[eid];
+	u8 *base = (u8 *)es;
+	u64 total = 0;
+	unsigned int i;
+
+	for (i = 0; i < F_MCTP_EID_NUM_STATS; i++)
+		total += *(u64 *)(base + f_mctp_eid_stat_descs[i].offset);
+	return total;
+}
+
+static void mctp_usbg_get_strings(struct net_device *ndev, u32 stringset,
+				   u8 *data)
+{
+	struct f_mctp *mctp = netdev_priv(ndev);
+	unsigned int i;
+	int eid;
+
+	if (stringset != ETH_SS_STATS)
+		return;
+
+	/* Aggregate stats (summed across all EIDs) */
+	for (i = 0; i < F_MCTP_EID_NUM_STATS; i++) {
+		snprintf(data, ETH_GSTRING_LEN, "%-30s",
+			 f_mctp_eid_stat_descs[i].name);
+		data += ETH_GSTRING_LEN;
+	}
+
+	/* Separator */
+	snprintf(data, ETH_GSTRING_LEN,
+		 "                              ");
+	data += ETH_GSTRING_LEN;
+
+	/* Per-EID stats (only active EIDs with non-zero values) */
+	for_each_set_bit(eid, mctp->eid_stats.active, 257) {
+		struct f_mctp_eid_stats *es = &mctp->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = f_mctp_count_eid_nonzero(mctp, eid);
+
+		if (nz == 0)
+			continue;
+
+		/* EID header line */
+		if (eid == MCTP_EID_UNKNOWN)
+			snprintf(data, ETH_GSTRING_LEN,
+				 "UNKNOWN: EP/pre-parse errors  ");
+		else if (eid == 0)
+			snprintf(data, ETH_GSTRING_LEN,
+				 "EID_0: null endpoint          ");
+		else
+			snprintf(data, ETH_GSTRING_LEN,
+				 "EID_%-3u                       ", eid);
+		data += ETH_GSTRING_LEN;
+
+		/* Individual non-zero stats for this EID */
+		for (i = 0; i < F_MCTP_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base +
+					   f_mctp_eid_stat_descs[i].offset);
+			if (val != 0) {
+				snprintf(data, ETH_GSTRING_LEN, "%-30s",
+					 f_mctp_eid_stat_descs[i].name);
+				data += ETH_GSTRING_LEN;
+			}
+		}
+	}
+}
+
+static int mctp_usbg_get_sset_count(struct net_device *ndev, int sset)
+{
+	struct f_mctp *mctp = netdev_priv(ndev);
+
+	if (sset == ETH_SS_STATS)
+		return F_MCTP_EID_NUM_STATS   /* aggregates */
+		       + 1                     /* separator */
+		       + f_mctp_count_eid_stats(mctp);  /* per-EID */
+
+	return -EOPNOTSUPP;
+}
+
+static void mctp_usbg_get_ethtool_stats(struct net_device *ndev,
+					 struct ethtool_stats *stats,
+					 u64 *data)
+{
+	struct f_mctp *mctp = netdev_priv(ndev);
+	unsigned int i, idx = 0;
+	int eid;
+
+	/* Aggregate stats (summed across all EIDs) */
+	for (i = 0; i < F_MCTP_EID_NUM_STATS; i++) {
+		u64 total = 0;
+
+		for_each_set_bit(eid, mctp->eid_stats.active, 257) {
+			u8 *base = (u8 *)&mctp->eid_stats.eid[eid];
+
+			total += *(u64 *)(base +
+					  f_mctp_eid_stat_descs[i].offset);
+		}
+		data[idx++] = total;
+	}
+
+	/* Separator */
+	data[idx++] = 0;
+
+	/* Per-EID stats (only active EIDs with non-zero values) */
+	for_each_set_bit(eid, mctp->eid_stats.active, 257) {
+		struct f_mctp_eid_stats *es = &mctp->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = f_mctp_count_eid_nonzero(mctp, eid);
+
+		if (nz == 0)
+			continue;
+
+		/* EID header: value is sum of all stats for this EID */
+		data[idx++] = f_mctp_eid_stats_total(mctp, eid);
+
+		/* Individual non-zero stats */
+		for (i = 0; i < F_MCTP_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base +
+					   f_mctp_eid_stat_descs[i].offset);
+			if (val != 0)
+				data[idx++] = val;
+		}
+	}
+}
+
+static const struct ethtool_ops mctp_usbg_ethtool_ops = {
+	.get_strings = mctp_usbg_get_strings,
+	.get_sset_count = mctp_usbg_get_sset_count,
+	.get_ethtool_stats = mctp_usbg_get_ethtool_stats,
+};
 
 static const struct net_device_ops mctp_usbg_netdev_ops = {
 	.ndo_open = mctp_usbg_open,
@@ -605,6 +980,7 @@ static void mctp_usbg_netdev_setup(struct net_device *dev)
 	dev->type = ARPHRD_MCTP;
 
 	dev->mtu = MCTP_USB_MTU_MIN;
+	dev->ethtool_ops = &mctp_usbg_ethtool_ops;
 	dev->min_mtu = MCTP_USB_MTU_MIN;
 	dev->max_mtu = MCTP_USB_MTU_MAX;
 
@@ -710,5 +1086,18 @@ static struct usb_function_instance *mctp_usbg_alloc_instance(void)
 	return &opts->function_instance;
 }
 
-DECLARE_USB_FUNCTION_INIT(mctp, mctp_usbg_alloc_instance, mctp_usbg_alloc_func);
+DECLARE_USB_FUNCTION(mctp, mctp_usbg_alloc_instance, mctp_usbg_alloc_func);
+
+static int __init mctp_usbg_mod_init(void)
+{
+	return usb_function_register(&mctpusb_func);
+}
+
+static void __exit mctp_usbg_mod_exit(void)
+{
+	usb_function_unregister(&mctpusb_func);
+}
+
+module_init(mctp_usbg_mod_init);
+module_exit(mctp_usbg_mod_exit);
 MODULE_LICENSE("GPL");
