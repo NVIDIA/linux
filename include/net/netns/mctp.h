@@ -26,6 +26,9 @@ struct netns_mctp {
 	spinlock_t keys_lock;
 	struct hlist_head keys;
 
+	/* Persistent "next tag" hint per (net, peer) for incremental allocation */
+	struct hlist_head tag_hints;
+
 	/* MCTP network */
 	unsigned int default_net;
 
