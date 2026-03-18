@@ -970,6 +970,10 @@
     clock-frequency = <400000>;
     mctp-controller;
     multi-master;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    mctp-no-flows;
+    i2c-retries = <30>;
+    i2c-timeout-ms = <150>;
 
     mctp@18 {
         compatible = "mctp-i2c-controller";
