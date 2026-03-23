@@ -169,6 +169,7 @@ struct aspeed_spi {
 
 	struct clk		*clk;
 	u32			 clk_freq;
+	bool 			 three_byte_reads;
 
 	struct aspeed_spi_chip	 chips[ASPEED_SPI_MAX_NUM_CS];
 
@@ -511,7 +512,10 @@ static int aspeed_spi_exec_op_normal_mode(struct spi_mem *mem,
 		if (op->addr.nbytes == 3)
 			addr_mode_reg &= ~(0x11 << cs);
 		else
-			addr_mode_reg |= (0x11 << cs);
+			if (aspi->three_byte_reads)
+				addr_mode_reg |= (0x01 << cs);
+			else
+				addr_mode_reg |= (0x11 << cs);
 
 		addr_data_mask &= 0x0f;
 		op_addr = chip->ahb_base + op->addr.val;
@@ -1360,7 +1364,11 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 			u32 addr_mode = readl(aspi->regs + CE_CTRL_REG);
 
 			if (op->addr.nbytes == 4)
-				addr_mode |= (0x11 << chip->cs);
+				if (aspi->three_byte_reads) {
+					addr_mode &= ~0x10;
+					addr_mode |= (0x01 << chip->cs);
+				} else
+					addr_mode |= (0x11 << chip->cs);
 			else
 				addr_mode &= ~(0x11 << chip->cs);
 			writel(addr_mode, aspi->regs + CE_CTRL_REG);
@@ -1620,6 +1628,8 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 		dev_err(dev, "invalid clock\n");
 		return -EINVAL;
 	}
+
+	aspi->three_byte_reads = of_property_read_bool(dev->of_node, "aspeed,three_byte_reads");
 
 	reset = devm_reset_control_get_exclusive(dev, NULL);
 	if (!IS_ERR(reset))
