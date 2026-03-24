@@ -527,17 +527,13 @@
     i2c-scl-clk-low-timeout-us = <32000>;
     i2c-tck-thddat-config = <0x0099EC00>;
 
-    mctp@18 {
-        compatible = "mctp-i2c-controller";
-        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
-    };
-
 	i2c-mux@70 {
 		compatible = "nxp,pca9548";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x70>;
 		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
 
 		i2c_mcio_c0_south0: i2c@0 {
 			#address-cells = <1>;
@@ -579,7 +575,6 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <6>;
-                        mctp-controller;
 		};
 
 		i2c_mcio_c0_south7: i2c@7 {
@@ -595,6 +590,7 @@
 		#size-cells = <0>;
 		reg = <0x71>;
 		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
 
 		i2c_mcio_c0c1_north0: i2c@0 {
 			#address-cells = <1>;
@@ -651,6 +647,7 @@
 		#size-cells = <0>;
 		reg = <0x75>;
 		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
 
 		i2c_mcio_c1_south0: i2c@0 {
 			#address-cells = <1>;
@@ -692,7 +689,6 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <6>;
-                        mctp-controller;
 		};
 
 		i2c_mcio_c1_south7: i2c@7 {
