@@ -174,7 +174,7 @@ struct mctp_error {
 
 /*
  * Socket Statistics Support
- * For per-socket and global statistics via getsockopt/netlink
+ * For per-socket statistics via getsockopt
  */
 
 /* New socket option for statistics */
@@ -224,65 +224,12 @@ struct mctp_sock_stats_info {
 	__u8  bind_addr;
 	__u8  bind_type;
 	__u16 reserved;
+	__u32 __pad; /* explicit padding: aligns tx_dropped_bad_addrlen to 8 bytes */
+
+	/* New drop reasons — appended after connection info to preserve ABI;
+	 * __pad ensures 8-byte alignment without relying on implicit compiler padding.
+	 */
+	__u64 tx_dropped_bad_addrlen;
 };
-
-/* MCTP global statistics structure (for Netlink) */
-struct mctp_global_stats {
-	__u32 num_sockets;
-	__u32 num_bound_sockets;
-
-	__u64 tx_bytes;
-	__u64 tx_packets;
-	__u64 tx_messages;
-	__u64 tx_errors;
-	__u64 tx_drops;
-
-	__u64 rx_bytes;
-	__u64 rx_packets;
-	__u64 rx_messages;
-	__u64 rx_errors;
-	__u64 rx_drops;
-
-	/* Detailed drop reasons - RX */
-	__u64 rx_dropped_no_route;
-	__u64 rx_dropped_no_memory;
-	__u64 rx_dropped_seq_mismatch;
-	__u64 rx_dropped_tag_mismatch;
-	__u64 rx_dropped_queue_full;
-	__u64 rx_dropped_invalid_header;
-	__u64 rx_dropped_permission;
-	__u64 rx_dropped_timeout;
-
-	/* Detailed drop reasons - TX */
-	__u64 tx_dropped_no_route;
-	__u64 tx_dropped_mtu_exceeded;
-	__u64 tx_dropped_no_memory;
-	__u64 tx_dropped_queue_full;
-	__u64 tx_dropped_device_down;
-	__u64 tx_dropped_tag_exhaustion;
-	__u64 tx_dropped_permission;
-};
-
-/*
- * Generic Netlink interface for MCTP statistics
- * Family name: "mctp"
- * Version: 1
- */
-
-/* Commands */
-enum {
-	MCTP_CMD_UNSPEC,
-	MCTP_CMD_GET_STATS,	/* Get global statistics */
-	__MCTP_CMD_MAX,
-};
-#define MCTP_CMD_MAX (__MCTP_CMD_MAX - 1)
-
-/* Attributes */
-enum {
-	MCTP_ATTR_UNSPEC,
-	MCTP_ATTR_STATS,	/* struct mctp_global_stats */
-	__MCTP_ATTR_MAX,
-};
-#define MCTP_ATTR_MAX (__MCTP_ATTR_MAX - 1)
 
 #endif /* __UAPI_MCTP_H */

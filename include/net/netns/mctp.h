@@ -67,6 +67,7 @@ struct netns_mctp {
 	atomic64_t tx_dropped_device_down;
 	atomic64_t tx_dropped_tag_exhaustion;
 	atomic64_t tx_dropped_permission;
+	atomic64_t tx_dropped_bad_addrlen;
 };
 
 #endif /* __NETNS_MCTP_H__ */

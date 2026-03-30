@@ -17,7 +17,6 @@ monitoring, and troubleshooting:
 **Available Interfaces:**
 
 * **Per-socket stats:** Socket option ``MCTP_OPT_SOCK_STATS`` (C API)
-* **Global stats:** Generic Netlink family ``"mctp"`` (binary)
 * **Socket list:** ``/proc/net/mctp/sockets`` (human-readable)
 * **Global view:** ``/proc/net/mctp/stats`` (human-readable)
 * **Device stats:** ``ethtool -S`` (transport-specific)
@@ -80,13 +79,8 @@ Each MCTP socket maintains its own set of statistics accessible via the
 Global Statistics
 -----------------
 
-System-wide statistics are available via two interfaces:
-
-1. **Generic Netlink** (primary, programmatic access)
-2. **``/proc/net/mctp/stats``** (convenience, human-readable)
-
-The Netlink interface provides structured binary data suitable for monitoring
-tools, while the /proc interface is convenient for debugging.
+System-wide statistics are available via **``/proc/net/mctp/stats``**
+(human-readable, convenient for debugging).
 
 Per-Socket List
 ---------------
@@ -332,7 +326,7 @@ MCTP provides statistics at three layers:
     │  └─ /proc/net/mctp/sockets             │  ← Socket list + stats
     │  └─ /proc/net/mctp/stats               │  ← Global aggregates
     │     What: Routing, fragmentation        │
-    │     Tool: procfs, Netlink               │
+    │     Tool: procfs                        │
     └─────────────────────────────────────────┘
                       ↓
     ┌─────────────────────────────────────────┐
@@ -375,63 +369,18 @@ Per-Socket Statistics (C API)
         return 1;
     }
 
-    printf("TX: %llu bytes, %llu packets, %llu messages\\n",
+    printf("TX: %llu bytes, %llu packets, %llu messages\n",
            stats.tx_bytes, stats.tx_packets, stats.tx_messages);
-    printf("RX: %llu bytes, %llu packets, %llu messages\\n",
+    printf("RX: %llu bytes, %llu packets, %llu messages\n",
            stats.rx_bytes, stats.rx_packets, stats.rx_messages);
-    printf("TX Drops: %llu (no route: %llu, tag exhaust: %llu)\\n",
+    printf("TX Drops: %llu (no route: %llu, tag exhaust: %llu)\n",
            stats.tx_drops,
            stats.tx_dropped_no_route, stats.tx_dropped_tag_exhaustion);
-    printf("RX Drops: %llu (seq mismatch: %llu, timeout: %llu)\\n",
+    printf("RX Drops: %llu (seq mismatch: %llu, timeout: %llu)\n",
            stats.rx_drops,
            stats.rx_dropped_seq_mismatch, stats.rx_dropped_timeout);
 
     close(fd);
-
-Global Statistics via Netlink (C API)
---------------------------------------
-
-.. code-block:: c
-
-    #include <linux/genetlink.h>
-    #include <linux/mctp.h>
-    #include <libmnl/libmnl.h>
-
-    /* Using libmnl (netlink library) */
-    struct mnl_socket *nl;
-    struct nlmsghdr *nlh;
-    struct genlmsghdr *genl;
-    int family_id;
-
-    /* Open netlink socket */
-    nl = mnl_socket_open(NETLINK_GENERIC);
-    mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID);
-
-    /* Resolve family ID for "mctp" */
-    family_id = genl_ctrl_resolve(nl, "mctp");
-
-    /* Build request */
-    nlh = mnl_nlmsg_put_header(buf);
-    nlh->nlmsg_type = family_id;
-    nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
-    nlh->nlmsg_seq = time(NULL);
-
-    genl = mnl_nlmsg_put_extra_header(nlh, sizeof(struct genlmsghdr));
-    genl->cmd = MCTP_CMD_GET_STATS;
-    genl->version = 1;
-
-    /* Send and receive */
-    mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
-    ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-
-    /* Parse response - will contain MCTP_ATTR_STATS with
-     * struct mctp_global_stats
-     */
-    struct mctp_global_stats *stats;
-    /* ... parse netlink attributes ... */
-
-    printf("Global TX: %llu packets, %llu bytes\n",
-           stats->tx_packets, stats->tx_bytes);
 
 Global Statistics via /proc (Shell)
 ------------------------------------
@@ -496,14 +445,16 @@ Per-Socket Statistics via /proc (Shell)
 .. code-block:: text
 
     Socket List:
-      PID    Net  Type         State      TX Msgs   RX Msgs
-      ---    ---  ----         -----      -------   -------
-      2339   0    SPDM         BOUND           156       156
-      2174   0    Vendor(7E)   BOUND         91549     91547
+      PID    Net  Type         State      TX Msgs   RX Msgs   Keys
+      ---    ---  ----         -----      -------   -------   ----
+      2339   0    0x05         BOUND           156       156      2
+        local  12 -> peer  34: 2 key(s)
+      2174   0    0x7e         BOUND         91549     91547      0
         RX Drops: 1 (Timeout: 1)
-      1091   0    Vendor(7F)   BOUND            61        61
-      521    0    PLDM         BOUND            85        85
-      559    0    Control      BOUND             0         2
+      1091   0    0x7f         BOUND            61        61      1
+        local  12 -> peer  56: 1 key(s)
+      521    0    0x01         BOUND            85        85      0
+      559    0    0x00         BOUND             0         2      0
 
     Closed Sockets (Aggregate by Process):
       Name             TX Msgs   RX Msgs   TX Drops  RX Drops
@@ -518,10 +469,15 @@ The output has two sections:
 
 - **PID:** Process ID that created the socket
 - **Net:** Bound network ID
-- **Type:** MCTP message type (e.g., PLDM, SPDM, Control, Vendor(7E))
+- **Type:** MCTP message type as a hex value (e.g., 0x01 for PLDM, 0x05 for SPDM)
 - **State:** Always ``BOUND`` (only bound sockets are in this list)
 - **TX/RX Msgs:** Message counts; drop details printed on an indented line
   only when non-zero, in the form ``TX/RX Drops: <total> (<Reason>:<count>, ...)``
+- **Keys:** Number of active MCTP tag keys held by this socket. For each unique
+  ``{local EID, peer EID}`` pair that holds at least one key, an indented line
+  is printed in the form ``local <eid> -> peer <eid>: <n> key(s)``, showing how
+  the tag budget is distributed across destinations. Since MCTP allows at most
+  8 tags (3-bit tag field), a maximum of 8 such lines can appear per socket.
 
 **Closed Sockets (Aggregate by Process)** — one row per process name that has
 ever closed an MCTP socket with non-zero activity since the module was loaded.
@@ -628,10 +584,11 @@ This captures:
     
     === MCTP Active Sockets ===
     Socket List:
-      PID    Net  Type         State      TX Msgs   RX Msgs
-      ---    ---  ----         -----      -------   -------
-      521    0    PLDM         BOUND            85        85
-      2339   0    SPDM         BOUND           156       156
+      PID    Net  Type         State      TX Msgs   RX Msgs   Keys
+      ---    ---  ----         -----      -------   -------   ----
+      521    0    0x01         BOUND            85        85      0
+      2339   0    0x05         BOUND           156       156      2
+        local  12 -> peer  34: 2 key(s)
         RX Drops: 1 (Timeout: 1)
 
     Closed Sockets (Aggregate by Process):
@@ -781,14 +738,6 @@ Socket Layer Statistics
     cat /proc/net/mctp/sockets
     # Shows: active sockets (PID, type, net, TX/RX msgs, drop reasons)
     #        + closed socket history aggregated by process name
-
-**Global Stats (Netlink):**
-
-::
-
-    Family: "mctp"
-    Command: MCTP_CMD_GET_STATS
-    Returns: MCTP_ATTR_STATS (struct mctp_global_stats)
 
 **Global Stats (Shell):**
 

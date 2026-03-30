@@ -142,6 +142,7 @@ struct mctp_sock {
 		u64 tx_dropped_device_down;
 		u64 tx_dropped_tag_exhaustion;
 		u64 tx_dropped_permission;
+		u64 tx_dropped_bad_addrlen;
 
 		/* Timestamps */
 		u64 last_tx_time;
@@ -410,9 +411,6 @@ void mctp_device_exit(void);
 int mctp_stats_init(void);
 void mctp_stats_exit(void);
 void mctp_stats_aggregate_closed_sk(struct sock *sk);
-
-/* Generic Netlink family for statistics */
-extern struct genl_family mctp_genl_family;
 
 /* Error queue support */
 u8 mctp_get_binding_type(struct net_device *dev);

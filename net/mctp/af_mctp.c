@@ -564,8 +564,9 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 	}
 
 	if (optname == MCTP_OPT_SOCK_STATS) {
-		struct mctp_sock_stats_info stats;
+		struct mctp_sock_stats_info stats = {};
 		struct hlist_node *tmp;
+		unsigned long flags;
 		u32 num_keys = 0;
 
 		if (len < sizeof(stats))
@@ -601,14 +602,19 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		stats.tx_dropped_device_down = msk->stats.tx_dropped_device_down;
 		stats.tx_dropped_tag_exhaustion = msk->stats.tx_dropped_tag_exhaustion;
 		stats.tx_dropped_permission = msk->stats.tx_dropped_permission;
+		stats.tx_dropped_bad_addrlen = msk->stats.tx_dropped_bad_addrlen;
 
 		stats.last_tx_time = msk->stats.last_tx_time;
 		stats.last_rx_time = msk->stats.last_rx_time;
 		spin_unlock_bh(&msk->stats_lock);
 
-		/* Count active keys */
+		/* Count active keys — keys_lock guards msk->keys against
+		 * concurrent add/remove in the route and tag-alloc paths.
+		 */
+		spin_lock_irqsave(&sock_net(&msk->sk)->mctp.keys_lock, flags);
 		hlist_for_each(tmp, &msk->keys)
 			num_keys++;
+		spin_unlock_irqrestore(&sock_net(&msk->sk)->mctp.keys_lock, flags);
 		stats.num_active_keys = num_keys;
 
 		/* Socket binding info */
@@ -954,9 +960,6 @@ static void mctp_sk_close(struct sock *sk, long timeout)
 static int mctp_sk_hash(struct sock *sk)
 {
 	struct net *net = sock_net(sk);
-
-	/* Bind lookup runs under RCU, remain live during that. */
-	sock_set_flag(sk, SOCK_RCU_FREE);
 
 	/* Bind lookup runs under RCU, remain live during that. */
 	sock_set_flag(sk, SOCK_RCU_FREE);

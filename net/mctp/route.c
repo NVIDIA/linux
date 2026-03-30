@@ -1120,7 +1120,7 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 		if (dst->halen != skb->dev->addr_len) {
 			/* sanity check, sendmsg should have already caught this */
 			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_drops);
-			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_dropped_mtu_exceeded);
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(skb->dev), tx_dropped_bad_addrlen);
 			kfree_skb(skb);
 			return -EMSGSIZE;
 		}
@@ -1356,6 +1356,7 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 					    holder_pids[i], holder_counts[i]);
 
 		mctp_key_unref(key);
+		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_drops);
 		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_dropped_tag_exhaustion);
 		return ERR_PTR(-EBUSY);
 	}
@@ -1403,6 +1404,7 @@ static struct mctp_sk_key *mctp_lookup_prealloc_tag(struct mctp_sock *msk,
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
 
 	if (!key) {
+		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_drops);
 		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_dropped_tag_exhaustion);
 		return ERR_PTR(-ENOENT);
 	}
@@ -1627,14 +1629,33 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 				break;
 		}
 
+		pr_debug(
+			"mctp: Batching %u fragments (pos=%u/%u), total_len=%u, batch_max_xfer=%u\n",
+			num_frags, skb_pos, skb->len, total_len,
+			batch_max_xfer);
+
+		/* Allocate a single large SKB to hold all fragments */
+		struct sock *sk_save = skb->sk;
+
+		/* Hold a ref so sk_save stays valid across kfree_skb — the skb
+		 * destructor (sock_wfree) may drop the socket's last ref otherwise.
+		 */
+		if (sk_save)
+			sock_hold(sk_save);
+
 		batch_skb = alloc_skb(headroom + total_len, GFP_KERNEL);
 		if (!batch_skb) {
 			kfree_skb(skb);
-			/* We don't have socket context here easily, so global only */
-			MCTP_SOCK_STAT_INC(NULL, dev_net(rt->dev->dev), tx_dropped_no_memory);
+			MCTP_SOCK_STAT_INC(sk_save, dev_net(dst->dev->dev), tx_dropped_no_memory);
+			if (sk_save)
+				sock_put(sk_save);
 			return -ENOMEM;
 		}
 
+		if (sk_save)
+			sock_put(sk_save);
+
+		/* Copy generic SKB properties */
 		batch_skb->protocol = htons(ETH_P_MCTP | 0x8000); /* Mark as batched */
 		batch_skb->priority = skb->priority;
 		batch_skb->dev = skb->dev;
@@ -1719,8 +1740,9 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 	rc = 0;
 
 	if (mtu < hlen + 1) {
+		/* Increment stat before freeing — skb->sk is invalid after kfree_skb */
+		MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev), tx_dropped_mtu_exceeded);
 		kfree_skb(skb);
-		MCTP_SOCK_STAT_INC(skb->sk, dev_net(rt->dev->dev), tx_dropped_mtu_exceeded);
 		return -EMSGSIZE;
 	}
 
@@ -1749,7 +1771,7 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 
 		skb2 = alloc_skb(headroom + hlen + size, GFP_KERNEL);
 		if (!skb2) {
-			MCTP_SOCK_STAT_INC(skb->sk, dev_net(rt->dev->dev), tx_dropped_no_memory);
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev), tx_dropped_no_memory);
 			rc = -ENOMEM;
 			break;
 		}
@@ -1813,6 +1835,7 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	unsigned long flags;
 	unsigned int netid;
 	unsigned int mtu;
+	unsigned int pkt_len;
 	mctp_eid_t saddr;
 	int rc;
 	u8 tag;
@@ -1919,8 +1942,13 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 
 	mtu = dst->mtu;
 
-	trace_mctp_local_output(saddr, daddr, tag, skb->len);
-	if (skb->len + sizeof(struct mctp_hdr) <= mtu) {
+	/* Save length before transmit — rt->output() and mctp_do_fragment_route()
+	 * consume the skb, making skb->len invalid afterward.
+	 */
+	pkt_len = skb->len;
+
+	trace_mctp_local_output(saddr, daddr, tag, pkt_len);
+	if (pkt_len <= mtu) {
 		hdr->flags_seq_tag = MCTP_HDR_FLAG_SOM |
 			MCTP_HDR_FLAG_EOM | tag;
 		rc = dst->output(dst, skb);
@@ -1932,7 +1960,6 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	if (rc == 0) {
 		struct net *net = sock_net(sk);
 		u64 tx_time = ktime_get_ns();
-		unsigned int pkt_len = skb->len;
 
 		/* Update per-socket stats */
 		spin_lock_bh(&msk->stats_lock);
@@ -2844,7 +2871,7 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 	 * TX key existence indicates operation WE initiated (request packet).
 	 * This is the preferred method for TX errors because it gives complete context.
 	 * 
-	 * This is slower than Method 2 (requires hash table lookup + lock),
+	 * This is slower than Method 1 (requires hash table lookup + lock),
 	 * but needed when skb->sk is lost (e.g., old drivers, special cases).
 	 * 
 	 * DEADLOCK PREVENTION: Skip this method if key parameter is provided,
