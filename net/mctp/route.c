@@ -1234,6 +1234,9 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	struct netns_mctp *mns = &net->mctp;
 	struct mctp_sk_key *key, *tmp;
 	unsigned long flags;
+	pid_t holder_pids[8];
+	u8 holder_counts[8];
+	int nholders, i;
 	u8 tagbits;
 
 	/* for NULL destination EIDs, we may get a response from any peer */
@@ -1301,9 +1304,57 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 		*tagp = key->tag;
 	}
 
+	/* Collect per-PID tag holder info while still under keys_lock, so we
+	 * can emit a useful diagnostic without needing to re-acquire the lock.
+	 */
+	nholders = 0;
+	if (!tagbits) {
+		hlist_for_each_entry(tmp, &mns->keys, hlist) {
+			struct mctp_sock *tmp_msk;
+			bool valid;
+
+			if (tmp->net != netid)
+				continue;
+			/* skip TO-owned tags — they can't conflict with us */
+			if (tmp->tag & MCTP_HDR_FLAG_TO)
+				continue;
+			if (peer != MCTP_ADDR_ANY &&
+			    !mctp_address_matches(tmp->peer_addr, peer))
+				continue;
+			if (local != MCTP_ADDR_ANY &&
+			    !mctp_address_matches(tmp->local_addr, local))
+				continue;
+
+			spin_lock(&tmp->lock);
+			valid = tmp->valid;
+			spin_unlock(&tmp->lock);
+			if (!valid)
+				continue;
+
+			tmp_msk = container_of(tmp->sk, struct mctp_sock, sk);
+			for (i = 0; i < nholders; i++) {
+				if (holder_pids[i] == tmp_msk->pid) {
+					holder_counts[i]++;
+					break;
+				}
+			}
+			if (i == nholders && nholders < ARRAY_SIZE(holder_pids)) {
+				holder_pids[nholders] = tmp_msk->pid;
+				holder_counts[nholders] = 1;
+				nholders++;
+			}
+		}
+	}
+
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
 
 	if (!tagbits) {
+		pr_warn_ratelimited("mctp: tag exhaustion net %u local %u peer %u\n",
+				    netid, local, peer);
+		for (i = 0; i < nholders; i++)
+			pr_warn_ratelimited("mctp:   pid %d holds %u tag(s)\n",
+					    holder_pids[i], holder_counts[i]);
+
 		mctp_key_unref(key);
 		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_dropped_tag_exhaustion);
 		return ERR_PTR(-EBUSY);
