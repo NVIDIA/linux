@@ -10,10 +10,13 @@
 #define __NET_MCTP_H
 
 #include <linux/bits.h>
+#include <linux/jiffies.h>
 #include <linux/mctp.h>
 #include <linux/netdevice.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
+
+struct mctp_dev;
 
 /* MCTP packet definitions */
 struct mctp_hdr {
@@ -105,6 +108,9 @@ struct mctp_sock {
 	/* Error queue control */
 	bool		enable_errqueue;
 
+	/* Tag/key expiry; 0 = use mctp_dev::key_lifetime or MCTP_DEFAULT_LIFETIME */
+	unsigned int	tag_timeout_ms;
+
 	/* Deferred error reporting (to avoid deadlock in timer context) */
 	struct work_struct error_report_work;
 	struct list_head pending_errors;
@@ -152,6 +158,9 @@ struct mctp_sock {
 	spinlock_t stats_lock;  /* Protects stats */
 	pid_t pid;		/* PID of the creating process */
 };
+
+unsigned long mctp_effective_key_lifetime(struct mctp_sock *msk,
+					  struct mctp_dev *mdev);
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
  * Packets are matched on (peer EID, local EID, tag).

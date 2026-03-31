@@ -24,6 +24,16 @@
 
 /* socket implementation */
 
+unsigned long mctp_effective_key_lifetime(struct mctp_sock *msk,
+					  struct mctp_dev *mdev)
+{
+	if (msk->tag_timeout_ms)
+		return msecs_to_jiffies(msk->tag_timeout_ms);
+	if (mdev)
+		return mdev->key_lifetime;
+	return MCTP_DEFAULT_LIFETIME;
+}
+
 static void mctp_sk_expire_keys(struct timer_list *timer);
 
 static int mctp_release(struct socket *sock)
@@ -539,6 +549,17 @@ static int mctp_setsockopt(struct socket *sock, int level, int optname,
 		return 0;
 	}
 
+	if (optname == MCTP_OPT_TAG_TIMEOUT_MS) {
+		if (optlen != sizeof(int))
+			return -EINVAL;
+		if (copy_from_sockptr(&val, optval, sizeof(int)))
+			return -EFAULT;
+		if (val < 0)
+			return -EINVAL;
+		msk->tag_timeout_ms = val;
+		return 0;
+	}
+
 	return -ENOPROTOOPT;
 }
 
@@ -630,6 +651,15 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		if (put_user(len, optlen))
 			return -EFAULT;
 
+		return 0;
+	}
+
+	if (optname == MCTP_OPT_TAG_TIMEOUT_MS) {
+		if (len != sizeof(int))
+			return -EINVAL;
+		val = msk->tag_timeout_ms;
+		if (copy_to_user(optval, &val, len))
+			return -EFAULT;
 		return 0;
 	}
 
@@ -726,7 +756,7 @@ static int mctp_ioctl_alloctag(struct mctp_sock *msk, bool tagv2,
 
 	key = mctp_alloc_local_tag(msk, ctl.net, MCTP_ADDR_ANY,
 				   ctl.peer_addr, true, &tag,
-				   MCTP_DEFAULT_LIFETIME);
+				   mctp_effective_key_lifetime(msk, NULL));
 	if (IS_ERR(key))
 		return PTR_ERR(key);
 

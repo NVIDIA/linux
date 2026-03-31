@@ -56,6 +56,11 @@ struct mctp_fq_addr {
 
 #define MCTP_OPT_ADDR_EXT	1
 #define MCTP_OPT_ENABLE_ERRQUEUE	2
+/* Tag/key lifetime in milliseconds (request/response pairing, RX reassembly).
+ * 0 selects the per-device default (see mctp_dev_set_timeout()) or the
+ * kernel default (6 seconds) when no device applies.
+ */
+#define MCTP_OPT_TAG_TIMEOUT_MS	3
 
 #define SIOCMCTPALLOCTAG	(SIOCPROTOPRIVATE + 0)
 #define SIOCMCTPDROPTAG		(SIOCPROTOPRIVATE + 1)

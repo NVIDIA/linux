@@ -936,7 +936,7 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			unsigned long lifetime;
 
 			mdev = __mctp_dev_get(skb->dev);
-			lifetime = mdev ? mdev->key_lifetime : MCTP_DEFAULT_LIFETIME;
+			lifetime = mctp_effective_key_lifetime(msk, mdev);
 			if (mdev)
 				mctp_dev_put(mdev);
 
@@ -1951,10 +1951,8 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 			key = mctp_lookup_prealloc_tag(msk, netid, daddr,
 						       req_tag, &tag);
 		else {
-			unsigned long lifetime = MCTP_DEFAULT_LIFETIME;
-
-			if (dst->dev)
-				lifetime = dst->dev->key_lifetime;
+			unsigned long lifetime = mctp_effective_key_lifetime(msk,
+									     dst->dev);
 
 			key = mctp_alloc_local_tag(msk, netid, saddr, daddr,
 						   false, &tag, lifetime);
