@@ -991,3 +991,24 @@
 &chassis {
 	status = "okay";
 };
+
+// Overriden to provide NIC specific power sequencing
+&exp6 {
+    gpio-line-names =
+        "PDB_STRAP-I",
+        "STBY_POWER_EN-O",
+        "STBY_PWR_OK-I",
+        "",
+        "",
+        "MAIN_PWR_EN-O",
+        "MAIN_PWR_OK-I",
+        "PDB_GLB_WP-O",
+        "PDB_PWR_BRK_L-I",
+        "FAN_PRSNT-I",
+        "12V_NIC_EN",
+        "12V_NIC_PGOOD",
+        "HSC4_S5_OR_S0_N-O",
+        "",
+        "",
+        "";
+};
