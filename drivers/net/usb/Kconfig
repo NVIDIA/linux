@@ -243,6 +243,26 @@ config USB_NET_CDCETHER
 	  IEEE 802 "local assignment" bit is set in the address, a "usbX"
 	  name is used instead.
 
+config USB_NET_CDCETHER_NCSI
+	bool "NCSI passthrough support for CDC Ethernet"
+	depends on USB_NET_CDCETHER
+	depends on NET_NCSI
+	help
+	  This option enables NCSI (Network Controller Sideband Interface)
+	  passthrough support for specific USB CDC Ethernet devices.
+
+	  NCSI allows a BMC (Baseboard Management Controller) to share a
+	  network interface with the host system for out-of-band management.
+	  This is typically used in DPU (Data Processing Unit) platforms
+	  where the BMC communicates with the DPU via a dedicated USB
+	  connection.
+
+	  Currently supported devices:
+	    * NVIDIA BlueField DPU (VID:PID 0955:cf11)
+
+	  Say Y here if you have a system with USB-based NCSI connectivity
+	  between BMC and host. If unsure, say N.
+
 config USB_NET_CDC_EEM
 	tristate "CDC EEM support"
 	depends on USB_USBNET
