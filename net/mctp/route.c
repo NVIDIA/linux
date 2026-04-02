@@ -14,10 +14,8 @@
 #include <linux/kconfig.h>
 #include <linux/mctp.h>
 #include <linux/netdevice.h>
-#include <linux/netfilter_netdev.h>
 #include <linux/rtnetlink.h>
 #include <linux/skbuff.h>
-#include <linux/jhash.h>
 
 #include <uapi/linux/if_arp.h>
 
@@ -29,7 +27,6 @@
 #include <trace/events/mctp.h>
 
 static const unsigned int mctp_message_maxlen = 64 * 1024;
-static const unsigned long mctp_nf_track_timeout = 2 * CONFIG_HZ;
 
 /* Helper to determine binding type from network device
  * Returns the physical binding type from mctp_dev, which is set during
@@ -56,253 +53,6 @@ u8 mctp_get_binding_type(struct net_device *dev)
 
 
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev);
-
-enum mctp_nf_track_verdict {
-	MCTP_NF_VERDICT_ACCEPT = 0,
-	MCTP_NF_VERDICT_DROP = 1,
-};
-
-static u32 mctp_nf_track_hash(mctp_eid_t src, mctp_eid_t dst, u8 tag)
-{
-	return jhash_3words(src, dst, tag, 0) & (MCTP_NF_TRACK_BUCKETS - 1);
-}
-
-static bool mctp_nf_track_lookup(struct mctp_dev *mdev, mctp_eid_t src,
-				 mctp_eid_t dst, u8 tag, u8 *verdict)
-{
-	struct mctp_nf_track_entry *entry;
-	struct hlist_node *tmp;
-	unsigned long now = jiffies;
-	u32 idx = mctp_nf_track_hash(src, dst, tag);
-	bool found = false;
-
-	spin_lock_bh(&mdev->nf_track.lock);
-	hlist_for_each_entry_safe(entry, tmp, &mdev->nf_track.buckets[idx],
-				  node) {
-		if (entry->src != src || entry->dst != dst || entry->tag != tag)
-			continue;
-
-		if (time_after(now, entry->expires)) {
-			netdev_dbg(mdev->dev,
-				   "MCTP nf track: expiry src=%u dst=%u tag=0x%x\n",
-				   src, dst, tag);
-			hlist_del(&entry->node);
-			kfree(entry);
-			mdev->nf_track.count--;
-			break;
-		}
-
-		*verdict = entry->verdict;
-		found = true;
-		break;
-	}
-	spin_unlock_bh(&mdev->nf_track.lock);
-
-	if (found)
-		netdev_dbg(mdev->dev,
-			   "MCTP nf track lookup: src=%u dst=%u tag=0x%x verdict=%s\n",
-			   src, dst, tag, *verdict == MCTP_NF_VERDICT_ACCEPT ? "accept" : "drop");
-
-	return found;
-}
-
-static void mctp_nf_track_delete(struct mctp_dev *mdev, mctp_eid_t src,
-				 mctp_eid_t dst, u8 tag)
-{
-	struct mctp_nf_track_entry *entry;
-	struct hlist_node *tmp;
-	u32 idx = mctp_nf_track_hash(src, dst, tag);
-
-	spin_lock_bh(&mdev->nf_track.lock);
-	hlist_for_each_entry_safe(entry, tmp, &mdev->nf_track.buckets[idx],
-				  node) {
-		if (entry->src != src || entry->dst != dst || entry->tag != tag)
-			continue;
-		netdev_dbg(mdev->dev,
-			   "MCTP nf track delete: src=%u dst=%u tag=0x%x\n",
-			   src, dst, tag);
-		hlist_del(&entry->node);
-		kfree(entry);
-		mdev->nf_track.count--;
-		break;
-	}
-	spin_unlock_bh(&mdev->nf_track.lock);
-}
-
-static void mctp_nf_track_store(struct mctp_dev *mdev, mctp_eid_t src,
-				mctp_eid_t dst, u8 tag, u8 verdict)
-{
-	struct mctp_nf_track_entry *entry, *new_entry;
-	u32 idx = mctp_nf_track_hash(src, dst, tag);
-
-	new_entry = kzalloc(sizeof(*new_entry), GFP_ATOMIC);
-	if (!new_entry)
-		return;
-
-	new_entry->src = src;
-	new_entry->dst = dst;
-	new_entry->tag = tag;
-	new_entry->verdict = verdict;
-	new_entry->expires = jiffies + mctp_nf_track_timeout;
-
-	spin_lock_bh(&mdev->nf_track.lock);
-	hlist_for_each_entry(entry, &mdev->nf_track.buckets[idx], node) {
-		if (entry->src != src || entry->dst != dst || entry->tag != tag)
-			continue;
-		entry->verdict = verdict;
-		entry->expires = jiffies + mctp_nf_track_timeout;
-		spin_unlock_bh(&mdev->nf_track.lock);
-		netdev_dbg(mdev->dev,
-			   "MCTP nf track store (update): src=%u dst=%u tag=0x%x verdict=%s\n",
-			   src, dst, tag,
-			   verdict == MCTP_NF_VERDICT_ACCEPT ? "accept" : "drop");
-		kfree(new_entry);
-		return;
-	}
-
-	if (mdev->nf_track.count < MCTP_NF_TRACK_MAX) {
-		hlist_add_head(&new_entry->node, &mdev->nf_track.buckets[idx]);
-		mdev->nf_track.count++;
-		netdev_dbg(mdev->dev,
-			   "MCTP nf track store: src=%u dst=%u tag=0x%x verdict=%s count=%u\n",
-			   src, dst, tag,
-			   verdict == MCTP_NF_VERDICT_ACCEPT ? "accept" : "drop",
-			   mdev->nf_track.count);
-		new_entry = NULL;
-	} else {
-		netdev_dbg(mdev->dev,
-			   "MCTP nf track store: table full, drop entry src=%u dst=%u tag=0x%x\n",
-			   src, dst, tag);
-	}
-	spin_unlock_bh(&mdev->nf_track.lock);
-
-	kfree(new_entry);
-}
-
-static bool mctp_nf_ingress_check(struct sk_buff *skb, struct mctp_dev *mdev,
-				  const struct mctp_hdr *mh)
-{
-	u8 flags = mh->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
-	u8 tag = mh->flags_seq_tag & (MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
-	u8 verdict;
-	u8 msg_type = 0;
-	int ret;
-	bool som = !!(flags & MCTP_HDR_FLAG_SOM);
-	bool eom = !!(flags & MCTP_HDR_FLAG_EOM);
-	unsigned int type_off = skb_network_offset(skb) + sizeof(struct mctp_hdr);
-
-	if (skb->len >= type_off + 1 && skb_copy_bits(skb, type_off, &msg_type, 1) == 0)
-		msg_type &= 0x7f;
-
-	netdev_dbg(mdev->dev,
-		   "MCTP nf ingress: src=%u dst=%u tag=0x%x SOM=%d EOM=%d type=%u\n",
-		   mh->src, mh->dest, tag, som, eom, msg_type);
-
-	if (!(flags & MCTP_HDR_FLAG_SOM)) {
-		if (mctp_nf_track_lookup(mdev, mh->src, mh->dest, tag,
-					 &verdict)) {
-			if (flags & MCTP_HDR_FLAG_EOM)
-				mctp_nf_track_delete(mdev, mh->src, mh->dest, tag);
-			netdev_dbg(mdev->dev,
-				   "MCTP nf ingress: fragment verdict=%s\n",
-				   verdict == MCTP_NF_VERDICT_ACCEPT ? "accept" : "drop");
-			return verdict == MCTP_NF_VERDICT_ACCEPT;
-		}
-		netdev_dbg(mdev->dev,
-			   "MCTP nf ingress: fragment no track entry, pass to hook\n");
-	}
-
-	if (!nf_hook_ingress_active(skb)) {
-		netdev_dbg(mdev->dev, "MCTP nf ingress: no hooks, accept\n");
-		return true;
-	}
-
-	rcu_read_lock();
-	ret = nf_hook_ingress(skb);
-	rcu_read_unlock();
-
-	if (ret < 0) {
-		netdev_dbg(mdev->dev,
-			   "MCTP nf ingress: hook dropped (ret=%d)\n", ret);
-		if (!(flags & MCTP_HDR_FLAG_EOM))
-			mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
-					    MCTP_NF_VERDICT_DROP);
-		return false;
-	}
-
-	if (!(flags & MCTP_HDR_FLAG_EOM))
-		mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
-				    MCTP_NF_VERDICT_ACCEPT);
-
-	netdev_dbg(mdev->dev, "MCTP nf ingress: hook accept\n");
-	return true;
-}
-
-static int mctp_nf_egress_check(struct sk_buff **pskb, struct mctp_dev *mdev,
-				const struct mctp_hdr *mh)
-{
-	struct sk_buff *skb = *pskb;
-	u8 flags = mh->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
-	u8 tag = mh->flags_seq_tag & (MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
-	u8 verdict;
-	u8 msg_type = 0;
-	int rc = NET_XMIT_SUCCESS;
-	bool som = !!(flags & MCTP_HDR_FLAG_SOM);
-	bool eom = !!(flags & MCTP_HDR_FLAG_EOM);
-	unsigned int type_off = skb_network_offset(skb) + sizeof(struct mctp_hdr);
-
-	if (skb->len >= type_off + 1 && skb_copy_bits(skb, type_off, &msg_type, 1) == 0)
-		msg_type &= 0x7f;
-
-	netdev_dbg(mdev->dev,
-		   "MCTP nf egress: src=%u dst=%u tag=0x%x SOM=%d EOM=%d type=%u\n",
-		   mh->src, mh->dest, tag, som, eom, msg_type);
-
-	if (!(flags & MCTP_HDR_FLAG_SOM)) {
-		if (mctp_nf_track_lookup(mdev, mh->src, mh->dest, tag,
-					 &verdict)) {
-			if (flags & MCTP_HDR_FLAG_EOM)
-				mctp_nf_track_delete(mdev, mh->src, mh->dest, tag);
-			if (verdict == MCTP_NF_VERDICT_DROP) {
-				netdev_dbg(mdev->dev,
-					   "MCTP nf egress: fragment verdict=drop\n");
-				kfree_skb(skb);
-				*pskb = NULL;
-				return -EPERM;
-			}
-			netdev_dbg(mdev->dev,
-				   "MCTP nf egress: fragment verdict=accept\n");
-			return 0;
-		}
-		netdev_dbg(mdev->dev,
-			   "MCTP nf egress: fragment no track entry, pass to hook\n");
-	}
-
-	if (!nf_hook_egress_active()) {
-		netdev_dbg(mdev->dev, "MCTP nf egress: no hooks, accept\n");
-		return 0;
-	}
-
-	rcu_read_lock_bh();
-	skb = nf_hook_egress(skb, &rc, mdev->dev);
-	rcu_read_unlock_bh();
-
-	if (!skb) {
-		netdev_dbg(mdev->dev,
-			   "MCTP nf egress: hook dropped (rc=%d)\n", rc);
-		*pskb = NULL;
-		return net_xmit_errno(rc);
-	}
-
-	*pskb = skb;
-
-	if (!(flags & MCTP_HDR_FLAG_EOM))
-		mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
-				    MCTP_NF_VERDICT_ACCEPT);
-
-	netdev_dbg(mdev->dev, "MCTP nf egress: hook accept\n");
-	return 0;
-}
 
 /* route output callbacks */
 static int mctp_route_discard(struct mctp_route *route, struct sk_buff *skb)
@@ -1082,18 +832,6 @@ static int mctp_route_output(struct mctp_route *route, struct sk_buff *skb)
 	}
 
 	mctp_flow_prepare_output(skb, route->dev);
-
-	if (!is_batched) {
-		rc = mctp_nf_egress_check(&skb, route->dev, hdr);
-		if (!skb) {
-			netdev_dbg(route->dev->dev,
-				   "MCTP nf: egress filter dropped packet src=%u dst=%u rc=%d\n",
-				   hdr->src, hdr->dest, rc);
-			return rc;
-		}
-		if (rc)
-			return rc;
-	}
 
 	trace_mctp_route_output(skb, skb->dev);
 	rc = dev_queue_xmit(skb);
@@ -1982,12 +1720,6 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	}
 	cb->net = READ_ONCE(mdev->net);
 	cb->ifindex = dev->ifindex;
-
-	if (!mctp_nf_ingress_check(skb, mdev, mh)) {
-		netdev_dbg(dev, "MCTP nf: ingress filter dropped packet src=%u dst=%u\n",
-			  mh->src, mh->dest);
-		goto err_drop;
-	}
 
 	rt = mctp_route_lookup(net, cb->net, mh->dest);
 
