@@ -1529,6 +1529,21 @@ config SENSORS_LM75
 	  This driver can also be built as a module. If so, the module
 	  will be called lm75.
 
+config SENSORS_LM75_DETECT
+	bool "Enable LM75 detect function"
+	depends on SENSORS_LM75
+	default y
+	help
+	  If enabled, the driver auto-detects if a chip at a given I2C
+	  address is an LM75 or LM75A. This may result in false positives
+	  on I2C buses where other devices respond at addresses 0x48-0x4f.
+
+	  Disabling this option removes auto-detection but the driver still
+	  works for devices explicitly defined in the device tree or
+	  instantiated from userspace via sysfs.
+
+	  Say Y if unsure.
+
 config SENSORS_LM77
 	tristate "National Semiconductor LM77"
 	depends on I2C

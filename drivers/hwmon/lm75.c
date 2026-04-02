@@ -1122,8 +1122,8 @@ static struct i2c_driver lm75_i2c_driver = {
 	},
 	.probe		= lm75_i2c_probe,
 	.id_table	= lm75_i2c_ids,
-	.detect		= lm75_detect,
-	.address_list	= normal_i2c,
+	.detect		= IS_ENABLED(CONFIG_SENSORS_LM75_DETECT) ? lm75_detect : NULL,
+	.address_list	= IS_ENABLED(CONFIG_SENSORS_LM75_DETECT) ? normal_i2c : NULL,
 };
 
 static struct i3c_driver lm75_i3c_driver = {
