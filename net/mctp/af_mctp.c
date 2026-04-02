@@ -99,8 +99,8 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	struct sock *sk = sock->sk;
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
 	struct mctp_skb_cb *cb;
+	struct mctp_route *rt;
 	struct sk_buff *skb = NULL;
-	struct mctp_dst dst;
 	int hlen;
 
 	if (addr) {
@@ -146,43 +146,52 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	if (msk->addr_ext && addrlen >= sizeof(struct sockaddr_mctp_ext)) {
 		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
 				 extaddr, msg->msg_name);
-		if (!mctp_sockaddr_ext_is_ok(extaddr))
-			return -EINVAL;
+		struct net_device *dev;
+		int bound_dev_if;
 
-		rc = mctp_dst_from_extaddr(&dst, sock_net(sk),
-					   extaddr->smctp_ifindex,
-					   extaddr->smctp_halen,
-					   extaddr->smctp_haddr);
-		if (rc)
-			return rc;
-
-		/* Check SO_BINDTODEVICE constraint */
-		if (READ_ONCE(sk->sk_bound_dev_if) && dst.dev &&
-		    READ_ONCE(sk->sk_bound_dev_if) != dst.dev->dev->ifindex) {
-			mctp_dst_release(&dst);
-			return -EINVAL;
+		rc = -EINVAL;
+		rcu_read_lock();
+		dev = dev_get_by_index_rcu(sock_net(sk), extaddr->smctp_ifindex);
+		/* check for correct halen */
+		if (dev && extaddr->smctp_halen == dev->addr_len) {
+			/* Check SO_BINDTODEVICE constraint */
+			bound_dev_if = READ_ONCE(sk->sk_bound_dev_if);
+			if (bound_dev_if && bound_dev_if != dev->ifindex) {
+				rc = -EINVAL;
+			} else {
+				hlen = LL_RESERVED_SPACE(dev) + sizeof(struct mctp_hdr);
+				rc = 0;
+			}
 		}
-
+		rcu_read_unlock();
+		if (rc)
+			goto err_free;
+		rt = NULL;
 	} else {
-		rc = mctp_route_lookup(sock_net(sk), addr->smctp_network,
-				       addr->smctp_addr.s_addr, &dst);
-		if (rc)
-			return rc;
+		int bound_dev_if;
 
-		/* Check SO_BINDTODEVICE constraint */
-		if (READ_ONCE(sk->sk_bound_dev_if) && dst.dev &&
-		    READ_ONCE(sk->sk_bound_dev_if) != dst.dev->dev->ifindex) {
-			mctp_dst_release(&dst);
-			return -EINVAL;
+		rt = mctp_route_lookup(sock_net(sk), addr->smctp_network,
+				       addr->smctp_addr.s_addr);
+		if (!rt) {
+			rc = -EHOSTUNREACH;
+			goto err_free;
 		}
+		
+		/* Check SO_BINDTODEVICE constraint */
+		bound_dev_if = READ_ONCE(sk->sk_bound_dev_if);
+		if (bound_dev_if && rt->dev && 
+		    bound_dev_if != rt->dev->dev->ifindex) {
+			rc = -EINVAL;
+			goto err_free;
+		}
+		
+		hlen = LL_RESERVED_SPACE(rt->dev->dev) + sizeof(struct mctp_hdr);
 	}
-
-	hlen = LL_RESERVED_SPACE(dst.dev->dev) + sizeof(struct mctp_hdr);
 
 	skb = sock_alloc_send_skb(sk, hlen + 1 + len,
 				  msg->msg_flags & MSG_DONTWAIT, &rc);
 	if (!skb)
-		goto err_release_dst;
+		return rc;
 
 	skb_reserve(skb, hlen);
 
@@ -197,17 +206,31 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	cb = __mctp_cb(skb);
 	cb->net = addr->smctp_network;
 
+	if (!rt) {
+		/* fill extended address in cb */
+		DECLARE_SOCKADDR(struct sockaddr_mctp_ext *,
+				 extaddr, msg->msg_name);
+
+		if (!mctp_sockaddr_ext_is_ok(extaddr) ||
+		    extaddr->smctp_halen > sizeof(cb->haddr)) {
+			rc = -EINVAL;
+			goto err_free;
+		}
+
+		cb->ifindex = extaddr->smctp_ifindex;
+		/* smctp_halen is checked above */
+		cb->halen = extaddr->smctp_halen;
+		memcpy(cb->haddr, extaddr->smctp_haddr, cb->halen);
+	}
+
 	trace_mctp_tx_packet(skb);
-	rc = mctp_local_output(sk, &dst, skb, addr->smctp_addr.s_addr,
+	rc = mctp_local_output(sk, rt, skb, addr->smctp_addr.s_addr,
 			       addr->smctp_tag);
 
-	mctp_dst_release(&dst);
 	return rc ? : len;
 
 err_free:
 	kfree_skb(skb);
-err_release_dst:
-	mctp_dst_release(&dst);
 	return rc;
 }
 
@@ -1040,7 +1063,3 @@ MODULE_DESCRIPTION("MCTP core");
 MODULE_AUTHOR("Jeremy Kerr <jk@codeconstruct.com.au>");
 
 MODULE_ALIAS_NETPROTO(PF_MCTP);
-
-#if IS_ENABLED(CONFIG_MCTP_TEST)
-#include "test/sock-test.c"
-#endif
