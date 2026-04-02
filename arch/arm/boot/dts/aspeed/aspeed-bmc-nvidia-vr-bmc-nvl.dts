@@ -339,7 +339,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp21: pca9555@50 {
+                            exp33: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -370,7 +370,7 @@
                                     "IOB1_MCU_READY-I",
                                     "IOB1_MCU_RECOVERY_N-I";
                             };
-                            exp22: pca9555@51 {
+                            exp34: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -401,7 +401,7 @@
                                     "IOB1_MCU_STRAP_P0_2-I",
                                     "IOB1_MCU_VMON_12V_SSD-I";
                             };
-                            exp23: pca9555@52 {
+                            exp35: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -468,7 +468,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp18: pca9555@50 {
+                            exp30: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -499,7 +499,7 @@
                                     "IOB0_MCU_READY-I",
                                     "IOB0_MCU_RECOVERY_N-I";
                             };
-                            exp19: pca9555@51 {
+                            exp31: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -530,7 +530,7 @@
                                     "IOB0_MCU_STRAP_P0_2-I",
                                     "IOB0_MCU_VMON_12V_SSD-I";
                             };
-                            exp20: pca9555@52 {
+                            exp32: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -772,7 +772,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp24: pca9555@50 {
+                            exp36: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -803,7 +803,7 @@
                                     "IOB2_MCU_READY-I",
                                     "IOB2_MCU_RECOVERY_N-I";
                             };
-                            exp25: pca9555@51 {
+                            exp37: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -834,7 +834,7 @@
                                     "IOB2_MCU_STRAP_P0_2-I",
                                     "IOB2_MCU_VMON_12V_SSD-I";
                             };
-                            exp26: pca9555@52 {
+                            exp38: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -901,7 +901,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp27: pca9555@50 {
+                            exp39: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -932,7 +932,7 @@
                                     "IOB3_MCU_READY-I",
                                     "IOB3_MCU_RECOVERY_N-I";
                             };
-                            exp28: pca9555@51 {
+                            exp40: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -963,7 +963,7 @@
                                     "IOB3_MCU_STRAP_P0_2-I",
                                     "IOB3_MCU_VMON_12V_SSD-I";
                             };
-                            exp29: pca9555@52 {
+                            exp41: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
