@@ -640,6 +640,9 @@
     // Enable MCTP for this i2c bus needed for Parsec board.
     mctp-controller;
     multi-master;
+    mctp-no-flows;
+    i2c-retries = <30>;
+    i2c-timeout-ms = <150>;
 
     mctp@18 {
         compatible = "mctp-i2c-controller";
