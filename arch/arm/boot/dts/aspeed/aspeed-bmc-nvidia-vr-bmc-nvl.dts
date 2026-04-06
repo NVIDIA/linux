@@ -315,6 +315,99 @@
                             i2c79: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
+                                exp33: pca9555@50 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x50>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112c>;
+                                    interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB1_CX0_RST_L-I",
+                                        "IOB1_CX1_RST_L-I",
+                                        "IOB1_CX0_INBAND_RECOVERY-I",
+                                        "IOB1_CX1_INBAND_RECOVERY-I",
+                                        "IOB1_CX0_BOOT_COMPLT-I",
+                                        "IOB1_CX1_BOOT_COMPLT-I",
+                                        "IOB1_CX0_TMP_WARNING-I",
+                                        "IOB1_CX1_TMP_WARNING-I",
+                                        "IOB1_CX0_OVT_SHTDN-I",
+                                        "IOB1_CX1_OVT_SHTDN-I",
+                                        "IOB1_CX0_FNP_L-I",
+                                        "IOB1_CX1_FNP_L-I",
+                                        "IOB1_MCU_STRAP_P1_0-I",
+                                        "IOB1_MCU_STRAP_P2_0-I",
+                                        "IOB1_MCU_READY-I",
+                                        "IOB1_MCU_RECOVERY_N-I";
+                                };
+                                exp34: pca9555@51 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x51>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112c>;
+                                    interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB1_GLOBAL_WP-I",
+                                        "IOB1_PGOOD_12V-I",
+                                        "IOB1_PGOOD_VDD-I",
+                                        "IOB1_PGOOD_VDDP-I",
+                                        "IOB1_PGOOD_DVDD-I",
+                                        "IOB1_PGOOD_HVDD-I",
+                                        "IOB1_PGOOD_3V3-I",
+                                        "IOB1_PGOOD_5V-I",
+                                        "IOB1_PGOOD_1V8-I",
+                                        "IOB1_PGOOD_3V3_PORTS-O",
+                                        "IOB1_PWR_EN-O",
+                                        "IOB1_I2C_SWITCH_RST_L-O",
+                                        "IOB1_GLOBAL_ADDR_LR-O",
+                                        "IOB1_GLOBAL_ADDR_UD-O",
+                                        "IOB1_MCU_STRAP_P0_2-I",
+                                        "IOB1_MCU_VMON_12V_SSD-I";
+                                };
+                                exp35: pca9555@52 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x52>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112c>;
+                                    interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB1_AHS_I2C_INT-I",
+                                        "IOB1_SSD_PRSNT_L-I",
+                                        "IOB1_SSD_PWRDIS-I",
+                                        "IOB1_SSD_LED-I",
+                                        "IOB1_SSD_PERST_TO_MCU-I",
+                                        "IOB1_SSD_PERST_TO_SSD-I",
+                                        "IOB1_MCU_SSD_DIS-I",
+                                        "IOB1_MCU_CLK_SSD_EN-I",
+                                        "IOB1_VLEAKDETECT1STATUS0-I",
+                                        "IOB1_VLEAKDETECT1STATUS1-I",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "";
+                                };
                             };
                         };
                     };
@@ -339,99 +432,6 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp33: pca9555@50 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x50>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112c>;
-                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB1_CX0_RST_L-I",
-                                    "IOB1_CX1_RST_L-I",
-                                    "IOB1_CX0_INBAND_RECOVERY-I",
-                                    "IOB1_CX1_INBAND_RECOVERY-I",
-                                    "IOB1_CX0_BOOT_COMPLT-I",
-                                    "IOB1_CX1_BOOT_COMPLT-I",
-                                    "IOB1_CX0_TMP_WARNING-I",
-                                    "IOB1_CX1_TMP_WARNING-I",
-                                    "IOB1_CX0_OVT_SHTDN-I",
-                                    "IOB1_CX1_OVT_SHTDN-I",
-                                    "IOB1_CX0_FNP_L-I",
-                                    "IOB1_CX1_FNP_L-I",
-                                    "IOB1_MCU_STRAP_P1_0-I",
-                                    "IOB1_MCU_STRAP_P2_0-I",
-                                    "IOB1_MCU_READY-I",
-                                    "IOB1_MCU_RECOVERY_N-I";
-                            };
-                            exp34: pca9555@51 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x51>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112c>;
-                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB1_GLOBAL_WP-I",
-                                    "IOB1_PGOOD_12V-I",
-                                    "IOB1_PGOOD_VDD-I",
-                                    "IOB1_PGOOD_VDDP-I",
-                                    "IOB1_PGOOD_DVDD-I",
-                                    "IOB1_PGOOD_HVDD-I",
-                                    "IOB1_PGOOD_3V3-I",
-                                    "IOB1_PGOOD_5V-I",
-                                    "IOB1_PGOOD_1V8-I",
-                                    "IOB1_PGOOD_3V3_PORTS-O",
-                                    "IOB1_PWR_EN-O",
-                                    "IOB1_I2C_SWITCH_RST_L-O",
-                                    "IOB1_GLOBAL_ADDR_LR-O",
-                                    "IOB1_GLOBAL_ADDR_UD-O",
-                                    "IOB1_MCU_STRAP_P0_2-I",
-                                    "IOB1_MCU_VMON_12V_SSD-I";
-                            };
-                            exp35: pca9555@52 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x52>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112c>;
-                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB1_AHS_I2C_INT-I",
-                                    "IOB1_SSD_PRSNT_L-I",
-                                    "IOB1_SSD_PWRDIS-I",
-                                    "IOB1_SSD_LED-I",
-                                    "IOB1_SSD_PERST_TO_MCU-I",
-                                    "IOB1_SSD_PERST_TO_SSD-I",
-                                    "IOB1_MCU_SSD_DIS-I",
-                                    "IOB1_MCU_CLK_SSD_EN-I",
-                                    "IOB1_VLEAKDETECT1STATUS0-I",
-                                    "IOB1_VLEAKDETECT1STATUS1-I",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "";
-                            };
                         };
                     };
                 };
@@ -444,6 +444,99 @@
                             i2c78: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
+                                exp30: pca9555@50 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x50>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112d>;
+                                    interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB0_CX0_RST_L-I",
+                                        "IOB0_CX1_RST_L-I",
+                                        "IOB0_CX0_INBAND_RECOVERY-I",
+                                        "IOB0_CX1_INBAND_RECOVERY-I",
+                                        "IOB0_CX0_BOOT_COMPLT-I",
+                                        "IOB0_CX1_BOOT_COMPLT-I",
+                                        "IOB0_CX0_TMP_WARNING-I",
+                                        "IOB0_CX1_TMP_WARNING-I",
+                                        "IOB0_CX0_OVT_SHTDN-I",
+                                        "IOB0_CX1_OVT_SHTDN-I",
+                                        "IOB0_CX0_FNP_L-I",
+                                        "IOB0_CX1_FNP_L-I",
+                                        "IOB0_MCU_STRAP_P1_0-I",
+                                        "IOB0_MCU_STRAP_P2_0-I",
+                                        "IOB0_MCU_READY-I",
+                                        "IOB0_MCU_RECOVERY_N-I";
+                                };
+                                exp31: pca9555@51 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x51>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112d>;
+                                    interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB0_GLOBAL_WP-I",
+                                        "IOB0_PGOOD_12V-I",
+                                        "IOB0_PGOOD_VDD-I",
+                                        "IOB0_PGOOD_VDDP-I",
+                                        "IOB0_PGOOD_DVDD-I",
+                                        "IOB0_PGOOD_HVDD-I",
+                                        "IOB0_PGOOD_3V3-I",
+                                        "IOB0_PGOOD_5V-I",
+                                        "IOB0_PGOOD_1V8-I",
+                                        "IOB0_PGOOD_3V3_PORTS-O",
+                                        "IOB0_PWR_EN-O",
+                                        "IOB0_I2C_SWITCH_RST_L-O",
+                                        "IOB0_GLOBAL_ADDR_LR-O",
+                                        "IOB0_GLOBAL_ADDR_UD-O",
+                                        "IOB0_MCU_STRAP_P0_2-I",
+                                        "IOB0_MCU_VMON_12V_SSD-I";
+                                };
+                                exp32: pca9555@52 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x52>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112d>;
+                                    interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB0_AHS_I2C_INT-I",
+                                        "IOB0_SSD_PRSNT_L-I",
+                                        "IOB0_SSD_PWRDIS-I",
+                                        "IOB0_SSD_LED-I",
+                                        "IOB0_SSD_PERST_TO_MCU-I",
+                                        "IOB0_SSD_PERST_TO_SSD-I",
+                                        "IOB0_MCU_SSD_DIS-I",
+                                        "IOB0_MCU_CLK_SSD_EN-I",
+                                        "IOB0_VLEAKDETECT1STATUS0-I",
+                                        "IOB0_VLEAKDETECT1STATUS1-I",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "";
+                                };
                             };
                         };
                     };
@@ -468,99 +561,6 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp30: pca9555@50 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x50>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112d>;
-                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB0_CX0_RST_L-I",
-                                    "IOB0_CX1_RST_L-I",
-                                    "IOB0_CX0_INBAND_RECOVERY-I",
-                                    "IOB0_CX1_INBAND_RECOVERY-I",
-                                    "IOB0_CX0_BOOT_COMPLT-I",
-                                    "IOB0_CX1_BOOT_COMPLT-I",
-                                    "IOB0_CX0_TMP_WARNING-I",
-                                    "IOB0_CX1_TMP_WARNING-I",
-                                    "IOB0_CX0_OVT_SHTDN-I",
-                                    "IOB0_CX1_OVT_SHTDN-I",
-                                    "IOB0_CX0_FNP_L-I",
-                                    "IOB0_CX1_FNP_L-I",
-                                    "IOB0_MCU_STRAP_P1_0-I",
-                                    "IOB0_MCU_STRAP_P2_0-I",
-                                    "IOB0_MCU_READY-I",
-                                    "IOB0_MCU_RECOVERY_N-I";
-                            };
-                            exp31: pca9555@51 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x51>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112d>;
-                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB0_GLOBAL_WP-I",
-                                    "IOB0_PGOOD_12V-I",
-                                    "IOB0_PGOOD_VDD-I",
-                                    "IOB0_PGOOD_VDDP-I",
-                                    "IOB0_PGOOD_DVDD-I",
-                                    "IOB0_PGOOD_HVDD-I",
-                                    "IOB0_PGOOD_3V3-I",
-                                    "IOB0_PGOOD_5V-I",
-                                    "IOB0_PGOOD_1V8-I",
-                                    "IOB0_PGOOD_3V3_PORTS-O",
-                                    "IOB0_PWR_EN-O",
-                                    "IOB0_I2C_SWITCH_RST_L-O",
-                                    "IOB0_GLOBAL_ADDR_LR-O",
-                                    "IOB0_GLOBAL_ADDR_UD-O",
-                                    "IOB0_MCU_STRAP_P0_2-I",
-                                    "IOB0_MCU_VMON_12V_SSD-I";
-                            };
-                            exp32: pca9555@52 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x52>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112d>;
-                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB0_AHS_I2C_INT-I",
-                                    "IOB0_SSD_PRSNT_L-I",
-                                    "IOB0_SSD_PWRDIS-I",
-                                    "IOB0_SSD_LED-I",
-                                    "IOB0_SSD_PERST_TO_MCU-I",
-                                    "IOB0_SSD_PERST_TO_SSD-I",
-                                    "IOB0_MCU_SSD_DIS-I",
-                                    "IOB0_MCU_CLK_SSD_EN-I",
-                                    "IOB0_VLEAKDETECT1STATUS0-I",
-                                    "IOB0_VLEAKDETECT1STATUS1-I",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "";
-                            };
                         };
                     };
                 };
@@ -748,6 +748,99 @@
                             i2c80: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
+                                exp36: pca9555@50 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x50>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112e>;
+                                    interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB2_CX0_RST_L-I",
+                                        "IOB2_CX1_RST_L-I",
+                                        "IOB2_CX0_INBAND_RECOVERY-I",
+                                        "IOB2_CX1_INBAND_RECOVERY-I",
+                                        "IOB2_CX0_BOOT_COMPLT-I",
+                                        "IOB2_CX1_BOOT_COMPLT-I",
+                                        "IOB2_CX0_TMP_WARNING-I",
+                                        "IOB2_CX1_TMP_WARNING-I",
+                                        "IOB2_CX0_OVT_SHTDN-I",
+                                        "IOB2_CX1_OVT_SHTDN-I",
+                                        "IOB2_CX0_FNP_L-I",
+                                        "IOB2_CX1_FNP_L-I",
+                                        "IOB2_MCU_STRAP_P1_0-I",
+                                        "IOB2_MCU_STRAP_P2_0-I",
+                                        "IOB2_MCU_READY-I",
+                                        "IOB2_MCU_RECOVERY_N-I";
+                                };
+                                exp37: pca9555@51 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x51>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112e>;
+                                    interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB2_GLOBAL_WP-I",
+                                        "IOB2_PGOOD_12V-I",
+                                        "IOB2_PGOOD_VDD-I",
+                                        "IOB2_PGOOD_VDDP-I",
+                                        "IOB2_PGOOD_DVDD-I",
+                                        "IOB2_PGOOD_HVDD-I",
+                                        "IOB2_PGOOD_3V3-I",
+                                        "IOB2_PGOOD_5V-I",
+                                        "IOB2_PGOOD_1V8-I",
+                                        "IOB2_PGOOD_3V3_PORTS-O",
+                                        "IOB2_PWR_EN-O",
+                                        "IOB2_I2C_SWITCH_RST_L-O",
+                                        "IOB2_GLOBAL_ADDR_LR-O",
+                                        "IOB2_GLOBAL_ADDR_UD-O",
+                                        "IOB2_MCU_STRAP_P0_2-I",
+                                        "IOB2_MCU_VMON_12V_SSD-I";
+                                };
+                                exp38: pca9555@52 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x52>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112e>;
+                                    interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB2_AHS_I2C_INT-I",
+                                        "IOB2_SSD_PRSNT_L-I",
+                                        "IOB2_SSD_PWRDIS-I",
+                                        "IOB2_SSD_LED-I",
+                                        "IOB2_SSD_PERST_TO_MCU-I",
+                                        "IOB2_SSD_PERST_TO_SSD-I",
+                                        "IOB2_MCU_SSD_DIS-I",
+                                        "IOB2_MCU_CLK_SSD_EN-I",
+                                        "IOB2_VLEAKDETECT1STATUS0-I",
+                                        "IOB2_VLEAKDETECT1STATUS1-I",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "";
+                                };
                             };
                         };
                     };
@@ -772,99 +865,6 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp36: pca9555@50 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x50>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112e>;
-                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB2_CX0_RST_L-I",
-                                    "IOB2_CX1_RST_L-I",
-                                    "IOB2_CX0_INBAND_RECOVERY-I",
-                                    "IOB2_CX1_INBAND_RECOVERY-I",
-                                    "IOB2_CX0_BOOT_COMPLT-I",
-                                    "IOB2_CX1_BOOT_COMPLT-I",
-                                    "IOB2_CX0_TMP_WARNING-I",
-                                    "IOB2_CX1_TMP_WARNING-I",
-                                    "IOB2_CX0_OVT_SHTDN-I",
-                                    "IOB2_CX1_OVT_SHTDN-I",
-                                    "IOB2_CX0_FNP_L-I",
-                                    "IOB2_CX1_FNP_L-I",
-                                    "IOB2_MCU_STRAP_P1_0-I",
-                                    "IOB2_MCU_STRAP_P2_0-I",
-                                    "IOB2_MCU_READY-I",
-                                    "IOB2_MCU_RECOVERY_N-I";
-                            };
-                            exp37: pca9555@51 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x51>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112e>;
-                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB2_GLOBAL_WP-I",
-                                    "IOB2_PGOOD_12V-I",
-                                    "IOB2_PGOOD_VDD-I",
-                                    "IOB2_PGOOD_VDDP-I",
-                                    "IOB2_PGOOD_DVDD-I",
-                                    "IOB2_PGOOD_HVDD-I",
-                                    "IOB2_PGOOD_3V3-I",
-                                    "IOB2_PGOOD_5V-I",
-                                    "IOB2_PGOOD_1V8-I",
-                                    "IOB2_PGOOD_3V3_PORTS-O",
-                                    "IOB2_PWR_EN-O",
-                                    "IOB2_I2C_SWITCH_RST_L-O",
-                                    "IOB2_GLOBAL_ADDR_LR-O",
-                                    "IOB2_GLOBAL_ADDR_UD-O",
-                                    "IOB2_MCU_STRAP_P0_2-I",
-                                    "IOB2_MCU_VMON_12V_SSD-I";
-                            };
-                            exp38: pca9555@52 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x52>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112e>;
-                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB2_AHS_I2C_INT-I",
-                                    "IOB2_SSD_PRSNT_L-I",
-                                    "IOB2_SSD_PWRDIS-I",
-                                    "IOB2_SSD_LED-I",
-                                    "IOB2_SSD_PERST_TO_MCU-I",
-                                    "IOB2_SSD_PERST_TO_SSD-I",
-                                    "IOB2_MCU_SSD_DIS-I",
-                                    "IOB2_MCU_CLK_SSD_EN-I",
-                                    "IOB2_VLEAKDETECT1STATUS0-I",
-                                    "IOB2_VLEAKDETECT1STATUS1-I",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "";
-                            };
                         };
 		            };
                 };
@@ -877,6 +877,99 @@
                             i2c81: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
+                                exp39: pca9555@50 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x50>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112f>;
+                                    interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB3_CX0_RST_L-I",
+                                        "IOB3_CX1_RST_L-I",
+                                        "IOB3_CX0_INBAND_RECOVERY-I",
+                                        "IOB3_CX1_INBAND_RECOVERY-I",
+                                        "IOB3_CX0_BOOT_COMPLT-I",
+                                        "IOB3_CX1_BOOT_COMPLT-I",
+                                        "IOB3_CX0_TMP_WARNING-I",
+                                        "IOB3_CX1_TMP_WARNING-I",
+                                        "IOB3_CX0_OVT_SHTDN-I",
+                                        "IOB3_CX1_OVT_SHTDN-I",
+                                        "IOB3_CX0_FNP_L-I",
+                                        "IOB3_CX1_FNP_L-I",
+                                        "IOB3_MCU_STRAP_P1_0-I",
+                                        "IOB3_MCU_STRAP_P2_0-I",
+                                        "IOB3_MCU_READY-I",
+                                        "IOB3_MCU_RECOVERY_N-I";
+                                };
+                                exp40: pca9555@51 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x51>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112f>;
+                                    interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB3_GLOBAL_WP-I",
+                                        "IOB3_PGOOD_12V-I",
+                                        "IOB3_PGOOD_VDD-I",
+                                        "IOB3_PGOOD_VDDP-I",
+                                        "IOB3_PGOOD_DVDD-I",
+                                        "IOB3_PGOOD_HVDD-I",
+                                        "IOB3_PGOOD_3V3-I",
+                                        "IOB3_PGOOD_5V-I",
+                                        "IOB3_PGOOD_1V8-I",
+                                        "IOB3_PGOOD_3V3_PORTS-O",
+                                        "IOB3_PWR_EN-O",
+                                        "IOB3_I2C_SWITCH_RST_L-O",
+                                        "IOB3_GLOBAL_ADDR_LR-O",
+                                        "IOB3_GLOBAL_ADDR_UD-O",
+                                        "IOB3_MCU_STRAP_P0_2-I",
+                                        "IOB3_MCU_VMON_12V_SSD-I";
+                                };
+                                exp41: pca9555@52 {
+                                    compatible = "nxp,pca9555";
+                                    reg = <0x52>;
+                                    gpio-controller;
+                                    #gpio-cells = <2>;
+
+                                    #address-cells = <1>;
+                                    #size-cells = <0>;
+                                    interrupt-controller;
+                                    #interrupt-cells = <2>;
+                                    interrupt-parent = <&cp2112f>;
+                                    interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                    gpio-line-names =
+                                        "IOB3_AHS_I2C_INT-I",
+                                        "IOB3_SSD_PRSNT_L-I",
+                                        "IOB3_SSD_PWRDIS-I",
+                                        "IOB3_SSD_LED-I",
+                                        "IOB3_SSD_PERST_TO_MCU-I",
+                                        "IOB3_SSD_PERST_TO_SSD-I",
+                                        "IOB3_MCU_SSD_DIS-I",
+                                        "IOB3_MCU_CLK_SSD_EN-I",
+                                        "IOB3_VLEAKDETECT1STATUS0-I",
+                                        "IOB3_VLEAKDETECT1STATUS1-I",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "";
+                                };
                             };
                         };
                     };
@@ -901,99 +994,6 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp39: pca9555@50 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x50>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112f>;
-                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB3_CX0_RST_L-I",
-                                    "IOB3_CX1_RST_L-I",
-                                    "IOB3_CX0_INBAND_RECOVERY-I",
-                                    "IOB3_CX1_INBAND_RECOVERY-I",
-                                    "IOB3_CX0_BOOT_COMPLT-I",
-                                    "IOB3_CX1_BOOT_COMPLT-I",
-                                    "IOB3_CX0_TMP_WARNING-I",
-                                    "IOB3_CX1_TMP_WARNING-I",
-                                    "IOB3_CX0_OVT_SHTDN-I",
-                                    "IOB3_CX1_OVT_SHTDN-I",
-                                    "IOB3_CX0_FNP_L-I",
-                                    "IOB3_CX1_FNP_L-I",
-                                    "IOB3_MCU_STRAP_P1_0-I",
-                                    "IOB3_MCU_STRAP_P2_0-I",
-                                    "IOB3_MCU_READY-I",
-                                    "IOB3_MCU_RECOVERY_N-I";
-                            };
-                            exp40: pca9555@51 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x51>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112f>;
-                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB3_GLOBAL_WP-I",
-                                    "IOB3_PGOOD_12V-I",
-                                    "IOB3_PGOOD_VDD-I",
-                                    "IOB3_PGOOD_VDDP-I",
-                                    "IOB3_PGOOD_DVDD-I",
-                                    "IOB3_PGOOD_HVDD-I",
-                                    "IOB3_PGOOD_3V3-I",
-                                    "IOB3_PGOOD_5V-I",
-                                    "IOB3_PGOOD_1V8-I",
-                                    "IOB3_PGOOD_3V3_PORTS-O",
-                                    "IOB3_PWR_EN-O",
-                                    "IOB3_I2C_SWITCH_RST_L-O",
-                                    "IOB3_GLOBAL_ADDR_LR-O",
-                                    "IOB3_GLOBAL_ADDR_UD-O",
-                                    "IOB3_MCU_STRAP_P0_2-I",
-                                    "IOB3_MCU_VMON_12V_SSD-I";
-                            };
-                            exp41: pca9555@52 {
-                                compatible = "nxp,pca9555";
-                                reg = <0x52>;
-                                gpio-controller;
-                                #gpio-cells = <2>;
-
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                interrupt-controller;
-                                #interrupt-cells = <2>;
-                                interrupt-parent = <&cp2112f>;
-                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-
-                                gpio-line-names =
-                                    "IOB3_AHS_I2C_INT-I",
-                                    "IOB3_SSD_PRSNT_L-I",
-                                    "IOB3_SSD_PWRDIS-I",
-                                    "IOB3_SSD_LED-I",
-                                    "IOB3_SSD_PERST_TO_MCU-I",
-                                    "IOB3_SSD_PERST_TO_SSD-I",
-                                    "IOB3_MCU_SSD_DIS-I",
-                                    "IOB3_MCU_CLK_SSD_EN-I",
-                                    "IOB3_VLEAKDETECT1STATUS0-I",
-                                    "IOB3_VLEAKDETECT1STATUS1-I",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "";
-                            };
                         };
                     };
                 };
