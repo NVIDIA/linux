@@ -56,6 +56,9 @@ static void i2c_mux_unhold_work(struct work_struct *work)
 	struct i2c_mux_core *muxc = container_of(dwork, struct i2c_mux_core,
 						 unhold_work);
 
+	printk("[%d]i2c mux timeout - chnl:%d",
+	       muxc->parent->nr, muxc->holder_chan_id);
+
 	if (muxc->deselect)
 		muxc->deselect(muxc, muxc->holder_chan_id);
 

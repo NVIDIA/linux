@@ -1569,6 +1569,7 @@ static void i2c_adapter_unhold_work(struct work_struct *work)
 	struct i2c_adapter *adapter = container_of(dwork, struct i2c_adapter,
 						   unhold_work);
 
+	printk("[%d]i2c adapter lock timeout", adapter->nr);
 	mutex_unlock(&adapter->hold_lock);
 }
 
@@ -2407,7 +2408,7 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	 * Do not lock a bus for delivering an unhold msg to a mux
 	 * adpater. This is just for a single length unhold msg case.
 	 */
-	if (num == 1 && i2c_parent_is_i2c_adapter(adap) &&
+	if (num == 1 &&
 	    i2c_check_hold_msg(msgs[0].flags, msgs[0].len,
 			       (u16 *)msgs[0].buf) ==
 			       I2C_HOLD_MSG_RESET)
