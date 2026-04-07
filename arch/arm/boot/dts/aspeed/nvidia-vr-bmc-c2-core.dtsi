@@ -163,7 +163,7 @@
         gpio-line-names =
             "B0_M1_MCU_RESET_L-O",
             "B0_M1_MCU_RECOVERY_L-O",
-            "B0_M1_SNN_GPU0_MCU_RESET_L",
+            "B0_M1_I2C_SOCAMM_UPHY_SEL-O",
             "B0_M1_SNN_GPU0_MCU_REC_L",
             "B0_M1_THERM_OVERT_L-I",
             "B0_M1_THERM_WARN_L-I",
@@ -205,7 +205,7 @@
             "B0_M1_CPU_IST_BOOT_HMC-O",
             "B0_M1_CPU_BOOT_CHAIN0-O",
             "B0_M1_HMC_BRD_ID1",
-            "B0_M1_HMC_BRD_ID2",
+            "B0_M1_HMC_MCU_I2C_ENABLE-O",
             "B0_M1_CPU_DIE_SEL0-O",
             "B0_M1_CPU_DIE_SEL1-O",
             "B0_M1_CPU_DIE_SEL2-O",
@@ -269,7 +269,7 @@
         gpio-line-names =
             "B0_M0_I2C_BUS_MUX_RST_L-O",
             "B0_M0_HPM_MCU_OK-I",
-            "B0_M0_RSVD_AIC_USB_EN",
+            "B0_M0_CPU_SYS_RST_N_3V3-I",
             "B0_M0_C0_SOCAMM_DAC_I2C_SEL_R-O",
             "B0_M0_C1_SOCAMM_DAC_I2C_SEL_R-O",
             "B0_M0_C0_SOCAMM_I2C_SEL-O",
@@ -282,7 +282,7 @@
             "B0_M0_BMC_LEAK_TEST_L-O",
             "B0_M0_MCU_BMC_ALERT_L-I",
             "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
-            "B0_M0_BRD_ID_2";
+            "B0_M0_SNN_GPU_MCU_I2C_ENABLE";
     };
 
     // MGMT0 BOARD0, Expander @0x22
