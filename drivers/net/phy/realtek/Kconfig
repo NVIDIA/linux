@@ -12,4 +12,9 @@ config REALTEK_PHY_HWMON
 	help
 	  Optional hwmon support for the temperature sensor
 
+config RTL_RGMII_SGMII_3809
+	bool "P3809 RGMII/SGMII bridge"
+	help
+	  Enable P3809 RGMII/SGMII bridge with 1GB speed
+
 endif # REALTEK_PHY
