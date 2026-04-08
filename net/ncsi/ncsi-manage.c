@@ -1975,7 +1975,7 @@ void ncsi_unregister_dev(struct ncsi_dev *nd)
 	 * 2. cancel_work_sync() - cancel work scheduled by timer handlers
 	 */
 	for (i = 0; i < ARRAY_SIZE(ndp->requests); i++)
-		del_timer_sync(&ndp->requests[i].timer);
+		timer_delete_sync(&ndp->requests[i].timer);
 
 	cancel_work_sync(&ndp->work);
 
