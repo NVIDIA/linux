@@ -10,15 +10,31 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/aspeed-2600-ara.h>
-#include <linux/i2c-aspeed.h>
 
 #define ARA_ADDRESS 0xC
 
 #ifdef CONFIG_I2C_ASPEED
-#define I2C_SLAVE_ADDR_REG ASPEED_I2C_DEV_ADDR_REG
+#define I2C_SLAVE_ADDR_REG 0x18
 #else
 #define I2C_SLAVE_ADDR_REG 0x40
 #endif
+
+/*
+ * Minimal view of the I2C bus driver's private data. Both aspeed_i2c_bus
+ * (i2c-aspeed.c) and ast2600_i2c_bus (i2c-ast2600.c) place these three
+ * members first, so the cast from i2c_get_adapdata() is layout-safe when
+ * only accessing ->base.
+ *
+ * WARNING: This is a fragile struct-layout assumption. If the real driver
+ * struct reorders or inserts fields before 'base', this will silently
+ * break at runtime. Ideally the I2C bus driver should expose the register
+ * base through a proper API instead.
+ */
+struct aspeed_i2c_bus {
+	struct i2c_adapter	adap;
+	struct device		*dev;
+	void __iomem		*base;
+};
 
 /*
  * disable_ast2600_ara:
