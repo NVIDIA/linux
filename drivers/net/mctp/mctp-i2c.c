@@ -1097,6 +1097,39 @@ static struct notifier_block mctp_i2c_notifier = {
 	.notifier_call = mctp_i2c_notifier_call,
 };
 
+/* Netdevice notifier to re-attach ops after namespace change.
+ * When a netdev moves namespaces, NETDEV_UNREGISTER fires in the old ns
+ * which destroys the mctp_dev, then NETDEV_REGISTER fires in the new ns
+ * which creates a new mctp_dev but without the ops pointer.
+ */
+static int mctp_i2c_netdev_notify(struct notifier_block *nb,
+				  unsigned long event, void *ptr)
+{
+	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct mctp_dev *mdev;
+
+	if (event != NETDEV_REGISTER)
+		return NOTIFY_DONE;
+
+	if (dev->netdev_ops != &mctp_i2c_ops)
+		return NOTIFY_DONE;
+
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (mdev) {
+		if (!mdev->ops)
+			mdev->ops = &mctp_i2c_mctp_ops;
+		mctp_dev_put(mdev);
+	}
+	rcu_read_unlock();
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block mctp_i2c_netdev_nb = {
+	.notifier_call = mctp_i2c_netdev_notify,
+};
+
 static const struct i2c_device_id mctp_i2c_id[] = {
 	{ "mctp-i2c-interface" },
 	{}
@@ -1132,6 +1165,12 @@ static __init int mctp_i2c_mod_init(void)
 		i2c_del_driver(&mctp_i2c_driver);
 		return rc;
 	}
+	rc = register_netdevice_notifier(&mctp_i2c_netdev_nb);
+	if (rc < 0) {
+		bus_unregister_notifier(&i2c_bus_type, &mctp_i2c_notifier);
+		i2c_del_driver(&mctp_i2c_driver);
+		return rc;
+	}
 	return 0;
 }
 
@@ -1139,6 +1178,7 @@ static __exit void mctp_i2c_mod_exit(void)
 {
 	int rc;
 
+	unregister_netdevice_notifier(&mctp_i2c_netdev_nb);
 	rc = bus_unregister_notifier(&i2c_bus_type, &mctp_i2c_notifier);
 	if (rc < 0)
 		pr_warn("MCTP I2C could not unregister notifier, %d\n", rc);
