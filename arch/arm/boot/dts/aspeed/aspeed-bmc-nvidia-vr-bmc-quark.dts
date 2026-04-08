@@ -618,6 +618,7 @@
     i2c-scl-clk-low-timeout-us = <128000>;
     i2c-tck-thddat-config = <0x0099EC00>;
     tout-baseclk-div = <4096>;
+    slave-wdt-timeout-ms = <150>;
 
     ssif-bmc@10 {
         compatible = "ssif-bmc";
