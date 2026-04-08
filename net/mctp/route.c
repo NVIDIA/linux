@@ -11,9 +11,11 @@
  */
 
 #include <linux/idr.h>
+#include <linux/jhash.h>
 #include <linux/kconfig.h>
 #include <linux/mctp.h>
 #include <linux/netdevice.h>
+#include <linux/netfilter_netdev.h>
 #include <linux/rtnetlink.h>
 #include <linux/skbuff.h>
 
@@ -30,8 +32,193 @@
 
 static const unsigned int mctp_message_maxlen = 64 * 1024;
 static const unsigned long mctp_key_lifetime = 6 * CONFIG_HZ;
+static const unsigned long mctp_nf_track_timeout = 2 * CONFIG_HZ;
 
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev);
+
+/* --- MCTP netfilter fragment tracking --- */
+
+static u32 mctp_nf_track_hash(mctp_eid_t src, mctp_eid_t dst, u8 tag)
+{
+	return jhash_3words(src, dst, tag, 0) & (MCTP_NF_TRACK_BUCKETS - 1);
+}
+
+static bool mctp_nf_track_lookup(struct mctp_dev *mdev, mctp_eid_t src,
+				 mctp_eid_t dst, u8 tag, u8 *verdict)
+{
+	struct mctp_nf_track_entry *entry;
+	struct hlist_node *tmp;
+	unsigned long now = jiffies;
+	u32 idx = mctp_nf_track_hash(src, dst, tag);
+	bool found = false;
+
+	spin_lock_bh(&mdev->nf_track.lock);
+	hlist_for_each_entry_safe(entry, tmp, &mdev->nf_track.buckets[idx],
+				  node) {
+		if (entry->src != src || entry->dst != dst || entry->tag != tag)
+			continue;
+
+		if (time_after(now, entry->expires)) {
+			hlist_del(&entry->node);
+			kfree(entry);
+			mdev->nf_track.count--;
+			break;
+		}
+
+		*verdict = entry->verdict;
+		found = true;
+		break;
+	}
+	spin_unlock_bh(&mdev->nf_track.lock);
+
+	return found;
+}
+
+static void mctp_nf_track_delete(struct mctp_dev *mdev, mctp_eid_t src,
+				 mctp_eid_t dst, u8 tag)
+{
+	struct mctp_nf_track_entry *entry;
+	struct hlist_node *tmp;
+	u32 idx = mctp_nf_track_hash(src, dst, tag);
+
+	spin_lock_bh(&mdev->nf_track.lock);
+	hlist_for_each_entry_safe(entry, tmp, &mdev->nf_track.buckets[idx],
+				  node) {
+		if (entry->src != src || entry->dst != dst || entry->tag != tag)
+			continue;
+		hlist_del(&entry->node);
+		kfree(entry);
+		mdev->nf_track.count--;
+		break;
+	}
+	spin_unlock_bh(&mdev->nf_track.lock);
+}
+
+static void mctp_nf_track_store(struct mctp_dev *mdev, mctp_eid_t src,
+				mctp_eid_t dst, u8 tag, u8 verdict)
+{
+	struct mctp_nf_track_entry *entry, *new_entry;
+	u32 idx = mctp_nf_track_hash(src, dst, tag);
+
+	new_entry = kzalloc(sizeof(*new_entry), GFP_ATOMIC);
+	if (!new_entry)
+		return;
+
+	new_entry->src = src;
+	new_entry->dst = dst;
+	new_entry->tag = tag;
+	new_entry->verdict = verdict;
+	new_entry->expires = jiffies + mctp_nf_track_timeout;
+
+	spin_lock_bh(&mdev->nf_track.lock);
+	hlist_for_each_entry(entry, &mdev->nf_track.buckets[idx], node) {
+		if (entry->src != src || entry->dst != dst || entry->tag != tag)
+			continue;
+		entry->verdict = verdict;
+		entry->expires = jiffies + mctp_nf_track_timeout;
+		spin_unlock_bh(&mdev->nf_track.lock);
+		kfree(new_entry);
+		return;
+	}
+
+	if (mdev->nf_track.count < MCTP_NF_TRACK_MAX) {
+		hlist_add_head(&new_entry->node, &mdev->nf_track.buckets[idx]);
+		mdev->nf_track.count++;
+		new_entry = NULL;
+	}
+	spin_unlock_bh(&mdev->nf_track.lock);
+
+	kfree(new_entry);
+}
+
+enum mctp_nf_verdict {
+	MCTP_NF_VERDICT_ACCEPT = 0,
+	MCTP_NF_VERDICT_DROP = 1,
+};
+
+static bool mctp_nf_ingress_check(struct sk_buff *skb, struct mctp_dev *mdev,
+				  const struct mctp_hdr *mh)
+{
+	u8 flags = mh->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
+	u8 tag = mh->flags_seq_tag & (MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
+	u8 verdict;
+	int ret;
+
+	if (!(flags & MCTP_HDR_FLAG_SOM)) {
+		if (mctp_nf_track_lookup(mdev, mh->src, mh->dest, tag,
+					 &verdict)) {
+			if (flags & MCTP_HDR_FLAG_EOM)
+				mctp_nf_track_delete(mdev, mh->src, mh->dest,
+						     tag);
+			return verdict == MCTP_NF_VERDICT_ACCEPT;
+		}
+	}
+
+	if (!nf_hook_ingress_active(skb))
+		return true;
+
+	rcu_read_lock();
+	ret = nf_hook_ingress(skb);
+	rcu_read_unlock();
+
+	if (ret < 0) {
+		if (!(flags & MCTP_HDR_FLAG_EOM))
+			mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
+					    MCTP_NF_VERDICT_DROP);
+		return false;
+	}
+
+	if (!(flags & MCTP_HDR_FLAG_EOM))
+		mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
+				    MCTP_NF_VERDICT_ACCEPT);
+
+	return true;
+}
+
+static int mctp_nf_egress_check(struct sk_buff **pskb, struct mctp_dev *mdev,
+				const struct mctp_hdr *mh)
+{
+	struct sk_buff *skb = *pskb;
+	u8 flags = mh->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
+	u8 tag = mh->flags_seq_tag & (MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
+	u8 verdict;
+	int rc = NET_XMIT_SUCCESS;
+
+	if (!(flags & MCTP_HDR_FLAG_SOM)) {
+		if (mctp_nf_track_lookup(mdev, mh->src, mh->dest, tag,
+					 &verdict)) {
+			if (flags & MCTP_HDR_FLAG_EOM)
+				mctp_nf_track_delete(mdev, mh->src, mh->dest,
+						     tag);
+			if (verdict == MCTP_NF_VERDICT_DROP) {
+				kfree_skb(skb);
+				*pskb = NULL;
+				return -EPERM;
+			}
+			return 0;
+		}
+	}
+
+	if (!nf_hook_egress_active())
+		return 0;
+
+	rcu_read_lock_bh();
+	skb = nf_hook_egress(skb, &rc, mdev->dev);
+	rcu_read_unlock_bh();
+
+	if (!skb) {
+		*pskb = NULL;
+		return net_xmit_errno(rc);
+	}
+
+	*pskb = skb;
+
+	if (!(flags & MCTP_HDR_FLAG_EOM))
+		mctp_nf_track_store(mdev, mh->src, mh->dest, tag,
+				    MCTP_NF_VERDICT_ACCEPT);
+
+	return 0;
+}
 
 /* route output callbacks */
 static int mctp_dst_discard(struct mctp_dst *dst, struct sk_buff *skb)
@@ -667,6 +854,16 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 	}
 
 	mctp_flow_prepare_output(skb, dst->dev);
+
+	if (!is_batched) {
+		struct mctp_hdr *hdr = mctp_hdr(skb);
+
+		rc = mctp_nf_egress_check(&skb, dst->dev, hdr);
+		if (!skb)
+			return rc;
+		if (rc)
+			return rc;
+	}
 
 	rc = dev_queue_xmit(skb);
 	if (rc)
@@ -1515,6 +1712,12 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	}
 	cb->net = READ_ONCE(mdev->net);
 	cb->ifindex = dev->ifindex;
+
+	if (!mctp_nf_ingress_check(skb, mdev, mh)) {
+		/* skb may already be freed by nf_hook_ingress; don't kfree */
+		mctp_dev_put(mdev);
+		return NET_RX_DROP;
+	}
 
 	rc = mctp_route_lookup(net, cb->net, mh->dest, &dst);
 
