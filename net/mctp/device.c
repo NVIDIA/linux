@@ -534,12 +534,15 @@ EXPORT_SYMBOL_GPL(mctp_unregister_netdev);
 
 void mctp_dev_set_timeout(struct net_device *dev, unsigned int timeout_ms)
 {
-	struct mctp_dev *mdev = mctp_dev_get(dev);
+	struct mctp_dev *mdev;
 
-	if (!mdev)
-		return;
-	mdev->key_lifetime = msecs_to_jiffies(timeout_ms);
-	mctp_dev_put(mdev);
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (mdev) {
+		mdev->key_lifetime = msecs_to_jiffies(timeout_ms);
+		mctp_dev_put(mdev);
+	}
+	rcu_read_unlock();
 }
 EXPORT_SYMBOL_GPL(mctp_dev_set_timeout);
 
