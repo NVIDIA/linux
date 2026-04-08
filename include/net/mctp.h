@@ -87,6 +87,27 @@ struct mctp_sock {
 	 * tag, and any netdev state for a request/response pairing
 	 */
 	struct timer_list key_expiry;
+
+	/* Error queue control */
+	bool		enable_errqueue;
+
+	/* Deferred error reporting (to avoid deadlock in timer context) */
+	struct work_struct error_report_work;
+	struct list_head pending_errors;
+	spinlock_t error_queue_lock;
+};
+
+struct mctp_pending_error {
+	struct list_head list;
+	struct sk_buff *skb;
+	struct sock *sk;
+	int error_code;
+	struct net_device *dev;
+	u8 direction;
+	u8 binding;
+	u8 orig_msg_type;
+	u16 orig_payload_len;
+	u8 orig_payload[32];
 };
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
@@ -181,6 +202,11 @@ struct mctp_sk_key {
 	 * is used.
 	 */
 	bool		manual_alloc;
+
+	/* Original message header for error reporting on fragmented messages */
+	u8		orig_msg_type;
+	u16		orig_payload_len;
+	u8		orig_payload[32];
 };
 
 struct mctp_skb_cb {
@@ -334,6 +360,15 @@ void mctp_routes_exit(void);
 
 int mctp_device_init(void);
 void mctp_device_exit(void);
+
+/* Error queue support - see net/mctp/route.c */
+void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
+		      int error_code, struct net_device *dev, u8 direction,
+		      u8 binding, struct mctp_sk_key *key);
+struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
+					struct net_device *dev,
+					struct mctp_sk_key *key,
+					struct mctp_sk_key **found_key);
 
 /* MCTP IDs and Codes from DMTF specification
  * "DSP0239 Management Component Transport Protocol (MCTP) IDs and Codes"

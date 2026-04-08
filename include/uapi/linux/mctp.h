@@ -55,6 +55,7 @@ struct mctp_fq_addr {
 #define MCTP_TAG_PREALLOC	0x10
 
 #define MCTP_OPT_ADDR_EXT	1
+#define MCTP_OPT_ENABLE_ERRQUEUE	2
 
 #define SIOCMCTPALLOCTAG	(SIOCPROTOPRIVATE + 0)
 #define SIOCMCTPDROPTAG		(SIOCPROTOPRIVATE + 1)
@@ -103,6 +104,42 @@ struct mctp_ioc_tag_ctl2 {
 	 */
 	__u8		tag;
 
+};
+
+/*
+ * MCTP Error Queue Support
+ * Receive asynchronous errors via recvmsg(MSG_ERRQUEUE)
+ */
+
+#define MCTP_ERROR_PAYLOAD_SIZE  32
+
+#define MCTP_RECVERR  1
+
+#define MCTP_DIR_TX  0
+#define MCTP_DIR_RX  1
+
+/**
+ * struct mctp_error - MCTP error information for applications
+ *
+ * Returned to applications via recvmsg(MSG_ERRQUEUE) as ancillary data
+ * at cmsg level SOL_MCTP, type MCTP_RECVERR.
+ */
+struct mctp_error {
+	__u32	error_code;
+	__u8	direction;		/* MCTP_DIR_TX or MCTP_DIR_RX */
+	__u8	binding;		/* mctp_phys_binding value */
+	__u16	reserved1;
+
+	__u8	src_eid;
+	__u8	dest_eid;
+	__u8	tag;
+	__u8	msg_type;
+
+	__u64	timestamp_ns;
+
+	__u16	payload_len;
+	__u16	reserved2;
+	__u8	payload[MCTP_ERROR_PAYLOAD_SIZE];
 };
 
 #endif /* __UAPI_MCTP_H */

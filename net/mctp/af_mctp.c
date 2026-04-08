@@ -305,6 +305,9 @@ static int mctp_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 	u8 type;
 	int rc;
 
+	if (flags & MSG_ERRQUEUE)
+		return sock_recv_errqueue(sk, msg, len, SOL_MCTP, MCTP_RECVERR);
+
 	if (flags & ~(MSG_DONTWAIT | MSG_TRUNC | MSG_PEEK))
 		return -EOPNOTSUPP;
 
@@ -370,6 +373,78 @@ out_free:
 	return rc;
 }
 
+static void mctp_error_report_work_fn(struct work_struct *work)
+{
+	struct mctp_sock *msk = container_of(work, struct mctp_sock,
+					     error_report_work);
+	struct mctp_pending_error *perr, *tmp;
+	struct list_head local_list;
+
+	INIT_LIST_HEAD(&local_list);
+
+	spin_lock_bh(&msk->error_queue_lock);
+	list_splice_init(&msk->pending_errors, &local_list);
+	spin_unlock_bh(&msk->error_queue_lock);
+
+	list_for_each_entry_safe(perr, tmp, &local_list, list) {
+		if (perr->error_code == ETIMEDOUT && perr->sk &&
+		    perr->orig_payload_len > 0) {
+			struct mctp_error *mctp_err;
+			struct sk_buff *err_skb;
+			struct mctp_hdr *mh;
+
+			if (!perr->skb ||
+			    perr->skb->len < sizeof(struct mctp_hdr))
+				goto cleanup;
+
+			err_skb = alloc_skb(sizeof(*mctp_err), GFP_KERNEL);
+			if (!err_skb)
+				goto cleanup;
+
+			mctp_err = (struct mctp_error *)skb_put(err_skb,
+					sizeof(*mctp_err));
+			memset(mctp_err, 0, sizeof(*mctp_err));
+
+			mctp_err->error_code = perr->error_code;
+			mctp_err->direction = perr->direction;
+			mctp_err->binding = perr->binding;
+			mctp_err->timestamp_ns = ktime_get_ns();
+
+			mh = mctp_hdr(perr->skb);
+			mctp_err->src_eid = mh->src;
+			mctp_err->dest_eid = mh->dest;
+			mctp_err->tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+			mctp_err->msg_type = perr->orig_msg_type;
+			mctp_err->payload_len = min_t(u16,
+				perr->orig_payload_len,
+				MCTP_ERROR_PAYLOAD_SIZE);
+			memcpy(mctp_err->payload, perr->orig_payload,
+			       mctp_err->payload_len);
+
+			if (sock_queue_err_skb(perr->sk, err_skb) == 0)
+				sk_error_report(perr->sk);
+			else
+				kfree_skb(err_skb);
+cleanup:
+			sock_put(perr->sk);
+		} else if (perr->sk) {
+			mctp_queue_error(perr->sk, perr->skb, perr->error_code,
+					 perr->dev, perr->direction,
+					 perr->binding, NULL);
+			sock_put(perr->sk);
+		} else {
+			mctp_queue_error(&msk->sk, perr->skb, perr->error_code,
+					 perr->dev, perr->direction,
+					 perr->binding, NULL);
+		}
+
+		list_del(&perr->list);
+		kfree_skb(perr->skb);
+		kfree(perr);
+	}
+}
+
 /* We're done with the key; invalidate, stop reassembly, and remove from lists.
  */
 static void __mctp_key_remove(struct mctp_sk_key *key, struct net *net,
@@ -384,6 +459,48 @@ __must_hold(&net->mctp.keys_lock)
 	key->reasm_head = NULL;
 	key->reasm_dead = true;
 	key->valid = false;
+
+	if (reason == MCTP_TRACE_KEY_TIMEOUT && skb && key->dev &&
+	    key->dev->dev && key->sk) {
+		struct mctp_sock *msk = container_of(key->sk,
+						     struct mctp_sock, sk);
+
+		if (msk->enable_errqueue && key->orig_payload_len > 0) {
+			struct mctp_pending_error *perr;
+
+			perr = kmalloc(sizeof(*perr), GFP_ATOMIC);
+			if (perr) {
+				perr->skb = skb_clone(skb, GFP_ATOMIC);
+				if (perr->skb) {
+					perr->sk = key->sk;
+					sock_hold(perr->sk);
+					perr->error_code = ETIMEDOUT;
+					perr->dev = key->dev->dev;
+					perr->direction = MCTP_DIR_RX;
+					perr->binding = key->dev->binding;
+					perr->orig_msg_type =
+						key->orig_msg_type;
+					perr->orig_payload_len =
+						key->orig_payload_len;
+					memcpy(perr->orig_payload,
+					       key->orig_payload,
+					       min_t(size_t,
+						     key->orig_payload_len,
+						     sizeof(perr->orig_payload)));
+
+					spin_lock_bh(&msk->error_queue_lock);
+					list_add_tail(&perr->list,
+						      &msk->pending_errors);
+					spin_unlock_bh(&msk->error_queue_lock);
+
+					schedule_work(&msk->error_report_work);
+				} else {
+					kfree(perr);
+				}
+			}
+		}
+	}
+
 	mctp_dev_release_key(key->dev, key);
 	spin_unlock_irqrestore(&key->lock, flags);
 
@@ -412,6 +529,15 @@ static int mctp_setsockopt(struct socket *sock, int level, int optname,
 		if (copy_from_sockptr(&val, optval, sizeof(int)))
 			return -EFAULT;
 		msk->addr_ext = val;
+		return 0;
+	}
+
+	if (optname == MCTP_OPT_ENABLE_ERRQUEUE) {
+		if (optlen != sizeof(int))
+			return -EINVAL;
+		if (copy_from_sockptr(&val, optval, sizeof(int)))
+			return -EFAULT;
+		msk->enable_errqueue = !!val;
 		return 0;
 	}
 
@@ -639,6 +765,20 @@ static int mctp_compat_ioctl(struct socket *sock, unsigned int cmd,
 }
 #endif
 
+static __poll_t mctp_poll(struct file *file, struct socket *sock,
+			  poll_table *wait)
+{
+	struct sock *sk = sock->sk;
+	__poll_t mask;
+
+	mask = datagram_poll(file, sock, wait);
+
+	if (!skb_queue_empty_lockless(&sk->sk_error_queue))
+		mask |= EPOLLERR | EPOLLPRI;
+
+	return mask;
+}
+
 static const struct proto_ops mctp_dgram_ops = {
 	.family		= PF_MCTP,
 	.release	= mctp_release,
@@ -647,7 +787,7 @@ static const struct proto_ops mctp_dgram_ops = {
 	.socketpair	= sock_no_socketpair,
 	.accept		= sock_no_accept,
 	.getname	= sock_no_getname,
-	.poll		= datagram_poll,
+	.poll		= mctp_poll,
 	.ioctl		= mctp_ioctl,
 	.gettstamp	= sock_gettstamp,
 	.listen		= sock_no_listen,
@@ -711,6 +851,11 @@ static int mctp_sk_init(struct sock *sk)
 	INIT_HLIST_HEAD(&msk->keys);
 	timer_setup(&msk->key_expiry, mctp_sk_expire_keys, 0);
 	msk->bind_peer_set = false;
+
+	INIT_WORK(&msk->error_report_work, mctp_error_report_work_fn);
+	INIT_LIST_HEAD(&msk->pending_errors);
+	spin_lock_init(&msk->error_queue_lock);
+
 	return 0;
 }
 
@@ -793,6 +938,22 @@ static void mctp_sk_unhash(struct sock *sk)
 	 * as the sk is no longer observable
 	 */
 	timer_delete_sync(&msk->key_expiry);
+
+	cancel_work_sync(&msk->error_report_work);
+	{
+		struct mctp_pending_error *perr, *tmp_err;
+
+		spin_lock_bh(&msk->error_queue_lock);
+		list_for_each_entry_safe(perr, tmp_err,
+					 &msk->pending_errors, list) {
+			list_del(&perr->list);
+			if (perr->sk)
+				sock_put(perr->sk);
+			kfree_skb(perr->skb);
+			kfree(perr);
+		}
+		spin_unlock_bh(&msk->error_queue_lock);
+	}
 }
 
 static void mctp_sk_destruct(struct sock *sk)

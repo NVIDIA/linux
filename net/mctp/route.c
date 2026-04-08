@@ -600,8 +600,10 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 	if (this_seq != exp_seq)
 		goto err_free;
 
-	if (key->reasm_head->len + skb->len > mctp_message_maxlen)
-		goto err_free;
+	if (key->reasm_head->len + skb->len > mctp_message_maxlen) {
+		kfree_skb(skb);
+		return -EMSGSIZE;
+	}
 
 	skb->next = NULL;
 	skb->sk = NULL;
@@ -619,6 +621,43 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 err_free:
 	kfree_skb(skb);
 	return -EINVAL;
+}
+
+static void mctp_report_rx_reassembly_error(struct mctp_sk_key *key,
+					    struct sk_buff *skb,
+					    struct mctp_hdr *mh,
+					    unsigned long *flags,
+					    int err_code)
+{
+	struct sock *sk;
+	struct sk_buff *report_skb;
+	u8 binding = 0;
+
+	report_skb = key->reasm_head ? key->reasm_head : skb;
+
+	spin_unlock_irqrestore(&key->lock, *flags);
+
+	if (skb->dev) {
+		struct mctp_dev *mdev;
+
+		rcu_read_lock();
+		mdev = __mctp_dev_get(skb->dev);
+		if (mdev) {
+			binding = mdev->binding;
+			mctp_dev_put(mdev);
+		}
+		rcu_read_unlock();
+	}
+
+	sk = mctp_lookup_sock_for_error(report_skb, skb->dev, key, NULL);
+	if (sk) {
+		mctp_queue_error(sk, report_skb,
+				 err_code == -EMSGSIZE ? EMSGSIZE : EPROTO,
+				 skb->dev, MCTP_DIR_RX, binding, key);
+		sock_put(sk);
+	}
+
+	spin_lock_irqsave(&key->lock, *flags);
 }
 
 static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
@@ -771,9 +810,15 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		/* we need to be continuing an existing reassembly... */
 		if (!key->reasm_head) {
 			rc = -EINVAL;
+			mctp_report_rx_reassembly_error(key, skb, mh,
+							&f, rc);
 		} else {
 			rc = mctp_frag_queue(key, skb);
-			skb = NULL;
+			if (rc == -EINVAL || rc == -EMSGSIZE)
+				mctp_report_rx_reassembly_error(key, skb, mh,
+								&f, rc);
+			else
+				skb = NULL;
 		}
 
 		if (rc)
@@ -1495,6 +1540,26 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 			goto out_release;
 		}
 		mctp_skb_set_flow(skb, key);
+
+		/* Capture original payload for error reporting before unref.
+		 * At this point skb->data starts with type byte + payload.
+		 */
+		if (skb->len > 0) {
+			unsigned long flags2;
+			size_t capture_len;
+
+			spin_lock_irqsave(&key->lock, flags2);
+			key->orig_msg_type = *(u8 *)skb->data;
+			if (skb->len > 1) {
+				capture_len = min_t(size_t, skb->len - 1,
+						    sizeof(key->orig_payload));
+				memcpy(key->orig_payload, skb->data + 1,
+				       capture_len);
+				key->orig_payload_len = capture_len;
+			}
+			spin_unlock_irqrestore(&key->lock, flags2);
+		}
+
 		/* done with the key in this scope */
 		mctp_key_unref(key);
 		tag |= MCTP_HDR_FLAG_TO;
@@ -2159,6 +2224,236 @@ void mctp_routes_exit(void)
 	unregister_pernet_subsys(&mctp_net_ops);
 	dev_remove_pack(&mctp_packet_type);
 }
+
+/* --- MCTP Error Queue --- */
+
+struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev,
+				     struct mctp_sk_key **found_key)
+{
+	struct net *net = dev_net(dev);
+	struct mctp_dev *mdev;
+	struct mctp_hdr *mh;
+	struct mctp_sk_key *key;
+	struct sock *sk = NULL;
+	unsigned long flags;
+	unsigned int netid;
+	u8 tag;
+
+	if (found_key)
+		*found_key = NULL;
+
+	if (!skb || skb->len < sizeof(struct mctp_hdr))
+		return NULL;
+
+	mh = mctp_hdr(skb);
+
+	rcu_read_lock();
+	mdev = __mctp_dev_get(dev);
+	if (!mdev) {
+		rcu_read_unlock();
+		return NULL;
+	}
+	netid = READ_ONCE(mdev->net);
+	mctp_dev_put(mdev);
+	rcu_read_unlock();
+
+	tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		if (key->net != netid)
+			continue;
+		if (!mctp_address_matches(key->local_addr, mh->src))
+			continue;
+		if (!mctp_address_matches(key->peer_addr, mh->dest))
+			continue;
+		if (key->tag != tag)
+			continue;
+
+		sk = key->sk;
+		if (sk) {
+			sock_hold(sk);
+			if (found_key)
+				*found_key = key;
+		}
+		break;
+	}
+
+	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+	return sk;
+}
+EXPORT_SYMBOL_GPL(mctp_lookup_sock_by_key);
+
+struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
+					struct net_device *dev,
+					struct mctp_sk_key *key,
+					struct mctp_sk_key **found_key)
+{
+	struct sock *sk = NULL;
+	struct mctp_hdr *mh;
+
+	if (found_key)
+		*found_key = NULL;
+
+	if (!skb || !dev || skb->len < sizeof(struct mctp_hdr))
+		return NULL;
+
+	mh = mctp_hdr(skb);
+
+	/* Method 1: Use existing key socket */
+	if (key && key->sk) {
+		struct mctp_sock *msk = container_of(key->sk,
+						     struct mctp_sock, sk);
+
+		if (sock_flag(&msk->sk, SOCK_DEAD) || !msk->enable_errqueue)
+			return NULL;
+
+		sk = key->sk;
+		sock_hold(sk);
+		if (found_key)
+			*found_key = key;
+		return sk;
+	}
+
+	/* Method 2: TX key lookup (skipped if key provided to avoid deadlock
+	 * when called from __mctp_key_remove which holds keys_lock)
+	 */
+	if (!key) {
+		struct mctp_sk_key *tx_key = NULL;
+
+		sk = mctp_lookup_sock_by_key(skb, dev, &tx_key);
+		if (sk) {
+			struct mctp_sock *msk = container_of(sk,
+							     struct mctp_sock,
+							     sk);
+
+			if (sock_flag(&msk->sk, SOCK_DEAD) ||
+			    !msk->enable_errqueue) {
+				sock_put(sk);
+				return NULL;
+			}
+
+			if (found_key)
+				*found_key = tx_key;
+			return sk;
+		}
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(mctp_lookup_sock_for_error);
+
+static struct mctp_sk_key *mctp_lookup_tx_key_for_rx_error(
+		struct net *net, unsigned int netid,
+		mctp_eid_t local_eid, mctp_eid_t peer_eid, u8 tag)
+{
+	struct mctp_sk_key *key, *ret = NULL;
+	unsigned long flags;
+
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		if (!mctp_key_match(key, netid, local_eid, peer_eid, tag))
+			continue;
+
+		spin_lock(&key->lock);
+		if (key->valid && key->orig_payload_len > 0) {
+			refcount_inc(&key->refs);
+			ret = key;
+			spin_unlock(&key->lock);
+			break;
+		}
+		spin_unlock(&key->lock);
+	}
+	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+
+	return ret;
+}
+
+void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
+		      int error_code, struct net_device *dev, u8 direction,
+		      u8 binding, struct mctp_sk_key *rx_key)
+{
+	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+	struct mctp_sk_key *tx_key = NULL;
+	struct mctp_error *mctp_err;
+	struct sk_buff *err_skb;
+	struct mctp_hdr *mh;
+	size_t capture_len;
+	bool key_found = false;
+
+	if (!msk->enable_errqueue)
+		return;
+
+	if (!skb || skb->len < sizeof(struct mctp_hdr))
+		return;
+
+	mh = mctp_hdr(skb);
+
+	if (direction == MCTP_DIR_TX) {
+		tx_key = rx_key;
+		if (tx_key && tx_key->orig_payload_len > 0)
+			key_found = true;
+		if (!key_found)
+			return;
+	} else if (error_code == ETIMEDOUT) {
+		tx_key = rx_key;
+		if (tx_key && tx_key->orig_payload_len > 0)
+			key_found = true;
+		else
+			return;
+	} else {
+		u8 tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+		tx_key = mctp_lookup_tx_key_for_rx_error(dev_net(dev),
+				READ_ONCE(((struct mctp_dev *)
+					rcu_dereference(dev->mctp_ptr))->net),
+				mh->dest, mh->src, tag);
+		if (tx_key)
+			key_found = true;
+		else
+			return;
+		if (tx_key->orig_payload_len == 0) {
+			mctp_key_unref(tx_key);
+			return;
+		}
+	}
+
+	err_skb = alloc_skb(sizeof(*mctp_err), GFP_ATOMIC);
+	if (!err_skb) {
+		if (direction == MCTP_DIR_RX && error_code != ETIMEDOUT)
+			mctp_key_unref(tx_key);
+		return;
+	}
+
+	mctp_err = (struct mctp_error *)skb_put(err_skb, sizeof(*mctp_err));
+	memset(mctp_err, 0, sizeof(*mctp_err));
+
+	mctp_err->error_code = error_code;
+	mctp_err->direction = direction;
+	mctp_err->binding = binding;
+	mctp_err->timestamp_ns = ktime_get_ns();
+	mctp_err->src_eid = mh->src;
+	mctp_err->dest_eid = mh->dest;
+	mctp_err->tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
+
+	if (tx_key) {
+		mctp_err->msg_type = tx_key->orig_msg_type;
+		capture_len = min_t(size_t, tx_key->orig_payload_len,
+				    MCTP_ERROR_PAYLOAD_SIZE);
+		memcpy(mctp_err->payload, tx_key->orig_payload, capture_len);
+		mctp_err->payload_len = capture_len;
+
+		if (direction == MCTP_DIR_RX && error_code != ETIMEDOUT)
+			mctp_key_unref(tx_key);
+	}
+
+	if (sock_queue_err_skb(sk, err_skb) == 0)
+		sk_error_report(sk);
+	else
+		kfree_skb(err_skb);
+}
+EXPORT_SYMBOL_GPL(mctp_queue_error);
 
 #if IS_ENABLED(CONFIG_MCTP_TEST)
 #include "test/route-test.c"
