@@ -37,6 +37,7 @@ struct mctp_hdr {
 #define MCTP_HDR_TAG_MASK	GENMASK(2, 0)
 
 #define MCTP_INITIAL_DEFAULT_NET	1
+#define MCTP_DEFAULT_LIFETIME		(6 * CONFIG_HZ)
 
 static inline bool mctp_address_unicast(mctp_eid_t eid)
 {
@@ -321,7 +322,8 @@ void mctp_key_unref(struct mctp_sk_key *key);
 struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 					 unsigned int netid,
 					 mctp_eid_t local, mctp_eid_t peer,
-					 bool manual, u8 *tagp);
+					 bool manual, u8 *tagp,
+					 unsigned long lifetime);
 
 /* routing <--> device interface */
 unsigned int mctp_default_net(struct net *net);

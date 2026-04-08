@@ -363,6 +363,7 @@ static struct mctp_dev *mctp_add_dev(struct net_device *dev)
 	mdev->nf_track.count = 0;
 
 	mdev->net = mctp_default_net(dev_net(dev));
+	mdev->key_lifetime = MCTP_DEFAULT_LIFETIME;
 
 	/* associate to net_device */
 	refcount_set(&mdev->refs, 1);
@@ -530,6 +531,17 @@ void mctp_unregister_netdev(struct net_device *dev)
 	unregister_netdev(dev);
 }
 EXPORT_SYMBOL_GPL(mctp_unregister_netdev);
+
+void mctp_dev_set_timeout(struct net_device *dev, unsigned int timeout_ms)
+{
+	struct mctp_dev *mdev = mctp_dev_get(dev);
+
+	if (!mdev)
+		return;
+	mdev->key_lifetime = msecs_to_jiffies(timeout_ms);
+	mctp_dev_put(mdev);
+}
+EXPORT_SYMBOL_GPL(mctp_dev_set_timeout);
 
 static struct rtnl_af_ops mctp_af_ops = {
 	.family = AF_MCTP,

@@ -22,6 +22,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
 #include <linux/if_arp.h>
+#include <linux/of.h>
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
@@ -80,6 +81,7 @@ struct mctp_i2c_dev {
 	int release_count;
 	/* Indicates that the netif is ready to receive incoming packets */
 	bool allow_rx;
+	bool flows_enabled;
 
 };
 
@@ -495,7 +497,10 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	u8 *pecp;
 	int rc;
 
-	fs = mctp_i2c_get_tx_flow_state(midev, skb);
+	if (midev->flows_enabled)
+		fs = mctp_i2c_get_tx_flow_state(midev, skb);
+	else
+		fs = MCTP_I2C_TX_FLOW_NONE;
 
 	hdr = (void *)skb_mac_header(skb);
 	/* Sanity check that packet contents matches skb length,
@@ -756,6 +761,7 @@ static struct mctp_i2c_dev *mctp_i2c_midev_init(struct net_device *dev,
 	midev->adapter = adap;
 	get_device(&mcli->client->dev);
 	midev->client = mcli;
+	midev->flows_enabled = true;
 	INIT_LIST_HEAD(&midev->list);
 	spin_lock_init(&midev->lock);
 	midev->i2c_lock_count = 0;
@@ -898,6 +904,21 @@ static int mctp_i2c_add_netdev(struct mctp_i2c_client *mcli,
 			"register netdev \"%s\" failed %d\n",
 			ndev->name, rc);
 		goto err;
+	}
+
+	if (adap->dev.of_node) {
+		u32 timeout_ms;
+
+		if (!of_property_read_u32(adap->dev.of_node,
+					  "mctp-timeout-ms", &timeout_ms))
+			mctp_dev_set_timeout(ndev, timeout_ms);
+
+		if (of_property_read_bool(adap->dev.of_node,
+					  "mctp-no-flows")) {
+			midev->flows_enabled = false;
+			dev_info(&mcli->client->dev,
+				 "MCTP flows disabled by DTS\n");
+		}
 	}
 
 	spin_lock_irqsave(&midev->lock, flags);
