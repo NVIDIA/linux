@@ -876,14 +876,26 @@ static bool mctp_rt_match_eid(struct mctp_route *rt,
 		rt->min <= eid && rt->max >= eid;
 }
 
-/* compares match, used for duplicate prevention */
+/* compares match, used for duplicate prevention.
+ * Allow multiple RTN_LOCAL routes for the same EID range on different devices,
+ * so that hotplug removal of one interface doesn't drop routes on another.
+ */
 static bool mctp_rt_compare_exact(struct mctp_route *rt1,
 				  struct mctp_route *rt2)
 {
 	ASSERT_RTNL();
-	return mctp_route_netid(rt1) == mctp_route_netid(rt2) &&
-		rt1->min == rt2->min &&
-		rt1->max == rt2->max;
+
+	if (mctp_route_netid(rt1) != mctp_route_netid(rt2))
+		return false;
+
+	if (rt1->max < rt2->min || rt1->min > rt2->max)
+		return false;
+
+	if (rt1->type == RTN_LOCAL && rt2->type == RTN_LOCAL &&
+	    rt1->dev != rt2->dev)
+		return false;
+
+	return true;
 }
 
 /* must only be called on a direct route, as the final output hop */
@@ -1501,8 +1513,27 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 	rc = mctp_route_lookup(net, cb->net, mh->dest, &dst);
 
 	/* NULL EID, but addressed to our physical address */
-	if (rc && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST)
+	if (rc && mh->dest == MCTP_ADDR_NULL && skb->pkt_type == PACKET_HOST) {
 		rc = mctp_route_lookup_null(net, dev, &dst);
+		if (rc) {
+			/* No route found; try delivering to a bound socket
+			 * directly. This handles MCTP control messages
+			 * addressed to NULL EID when no local route exists.
+			 */
+			struct mctp_sock *msk;
+
+			msk = mctp_lookup_bind(net, skb);
+			if (msk) {
+				dst.dev = mdev;
+				mctp_dev_hold(mdev);
+				dst.nexthop = 0;
+				dst.halen = 0;
+				dst.mtu = 0;
+				dst.output = mctp_dst_input;
+				rc = 0;
+			}
+		}
+	}
 
 	if (rc)
 		goto err_drop;
