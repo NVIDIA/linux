@@ -240,11 +240,25 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		if (rc)
 			return rc;
 
+		/* Check SO_BINDTODEVICE constraint */
+		if (READ_ONCE(sk->sk_bound_dev_if) &&
+		    READ_ONCE(sk->sk_bound_dev_if) != dst.dev->dev->ifindex) {
+			mctp_dst_release(&dst);
+			return -EINVAL;
+		}
+
 	} else {
 		rc = mctp_route_lookup(sock_net(sk), addr->smctp_network,
 				       addr->smctp_addr.s_addr, &dst);
 		if (rc)
 			return rc;
+
+		/* Check SO_BINDTODEVICE constraint */
+		if (READ_ONCE(sk->sk_bound_dev_if) &&
+		    READ_ONCE(sk->sk_bound_dev_if) != dst.dev->dev->ifindex) {
+			mctp_dst_release(&dst);
+			return -EINVAL;
+		}
 	}
 
 	hlen = LL_RESERVED_SPACE(dst.dev->dev) + sizeof(struct mctp_hdr);
