@@ -371,6 +371,7 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 
 static const struct usb_device_id mctp_usb_devices[] = {
 	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, 0x0, 0x1) },
+	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, 0x0, 0x2) },
 	{ 0 },
 };
 
