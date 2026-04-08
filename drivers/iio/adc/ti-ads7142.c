@@ -152,7 +152,7 @@ static int ads7142_read_channel(struct iio_dev *indio_dev, int channel,
 	u16 output;
 	int ret;
 
-	ret = iio_device_claim_direct_mode(indio_dev);
+	ret = iio_device_claim_direct(indio_dev);
 	if (ret)
 		return ret;
 
@@ -195,7 +195,7 @@ abort:
 		ADS7142_ABORT_SEQUENCE_REG, ADS7142_ABORT_SEQUENCE_DATA);
 
 release_direct:
-	iio_device_release_direct_mode(indio_dev);
+	iio_device_release_direct(indio_dev);
 
 	return ret;
 }
@@ -225,8 +225,7 @@ static int ads7142_read_raw(struct iio_dev *indio_dev,
 	return ret;
 }
 
-static int ads7142_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int ads7142_probe(struct i2c_client *client)
 {
 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 	struct iio_dev *indio_dev;
