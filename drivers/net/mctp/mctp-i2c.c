@@ -556,8 +556,6 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	}
 
 	if (rc < 0) {
-		dev_warn_ratelimited(&midev->adapter->dev,
-				     "__i2c_transfer failed %d\n", rc);
 		stats->tx_errors++;
 	} else {
 		stats->tx_bytes += skb->len;
