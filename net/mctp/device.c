@@ -39,6 +39,7 @@ struct mctp_dev *__mctp_dev_get(const struct net_device *dev)
 			return NULL;
 	return mdev;
 }
+EXPORT_SYMBOL_GPL(__mctp_dev_get);
 
 /* Returned mctp_dev does not have refcount incremented. The returned pointer
  * remains live while rtnl_lock is held, as that prevents mctp_unregister()

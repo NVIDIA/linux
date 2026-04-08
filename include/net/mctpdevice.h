@@ -31,12 +31,19 @@ struct mctp_dev {
 	size_t			num_addrs;
 	spinlock_t		addrs_lock;
 
+	/* TX batching support - set by transport drivers */
+	bool tx_batching_enabled;
+	unsigned int tx_batch_hdr_len;
+	unsigned int tx_batch_max_xfer;
+
 	struct rcu_head		rcu;
 };
 
 struct mctp_netdev_ops {
 	void			(*release_flow)(struct mctp_dev *dev,
 						struct mctp_sk_key *key);
+	void			(*fill_batch_hdr)(void *hdr,
+						  unsigned int pkt_len);
 };
 
 #define MCTP_INITIAL_DEFAULT_NET	1

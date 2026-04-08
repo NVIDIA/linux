@@ -619,15 +619,24 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 {
 	char daddr_buf[MAX_ADDR_LEN];
 	char *daddr = NULL;
+	bool is_batched;
 	int rc;
 
-	skb->protocol = htons(ETH_P_MCTP);
-	skb->pkt_type = PACKET_OUTGOING;
-	skb->dev = dst->dev->dev;
+	/* Batched SKBs have a marker protocol; skip MTU check for them */
+	is_batched = (skb->protocol == htons(ETH_P_MCTP | 0x8000));
 
-	if (skb->len > dst->mtu) {
-		kfree_skb(skb);
-		return -EMSGSIZE;
+	if (!is_batched) {
+		skb->protocol = htons(ETH_P_MCTP);
+		skb->pkt_type = PACKET_OUTGOING;
+		skb->dev = dst->dev->dev;
+
+		if (skb->len > dst->mtu) {
+			kfree_skb(skb);
+			return -EMSGSIZE;
+		}
+	} else {
+		skb->pkt_type = PACKET_OUTGOING;
+		skb->dev = dst->dev->dev;
 	}
 
 	/* direct route; use the hwaddr we stashed in sendmsg */
@@ -1015,6 +1024,124 @@ static int mctp_route_lookup_null(struct net *net, struct net_device *dev,
 	return rc;
 }
 
+/* Fragment and batch: pack multiple fragments into a single SKB with space
+ * for transport headers. The transport driver fills in headers and sends
+ * the entire batch as one transfer. May send multiple batches for large
+ * messages.
+ */
+static int mctp_do_fragment_route_batch(struct mctp_dst *dst,
+					struct sk_buff *skb, unsigned int mtu,
+					u8 tag, unsigned int batch_hdr_len,
+					unsigned int batch_max_xfer)
+{
+	const unsigned int hlen = sizeof(struct mctp_hdr);
+	struct mctp_hdr *hdr, *hdr2;
+	struct mctp_skb_cb *cb;
+	struct sk_buff *batch_skb;
+	unsigned int pos, size, headroom;
+	unsigned int total_len, num_frags;
+	unsigned int skb_pos;
+	u8 *batch_data;
+	u8 seq;
+	int rc;
+
+	hdr = mctp_hdr(skb);
+	seq = 0;
+	headroom = skb_headroom(skb);
+
+	skb_pull(skb, hlen);
+
+	skb_pos = 0;
+	rc = 0;
+
+	while (skb_pos < skb->len) {
+		total_len = 0;
+		num_frags = 0;
+		for (pos = skb_pos; pos < skb->len;) {
+			size = min(mtu - hlen, skb->len - pos);
+			total_len += batch_hdr_len + hlen + size;
+			num_frags++;
+			pos += size;
+
+			if (total_len + batch_hdr_len + hlen + 1 >
+			    batch_max_xfer)
+				break;
+		}
+
+		batch_skb = alloc_skb(headroom + total_len, GFP_KERNEL);
+		if (!batch_skb) {
+			kfree_skb(skb);
+			return -ENOMEM;
+		}
+
+		batch_skb->protocol = htons(ETH_P_MCTP | 0x8000);
+		batch_skb->priority = skb->priority;
+		batch_skb->dev = skb->dev;
+		memcpy(batch_skb->cb, skb->cb, sizeof(batch_skb->cb));
+
+		if (skb->sk)
+			skb_set_owner_w(batch_skb, skb->sk);
+
+		skb_reserve(batch_skb, headroom);
+		skb_reset_network_header(batch_skb);
+		batch_data = skb_put(batch_skb, total_len);
+
+		cb = mctp_cb(batch_skb);
+		cb->net = mctp_cb(skb)->net;
+
+		skb_ext_copy(batch_skb, skb);
+
+		pos = skb_pos;
+		while (num_frags--) {
+			unsigned int pkt_len;
+			bool is_last;
+			void *transport_hdr;
+
+			size = min(mtu - hlen, skb->len - pos);
+			is_last = (pos + size >= skb->len);
+			pkt_len = batch_hdr_len + hlen + size;
+
+			transport_hdr = batch_data;
+			batch_data += batch_hdr_len;
+
+			hdr2 = (struct mctp_hdr *)batch_data;
+			hdr2->ver = hdr->ver;
+			hdr2->dest = hdr->dest;
+			hdr2->src = hdr->src;
+			hdr2->flags_seq_tag = tag &
+				(MCTP_HDR_TAG_MASK | MCTP_HDR_FLAG_TO);
+
+			if (skb_pos == 0 && pos == 0)
+				hdr2->flags_seq_tag |= MCTP_HDR_FLAG_SOM;
+			if (is_last)
+				hdr2->flags_seq_tag |= MCTP_HDR_FLAG_EOM;
+
+			hdr2->flags_seq_tag |= seq << MCTP_HDR_SEQ_SHIFT;
+
+			skb_copy_bits(skb, pos, batch_data + hlen, size);
+
+			if (dst->dev->ops && dst->dev->ops->fill_batch_hdr)
+				dst->dev->ops->fill_batch_hdr(transport_hdr,
+							      pkt_len);
+
+			batch_data += hlen + size;
+			seq = (seq + 1) & MCTP_HDR_SEQ_MASK;
+			pos += size;
+		}
+
+		skb_pos = pos;
+
+		rc = dst->output(dst, batch_skb);
+		if (rc) {
+			rc = net_xmit_errno(rc);
+			break;
+		}
+	}
+
+	consume_skb(skb);
+	return rc;
+}
+
 static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 				  unsigned int mtu, u8 tag)
 {
@@ -1032,6 +1159,14 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 	if (mtu < hlen + 1) {
 		kfree_skb(skb);
 		return -EMSGSIZE;
+	}
+
+	/* If batching is supported, use the batch path */
+	if (dst->dev && dst->dev->tx_batching_enabled &&
+	    dst->dev->tx_batch_hdr_len && dst->dev->tx_batch_max_xfer) {
+		return mctp_do_fragment_route_batch(dst, skb, mtu, tag,
+						    dst->dev->tx_batch_hdr_len,
+						    dst->dev->tx_batch_max_xfer);
 	}
 
 	/* keep same headroom as the original skb */
