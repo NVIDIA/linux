@@ -44,17 +44,6 @@
 #define DRIVER_DESC "USB HID core driver"
 
 /*
- * Timeout for control messages
- * Decrease the timeout from default USB_CTRL_SET_TIMEOUT (5 sec).
- * This change will impact all usbhid devices, but now only CP2112
- * binds to this driver. External HID devices like mice and keyboards
- * will not be affected since they're forwarded to host OS at
- * chip-level.
- */
-
-#define NV_USB_CTRL_SET_TIMEOUT	500  /* ms */
-
-/*
  * Module parameters.
  */
 
@@ -905,7 +894,7 @@ static int usbhid_get_raw_report(struct hid_device *hid,
 		USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
 		((report_type + 1) << 8) | report_number,
 		interface->desc.bInterfaceNumber, buf, count,
-		NV_USB_CTRL_SET_TIMEOUT);
+		USB_CTRL_SET_TIMEOUT);
 
 	/* count also the report id */
 	if (ret > 0 && skipped_report_id)
@@ -942,7 +931,7 @@ static int usbhid_set_raw_report(struct hid_device *hid, unsigned int reportnum,
 			USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
 			((rtype + 1) << 8) | reportnum,
 			interface->desc.bInterfaceNumber, buf, count,
-			NV_USB_CTRL_SET_TIMEOUT);
+			USB_CTRL_SET_TIMEOUT);
 	/* count also the report id, if this was a numbered report. */
 	if (ret > 0 && skipped_report_id)
 		ret++;
@@ -968,7 +957,7 @@ static int usbhid_output_report(struct hid_device *hid, __u8 *buf, size_t count)
 
 	ret = usb_interrupt_msg(dev, usbhid->urbout->pipe,
 				buf, count, &actual_length,
-				NV_USB_CTRL_SET_TIMEOUT);
+				USB_CTRL_SET_TIMEOUT);
 	/* return the number of bytes transferred */
 	if (ret == 0) {
 		ret = actual_length;
