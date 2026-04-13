@@ -310,8 +310,14 @@
                     reg = <3>;
                     device@1 {
                         reg = <1>;
-                        interface@1 {
+                        cp2112i: interface@1 {
                             reg = <1 1>;
+
+                            gpio-controller;
+                            interrupt-controller;
+                            #gpio-cells = <2>;
+                            #interrupt-cells = <2>;
+
                             i2c79: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
@@ -325,7 +331,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112c>;
+                                    interrupt-parent = <&cp2112i>;
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -356,7 +362,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112c>;
+                                    interrupt-parent = <&cp2112i>;
                                     interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -387,7 +393,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112c>;
+                                    interrupt-parent = <&cp2112i>;
                                     interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -438,9 +444,15 @@
                 hub@4 {
                     reg = <4>;
                     device@1 {
-                        reg = <1>;
-                        interface@1 {
+                    reg = <1>;
+                        cp2112h: interface@1 {
                             reg = <1 1>;
+
+                            gpio-controller;
+                            interrupt-controller;
+                            #gpio-cells = <2>;
+                            #interrupt-cells = <2>;
+
                             i2c78: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
@@ -454,7 +466,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112d>;
+                                    interrupt-parent = <&cp2112h>;
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -485,7 +497,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112d>;
+                                    interrupt-parent = <&cp2112h>;
                                     interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -516,7 +528,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112d>;
+                                    interrupt-parent = <&cp2112h>;
                                     interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -743,8 +755,14 @@
                     reg = <3>;
                     device@1 {
                         reg = <1>;
-                        interface@1 {
+                        cp2112j: interface@1 {
                             reg = <1 1>;
+
+                            gpio-controller;
+                            interrupt-controller;
+                            #gpio-cells = <2>;
+                            #interrupt-cells = <2>;
+
                             i2c80: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
@@ -758,7 +776,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112e>;
+                                    interrupt-parent = <&cp2112j>;
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -789,7 +807,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112e>;
+                                    interrupt-parent = <&cp2112j>;
                                     interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -820,7 +838,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112e>;
+                                    interrupt-parent = <&cp2112j>;
                                     interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -872,8 +890,14 @@
                     reg = <4>;
                     device@1 {
                         reg = <1>;
-                        interface@1 {
+                        cp2112k: interface@1 {
                             reg = <1 1>;
+
+                            gpio-controller;
+                            interrupt-controller;
+                            #gpio-cells = <2>;
+                            #interrupt-cells = <2>;
+
                             i2c81: i2c {
                                 #address-cells = <1>;
                                 #size-cells = <0>;
@@ -887,7 +911,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112f>;
+                                    interrupt-parent = <&cp2112k>;
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -918,7 +942,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112f>;
+                                    interrupt-parent = <&cp2112k>;
                                     interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
@@ -949,7 +973,7 @@
                                     #size-cells = <0>;
                                     interrupt-controller;
                                     #interrupt-cells = <2>;
-                                    interrupt-parent = <&cp2112f>;
+                                    interrupt-parent = <&cp2112k>;
                                     interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
