@@ -1629,7 +1629,7 @@ static int aspeed_spi_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	aspi->three_byte_reads = of_property_read_bool(dev->of_node, "aspeed,three_byte_reads");
+	aspi->three_byte_reads = of_property_read_bool(dev->of_node, "aspeed,three-byte-reads");
 
 	reset = devm_reset_control_get_exclusive(dev, NULL);
 	if (!IS_ERR(reset))
