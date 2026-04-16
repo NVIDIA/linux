@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP IPMI Channel
+
+description: |
+  IPMI message channel on an NVIDIA LSTP USB device.
+
+  The LSTP IPMI channel registers as a miscdevice (/dev/<label>).  It
+  provides a character device interface for sending and receiving raw
+  IPMI messages to/from the LSTP microcontroller.
+
+  The device name defaults to "ipmi-lstpN" (where N is an auto-allocated
+  ID).  The "label" property overrides this with a stable, predictable
+  name — recommended for systems with multiple LSTP devices.
+
+properties:
+  compatible:
+    const: nvidia,lstp-ipmi
+
+  reg:
+    description: LSTP channel ID as reported by firmware.
+    maxItems: 1
+
+  label:
+    description: |
+      Stable device name for the miscdevice (e.g. "ipmi-lstp-mcu").
+      Creates /dev/<label>.  If omitted, the driver auto-generates
+      "ipmi-lstpN" where N is a monotonically increasing ID.
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    /* With explicit label */
+    channel@4 {
+        compatible = "nvidia,lstp-ipmi";
+        reg = <4>;
+        label = "ipmi-lstp-mcu";
+    };
+  - |
+    /* Without label — driver auto-names as ipmi-lstp0 */
+    channel@4 {
+        compatible = "nvidia,lstp-ipmi";
+        reg = <4>;
+    };

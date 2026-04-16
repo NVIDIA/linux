@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP GPIO Channel
+
+description: |
+  GPIO controller channel on an NVIDIA LSTP USB device.
+
+  The LSTP GPIO channel registers as a Linux GPIO chip.  The number of
+  GPIO lines and their firmware-default names/directions are reported by
+  the device firmware at probe time.
+
+  DT properties such as gpio-line-names override the firmware-reported
+  pin names.  The gpio-controller and #gpio-cells properties enable
+  phandle references from consumers (e.g. gpio-leds, gpio-keys).
+
+  GPIO hog child nodes are supported for boot-time pin configuration.
+
+  Note: because the GPIO controller sits behind USB, all operations are
+  inherently sleeping (can_sleep = true).  Consumers that require
+  non-sleeping GPIO access cannot use this controller.
+
+properties:
+  compatible:
+    const: nvidia,lstp-gpio
+
+  reg:
+    description: LSTP channel ID as reported by firmware.
+    maxItems: 1
+
+  gpio-controller: true
+
+  "#gpio-cells":
+    const: 2
+    description: |
+      Two cells: pin number and flags.
+      Cell 0: GPIO pin offset (0-based).
+      Cell 1: GPIO flags (e.g. GPIO_ACTIVE_LOW).
+
+  gpio-line-names:
+    description: |
+      Optional list of human-readable names for each GPIO line.
+      Overrides the firmware-reported pin names.  The number of entries
+      must not exceed the number of GPIO lines reported by firmware.
+    minItems: 1
+    maxItems: 255
+
+  ngpios:
+    description: |
+      Override the number of GPIO lines.  Normally the pin count is
+      determined by firmware; this property is only needed if the DT
+      must constrain it further.
+    minimum: 1
+    maximum: 255
+
+patternProperties:
+  "^.+-hog(-[0-9]+)?$":
+    type: object
+    required:
+      - gpio-hog
+      - gpios
+
+    properties:
+      gpio-hog: true
+      gpios:
+        description: Pin offset and flags for the hog.
+      output-high: true
+      output-low: true
+      input: true
+      line-name:
+        description: Consumer name shown in /sys/kernel/debug/gpio.
+
+    additionalProperties: false
+
+required:
+  - compatible
+  - reg
+  - gpio-controller
+  - "#gpio-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    /* Minimal: let firmware define pin count and names */
+    channel@3 {
+        compatible = "nvidia,lstp-gpio";
+        reg = <3>;
+        gpio-controller;
+        #gpio-cells = <2>;
+    };
+  - |
+    /* Override pin names and add a hog */
+    gpio_ch: channel@3 {
+        compatible = "nvidia,lstp-gpio";
+        reg = <3>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        gpio-line-names = "STATUS_LED", "ALERT_INT";
+
+        led-hog {
+            gpio-hog;
+            gpios = <0 0>;
+            output-high;
+            line-name = "status-led-hog";
+        };
+    };
