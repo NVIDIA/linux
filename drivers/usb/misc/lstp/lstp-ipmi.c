@@ -6,6 +6,7 @@
  */
 
 #include <linux/poll.h>
+#include <linux/err.h>
 #include <linux/miscdevice.h>
 #include <linux/kfifo.h>
 #include <linux/idr.h>
@@ -188,8 +189,8 @@ static ssize_t lstp_ipmi_write(struct file *file, const char __user *buf, size_t
 			   ch->tx_buf, sizeof(tx_pkt->hdr) + msg.header.len, NULL,
 			   LSTP_USB_REQUEST_TIMEOUT_MS);
 	if (ret) {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not forward response (%zd)\n",
-			__func__, ch->ch_id, ret);
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not forward response (%pe)\n",
+			__func__, ch->ch_id, ERR_PTR(ret));
 	}
 
 	mutex_unlock(&ch->tx_mutex);
@@ -383,12 +384,13 @@ static void lstp_ipmi_irq_callback(struct lstp_channel *ch)
  *
  * Allocates and initializes the IPMI context structure, FIFO buffer, and
  * prepares the miscdevice for the channel. The device name is either taken
- * from the device tree "label" property or auto-generated as "ipmi-lstpN".
+ * from the firmware node "label" property (DT or ACPI) or auto-generated
+ * as "ipmi-lstpN".
  *
- * Expected device tree node structure (optional)::
+ * Expected firmware node structure (optional)::
  *
  *   channel@M {
- *       compatible = "nv,lstp-ipmi";
+ *       compatible = "nvidia,lstp-ipmi";
  *       reg = <M>;                  // Channel ID
  *       label = "ipmi-custom-name"; // Device name (optional)
  *                                   // If omitted, uses "ipmi-lstpN"
@@ -406,7 +408,8 @@ int lstp_ipmi_init(struct lstp_channel *ch)
 {
 	int ret;
 	struct lstp_ipmi_ctx *ctx;
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->usb->rx_buf;
+	struct lstp_channel *ch0 = ch->usb->channels[0];
+	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	const char *label;
 	int dev_id;
 
@@ -442,8 +445,8 @@ int lstp_ipmi_init(struct lstp_channel *ch)
 	ctx->msg_count = 0;
 	ctx->ida_id = -1;
 
-	/* Get device name from device tree label or generate one */
-	if (ctx->ch->of_node && !of_property_read_string(ctx->ch->of_node, "label", &label)) {
+	/* Get device name from firmware node label (DT or ACPI) or generate one */
+	if (ctx->ch->fwnode && !fwnode_property_read_string(ctx->ch->fwnode, "label", &label)) {
 		ctx->miscdev.name = devm_kstrdup(&ch->usb->intf->dev, label, GFP_KERNEL);
 	} else {
 		dev_id = ida_alloc(&lstp_ipmi_ida, GFP_KERNEL);
@@ -501,8 +504,8 @@ int lstp_ipmi_start(struct lstp_channel *ch)
 
 	ret = misc_register(&ctx->miscdev);
 	if (ret) {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not register miscdevice (%d)\n",
-			__func__, ch->ch_id, ret);
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not register miscdevice (%pe)\n",
+			__func__, ch->ch_id, ERR_PTR(ret));
 		return ret;
 	}
 

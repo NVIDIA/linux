@@ -1,0 +1,196 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP USB Multi-Function Device
+
+description: |
+  The NVIDIA LSTP (Low-Speed Transport Protocol) is a USB device that
+  exposes multiple function channels (SPI, GPIO, I2C, IPMI) over a single
+  USB interface.  The host driver multiplexes channel traffic over USB
+  bulk endpoints using a lightweight packet protocol.
+
+  Device tree nodes describe the USB device, the USB interface used for
+  channel communication, and the individual channel sub-devices.  The
+  driver matches channels by their firmware-reported channel ID (reg) and
+  compatible string.
+
+  Hierarchy:
+
+    usb-device (compatible = "usb0955,cf11")
+      └─ interface@N (bInterfaceNumber)
+           ├─ channel@1  compatible = "nvidia,lstp-spi"
+           ├─ channel@2  compatible = "nvidia,lstp-i2c"
+           ├─ channel@3  compatible = "nvidia,lstp-gpio"
+           └─ channel@4  compatible = "nvidia,lstp-ipmi"
+
+  Channel IDs and types are reported by the device firmware at probe time.
+  The reg value in each channel node must match the firmware channel ID.
+
+  Mapping from USB sysfs path to DT hierarchy:
+
+    Given a device at 1-1.3:1.2  (bus 1, port path 1.3, config 1, iface 2):
+
+      sysfs segment    DT node               reg value
+      ──────────────   ───────────────────    ─────────
+      1-               usb-controller/        (target)
+      1-1              hub@1 { reg=<1>; }     <1>
+      1-1.3            lstp-mcu@3 { ... }     <3>
+      1-1.3:1.2        interface@2 { ... }    <2>
+
+properties:
+  compatible:
+    const: usb0955,cf11
+
+  reg:
+    description: USB port number on the parent hub or controller.
+    maxItems: 1
+
+  "#address-cells":
+    const: 1
+
+  "#size-cells":
+    const: 0
+
+patternProperties:
+  "^interface@[0-9]+$":
+    type: object
+    description: |
+      USB interface node.  reg is the bInterfaceNumber used for LSTP
+      channel communication.
+
+    properties:
+      reg:
+        description: USB bInterfaceNumber.
+        maxItems: 1
+
+      "#address-cells":
+        const: 1
+
+      "#size-cells":
+        const: 0
+
+    patternProperties:
+      "^channel@[0-9]+$":
+        type: object
+        description: |
+          LSTP channel sub-device.  The compatible string selects the
+          channel driver; reg must match the firmware-reported channel ID.
+
+        properties:
+          compatible:
+            enum:
+              - nvidia,lstp-spi
+              - nvidia,lstp-gpio
+              - nvidia,lstp-ipmi
+              - nvidia,lstp-i2c
+
+          reg:
+            description: Firmware channel ID.
+            maxItems: 1
+
+        required:
+          - compatible
+          - reg
+
+        allOf:
+          - if:
+              properties:
+                compatible:
+                  const: nvidia,lstp-spi
+            then:
+              $ref: nvidia,lstp-spi.yaml#
+          - if:
+              properties:
+                compatible:
+                  const: nvidia,lstp-gpio
+            then:
+              $ref: nvidia,lstp-gpio.yaml#
+          - if:
+              properties:
+                compatible:
+                  const: nvidia,lstp-ipmi
+            then:
+              $ref: nvidia,lstp-ipmi.yaml#
+          - if:
+              properties:
+                compatible:
+                  const: nvidia,lstp-i2c
+            then:
+              $ref: nvidia,lstp-i2c.yaml#
+
+    required:
+      - reg
+      - "#address-cells"
+      - "#size-cells"
+
+    additionalProperties: false
+
+required:
+  - compatible
+  - reg
+  - "#address-cells"
+  - "#size-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    /*
+     * Full example for device at USB path 1-1.3:1.2
+     * (hub port 1, device port 3, interface 2).
+     *
+     * This snippet goes under the USB controller node.
+     */
+    lstp-mcu@3 {
+        compatible = "usb0955,cf11";
+        reg = <3>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        interface@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            channel@1 {
+                compatible = "nvidia,lstp-spi";
+                reg = <1>;
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                spidev@0 {
+                    compatible = "nvidia,lstp-spidev";
+                    reg = <0>;
+                    spi-max-frequency = <24000000>;
+                };
+            };
+
+            channel@2 {
+                compatible = "nvidia,lstp-i2c";
+                reg = <2>;
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                sensor@48 {
+                    compatible = "ti,tmp102";
+                    reg = <0x48>;
+                };
+            };
+
+            channel@3 {
+                compatible = "nvidia,lstp-gpio";
+                reg = <3>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names = "LED", "INT";
+            };
+
+            channel@4 {
+                compatible = "nvidia,lstp-ipmi";
+                reg = <4>;
+                label = "ipmi-lstp-mcu";
+            };
+        };
+    };

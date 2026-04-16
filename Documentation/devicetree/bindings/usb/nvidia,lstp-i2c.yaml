@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP I2C Channel
+
+description: |
+  I2C bus master channel on an NVIDIA LSTP USB device.
+
+  The LSTP I2C channel registers as a Linux I2C adapter.  Child nodes
+  describe I2C peripherals on the bus and are auto-enumerated by the
+  I2C core at probe time.
+
+  Bus numbering is controlled via standard DT aliases (e.g.
+  i2c20 = &channel_label).  Without an alias the I2C core assigns a
+  dynamic bus number.
+
+properties:
+  compatible:
+    const: nvidia,lstp-i2c
+
+  reg:
+    description: LSTP channel ID as reported by firmware.
+    maxItems: 1
+
+  "#address-cells":
+    const: 1
+
+  "#size-cells":
+    const: 0
+
+  clock-frequency:
+    description: |
+      I2C bus clock frequency in Hz.  Reserved for future use.
+      Common values: 100000 (standard), 400000 (fast).
+    default: 100000
+
+patternProperties:
+  "^[a-zA-Z][a-zA-Z0-9,-]*@[0-9a-f]+$":
+    type: object
+    additionalProperties: true
+
+    properties:
+      compatible:
+        description: Compatible string for the I2C peripheral.
+
+      reg:
+        description: I2C slave address.
+        maxItems: 1
+
+    required:
+      - compatible
+      - reg
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    /* Minimal: dynamic bus number, one child device */
+    channel@2 {
+        compatible = "nvidia,lstp-i2c";
+        reg = <2>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        sensor@48 {
+            compatible = "ti,tmp102";
+            reg = <0x48>;
+        };
+    };

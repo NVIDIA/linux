@@ -6,6 +6,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/err.h>
 
 #include "lstp-main.h"
 
@@ -24,6 +25,7 @@ struct lstp_ch0_config {
  * Forward declarations
  ******************************************************************************/
 
+static void lstp_usb_tx_callback(struct urb *urb);
 static void lstp_usb_rx_callback(struct urb *urb);
 static void lstp_channel_kobj_release(struct kobject *kobj);
 static ssize_t lstp_channel_enable_show(struct kobject *kobj, struct kobj_attribute *attr,
@@ -168,84 +170,46 @@ int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt,
 }
 
 /**
- * lstp_ch0_read() - Read channel configuration from management channel. (blocking)
- * @dev:    LSTP USB device structure
- * @ch_id:  Channel ID to read configuration for
- * @offset: Offset into the configuration data
- * @length: Number of bytes to read (or LSTP_READ_LEN_ALL)
+ * lstp_ch0_read_helper() - Low-level READ_CONFIG via ch0 (blocking).
+ * @dev:    LSTP USB device
+ * @ch_id:  Channel ID to read
+ * @offset: Offset into config data
+ * @length: Bytes to read (or LSTP_READ_LEN_ALL)
  *
- * Sends a READ_CONFIG command to the Management channel (ch0) to retrieve
- * the configuration data for the specified channel.
- *
- * The response data is stored in dev->rx_buf. Caller must ensure exclusive access.
+ * Caller must hold ch0->tx_mutex and release when done. resp_buf: on success
+ * caller MUST lstp_unlock_resp_buffer(); on error lock released internally.
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_ch0_read(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length)
+int lstp_ch0_read_helper(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length)
 {
 	int ret;
-	int actual_length;
+	struct lstp_channel *ch0;
 	struct lstp_packet *tx_pkt;
-	struct lstp_packet *rx_pkt;
 	union lstp_ch0_req_payload *ch0_req;
 
-	/* Allocate request packet */
-	tx_pkt = kzalloc(sizeof(*tx_pkt) + sizeof(ch0_req->read), GFP_KERNEL);
-	if (!tx_pkt)
-		return -ENOMEM;
+	if (!dev || !dev->channels[0])
+		return -ENODEV;
 
+	ch0 = dev->channels[0];
+	lockdep_assert_held(&ch0->tx_mutex);
+	tx_pkt = (struct lstp_packet *)ch0->tx_buf;
 	ch0_req = (union lstp_ch0_req_payload *)tx_pkt->payload;
 
-	/* Build request */
-	tx_pkt->hdr.ch_id = LSTP_CHANNEL_TYPE_MGMT;
-	tx_pkt->hdr.cmd = SET_U8_BYTE(LSTP_CH0_CMD_READ_CONFIG, 0);
-	tx_pkt->hdr.length = cpu_to_le16(sizeof(ch0_req->read));
 	ch0_req->read.ch_id = ch_id;
 	ch0_req->read.offset = cpu_to_le16(offset);
 	ch0_req->read.length = cpu_to_le16(length);
 
-	/* Send request */
-	ret = usb_bulk_msg(dev->udev, usb_sndbulkpipe(dev->udev, dev->bulk_out_ep), tx_pkt,
-			   sizeof(struct lstp_header) + sizeof(ch0_req->read), NULL,
-			   LSTP_USB_REQUEST_TIMEOUT_MS);
+	ret = lstp_recv_resp_helper(ch0, LSTP_CH0_CMD_READ_CONFIG, sizeof(ch0_req->read),
+				    LSTP_ANY_RX_LEN);
 	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Could not send request for ch_%d (%d)\n",
-			__func__, ch_id, ret);
-		goto out_free;
+		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%pe)\n", __func__,
+			ch_id, ERR_PTR(ret));
+		return ret;
 	}
 
-	/* Receive response */
-	ret = usb_bulk_msg(dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep), dev->rx_buf,
-			   dev->bulk_rx_size, &actual_length, LSTP_USB_RESPONSE_TIMEOUT_MS);
-	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Could not receive response for ch_%d (%d)\n",
-			__func__, ch_id, ret);
-		goto out_free;
-	}
-
-	/* Validate response */
-	rx_pkt = (struct lstp_packet *)dev->rx_buf;
-	ret = lstp_validate_rx_pkt(dev, rx_pkt, actual_length);
-	if (ret)
-		goto out_free;
-
-	if (rx_pkt->hdr.ch_id != LSTP_CHANNEL_TYPE_MGMT) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Wrong channel ID (expected %u, got %u)\n",
-			__func__, LSTP_CHANNEL_TYPE_MGMT, rx_pkt->hdr.ch_id);
-		ret = -EIO;
-		goto out_free;
-	}
-
-	if (GET_BIT_7(rx_pkt->hdr.status) != 1) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Not a response packet (bit 7 = 0)\n", __func__);
-		ret = -EIO;
-		goto out_free;
-	}
-
-	/* Note: data is stored in dev->rx_buf */
-out_free:
-	kfree(tx_pkt);
-	return ret;
+	/* Note: response in ch0->resp_buf */
+	return 0;
 }
 
 /**
@@ -254,7 +218,7 @@ out_free:
  * @ch_id:        Channel ID to query
  * @ch_flags_out: Output pointer for channel flags
  *
- * Reads the channel's enabled flag via READ_CONFIG command and copies to @ch_flags_out).
+ * Reads the channel's enabled flag via READ_CONFIG command and copies to @ch_flags_out.
  * This function is intended specifically for runtime queries of the LSTP_CH_FLAG_ENABLE bit via
  * sysfs, not for general config access.
  *
@@ -291,8 +255,8 @@ static int lstp_ch0_read_enabled_urb(struct lstp_usb *dev, u8 ch_id, u8 *ch_flag
 	ret = lstp_recv_resp_helper(ch0, LSTP_CH0_CMD_READ_CONFIG, sizeof(ch0_req->read),
 				    LSTP_ANY_RX_LEN);
 	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%d)\n", __func__,
-			ch_id, ret);
+		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%pe)\n", __func__,
+			ch_id, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -356,8 +320,8 @@ static int lstp_ch0_set_enable_urb(struct lstp_usb *dev, u8 ch_id, u8 ch_type, b
 	ret = lstp_recv_resp_helper(ch0, LSTP_CH0_CMD_READ_CONFIG, sizeof(ch0_req->read),
 				    LSTP_ANY_RX_LEN);
 	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%d)\n", __func__,
-			ch_id, ret);
+		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%pe)\n", __func__,
+			ch_id, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -401,8 +365,8 @@ static int lstp_ch0_set_enable_urb(struct lstp_usb *dev, u8 ch_id, u8 ch_type, b
 
 	ret = lstp_recv_resp_helper(ch0, LSTP_CH0_CMD_WRITE_CONFIG, write_len, LSTP_ANY_RX_LEN);
 	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: WRITE_CONFIG for ch_%d failed (%d)\n", __func__,
-			ch_id, ret);
+		dev_err(&dev->intf->dev, "%s: ch_0: WRITE_CONFIG for ch_%d failed (%pe)\n",
+			__func__, ch_id, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -421,58 +385,30 @@ out_mutex:
 static int __maybe_unused lstp_ch0_lock(struct lstp_usb *dev)
 {
 	int ret;
-	int actual_length;
-	struct lstp_packet *tx_pkt;
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)dev->rx_buf;
+	struct lstp_channel *ch0;
+	struct lstp_packet *rx_pkt;
 
-	tx_pkt = kzalloc(sizeof(*tx_pkt), GFP_KERNEL);
-	if (!tx_pkt)
-		return -ENOMEM;
+	if (!dev || !dev->channels[0])
+		return -ENODEV;
 
-	tx_pkt->hdr.ch_id = 0;
-	tx_pkt->hdr.cmd = SET_U8_BYTE(LSTP_CH0_CMD_LOCK, 0);
-	tx_pkt->hdr.length = cpu_to_le16(0);
+	ch0 = dev->channels[0];
 
-	ret = usb_bulk_msg(dev->udev, usb_sndbulkpipe(dev->udev, dev->bulk_out_ep), tx_pkt,
-			   sizeof(struct lstp_header), NULL, LSTP_USB_REQUEST_TIMEOUT_MS);
+	mutex_lock(&ch0->tx_mutex);
+
+	ret = lstp_recv_resp_helper(ch0, LSTP_CH0_CMD_LOCK, 0, 0);
 	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Could not send lock request (%d)\n", __func__,
-			ret);
-		goto out_free;
+		dev_err(&dev->intf->dev, "%s: ch_0: LOCK failed (%pe)\n", __func__, ERR_PTR(ret));
+		goto out_mutex;
 	}
 
-	ret = usb_bulk_msg(dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep), dev->rx_buf,
-			   dev->bulk_rx_size, &actual_length, LSTP_USB_RESPONSE_TIMEOUT_MS);
-	if (ret) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Could not receive lock response (%d)\n",
-			__func__, ret);
-		goto out_free;
-	}
-
-	/* Validate response */
-	ret = lstp_validate_rx_pkt(dev, rx_pkt, actual_length);
-	if (ret)
-		goto out_free;
-
-	if (rx_pkt->hdr.ch_id != LSTP_CHANNEL_TYPE_MGMT) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Wrong channel ID (expected %u, got %u)\n",
-			__func__, LSTP_CHANNEL_TYPE_MGMT, rx_pkt->hdr.ch_id);
-		ret = -EIO;
-		goto out_free;
-	}
-
-	if (GET_BIT_7(rx_pkt->hdr.status) != 1) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Not a response packet (bit 7 = 0)\n", __func__);
-		ret = -EIO;
-		goto out_free;
-	}
-
+	rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	ret = lstp_validate_resp(dev, rx_pkt, 0);
+	lstp_unlock_resp_buffer(ch0);
 	if (ret)
-		goto out_free;
+		goto out_mutex;
 
-out_free:
-	kfree(tx_pkt);
+out_mutex:
+	mutex_unlock(&ch0->tx_mutex);
 	return ret;
 }
 
@@ -521,12 +457,12 @@ static void lstp_channel_kobj_release(struct kobject *kobj)
 }
 
 /**
- * lstp_put_of_node() - Devres callback to release device tree node.
- * @data: Pointer to device_node
+ * lstp_put_fwnode() - Devres callback to release firmware node reference.
+ * @data: Pointer to fwnode_handle
  */
-static void lstp_put_of_node(void *data)
+static void lstp_put_fwnode(void *data)
 {
-	of_node_put((struct device_node *)data);
+	fwnode_handle_put((struct fwnode_handle *)data);
 }
 
 /*******************************************************************************
@@ -687,8 +623,8 @@ static int lstp_channel_link_device(struct lstp_channel *ch)
 
 	ret = sysfs_create_link(&ch->kobj, &ch->child_dev->kobj, "device");
 	if (ret) {
-		dev_err(parent_dev, "%s: ch_%d: Failed to create device symlink (%d)\n", __func__,
-			ch->ch_id, ret);
+		dev_err(parent_dev, "%s: ch_%d: Failed to create device symlink (%pe)\n", __func__,
+			ch->ch_id, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -719,8 +655,8 @@ static int lstp_create_channel_sysfs(struct lstp_channel *ch)
 	ret = kobject_init_and_add(&ch->kobj, &lstp_channel_ktype, ch->usb->channel_kobj, "%d",
 				   ch->ch_id);
 	if (ret) {
-		dev_err(dev, "%s: Failed to create sysfs for ch_%d (%d)\n", __func__, ch->ch_id,
-			ret);
+		dev_err(dev, "%s: Failed to create sysfs for ch_%d (%pe)\n", __func__, ch->ch_id,
+			ERR_PTR(ret));
 		kobject_put(&ch->kobj);
 		return ret;
 	}
@@ -739,60 +675,57 @@ static int lstp_create_channel_sysfs(struct lstp_channel *ch)
  ******************************************************************************/
 
 /**
- * lstp_find_channel_node() - Find channel node in device tree.
- * @usb_dev_node: USB device node
- * @intf_num:     Interface number
- * @channel_id:   Channel ID
- * @compatible:   Compatible string
+ * lstp_find_channel_fwnode() - Find channel firmware node (DT or ACPI).
+ * @usb_dev_fwnode: USB device firmware node
+ * @intf_num:       Interface number
+ * @channel_id:     Channel ID
+ * @compatible:     Compatible string
  *
- * Finds a channel node in the device tree that matches the given parameters.
- * Traverses the device tree hierarchy to locate LSTP channel nodes.
+ * Finds a channel firmware node that matches the given parameters.
+ * Works transparently with Device Tree, ACPI (_DSD properties), and
+ * software nodes.
  *
- * Expected DTS structure::
+ * Expected firmware hierarchy::
  *
- *   usb-device@X {                    // USB device node (usb_dev_node)
+ *   usb-device@X {                    // USB device node (usb_dev_fwnode)
  *       compatible = "usbVVVV,PPPP";  // USB VID:PID (e.g., "usb0955,cf11")
- *       #address-cells = <1>;
- *       #size-cells = <0>;
  *
  *       interface@N {                 // USB interface node
  *           reg = <N>;                // bInterfaceNumber (intf_num)
- *           #address-cells = <1>;
- *           #size-cells = <0>;
  *
  *           channel@M {               // LSTP channel node (returned)
  *               reg = <M>;            // Channel ID (channel_id)
  *               compatible = "...";   // Must match 'compatible' parameter
- *                                     // e.g., "nv,lstp-spi", "nv,lstp-ipmi"
  *               // Channel-specific properties and child devices...
  *           };
  *       };
  *   };
  *
- * Note: DTS node addresses map to USB hierarchy:
- *
- * * device@X: USB device address/port number within the parent hub
- * * interface@N: USB interface number (bInterfaceNumber from USB descriptor)
- * * channel@M: LSTP-specific channel ID reported by device firmware
- *
- * Return: Device node on success, NULL on failure
+ * Return: fwnode_handle with incremented refcount on success, NULL on failure
  */
-static struct device_node *lstp_find_channel_node(struct device_node *usb_dev_node, u8 intf_num,
-						  u8 channel_id, const char *compatible)
+static struct fwnode_handle *lstp_find_channel_fwnode(struct fwnode_handle *usb_dev_fwnode,
+						      u8 intf_num, u8 channel_id,
+						      const char *compatible)
 {
+	struct fwnode_handle *intf_node, *ch_node;
 	u32 reg;
 
-	for_each_child_of_node_scoped(usb_dev_node, intf_node) {
-		if (of_property_read_u32(intf_node, "reg", &reg) || reg != intf_num)
+	if (!usb_dev_fwnode)
+		return NULL;
+
+	fwnode_for_each_child_node(usb_dev_fwnode, intf_node) {
+		if (fwnode_property_read_u32(intf_node, "reg", &reg) || reg != intf_num)
 			continue;
 
-		for_each_child_of_node_scoped(intf_node, ch_node) {
-			if (of_property_read_u32(ch_node, "reg", &reg) || reg != channel_id)
+		fwnode_for_each_child_node(intf_node, ch_node) {
+			if (fwnode_property_read_u32(ch_node, "reg", &reg) || reg != channel_id)
 				continue;
-			if (!of_device_is_compatible(ch_node, compatible))
+			if (fwnode_property_match_string(ch_node, "compatible", compatible) < 0)
 				continue;
-			return of_node_get(ch_node);
+			fwnode_handle_put(intf_node);
+			return ch_node;
 		}
+		fwnode_handle_put(intf_node);
 		break;
 	}
 
@@ -800,24 +733,25 @@ static struct device_node *lstp_find_channel_node(struct device_node *usb_dev_no
 }
 
 /**
- * lstp_init_channel_of_node() - Initialize channel's device tree node.
+ * lstp_init_channel_fwnode() - Initialize channel's firmware node (DT or ACPI).
  * @ch:         LSTP channel to initialize
- * @compatible: Compatible string to match in device tree
+ * @compatible: Compatible string to match in firmware description
  *
- * Finds and assigns the appropriate device tree node for this channel.
+ * Finds and assigns the appropriate firmware node for this channel.
+ * Works with Device Tree, ACPI, and software nodes.
  * Registers a devm action to automatically release the node reference.
  *
  * Return: 0 on success, negative errno on failure
  */
-static int lstp_init_channel_of_node(struct lstp_channel *ch, const char *compatible)
+static int lstp_init_channel_fwnode(struct lstp_channel *ch, const char *compatible)
 {
-	ch->of_node = lstp_find_channel_node(ch->usb->udev->dev.of_node,
-					     ch->usb->intf->cur_altsetting->desc.bInterfaceNumber,
-					     ch->ch_id, compatible);
-	if (!ch->of_node)
+	ch->fwnode = lstp_find_channel_fwnode(dev_fwnode(&ch->usb->udev->dev),
+					      ch->usb->intf->cur_altsetting->desc.bInterfaceNumber,
+					      ch->ch_id, compatible);
+	if (!ch->fwnode)
 		return 0;
 
-	return devm_add_action_or_reset(&ch->usb->intf->dev, lstp_put_of_node, ch->of_node);
+	return devm_add_action_or_reset(&ch->usb->intf->dev, lstp_put_fwnode, ch->fwnode);
 }
 
 /**
@@ -864,51 +798,47 @@ static struct lstp_channel *lstp_create_channel(struct lstp_usb *dev, u8 ch_id)
 }
 
 /**
- * lstp_init_channels() - Discover and initialize all LSTP channels.
+ * lstp_ch0_init() - Create and initialize channel 0 (management).
  * @dev: LSTP USB device structure
  *
- * Queries ch0 for protocol version and channel count, then initializes each
- * channel's type-specific structures. Does NOT register with Linux subsystems;
- * call lstp_start_channels() after RX URB setup.
+ * Creates ch0 via lstp_create_channel, allocates ch0->resp_buf, reads ch0 config
+ * via lstp_ch0_read_helper, and parses version/count/label into @dev.
  *
  * Return: 0 on success, negative errno on failure
  */
-static int lstp_init_channels(struct lstp_usb *dev)
+static int lstp_ch0_init(struct lstp_usb *dev)
 {
 	int ret;
-	int ch_id;
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)dev->rx_buf;
+	struct lstp_packet *rx_pkt;
 	union lstp_ch0_resp_payload *ch0_resp;
 	struct lstp_ch0_config *config;
 	struct lstp_channel *ch0;
-	u8 max_ch_id = 0;
 
-	/* Create channel 0 (management channel) for URB-based runtime access */
+	/* Create CH_0 and get READ request */
 	ch0 = lstp_create_channel(dev, 0);
 	if (!ch0) {
 		dev_err(&dev->intf->dev, "%s: Could not allocate channel 0\n", __func__);
 		return -ENOMEM;
 	}
 	ch0->ch_type = LSTP_CHANNEL_TYPE_MGMT;
-
-	/* Allocate rx_buf for management channel */
 	ch0->resp_buf = devm_kzalloc(&dev->intf->dev, dev->bulk_rx_size, GFP_KERNEL);
 	if (!ch0->resp_buf)
 		return -ENOMEM;
 
-	/* Get READ request for CH0 (using sync I/O since RX URB not active yet) */
-	ret = lstp_ch0_read(dev, 0, 0, LSTP_READ_LEN_ALL);
-	if (ret)
+	mutex_lock(&ch0->tx_mutex);
+	ret = lstp_ch0_read_helper(dev, 0, 0, LSTP_READ_LEN_ALL);
+	if (ret) {
+		mutex_unlock(&ch0->tx_mutex);
 		return ret;
+	}
 
 	/* Validate expected CH0 config size */
+	rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	ret = lstp_validate_resp(dev, rx_pkt,
 				 sizeof(struct lstp_ch0_resp_read) +
 					 sizeof(struct lstp_ch0_config));
 	if (ret)
-		return ret;
-
-	/* Get config - already validated by lstp_validate_resp() */
+		goto out;
 	ch0_resp = (union lstp_ch0_resp_payload *)rx_pkt->payload;
 	config = (struct lstp_ch0_config *)ch0_resp->read.ch_config;
 
@@ -916,36 +846,67 @@ static int lstp_init_channels(struct lstp_usb *dev)
 	if (ch0_resp->read.ch_type != LSTP_CHANNEL_TYPE_MGMT) {
 		dev_err(&dev->intf->dev, "%s: ch_0: Received wrong channel 0 type (got %d)\n",
 			__func__, ch0_resp->read.ch_type);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Validate channel name */
 	if (ch0_resp->read.ch_name[0] == '\0') {
 		dev_err(&dev->intf->dev, "%s: ch_0: Invalid LSTP interface name\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	strscpy(dev->lstp_intf_name, ch0_resp->read.ch_name, LSTP_CH_NAME_LEN);
 
 	/* Validate LSTP version */
 	if (config->lstp_version != LSTP_VERSION) {
 		dev_err(&dev->intf->dev, "%s: ch_0: Invalid LSTP version\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	dev->lstp_version = config->lstp_version;
 
 	/* Validate channel count */
-	max_ch_id = config->num_channels;
-	if (max_ch_id == 0) {
-		dev_err(&dev->intf->dev, "%s: ch_0: Invalid channel count %d (min 1, max 255)\n",
-			__func__, max_ch_id);
-		return -EINVAL;
+	if (config->num_channels == 0 || config->num_channels >= LSTP_MAX_CHANNELS) {
+		dev_err(&dev->intf->dev, "%s: ch_0: Invalid channel count %d (min 1, max %d)\n",
+			__func__, config->num_channels, LSTP_MAX_CHANNELS - 1);
+		ret = -EINVAL;
+		goto out;
 	}
-	dev->max_ch_id = max_ch_id;
+	dev->max_ch_id = config->num_channels;
 
 	dev_info(&dev->intf->dev, "%s: LSTP v%d: device %s discovered with %d channels\n", __func__,
-		 dev->lstp_version, ch0_resp->read.ch_name, max_ch_id);
+		 dev->lstp_version, dev->lstp_intf_name, dev->max_ch_id);
+	ret = 0;
+out:
+	lstp_unlock_resp_buffer(ch0);
+	mutex_unlock(&ch0->tx_mutex);
+	return ret;
+}
 
-	for (ch_id = 1; ch_id <= max_ch_id; ch_id++) {
+/**
+ * lstp_init_channels() - Discover and initialize all LSTP channels.
+ * @dev: LSTP USB device structure
+ *
+ * Calls lstp_ch0_init() then creates and initializes channels 1...max_ch_id.
+ * Does NOT register with Linux subsystems; call lstp_start_channels() after.
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int lstp_init_channels(struct lstp_usb *dev)
+{
+	int ret;
+	int ch_id;
+	struct lstp_channel *ch0;
+	struct lstp_packet *rx_pkt;
+	union lstp_ch0_resp_payload *ch0_resp;
+
+	ret = lstp_ch0_init(dev);
+	if (ret)
+		return ret;
+
+	ch0 = dev->channels[0];
+	for (ch_id = 1; ch_id <= dev->max_ch_id; ch_id++) {
 		/* Create CH_i and get READ request */
 		struct lstp_channel *ch = lstp_create_channel(dev, ch_id);
 
@@ -954,39 +915,56 @@ static int lstp_init_channels(struct lstp_usb *dev)
 				ch_id);
 			return -ENOMEM;
 		}
-		ret = lstp_ch0_read(dev, ch_id, 0, LSTP_READ_LEN_ALL);
-		if (ret)
+
+		mutex_lock(&ch0->tx_mutex);
+		ret = lstp_ch0_read_helper(dev, ch_id, 0, LSTP_READ_LEN_ALL);
+		if (ret) {
+			mutex_unlock(&ch0->tx_mutex);
 			return ret;
+		}
 
 		/* Parse READ response data and init type-specific structures */
+		rx_pkt = (struct lstp_packet *)ch0->resp_buf;
+		ch0_resp = (union lstp_ch0_resp_payload *)rx_pkt->payload;
 		ch->ch_type = ch0_resp->read.ch_type;
+
 		switch (ch0_resp->read.ch_type) {
 		case LSTP_CHANNEL_TYPE_SPI:
-			ret = lstp_init_channel_of_node(ch, "nv,lstp-spi");
+			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-spi");
 			if (ret)
-				return ret;
+				break;
 			ret = lstp_spi_init(ch);
+			break;
+		case LSTP_CHANNEL_TYPE_GPIO:
+			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-gpio");
 			if (ret)
-				return ret;
+				break;
+			ret = lstp_gpio_init(ch);
 			break;
 		case LSTP_CHANNEL_TYPE_I2C:
-			ret = lstp_i2c_init(ch);
+			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-i2c");
 			if (ret)
-				return ret;
+				break;
+			ret = lstp_i2c_init(ch);
 			break;
 		case LSTP_CHANNEL_TYPE_IPMI:
-			ret = lstp_init_channel_of_node(ch, "nv,lstp-ipmi");
+			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-ipmi");
 			if (ret)
-				return ret;
+				break;
 			ret = lstp_ipmi_init(ch);
-			if (ret)
-				return ret;
 			break;
 		default:
 			dev_warn(&dev->intf->dev, "%s: Channel %d has unsupported type %d\n",
 				 __func__, ch_id, ch0_resp->read.ch_type);
+			ret = 0;
 			break;
 		}
+
+		/* Done using ch0->resp_buf for this channel; release before next iteration. */
+		lstp_unlock_resp_buffer(ch0);
+		mutex_unlock(&ch0->tx_mutex);
+		if (ret)
+			return ret;
 	}
 	return 0;
 }
@@ -1013,6 +991,11 @@ static int lstp_start_channels(struct lstp_usb *dev)
 		switch (ch->ch_type) {
 		case LSTP_CHANNEL_TYPE_SPI:
 			ret = lstp_spi_start(ch);
+			if (ret)
+				return ret;
+			break;
+		case LSTP_CHANNEL_TYPE_GPIO:
+			ret = lstp_gpio_start(ch);
 			if (ret)
 				return ret;
 			break;
@@ -1082,14 +1065,8 @@ static int lstp_probe(struct usb_interface *intf, const struct usb_device_id *id
 	dev->max_ch_id = 255; /* Maximum possible before device discovery */
 	dev->bulk_in_ep = ep_in->bEndpointAddress;
 	dev->bulk_out_ep = ep_out->bEndpointAddress;
-	dev->bulk_tx_size = usb_endpoint_maxp(ep_out);
-	dev->bulk_rx_size = usb_endpoint_maxp(ep_in);
-
-	/* Clamp to max size */
-	if (dev->bulk_tx_size > LSTP_USB_EP_MAX_SIZE)
-		dev->bulk_tx_size = LSTP_USB_EP_MAX_SIZE;
-	if (dev->bulk_rx_size > LSTP_USB_EP_MAX_SIZE)
-		dev->bulk_rx_size = LSTP_USB_EP_MAX_SIZE;
+	dev->bulk_tx_size = min_t(size_t, usb_endpoint_maxp(ep_out), LSTP_USB_EP_MAX_SIZE);
+	dev->bulk_rx_size = min_t(size_t, usb_endpoint_maxp(ep_in), LSTP_USB_EP_MAX_SIZE);
 
 	/* Validate minimum size */
 	if (dev->bulk_tx_size < LSTP_USB_EP_MIN_SIZE || dev->bulk_rx_size < LSTP_USB_EP_MIN_SIZE) {
@@ -1112,30 +1089,32 @@ static int lstp_probe(struct usb_interface *intf, const struct usb_device_id *id
 
 	usb_set_intfdata(intf, dev);
 
+	usb_fill_bulk_urb(dev->bulk_rx_urb, dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep),
+			  dev->rx_buf, dev->bulk_rx_size, lstp_usb_rx_callback, dev);
+	ret = usb_submit_urb(dev->bulk_rx_urb, GFP_KERNEL);
+	if (ret) {
+		dev_err(&intf->dev, "%s: Could not submit bulk RX URB (%pe)\n", __func__,
+			ERR_PTR(ret));
+		return ret;
+	}
+
 	ret = lstp_init_channels(dev);
 	if (ret) {
-		dev_err(&intf->dev, "%s: Failed to initialize channels (%d)\n", __func__, ret);
+		dev_err(&intf->dev, "%s: Failed to initialize channels (%pe)\n", __func__,
+			ERR_PTR(ret));
 		return ret;
 	}
 
 	ret = lstp_create_sysfs_hierarchy(dev);
 	if (ret) {
-		dev_err(&intf->dev, "%s: Failed to create sysfs hierarchy (%d)\n", __func__, ret);
-		return ret;
-	}
-
-	usb_fill_bulk_urb(dev->bulk_rx_urb, dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep),
-			  dev->rx_buf, dev->bulk_rx_size, lstp_usb_rx_callback, dev);
-
-	ret = usb_submit_urb(dev->bulk_rx_urb, GFP_KERNEL);
-	if (ret) {
-		dev_err(&intf->dev, "%s: Could not submit bulk RX URB (%d)\n", __func__, ret);
+		dev_err(&intf->dev, "%s: Failed to create sysfs hierarchy (%pe)\n", __func__,
+			ERR_PTR(ret));
 		return ret;
 	}
 
 	ret = lstp_start_channels(dev);
 	if (ret) {
-		dev_err(&intf->dev, "%s: Failed to start channels (%d)\n", __func__, ret);
+		dev_err(&intf->dev, "%s: Failed to start channels (%pe)\n", __func__, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -1166,8 +1145,8 @@ static void lstp_usb_tx_callback(struct urb *urb)
 
 	if (urb->status != 0 && urb->status != -ENOENT && urb->status != -ECONNRESET &&
 	    urb->status != -ESHUTDOWN) {
-		dev_warn(&ch->usb->intf->dev, "%s: ch_%d: TX URB error (%d)\n", __func__, ch->ch_id,
-			 urb->status);
+		dev_warn(&ch->usb->intf->dev, "%s: ch_%d: TX URB error (%pe)\n", __func__,
+			 ch->ch_id, ERR_PTR(urb->status));
 	}
 }
 
@@ -1191,7 +1170,8 @@ static void lstp_usb_rx_callback(struct urb *urb)
 	}
 
 	if (urb->status) {
-		dev_err(&dev->intf->dev, "%s: RX URB error (%d)\n", __func__, urb->status);
+		dev_err(&dev->intf->dev, "%s: RX URB error (%pe)\n", __func__,
+			ERR_PTR(urb->status));
 		goto resubmit;
 	}
 
@@ -1320,8 +1300,7 @@ int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 
 			 * Device is not allowed to take longer than LSTP_USB_RESPONSE_TIMEOUT_MS to
 			 * respond. Timeout indicates device hang.
 			 */
-			dev_err(&ch->usb->intf->dev,
-				"%s: ch_%d: Response timeout - channel disabled\n", __func__,
+			dev_err(&ch->usb->intf->dev, "%s: ch_%d: Response timeout\n", __func__,
 				ch->ch_id);
 			ret = -ETIMEDOUT;
 		}
@@ -1359,7 +1338,7 @@ void lstp_unlock_resp_buffer(struct lstp_channel *ch)
  ******************************************************************************/
 
 static const struct usb_device_id lstp_id_table[] = {
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x0955, 0xcf11, 0xFF, 0x3F, LSTP_VERSION) },
+	{ USB_VENDOR_AND_INTERFACE_INFO(0x0955, 0xFF, 0x3F, LSTP_VERSION) },
 	{}
 };
 MODULE_DEVICE_TABLE(usb, lstp_id_table);
@@ -1372,5 +1351,9 @@ static struct usb_driver lstp_usb_driver = {
 };
 
 module_usb_driver(lstp_usb_driver);
+
+bool lstp_auto_bind_spidev = IS_ENABLED(CONFIG_USB_LSTP_SPI_SPIDEV);
+module_param_named(auto_bind_spidev, lstp_auto_bind_spidev, bool, 0444);
+MODULE_PARM_DESC(auto_bind_spidev, "Auto-create spidev devices on SPI channels without firmware nodes (default: CONFIG_USB_LSTP_SPI_SPIDEV)");
 
 MODULE_LICENSE("GPL");

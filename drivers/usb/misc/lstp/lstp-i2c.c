@@ -6,6 +6,8 @@
  */
 
 #include <linux/i2c.h>
+#include <linux/err.h>
+#include <linux/version.h>
 
 #include "lstp-main.h"
 
@@ -64,8 +66,8 @@ static int __maybe_unused lstp_i2c_bus_recovery(struct i2c_adapter *adap)
 
 	ret = lstp_recv_resp_helper(ch, LSTP_I2C_CMD_BUS_RECOVERY, 0, 0);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Bus recovery failed (%d)\n", __func__, ch->ch_id,
-			ret);
+		dev_err(&adap->dev, "%s: ch_%d: Bus recovery failed (%pe)\n", __func__, ch->ch_id,
+			ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -114,8 +116,8 @@ static int lstp_i2c_read(struct i2c_adapter *adap, struct i2c_msg *msg, bool no_
 
 	ret = lstp_i2c_validate_msg(msg);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%d)\n", __func__,
-			ch->ch_id, msg->addr, ret);
+		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%pe)\n", __func__,
+			ch->ch_id, msg->addr, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -141,8 +143,8 @@ static int lstp_i2c_read(struct i2c_adapter *adap, struct i2c_msg *msg, bool no_
 	ret = lstp_recv_resp_helper(ch, cmd, sizeof(i2c_req->read), msg->len);
 	if (ret) {
 		if (ret != lstp_status_to_errno(LSTP_NACK))
-			dev_err(&adap->dev, "%s: ch_%d: Read request to addr=0x%02x failed (%d)\n",
-				__func__, ch->ch_id, msg->addr, ret);
+			dev_err(&adap->dev, "%s: ch_%d: Read request to addr=0x%02x failed (%pe)\n",
+				__func__, ch->ch_id, msg->addr, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -172,8 +174,8 @@ static int lstp_i2c_write(struct i2c_adapter *adap, struct i2c_msg *msg, bool no
 
 	ret = lstp_i2c_validate_msg(msg);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%d)\n", __func__,
-			ch->ch_id, msg->addr, ret);
+		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%pe)\n", __func__,
+			ch->ch_id, msg->addr, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -205,8 +207,9 @@ static int lstp_i2c_write(struct i2c_adapter *adap, struct i2c_msg *msg, bool no
 	ret = lstp_recv_resp_helper(ch, cmd, sizeof(i2c_req->write) + msg->len, 0);
 	if (ret) {
 		if (ret != lstp_status_to_errno(LSTP_NACK))
-			dev_err(&adap->dev, "%s: ch_%d: Write request to addr=0x%02x failed (%d)\n",
-				__func__, ch->ch_id, msg->addr, ret);
+			dev_err(&adap->dev,
+				"%s: ch_%d: Write request to addr=0x%02x failed (%pe)\n", __func__,
+				ch->ch_id, msg->addr, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -232,11 +235,14 @@ static int lstp_i2c_read_recvlen(struct i2c_adapter *adap, struct i2c_msg *msg, 
 	struct lstp_packet *tx_pkt = (struct lstp_packet *)ch->tx_buf;
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->resp_buf;
 	union lstp_i2c_req_payload *i2c_req = (union lstp_i2c_req_payload *)tx_pkt->payload;
+	u16 pkt_len = 0;
+	u16 rx_len = 0;
+	u8 block_len = 0;
 
 	ret = lstp_i2c_validate_msg(msg);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%d)\n", __func__,
-			ch->ch_id, msg->addr, ret);
+		dev_err(&adap->dev, "%s: ch_%d: Invalid message to addr=0x%02x (%pe)\n", __func__,
+			ch->ch_id, msg->addr, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -259,20 +265,38 @@ static int lstp_i2c_read_recvlen(struct i2c_adapter *adap, struct i2c_msg *msg, 
 	if (ret) {
 		if (ret != lstp_status_to_errno(LSTP_NACK))
 			dev_err(&adap->dev,
-				"%s: ch_%d: Read recvlen request to addr=0x%02x failed (%d)\n",
-				__func__, ch->ch_id, msg->addr, ret);
+				"%s: ch_%d: Read recvlen request to addr=0x%02x failed (%pe)\n",
+				__func__, ch->ch_id, msg->addr, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
-	if (le16_to_cpu(rx_pkt->hdr.length) > msg->len) {
-		dev_err(&adap->dev, "%s: ch_%d: Response too large (got %u, max %u)\n", __func__,
-			ch->ch_id, le16_to_cpu(rx_pkt->hdr.length), msg->len);
-		ret = -EMSGSIZE;
-	} else {
-		msg->len = le16_to_cpu(rx_pkt->hdr.length);
-		memcpy(msg->buf, rx_pkt->payload, msg->len);
+	pkt_len = le16_to_cpu(rx_pkt->hdr.length);
+	if (pkt_len == 0) {
+		dev_err(&adap->dev, "%s: ch_%d: Empty response packet\n", __func__, ch->ch_id);
+		ret = -EIO;
+		goto out_buffer;
 	}
 
+	block_len = rx_pkt->payload[0];
+	if (block_len > I2C_SMBUS_BLOCK_MAX) {
+		dev_err(&adap->dev, "%s: ch_%d: Invalid block length %u\n", __func__, ch->ch_id,
+			block_len);
+		ret = -EPROTO;
+		goto out_buffer;
+	}
+
+	rx_len = block_len + ((msg->flags & I2C_CLIENT_PEC) ? 2 : 1);
+	if (pkt_len < rx_len) {
+		dev_err(&adap->dev, "%s: ch_%d: Invalid response length (%u)\n", __func__,
+			ch->ch_id, pkt_len);
+		ret = -EIO;
+		goto out_buffer;
+	}
+
+	msg->len = rx_len;
+	memcpy(msg->buf, rx_pkt->payload, msg->len);
+
+out_buffer:
 	lstp_unlock_resp_buffer(ch);
 out_mutex:
 	mutex_unlock(&ch->tx_mutex);
@@ -298,8 +322,8 @@ static int lstp_i2c_write_read(struct i2c_adapter *adap, struct i2c_msg *wr_msg,
 
 	ret = lstp_i2c_validate_msg(wr_msg);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Invalid write message to addr=0x%02x (%d)\n",
-			__func__, ch->ch_id, wr_msg->addr, ret);
+		dev_err(&adap->dev, "%s: ch_%d: Invalid write message to addr=0x%02x (%pe)\n",
+			__func__, ch->ch_id, wr_msg->addr, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -315,8 +339,8 @@ static int lstp_i2c_write_read(struct i2c_adapter *adap, struct i2c_msg *wr_msg,
 
 	ret = lstp_i2c_validate_msg(rd_msg);
 	if (ret) {
-		dev_err(&adap->dev, "%s: ch_%d: Invalid read message to addr=0x%02x (%d)\n",
-			__func__, ch->ch_id, rd_msg->addr, ret);
+		dev_err(&adap->dev, "%s: ch_%d: Invalid read message to addr=0x%02x (%pe)\n",
+			__func__, ch->ch_id, rd_msg->addr, ERR_PTR(ret));
 		return ret;
 	}
 
@@ -339,8 +363,8 @@ static int lstp_i2c_write_read(struct i2c_adapter *adap, struct i2c_msg *wr_msg,
 	if (ret) {
 		if (ret != lstp_status_to_errno(LSTP_NACK))
 			dev_err(&adap->dev,
-				"%s: ch_%d: Write-read request to addr=0x%02x failed (%d)\n",
-				__func__, ch->ch_id, wr_msg->addr, ret);
+				"%s: ch_%d: Write-read request to addr=0x%02x failed (%pe)\n",
+				__func__, ch->ch_id, wr_msg->addr, ERR_PTR(ret));
 		goto out_mutex;
 	}
 
@@ -419,7 +443,11 @@ static u32 lstp_i2c_functionality(struct i2c_adapter *adap)
 }
 
 static const struct i2c_algorithm lstp_i2c_algorithm = {
+#if KERNEL_VERSION(6, 11, 0) <= LINUX_VERSION_CODE
 	.xfer = lstp_i2c_xfer,
+#else
+	.master_xfer = lstp_i2c_xfer,
+#endif
 	.functionality = lstp_i2c_functionality,
 };
 
@@ -427,7 +455,7 @@ static const struct i2c_algorithm lstp_i2c_algorithm = {
  * lstp_i2c_init() - Initialize I2C adapter for an LSTP channel.
  * @ch: LSTP channel configured as I2C type
  *
- * Allocates adapter and parses config from usb->rx_buf. Adapter stored in
+ * Allocates adapter and parses config from ch0->resp_buf. Adapter stored in
  * ch->priv but not registered; call lstp_i2c_start() after RX URB setup.
  *
  * Return: 0 on success, negative errno on failure
@@ -436,7 +464,8 @@ int lstp_i2c_init(struct lstp_channel *ch)
 {
 	int ret;
 	struct i2c_adapter *adap;
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->usb->rx_buf;
+	struct lstp_channel *ch0 = ch->usb->channels[0];
+	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	union lstp_ch0_resp_payload *ch0_resp;
 	/* struct lstp_i2c_config *config = (struct lstp_i2c_config *)ch0_resp->read.ch_config; */
 
@@ -470,6 +499,7 @@ int lstp_i2c_init(struct lstp_channel *ch)
 	adap->algo = &lstp_i2c_algorithm;
 	adap->algo_data = ch;
 	adap->dev.parent = &ch->usb->intf->dev;
+	device_set_node(&adap->dev, ch->fwnode);
 	snprintf(adap->name, sizeof(adap->name), "%s_%s", ch->usb->lstp_intf_name,
 		 ch0_resp->read.ch_name);
 	/* TODO: save i2c speed from config */
@@ -483,6 +513,10 @@ int lstp_i2c_init(struct lstp_channel *ch)
 /**
  * lstp_i2c_start() - Register I2C adapter with Linux I2C core.
  * @ch: LSTP channel with initialized adapter (from lstp_i2c_init)
+ *
+ * When the adapter's firmware node is set (from lstp_i2c_init), the
+ * I2C core resolves bus numbers via aliases and auto-enumerates child
+ * devices from firmware (DT or ACPI) child nodes.
  *
  * Return: 0 on success, negative errno on failure
  */
@@ -499,8 +533,8 @@ int lstp_i2c_start(struct lstp_channel *ch)
 
 	ret = devm_i2c_add_adapter(&ch->usb->intf->dev, adap);
 	if (ret) {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not register I2C adapter (%d)\n",
-			__func__, ch->ch_id, ret);
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not register I2C adapter (%pe)\n",
+			__func__, ch->ch_id, ERR_PTR(ret));
 		return ret;
 	}
 

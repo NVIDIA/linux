@@ -8,15 +8,14 @@
 #ifndef __LSTP_MAIN_H
 #define __LSTP_MAIN_H
 
-#include <linux/usb.h>
 #include <linux/mutex.h>
-#include <linux/tty.h>
-#include <linux/of.h>
+#include <linux/property.h>
+#include <linux/usb.h>
 
 #define LSTP_VERSION 1
 #define LSTP_USB_RESPONSE_TIMEOUT_MS 1000
 #define LSTP_USB_REQUEST_TIMEOUT_MS 1000
-#define LSTP_USB_EP_MIN_SIZE 8
+#define LSTP_USB_EP_MIN_SIZE 64
 #define LSTP_USB_EP_MAX_SIZE 512
 #define LSTP_MAX_CHANNELS 256 /* Includes channel 0 */
 #define LSTP_ANY_RX_LEN 0xFFFF
@@ -130,7 +129,7 @@ typedef void (*lstp_irq_callback)(struct lstp_channel *ch);
 struct lstp_channel {
 	u8 ch_id;
 	u8 ch_type;
-	struct device_node *of_node;
+	struct fwnode_handle *fwnode;
 	struct lstp_usb *usb;
 	struct mutex tx_mutex; /* One request at a time per channel */
 	unsigned long resp_buffer_lock;
@@ -150,6 +149,8 @@ struct lstp_channel {
 /* Channel init/start functions */
 int lstp_spi_init(struct lstp_channel *ch);
 int lstp_spi_start(struct lstp_channel *ch);
+int lstp_gpio_init(struct lstp_channel *ch);
+int lstp_gpio_start(struct lstp_channel *ch);
 int lstp_i2c_init(struct lstp_channel *ch);
 int lstp_i2c_start(struct lstp_channel *ch);
 int lstp_ipmi_init(struct lstp_channel *ch);
@@ -160,7 +161,10 @@ int lstp_status_to_errno(u8 status);
 int lstp_validate_rx_pkt(struct lstp_usb *dev, struct lstp_packet *rx_pkt, size_t actual_length);
 int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt,
 		       size_t expected_payload_len);
-int lstp_ch0_read(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length);
+int lstp_ch0_read_helper(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length);
+
+/* Module parameters */
+extern bool lstp_auto_bind_spidev;
 
 /* USB Helper Functions */
 int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 tx_len, u16 rx_len);

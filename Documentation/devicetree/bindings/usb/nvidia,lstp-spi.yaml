@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP SPI Channel
+
+description: |
+  SPI bus master channel on an NVIDIA LSTP USB device.
+
+  The LSTP SPI channel registers as a Linux SPI controller.  Child nodes
+  describe SPI peripherals attached to each chip-select.  When a DT node
+  is present, the SPI core auto-enumerates children; otherwise the driver
+  falls back to board_info registration.
+
+  The number of chip selects and bus speed are reported by the device
+  firmware.  The firmware supports up to 4 chip selects (CS0-CS3).
+
+allOf:
+  - $ref: /schemas/spi/spi-controller.yaml#
+
+properties:
+  compatible:
+    const: nvidia,lstp-spi
+
+  reg:
+    description: LSTP channel ID as reported by firmware.
+    maxItems: 1
+
+  "#address-cells":
+    const: 1
+
+  "#size-cells":
+    const: 0
+
+patternProperties:
+  "^[a-zA-Z][a-zA-Z0-9,-]*@[0-9a-f]+$":
+    type: object
+    additionalProperties: true
+
+    properties:
+      compatible:
+        description: Compatible string for the SPI peripheral device.
+
+      reg:
+        description: Chip-select number (0-3).
+        minimum: 0
+        maximum: 3
+
+      spi-max-frequency:
+        description: |
+          Maximum SPI clock frequency in Hz.  Must not exceed the speed
+          reported by the LSTP device firmware.
+
+    required:
+      - compatible
+      - reg
+
+required:
+  - compatible
+  - reg
+  - "#address-cells"
+  - "#size-cells"
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    channel@1 {
+        compatible = "nvidia,lstp-spi";
+        reg = <1>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        spidev@0 {
+            compatible = "nvidia,lstp-spidev";
+            reg = <0>;
+            spi-max-frequency = <24000000>;
+        };
+
+        spidev@1 {
+            compatible = "nvidia,lstp-spidev";
+            reg = <1>;
+            spi-max-frequency = <24000000>;
+        };
+    };
