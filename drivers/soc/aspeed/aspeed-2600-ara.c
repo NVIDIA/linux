@@ -125,7 +125,9 @@ static int ast2600_ara_cb(struct i2c_client *client, enum i2c_slave_event event,
 	switch (event) {
 	case I2C_SLAVE_READ_REQUESTED:
 		*val = (ara->client->addr << 1);
+		spin_lock(ara->lock_addr_reg);
 		disable_ast2600_ara(client);
+		spin_unlock(ara->lock_addr_reg);
 		break;
 	case I2C_SLAVE_WRITE_REQUESTED:
 	case I2C_SLAVE_READ_PROCESSED:
@@ -138,7 +140,8 @@ static int ast2600_ara_cb(struct i2c_client *client, enum i2c_slave_event event,
 	return ret;
 }
 
-struct ast2600_ara* register_ast2600_ara(struct i2c_client *client)
+struct ast2600_ara* register_ast2600_ara(struct i2c_client *client,
+					 spinlock_t *lock_addr_reg)
 {
 	int ret;
 	struct ast2600_ara *ara;
@@ -159,6 +162,7 @@ struct ast2600_ara* register_ast2600_ara(struct i2c_client *client)
 	if(!ara)
 		return NULL;
 	ara->client = client;
+	ara->lock_addr_reg = lock_addr_reg;
 	ara->ara_i2c_client = i2c_new_client_device(adap, &info);
 	if (IS_ERR(ara->ara_i2c_client)) {
 		devm_kfree(&client->dev, ara);
