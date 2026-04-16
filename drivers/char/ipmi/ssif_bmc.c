@@ -95,6 +95,8 @@ struct ssif_bmc_ctx {
 	/* ssif bmc spinlock */
 	spinlock_t              lock_rd;
 	spinlock_t              lock_wr;
+	/* Serialize RMW access to I2C slave address register */
+	spinlock_t              lock_addr_reg;
 	wait_queue_head_t       wait_queue_rd;
 	u8                      running;
 	enum ssif_state         state;
@@ -393,10 +395,13 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 
 	del_timer_sync(&ssif_bmc->response_timer);
+	spin_lock_irqsave(&ssif_bmc->lock_addr_reg, flags);
 	enable_ast2600_slave(ssif_bmc->client);
+	if (!IS_ERR(ssif_bmc->alert))
+		enable_ast2600_ara(ssif_bmc->client);
+	spin_unlock_irqrestore(&ssif_bmc->lock_addr_reg, flags);
 
 	if (!IS_ERR(ssif_bmc->alert)) {
-		enable_ast2600_ara(ssif_bmc->client);
 		//if gpio is already asserted toggle it
 		if (gpiod_get_value(ssif_bmc->alert))
 		{
@@ -493,7 +498,9 @@ static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 			return;
 		}
 
+		spin_lock(&ssif_bmc->lock_addr_reg);
 		disable_ast2600_slave(ssif_bmc->client);
+		spin_unlock(&ssif_bmc->lock_addr_reg);
 		mod_timer(&ssif_bmc->response_timer, jiffies + msecs_to_jiffies(ssif_bmc->response_timeout));
 
 		memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg_header));
@@ -1001,9 +1008,12 @@ static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8
 static void retry_timeout(struct timer_list *t)
 {
 	struct ssif_bmc_ctx *ssif_bmc = from_timer(ssif_bmc, t, response_timer);
+	unsigned long flags;
 
 	dev_warn(&ssif_bmc->client->dev, "Userspace did not respond in time. Force enable i2c target\n");
+	spin_lock_irqsave(&ssif_bmc->lock_addr_reg, flags);
 	enable_ast2600_slave(ssif_bmc->client);
+	spin_unlock_irqrestore(&ssif_bmc->lock_addr_reg, flags);
 }
 
 static int ssif_bmc_probe(struct i2c_client *client)
@@ -1033,6 +1043,7 @@ static int ssif_bmc_probe(struct i2c_client *client)
 	ssif_bmc->running = 0;
 	spin_lock_init(&ssif_bmc->lock_rd);
 	spin_lock_init(&ssif_bmc->lock_wr);
+	spin_lock_init(&ssif_bmc->lock_addr_reg);
 
 	init_waitqueue_head(&ssif_bmc->wait_queue_rd);
 
@@ -1077,7 +1088,7 @@ static int ssif_bmc_probe(struct i2c_client *client)
 		misc_deregister(&ssif_bmc->miscdev_post);
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 	}
-	ssif_bmc->ara = register_ast2600_ara(client);
+	ssif_bmc->ara = register_ast2600_ara(client, &ssif_bmc->lock_addr_reg);
 
 	if (!IS_ERR(ssif_bmc->alert))
 		gpiod_set_value(ssif_bmc->alert, 0);
