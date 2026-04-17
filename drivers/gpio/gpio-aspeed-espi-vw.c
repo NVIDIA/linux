@@ -2,10 +2,12 @@
 // Copyright (c) 2023, Intel Corporation.
 
 #include <linux/gpio.h>
+#include <linux/gpio/driver.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/of.h>
 
 #include <linux/mfd/syscon.h>
 #include <linux/soc/aspeed/aspeed-espi.h>
@@ -260,12 +262,11 @@ static int aspeed_espi_gpio_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int aspeed_espi_gpio_remove(struct platform_device *pdev)
+static void aspeed_espi_gpio_remove(struct platform_device *pdev)
 {
 	struct aspeed_espi_gpio *gpio = dev_get_drvdata(&pdev->dev);
 
 	aspeed_espi_vw_gpio_disable(gpio->map);
-	return 0;
 }
 
 static const struct of_device_id of_espi_match_table[] = {
