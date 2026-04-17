@@ -29,7 +29,7 @@
 #include <net/mctpdevice.h>
 
 #include "mctp-i2c-error-inject.h"
-#include "mctp-stats.h"
+#include <net/mctp-stats.h>
 #include <trace/events/mctp.h>
 
 /* byte_count is limited to u8 */

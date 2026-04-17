@@ -7,6 +7,7 @@
 #ifndef __ASPEED_MCTP_CTRL_INTERNAL_H
 #define __ASPEED_MCTP_CTRL_INTERNAL_H
 
+#include <linux/bitmap.h>
 #include <linux/netdevice.h>
 #include <linux/timer.h>
 #include <linux/types.h>
@@ -17,6 +18,24 @@
 struct dentry;
 struct regmap;
 struct reset_control;
+
+/* Per-EID statistics tracking for the Aspeed MCTP controller.
+ *
+ * Fields are tailored to the drop surface of this driver (PCIe VDM DMA
+ * rings). Pre-parse/HW-level events that have no packet context use
+ * MCTP_EID_UNKNOWN (256).
+ */
+struct aspeed_mctp_eid_stats {
+	/* RX */
+	u64 rx_drop_no_memory;		/* skb alloc failure in rx_ring_read */
+	u64 rx_drop_fragment_error;	/* dropped by error-inject filter */
+	u64 rx_hw_overflow;		/* RX_NO_MORE_INT (UNKNOWN only) */
+
+	/* TX */
+	u64 tx_drop_queue_full;		/* start_xmit saw tx_ring_full */
+	u64 tx_drop_injected;		/* dropped by TX error-inject */
+	u64 tx_hw_wrong_cmd;		/* TX_WRONG_INT (UNKNOWN only) */
+};
 
 enum rx_mode {
 	/* RX fast path: when we can trust hardware pointers.
@@ -95,6 +114,16 @@ struct aspeed_mctp_ctrl {
 
 	struct aspeed_mctp_error_inject error_inject;
 	struct dentry *debugfs_dir;
+
+	/* Per-EID statistics — see MCTP_STAT_INC / MCTP_EID_UNKNOWN in
+	 * <net/mctp-stats.h>. Indexed 0..256; bit 256 (MCTP_EID_UNKNOWN)
+	 * collects events with no packet context (e.g. HW overflow IRQs,
+	 * pre-parse alloc failures).
+	 */
+	struct {
+		DECLARE_BITMAP(active, 257);
+		struct aspeed_mctp_eid_stats eid[257];
+	} eid_stats;
 };
 
 #endif /* __ASPEED_MCTP_CTRL_INTERNAL_H */

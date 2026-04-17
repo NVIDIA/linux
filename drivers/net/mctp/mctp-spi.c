@@ -28,7 +28,7 @@
 
 #include "glacier-spb-ap.h"
 #include "mctp-spi-internal.h"
-#include "mctp-stats.h"
+#include <net/mctp-stats.h>
 #include "mctp-spi-error-inject.h"
 
 static DEFINE_IDA(mctp_spi_ida);

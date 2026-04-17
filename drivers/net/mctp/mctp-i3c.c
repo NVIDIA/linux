@@ -18,7 +18,7 @@
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
-#include "mctp-stats.h"
+#include <net/mctp-stats.h>
 #include <trace/events/mctp.h>
 
 #define MCTP_I3C_MAXBUF 65536

@@ -8,6 +8,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/ethtool.h>
 #include <linux/if_arp.h>
 #include <linux/mfd/syscon.h>
 #include <linux/net.h>
@@ -19,6 +20,7 @@
 #include <linux/reset.h>
 #include <linux/timer.h>
 #include <net/mctp.h>
+#include <net/mctp-stats.h>
 #include <net/mctpdevice.h>
 
 #include "aspeed-mctp-ctrl-internal.h"
@@ -406,6 +408,7 @@ static int rx_ring_read_refill_many_warmup(struct rx_ring *rx, int budget,
 		skb = rx_ring_read(rx);
 		if (!skb) {
 			dev_core_stats_rx_dropped_inc(priv->ndev);
+			MCTP_STAT_INC(priv, MCTP_EID_UNKNOWN, rx_drop_no_memory);
 			break;
 		}
 
@@ -459,6 +462,7 @@ static int rx_ring_read_many_fast(struct rx_ring *rx, int budget,
 		skb = rx_ring_read(rx);
 		if (!skb) {
 			dev_core_stats_rx_dropped_inc(priv->ndev);
+			MCTP_STAT_INC(priv, MCTP_EID_UNKNOWN, rx_drop_no_memory);
 			break;
 		}
 
@@ -587,16 +591,20 @@ static netdev_tx_t aspeed_mctp_ctrl_start_xmit(struct sk_buff *skb,
 {
 	struct aspeed_mctp_ctrl *priv = netdev_priv(ndev);
 	struct tx_ring *tx = &priv->tx;
+	struct mctp_hdr *mh = mctp_hdr(skb);
+	u8 dest_eid = mh ? mh->dest : MCTP_EID_UNKNOWN;
 
 	skb_tx_timestamp(skb);
 
 	if (unlikely(tx_ring_full(tx))) {
 		netdev_err(priv->ndev, "BUG! TX ring full when queue awake!\n");
+		MCTP_STAT_INC(priv, dest_eid, tx_drop_queue_full);
 		dev_kfree_skb(skb);
 		return NETDEV_TX_OK;
 	}
 
 	if (aspeed_mctp_error_inject_tx(priv, skb)) {
+		MCTP_STAT_INC(priv, dest_eid, tx_drop_injected);
 		dev_core_stats_tx_dropped_inc(priv->ndev);
 		dev_kfree_skb(skb);
 		return NETDEV_TX_OK;
@@ -628,6 +636,7 @@ static irqreturn_t aspeed_mctp_ctrl_irq_handler(int irq, void *arg)
 		if (unlikely(status & RX_NO_MORE_INT)) {
 			netdev_warn(priv->ndev,
 				    "RX full, packets might be dropped");
+			MCTP_STAT_INC(priv, MCTP_EID_UNKNOWN, rx_hw_overflow);
 		}
 		aspeed_mctp_ctrl_disable_active_irq(priv);
 		napi_schedule(&priv->napi);
@@ -645,6 +654,7 @@ static irqreturn_t aspeed_mctp_ctrl_irq_handler(int irq, void *arg)
 			       false);
 		netdev_warn(priv->ndev, "xmit %d reclaim %d",
 			    priv->tx.next_xmit, priv->tx.next_reclaim);
+		MCTP_STAT_INC(priv, MCTP_EID_UNKNOWN, tx_hw_wrong_cmd);
 		ret = IRQ_HANDLED;
 	}
 
@@ -976,6 +986,149 @@ static int aspeed_mctp_ctrl_header_create(struct sk_buff *skb,
 	return PCIEVDM_HLEN;
 }
 
+/* ===== Per-EID ethtool statistics ===== */
+
+struct aspeed_mctp_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define ASPEED_MCTP_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct aspeed_mctp_eid_stats, field) \
+}
+
+static const struct aspeed_mctp_eid_stat_desc aspeed_mctp_eid_stat_descs[] = {
+	ASPEED_MCTP_EID_STAT("rx_drop_no_memory",      rx_drop_no_memory),
+	ASPEED_MCTP_EID_STAT("rx_drop_fragment_error", rx_drop_fragment_error),
+	ASPEED_MCTP_EID_STAT("rx_hw_overflow",         rx_hw_overflow),
+	ASPEED_MCTP_EID_STAT("tx_drop_queue_full",     tx_drop_queue_full),
+	ASPEED_MCTP_EID_STAT("tx_drop_injected",       tx_drop_injected),
+	ASPEED_MCTP_EID_STAT("tx_hw_wrong_cmd",        tx_hw_wrong_cmd),
+};
+
+#define ASPEED_MCTP_EID_NUM_STATS ARRAY_SIZE(aspeed_mctp_eid_stat_descs)
+
+/* Generates aspeed_mctp_count_eid_nonzero / aspeed_mctp_count_eid_stats /
+ * aspeed_mctp_eid_stats_total helpers.
+ */
+MCTP_EID_STATS_HELPERS(aspeed_mctp, struct aspeed_mctp_ctrl,
+		       struct aspeed_mctp_eid_stats,
+		       aspeed_mctp_eid_stat_descs)
+
+static void aspeed_mctp_ctrl_get_strings(struct net_device *ndev,
+					 u32 stringset, u8 *data)
+{
+	struct aspeed_mctp_ctrl *priv = netdev_priv(ndev);
+	unsigned int i;
+	int eid;
+
+	if (stringset != ETH_SS_STATS)
+		return;
+
+	/* Aggregate field names (summed across all EIDs) */
+	for (i = 0; i < ASPEED_MCTP_EID_NUM_STATS; i++) {
+		snprintf(data, ETH_GSTRING_LEN, "%-30s",
+			 aspeed_mctp_eid_stat_descs[i].name);
+		data += ETH_GSTRING_LEN;
+	}
+
+	/* Separator between aggregate and per-EID blocks */
+	snprintf(data, ETH_GSTRING_LEN, "                              ");
+	data += ETH_GSTRING_LEN;
+
+	/* Per-EID entries for EIDs with non-zero activity */
+	for_each_set_bit(eid, priv->eid_stats.active, 257) {
+		struct aspeed_mctp_eid_stats *es = &priv->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = aspeed_mctp_count_eid_nonzero(priv, eid);
+
+		if (nz == 0)
+			continue;
+
+		if (eid == MCTP_EID_UNKNOWN)
+			snprintf(data, ETH_GSTRING_LEN,
+				 "UNKNOWN: no packet context   ");
+		else if (eid == 0)
+			snprintf(data, ETH_GSTRING_LEN,
+				 "EID_0: null endpoint          ");
+		else
+			snprintf(data, ETH_GSTRING_LEN, "EID_%-3u                       ",
+				 eid);
+		data += ETH_GSTRING_LEN;
+
+		for (i = 0; i < ASPEED_MCTP_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base + aspeed_mctp_eid_stat_descs[i].offset);
+
+			if (val != 0) {
+				snprintf(data, ETH_GSTRING_LEN, "%-30s",
+					 aspeed_mctp_eid_stat_descs[i].name);
+				data += ETH_GSTRING_LEN;
+			}
+		}
+	}
+}
+
+static int aspeed_mctp_ctrl_get_sset_count(struct net_device *ndev, int sset)
+{
+	struct aspeed_mctp_ctrl *priv = netdev_priv(ndev);
+
+	if (sset == ETH_SS_STATS)
+		return ASPEED_MCTP_EID_NUM_STATS + 1 +
+		       aspeed_mctp_count_eid_stats(priv);
+
+	return -EOPNOTSUPP;
+}
+
+static void aspeed_mctp_ctrl_get_ethtool_stats(struct net_device *ndev,
+					       struct ethtool_stats *stats,
+					       u64 *data)
+{
+	struct aspeed_mctp_ctrl *priv = netdev_priv(ndev);
+	unsigned int i, idx = 0;
+	int eid;
+
+	/* Aggregate totals (summed across all active EIDs) */
+	for (i = 0; i < ASPEED_MCTP_EID_NUM_STATS; i++) {
+		u64 total = 0;
+
+		for_each_set_bit(eid, priv->eid_stats.active, 257) {
+			u8 *base = (u8 *)&priv->eid_stats.eid[eid];
+
+			total += *(u64 *)(base + aspeed_mctp_eid_stat_descs[i].offset);
+		}
+		data[idx++] = total;
+	}
+
+	/* Separator */
+	data[idx++] = 0;
+
+	/* Per-EID values */
+	for_each_set_bit(eid, priv->eid_stats.active, 257) {
+		struct aspeed_mctp_eid_stats *es = &priv->eid_stats.eid[eid];
+		u8 *base = (u8 *)es;
+		int nz = aspeed_mctp_count_eid_nonzero(priv, eid);
+
+		if (nz == 0)
+			continue;
+
+		data[idx++] = aspeed_mctp_eid_stats_total(priv, eid);
+
+		for (i = 0; i < ASPEED_MCTP_EID_NUM_STATS; i++) {
+			u64 val = *(u64 *)(base + aspeed_mctp_eid_stat_descs[i].offset);
+
+			if (val != 0)
+				data[idx++] = val;
+		}
+	}
+}
+
+static const struct ethtool_ops aspeed_mctp_ctrl_ethtool_ops = {
+	.get_strings       = aspeed_mctp_ctrl_get_strings,
+	.get_sset_count    = aspeed_mctp_ctrl_get_sset_count,
+	.get_ethtool_stats = aspeed_mctp_ctrl_get_ethtool_stats,
+};
+
 static const struct header_ops aspeed_mctp_ctrl_headops = {
 	.create = aspeed_mctp_ctrl_header_create,
 };
@@ -999,6 +1152,7 @@ static void aspeed_mctp_ctrl_setup(struct net_device *ndev)
 	ndev->addr_len = PCIEVDM_ALEN;
 	ndev->netdev_ops = &aspeed_mctp_ctrl_netops;
 	ndev->header_ops = &aspeed_mctp_ctrl_headops;
+	ndev->ethtool_ops = &aspeed_mctp_ctrl_ethtool_ops;
 	memset(ndev->broadcast, 0xFF, ndev->addr_len);
 	ndev->pcpu_stat_type = NETDEV_PCPU_STAT_TSTATS;
 }

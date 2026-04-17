@@ -20,6 +20,7 @@
 #include <linux/uaccess.h>
 
 #include <net/mctp.h>
+#include <net/mctp-stats.h>
 
 #include "aspeed-mctp-ctrl-internal.h"
 
@@ -236,6 +237,10 @@ void aspeed_mctp_error_inject_filter_list(struct aspeed_mctp_ctrl *priv,
 
 	list_for_each_entry_safe(skb, tmp, skb_list, list) {
 		if (aspeed_mctp_error_inject_fragment(priv, skb)) {
+			struct mctp_hdr *mh = mctp_hdr(skb);
+			u8 src_eid = mh ? mh->src : MCTP_EID_UNKNOWN;
+
+			MCTP_STAT_INC(priv, src_eid, rx_drop_fragment_error);
 			skb_list_del_init(skb);
 			dev_core_stats_rx_dropped_inc(priv->ndev);
 			kfree_skb(skb);

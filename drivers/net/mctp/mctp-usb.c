@@ -21,7 +21,7 @@
 #include <uapi/linux/if_arp.h>
 
 #include "mctp-usb-internal.h"
-#include "mctp-stats.h"
+#include <net/mctp-stats.h>
 #include <trace/events/mctp.h>
 
 /* number of IN/OUT urbs to queue */
