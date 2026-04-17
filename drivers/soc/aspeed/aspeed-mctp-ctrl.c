@@ -21,6 +21,8 @@
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
+#include "aspeed-mctp-ctrl-internal.h"
+
 /* clang-format off */
 
 /* Aspeed MCTP Controller registers */
@@ -114,82 +116,6 @@
 #define DEFAULT_RX_POLLING_INTERVAL_MSEC	100
 
 /* clang-format on */
-
-enum rx_mode {
-	/* RX fast path: when we can trust hardware pointers.
-	 *
-	 * This path only works if hardware pointers are consistent
-	 * with sofware pointers and we can rely on the pointers to
-	 * detect RX packets presense.
-	 */
-	RX_MODE_FAST,
-
-	/* RX warmup path: peeks at packet headers to detect packet arrival. 
-	 *
-	 * We have to do this in some cases where hardware pointers are unreliable
-	 * after reset. This is suboptimal so we should switch to fast path
-	 * when hardware pointers stablize after a few loops.
-	 */
-	RX_MODE_WARMUP,
-};
-
-struct tx_ring {
-	u64 *cmd;
-	dma_addr_t cmd_paddr;
-	u8 *pkt;
-	dma_addr_t pkt_paddr;
-	unsigned int pkt_size;
-	unsigned int pkt_count;
-
-	u8 next_xmit;
-	u8 next_reclaim;
-};
-
-struct rx_ring {
-	u32 *cmd;
-	dma_addr_t cmd_paddr;
-	u8 *pkt;
-	dma_addr_t pkt_paddr;
-	unsigned int pkt_size;
-	unsigned int pkt_count;
-
-	u8 next_read;
-	u8 next_refill;
-	u8 mode;
-
-	u64 scan_counter;
-	u8 scan_hw_offset;
-};
-
-struct aspeed_mctp_ctrl_match_data {
-	u8 starting_mode;
-	u32 tx_max_payload_size_regval;
-	u32 rx_max_payload_size_regval;
-	u32 max_payload_size;
-};
-
-struct aspeed_mctp_ctrl {
-	struct net_device *ndev;
-	struct regmap *map;
-	struct regmap *map_pcie;
-	struct reset_control *reset;
-	struct reset_control *reset_dma;
-	const struct aspeed_mctp_ctrl_match_data *match_data;
-
-	struct tx_ring tx;
-	struct rx_ring rx;
-
-	bool rc_f;
-	int irq_mctp;
-	int irq_perst_lo;
-	int irq_perst_hi;
-	u32 rx_poll_interval_jiffies;
-
-	struct napi_struct napi;
-	struct delayed_work bdf_work;
-	struct work_struct rst_work;
-	struct timer_list rx_poll_timer;
-};
 
 static inline u8 rx_ring_hw_ptr(struct rx_ring *rx)
 {
@@ -502,6 +428,7 @@ static int rx_ring_process_warmup(struct rx_ring *rx, int budget)
 	INIT_LIST_HEAD(&skb_list);
 
 	done += rx_ring_read_refill_many_warmup(rx, budget, &skb_list);
+	aspeed_mctp_error_inject_filter_list(priv, &skb_list);
 	netif_receive_skb_list(&skb_list);
 
 	/* Update the register for viewing in regmap debugfs */
@@ -544,6 +471,8 @@ static int rx_ring_read_many_fast(struct rx_ring *rx, int budget,
 
 static int rx_ring_process_fast(struct rx_ring *rx, int budget)
 {
+	struct aspeed_mctp_ctrl *priv =
+		container_of(rx, struct aspeed_mctp_ctrl, rx);
 	struct list_head skb_list;
 	int done = 0;
 
@@ -551,6 +480,7 @@ static int rx_ring_process_fast(struct rx_ring *rx, int budget)
 
 	done += rx_ring_read_many_fast(rx, budget, &skb_list);
 	rx_ring_refill_many_fast(rx);
+	aspeed_mctp_error_inject_filter_list(priv, &skb_list);
 	netif_receive_skb_list(&skb_list);
 
 	return done;
@@ -662,6 +592,12 @@ static netdev_tx_t aspeed_mctp_ctrl_start_xmit(struct sk_buff *skb,
 
 	if (unlikely(tx_ring_full(tx))) {
 		netdev_err(priv->ndev, "BUG! TX ring full when queue awake!\n");
+		dev_kfree_skb(skb);
+		return NETDEV_TX_OK;
+	}
+
+	if (aspeed_mctp_error_inject_tx(priv, skb)) {
+		dev_core_stats_tx_dropped_inc(priv->ndev);
 		dev_kfree_skb(skb);
 		return NETDEV_TX_OK;
 	}
@@ -1312,6 +1248,8 @@ static int aspeed_mctp_ctrl_probe(struct platform_device *pdev)
 				     "Cannot register MCTP net device");
 	}
 
+	aspeed_mctp_error_inject_init(priv);
+
 	return 0;
 }
 
@@ -1319,6 +1257,7 @@ static void aspeed_mctp_ctrl_remove(struct platform_device *pdev)
 {
 	struct aspeed_mctp_ctrl *priv = platform_get_drvdata(pdev);
 
+	aspeed_mctp_error_inject_cleanup(priv);
 	mctp_unregister_netdev(priv->ndev);
 	netif_napi_del(&priv->napi);
 	reset_control_assert(priv->reset);
@@ -1367,12 +1306,23 @@ static struct platform_driver aspeed_mctp_ctrl_driver = {
 
 static int __init aspeed_mctp_ctrl_init(void)
 {
-	return platform_driver_register(&aspeed_mctp_ctrl_driver);
+	int ret;
+
+	ret = aspeed_mctp_error_inject_module_init();
+	if (ret)
+		pr_warn("aspeed-mctp-ctrl: error injection init failed, continuing without\n");
+
+	ret = platform_driver_register(&aspeed_mctp_ctrl_driver);
+	if (ret)
+		aspeed_mctp_error_inject_module_exit();
+
+	return ret;
 }
 
 static void __exit aspeed_mctp_ctrl_exit(void)
 {
 	platform_driver_unregister(&aspeed_mctp_ctrl_driver);
+	aspeed_mctp_error_inject_module_exit();
 }
 
 module_init(aspeed_mctp_ctrl_init);

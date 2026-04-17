@@ -29,3 +29,4 @@ obj-$(CONFIG_AST2600_OTP)		+= ast2600-otp.o
 obj-$(CONFIG_AST2700_OTP)		+= ast2700-otp.o
 obj-y        += aspeed-2600-ara.o
 obj-$(CONFIG_ASPEED_MCTP_CTRL)	+= aspeed-mctp-ctrl.o
+obj-$(CONFIG_ASPEED_MCTP_CTRL)	+= aspeed-mctp-ctrl-error-inject.o
