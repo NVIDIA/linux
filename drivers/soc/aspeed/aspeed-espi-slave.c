@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/regmap.h>
@@ -525,7 +526,7 @@ err_clk_disable_out:
 	return ret;
 }
 
-static int aspeed_espi_remove(struct platform_device *pdev)
+static void aspeed_espi_remove(struct platform_device *pdev)
 {
 	struct aspeed_espi *priv = dev_get_drvdata(&pdev->dev);
 
@@ -533,7 +534,6 @@ static int aspeed_espi_remove(struct platform_device *pdev)
 	misc_deregister(&priv->pltrstn_miscdev);
 	misc_deregister(&priv->smi_miscdev);
 	clk_disable_unprepare(priv->clk);
-	return 0;
 }
 
 static const struct aspeed_espi_model ast2600_model = {
