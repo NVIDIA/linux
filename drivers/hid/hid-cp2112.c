@@ -884,7 +884,8 @@ static int cp2112_xfer(struct i2c_adapter *adap, u16 addr,
 		memcpy(data->block + 1, buf, read_length);
 		break;
 	case I2C_SMBUS_BLOCK_DATA:
-		if (read_length > I2C_SMBUS_BLOCK_MAX) {
+		if (read_length < 1 || read_length > I2C_SMBUS_BLOCK_MAX ||
+		    buf[0] > I2C_SMBUS_BLOCK_MAX) {
 			ret = -EPROTO;
 			goto power_normal;
 		}
