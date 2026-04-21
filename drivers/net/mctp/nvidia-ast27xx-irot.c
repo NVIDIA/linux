@@ -1,21 +1,27 @@
-/// @file
-/// @brief Kernel module for MCTP communication with NVIDIA's IRoT for ASPEED's ast27xx series of BMC.
-/// @details
-/// Enable with the following device tree to create a mctp device called mctpirot0.
-/// @code{.dts}
-/// / {
-///   mctpirot0 {
-///     compatible = "nvidia,ast27xx,irot";
-///     mboxes = <&mbox0 0>;
-///     mbox-names = "irot";
-///     status = "okay";
-///   };
-/// };
-///
-/// &mbox0 {
-///   status = "okay";
-/// };
-/// @endcode
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ *
+ * MCTP binding driver for NVIDIA IRoT on ASPEED AST27xx BMC.
+ *
+ * Communicates with the IRoT over a mailbox + shared-memory IPC channel
+ * and exposes an MCTP netdev for the kernel MCTP stack.
+ *
+ * Device tree example:
+ *
+ *   / {
+ *       mctpirot0 {
+ *           compatible = "nvidia,ast27xx,irot";
+ *           mboxes = <&mbox0 0>;
+ *           mbox-names = "irot";
+ *           status = "okay";
+ *       };
+ *   };
+ *
+ *   &mbox0 {
+ *       status = "okay";
+ *   };
+ */
 
 #include <linux/io.h>
 #include <linux/jiffies.h>
@@ -35,148 +41,119 @@
 
 #include "nvidia_irot_ast27xx_msg_ns.h"
 
+/*
+ * Maximum number of MCTP packets queued between the netdev TX path and the
+ * TX worker thread.  20 is intentionally oversized — each slot costs only
+ * one sk_buff pointer — to avoid back-pressure under burst traffic.
+ */
 #define NVIDIA_IROT_QUEUE_SIZE 20
 
-#define NVIDIA_IROT_MCTP_LOG_ENABLED 0
-
-#if NVIDIA_IROT_MCTP_LOG_ENABLED
-/// @brief The max number of bytes to log per packet.
-/// @note 10 is a decent value as gets most header and protocol specific status codes.
-#define NVIDIA_IROT_MCTP_LOG_BYTES 10
-#endif
-
-#define LOG_IMPL(lvl, fmt, ...) \
-	printk(lvl "NVIDIA-AST27XX-IROT: " fmt "\n", ##__VA_ARGS__)
-
-/// @brief Helper logging macros.
-/// @details Has the same API as printf() and a newline is automatically appended.
-/// @{
-#define LOG_INF(...) LOG_IMPL(KERN_INFO, __VA_ARGS__)
-#define LOG_WRN(...) LOG_IMPL(KERN_WARNING, __VA_ARGS__)
-#define LOG_ERR(...) LOG_IMPL(KERN_ERR, __VA_ARGS__)
-/// @}
-
-/// @brief State shared between the mailbox callback and worker threads.
+/* State shared between the mailbox callback and worker threads */
 struct nvidia_irot_driver_shared_state {
-	/// @brief Shared memory.
-	/// @details Its sizes will be zero if not initialized.
-	/// @note Is written to only once.
+	/* Shared memory (sizes are zero if not initialized; write-once) */
 	struct nvidia_irot_message_data_buffers shmem;
 
-	/// @brief The pending MCTP read, if one exists.
-	/// @details pending_read.header.command will be zero if no read is pending.
+	/* Pending MCTP read (command == 0 if none pending) */
 	struct nvidia_irot_message pending_read;
 
-	/// @brief The pending MCTP write, if one exists.
-	/// @details pending_write.header.command will be zero if no write is pending.
+	/* Pending MCTP write (command == 0 if none pending) */
 	struct nvidia_irot_message pending_write;
 
-	/// @brief A ping that we've recieved that needs responding to.
-	/// @details rx_ping.command will be zero if no ping needs responding to.
+	/* Received ping awaiting response (command == 0 if none) */
 	struct nvidia_irot_message rx_ping;
 
-	/// @brief If one of our responses gets dropped we may get a duplicate command.
-	/// The mailbox callback deduplicates the command handling but we need to send back a response.
-	/// This variable holds the response.
-	/// @details duplicate_response.command will be zero if no response needs to be sent.
+	/*
+	 * Duplicate command response.  When a response is dropped and the
+	 * same command arrives again, the mailbox callback stages a response
+	 * here instead of re-processing the command.  command == 0 if none.
+	 */
 	struct nvidia_irot_message duplicate_response;
 };
 
-/// @brief State that is private for worker threads.
+/* State private to worker threads */
 struct nvidia_irot_driver_worker_state {
-	/// @brief Uncacheable RAM address from memremap for reading MCTP packets.
-	/// @note Is written to only once.
+	/* Uncacheable RAM from memremap for reading MCTP packets (write-once) */
 	const void *rx_addr;
 
-	/// @brief Uncacheable RAM address from memremap for writing MCTP packets.
-	/// @note Is written to only once.
+	/* Uncacheable RAM from memremap for writing MCTP packets (write-once) */
 	void *tx_addr;
 
-	/// @brief The next counter to use for mailbox command output.
+	/* Next counter for mailbox command output */
 	u32 next_tx_counter;
 };
 
-/// @brief State that is private to the mailbox callback.
+/* State private to the mailbox callback (no locking needed) */
 struct nvidia_irot_driver_mailbox_state {
-	/// @brief The counter of the most recent rx message.
 	u32 prev_rx_counter;
-
-	/// @brief Set to false if there is no prev_rx_counter.
 	bool has_prev_rx_counter;
 };
 
-/// @brief Driver type.
+/**
+ * struct nvidia_irot_driver - main driver state
+ * @dev: back-pointer to the platform device (set once during probe)
+ * @shared_spin: spinlock protecting @shared_state (must not sleep while held)
+ * @shared_state: state shared between mailbox callback and workers
+ * @worker_mutex: mutex protecting @worker_state
+ * @worker_state: state used only by worker functions
+ * @mailbox_state: state private to the mailbox RX callback
+ * @probe_sem: signals probe that shared memory info has arrived
+ * @rx_worker_wq: RX worker wait queue
+ * @rx_work_ready: set to 1 when the RX worker has work
+ * @tx_queue_ready_wq: woken when tx_queue is pushed to
+ * @tx_shmem_ready_wq: woken when shared memory becomes available
+ * @tx_shmem_ready: set to 1 when shared memory is ready
+ * @mbox_client: mailbox client
+ * @mbox_chan: mailbox channel
+ * @rx_worker: RX worker thread
+ * @tx_worker: TX worker thread
+ * @netdev: MCTP network device
+ * @tx_queue: packet queue from netdev to TX worker
+ */
 struct nvidia_irot_driver {
-	/// @brief Spin lock that protects shared_state.
-	/// @warning Must not suspend when holding this lock.
-	struct spinlock shared_spin;
+	struct device *dev;
 
-	/// @brief Shared state.
-	/// @details shared_spin must be held when interacting with this state.
+	spinlock_t shared_spin;
 	struct nvidia_irot_driver_shared_state shared_state;
 
-	/// @brief Mutex that protects worker_state.
 	struct mutex worker_mutex;
-
-	/// @brief State used only by worker functions.
-	/// @details worker_mutex must be held when interacting with this state.
 	struct nvidia_irot_driver_worker_state worker_state;
 
-	/// @brief State that is private to the mailbox rx callback.
-	/// @details As it is private requires no locking.
 	struct nvidia_irot_driver_mailbox_state mailbox_state;
 
-	/// @brief Signals to the driver probe function that shared memory is
-	/// ready to be set up.
 	struct semaphore probe_sem;
 
-	/// @brief RX worker wait queue.
 	wait_queue_head_t rx_worker_wq;
-
-	/// @brief Set to 1 if the rx_worker has work to do.
 	atomic_t rx_work_ready;
 
-	/// @brief wait queue that is woken when tx_queue is pushed to.
 	wait_queue_head_t tx_queue_ready_wq;
 
-	/// @brief wait queue that is woken when shared memory becomes available.
 	wait_queue_head_t tx_shmem_ready_wq;
-
-	/// @brief Set to 1 when shared memory becomes ready.
 	atomic_t tx_shmem_ready;
 
-	/// @brief Mailbox objects.
-	/// @{
 	struct mbox_client mbox_client;
 	struct mbox_chan *mbox_chan;
-	/// @}
 
-	/// @brief Worker threads.
-	/// @{
 	struct task_struct *rx_worker;
 	struct task_struct *tx_worker;
-	/// @}
 
-	/// @brief Network device used by the linux kernel for this driver.
 	struct net_device *netdev;
 
-	/// @brief Packet queue from the network device to the tx worker thread.
 	struct sk_buff_head tx_queue;
 };
 
 static int copy_to_shmem(struct nvidia_irot_message_span dst_phy,
 			 void *dst_virt, const struct sk_buff *src)
 {
-	if (src == NULL) {
+	int ret;
+
+	if (!src)
 		return -EINVAL;
-	}
-	if (dst_phy.size < src->len) {
+	if (dst_phy.size < src->len)
 		return -EINVAL;
-	}
-	if (dst_virt == NULL) {
+	if (!dst_virt)
 		return -EFAULT;
-	}
-	const int ret = skb_copy_bits(src, 0, dst_virt, src->len);
+
+	ret = skb_copy_bits(src, 0, dst_virt, src->len);
 	dma_wmb();
 	return ret;
 }
@@ -185,101 +162,115 @@ static int copy_from_shmem(struct sk_buff *dst,
 			   struct nvidia_irot_message_span src_phy,
 			   const void *src_virt)
 {
-	if (src_virt == NULL) {
+	if (!src_virt)
 		return -EFAULT;
-	}
+	if (src_phy.size > skb_tailroom(dst))
+		return -EINVAL;
 	dma_rmb();
-	(void)skb_put_data(dst, src_virt, src_phy.size);
+	skb_put_data(dst, src_virt, src_phy.size);
 	return 0;
 }
 
-/// @brief Sends a message over mailbox.
-/// @param driver The driver managing the mailbox.
-/// @param msg The message to send.
-/// @retval 0 On success.
-/// @returns -errno on error.
+/**
+ * send_message() - send a 32-byte message over mailbox
+ * @driver: driver managing the mailbox
+ * @msg: message to send
+ *
+ * Return: 0 on success, negative errno on error.
+ */
 static int send_message(struct nvidia_irot_driver *driver,
 			const struct nvidia_irot_message *msg)
 {
-	if (driver == NULL || driver->mbox_chan == NULL || msg == NULL) {
+	int ret;
+
+	if (!driver->mbox_chan)
 		return -EINVAL;
-	}
-	const int ret = mbox_send_message(driver->mbox_chan, (void *)msg);
+
+	ret = mbox_send_message(driver->mbox_chan, (void *)msg);
 	if (ret < 0) {
-		LOG_ERR("mbox_send_message failed, ret: %d", ret);
+		dev_err(driver->dev, "mbox_send_message failed, ret: %d\n",
+			ret);
 		return ret;
 	}
 	return 0;
 }
 
-/// @brief Extracts a physical address from a nvidia_irot_message_span.
 static resource_size_t addr_from_span(struct nvidia_irot_message_span shmem)
 {
 	return (((resource_size_t)shmem.address.high) << 32U) |
 	       shmem.address.low;
 }
 
-/// @brief Gets a copy of a driver's shared_state and handles all generic data processing.
-/// @pre driver->worker_mutex is held, driver->shared_spin is not held.
-/// @post The lock state is the same as on entry. driver->worker_mutex is never dropped by this function.
-/// @param driver The driver managing the IPC connection.
-/// @param [out] shared_state_copy A copy of the shared state extracted by this function.
+/*
+ * Copy shared_state under spinlock and handle generic housekeeping:
+ * init shared memory regions, respond to pings, and send duplicate
+ * command responses.
+ *
+ * Caller must hold driver->worker_mutex.  This function never drops it.
+ */
 static void worker_locked_handle_shared_state(
 	struct nvidia_irot_driver *driver,
 	struct nvidia_irot_driver_shared_state *shared_state_copy)
 {
-	// copy out shared_state with the lock held
 	spin_lock_irq(&driver->shared_spin);
 	memcpy(shared_state_copy, &driver->shared_state,
 	       sizeof(*shared_state_copy));
 	spin_unlock_irq(&driver->shared_spin);
 
-	// process the shared state
-
-	// init shared memory regions if needed
-	// NOTE: shmem is write once so can use our local copy.
-	// TODO: should we bounds check the addresses we get from IRoT?
-	if (driver->worker_state.rx_addr == NULL &&
+	/* Init shared memory regions if needed (shmem is write-once) */
+	if (!driver->worker_state.rx_addr &&
 	    shared_state_copy->shmem.a35_read.size != 0) {
 		driver->worker_state.rx_addr = memremap(
 			addr_from_span(shared_state_copy->shmem.a35_read),
 			shared_state_copy->shmem.a35_read.size, MEMREMAP_WC);
+		if (!driver->worker_state.rx_addr)
+			dev_err(driver->dev,
+				"memremap failed for rx at %pa size %u\n",
+				&(resource_size_t){ addr_from_span(
+					shared_state_copy->shmem.a35_read) },
+				shared_state_copy->shmem.a35_read.size);
 	}
-	if (driver->worker_state.tx_addr == NULL &&
+	if (!driver->worker_state.tx_addr &&
 	    shared_state_copy->shmem.a35_write.size != 0) {
 		driver->worker_state.tx_addr = memremap(
 			addr_from_span(shared_state_copy->shmem.a35_write),
 			shared_state_copy->shmem.a35_write.size, MEMREMAP_WC);
+		if (!driver->worker_state.tx_addr)
+			dev_err(driver->dev,
+				"memremap failed for tx at %pa size %u\n",
+				&(resource_size_t){ addr_from_span(
+					shared_state_copy->shmem.a35_write) },
+				shared_state_copy->shmem.a35_write.size);
 	}
 
-	// handle pings if needed
+	/* Handle pings */
 	if (shared_state_copy->rx_ping.command == nvidia_irot_cc_ping) {
 		struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
+
 		response.command = nvidia_irot_cc_ping_rsp;
 		response.data.value = shared_state_copy->rx_ping.data.value;
-		if (0 == send_message(driver, &response)) {
-			// Sending the ping response succeeded.
-			// Clear the in flight ping only if the counter still matches.
-			// If the counters do not match a new ping request came in
-			// which can be handled by a future caller of this function.
-			shared_state_copy->rx_ping.command = 0;
+		if (send_message(driver, &response) == 0) {
+			/*
+			 * Clear the in-flight ping only if the counter still
+			 * matches.  A new ping may have arrived in the meantime.
+			 */
 			spin_lock_irq(&driver->shared_spin);
 			if (driver->shared_state.rx_ping.data.value ==
-			    shared_state_copy->rx_ping.data.value) {
+			    shared_state_copy->rx_ping.data.value)
 				driver->shared_state.rx_ping.command = 0;
-			}
 			spin_unlock_irq(&driver->shared_spin);
 		}
 	}
 
-	// handle duplicate command responses if needed
-	// NOTE: duplicate_response is only written to by the mailbox callback
-	//       if it is cleared and is only cleared by worker_mutex owner.
-	//       So we have exclusive write access so can use our local copy.
+	/*
+	 * Handle duplicate command responses.
+	 * duplicate_response is only written by the mailbox callback when
+	 * cleared, and only cleared by the worker_mutex owner, so we have
+	 * exclusive write access through our local copy.
+	 */
 	if (shared_state_copy->duplicate_response.command != 0) {
-		if (0 == send_message(driver,
-				      &shared_state_copy->duplicate_response)) {
-			// success, clear the scheduled response.
+		if (send_message(driver,
+				 &shared_state_copy->duplicate_response) == 0) {
 			shared_state_copy->duplicate_response.command = 0;
 			spin_lock_irq(&driver->shared_spin);
 			driver->shared_state.duplicate_response.command = 0;
@@ -288,76 +279,58 @@ static void worker_locked_handle_shared_state(
 	}
 }
 
-/// @brief Gets the start offset of a allocation from within a region.
-/// @param region The region containing the allocation.
-/// @param allocation The allocation that must be fully contained within the region.
-/// @returns The offset on success.
-/// @returns -errno value on failure.
+/*
+ * Get the byte offset of @allocation within @region.
+ *
+ * Return: offset on success, negative errno on failure.
+ */
 static ssize_t get_start_offset(struct nvidia_irot_message_span region,
 				struct nvidia_irot_message_span allocation)
 {
-	const resource_size_t region_start = addr_from_span(region);
-	const resource_size_t region_end = region_start + region.size;
-	if (region_end < region_start) {
-		// region wrap around
-		return -EFAULT;
-	}
-	const resource_size_t allocation_start = addr_from_span(allocation);
-	const resource_size_t allocation_end =
-		allocation_start + allocation.size;
-	if (allocation_end < allocation_start) {
-		// allocation wrap around
-		return -EFAULT;
-	}
-	if (allocation_start < region_start) {
-		// allocation starts too soon
-		return -EFAULT;
-	}
-	if (allocation_end > region_end) {
-		// allocation goes for too long
-		return -EFAULT;
-	}
-	return allocation_start - region_start;
+	resource_size_t region_start = addr_from_span(region);
+	resource_size_t region_end = region_start + region.size;
+	resource_size_t alloc_start = addr_from_span(allocation);
+	resource_size_t alloc_end = alloc_start + allocation.size;
+
+	if (region_end < region_start)
+		return -EFAULT; /* region wrap around */
+	if (alloc_end < alloc_start)
+		return -EFAULT; /* allocation wrap around */
+	if (alloc_start < region_start)
+		return -EFAULT; /* allocation starts before region */
+	if (alloc_end > region_end)
+		return -EFAULT; /* allocation exceeds region */
+
+	return alloc_start - region_start;
 }
 
-/// @brief Call at the end of device_read() to finialize global state and buffer management.
-/// @details If the read succeeded the pending read the IRoT is informed and the pending read is cleared.
-///          If the read failed another reader will be awoken.
-/// @pre driver->worker_mutex is held.
-/// @post No locks are held.
-/// @param driver The driver managing the read.
-/// @param result The result of the read.
-/// @param message The message that was read.
-/// @returns result unless an error was detected.
+/*
+ * Finalize a read operation.  On success, clears the pending read and sends
+ * an ACK to the IRoT.  Always releases worker_mutex before returning.
+ */
 static ssize_t finish_read_and_unlock(struct nvidia_irot_driver *driver,
 				      ssize_t result,
 				      const struct nvidia_irot_message *message)
 {
-	if (result >= 0 && result != message->data.mctp.packet.size) {
-		// success return code that does not match message size, convert to fault.
+	if (result >= 0 && result != message->data.mctp.packet.size)
 		result = -EFAULT;
-	}
 
 	if (result >= 0) {
-		// success
+		struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
 
-		// clear the pending read
 		spin_lock_irq(&driver->shared_spin);
 		driver->shared_state.pending_read.command = 0;
 		spin_unlock_irq(&driver->shared_spin);
 
-		// free the shared memory via mailbox command
-		struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
 		response.command = nvidia_irot_cc_mctp_done;
 		response.data.value = message->data.mctp.counter;
-		// dropped ACKs are handled by IRoT retransmission and command deduplication
+		/* Dropped ACKs are handled by IRoT retransmission */
 		(void)send_message(driver, &response);
 
 		mutex_unlock(&driver->worker_mutex);
 		return result;
 	}
 
-	// failure, a future reader will handle this
 	mutex_unlock(&driver->worker_mutex);
 	return result;
 }
@@ -366,83 +339,66 @@ struct nvidia_irot_netdev_priv {
 	struct nvidia_irot_driver *driver;
 };
 
-netdev_tx_t nvidia_irot_start_xmit(struct sk_buff *skb, struct net_device *dev)
+static netdev_tx_t nvidia_irot_start_xmit(struct sk_buff *skb,
+					  struct net_device *dev)
 {
+	struct nvidia_irot_netdev_priv *priv = netdev_priv(dev);
+	struct nvidia_irot_driver *driver = priv->driver;
 	netdev_tx_t status = NETDEV_TX_BUSY;
-
-	struct nvidia_irot_netdev_priv *const private = netdev_priv(dev);
-	struct nvidia_irot_driver *const driver = private->driver;
-
 	unsigned long flags;
 
-#if NVIDIA_IROT_MCTP_LOG_ENABLED
-	// Log the first up to NVIDIA_IROT_MCTP_LOG_BYTES bytes of skb as hex bytes separated by spaces
-	{
-		int n = skb->len < NVIDIA_IROT_MCTP_LOG_BYTES ?
-				skb->len :
-				NVIDIA_IROT_MCTP_LOG_BYTES;
-		u8 data[NVIDIA_IROT_MCTP_LOG_BYTES] = { 0 };
-		skb_copy_bits(skb, 0, data, n);
-		char hexbuf[3 * NVIDIA_IROT_MCTP_LOG_BYTES + 1] = { 0 };
-		int i;
-		for (i = 0; i < n; ++i) {
-			snprintf(hexbuf + i * 3, 4, "%02x ", data[i]);
-		}
-		if (n > 0)
-			hexbuf[3 * n - 1] = '\0'; // Remove trailing space
-		LOG_INF("L->I: %s", hexbuf);
-	}
-#endif
+	dev_dbg(driver->dev, "tx: %u bytes\n", skb->len);
 
-	// locking the queue for the entire push so we can atomically inspect
-	// the length to manage the network interface queue enable state.
+	/*
+	 * Lock the queue for the entire push so we can atomically inspect
+	 * the length to manage the network interface queue state.
+	 */
 	spin_lock_irqsave(&driver->tx_queue.lock, flags);
 	if (skb_queue_len(&driver->tx_queue) >= NVIDIA_IROT_QUEUE_SIZE) {
-		// error: queue already full
 		status = NETDEV_TX_BUSY;
-		LOG_WRN("mctp tx queue overflow");
+		dev_dbg(driver->dev, "tx queue overflow\n");
+		dev->stats.tx_dropped++;
 		netif_stop_queue(dev);
 	} else {
-		// push the packet
 		status = NETDEV_TX_OK;
 		__skb_queue_tail(&driver->tx_queue, skb);
-		if (skb_queue_len(&driver->tx_queue) ==
-		    NVIDIA_IROT_QUEUE_SIZE) {
-			// stop the queue to prevent excessive RAM usage
+		if (skb_queue_len(&driver->tx_queue) == NVIDIA_IROT_QUEUE_SIZE)
 			netif_stop_queue(dev);
-		}
 	}
 	spin_unlock_irqrestore(&driver->tx_queue.lock, flags);
 
-	if (status == NETDEV_TX_OK) {
+	if (status == NETDEV_TX_OK)
 		wake_up(&driver->tx_queue_ready_wq);
-	}
+
 	return status;
 }
 
-int nvidia_irot_open(struct net_device *dev)
+static int nvidia_irot_open(struct net_device *dev)
 {
 	netif_start_queue(dev);
 	return 0;
 }
 
-int nvidia_irot_stop(struct net_device *dev)
+static int nvidia_irot_stop(struct net_device *dev)
 {
+	struct nvidia_irot_netdev_priv *priv = netdev_priv(dev);
+
 	netif_stop_queue(dev);
+	skb_queue_purge(&priv->driver->tx_queue);
 	return 0;
 }
 
-static struct net_device_ops nvidia_irot_nops = {
+static const struct net_device_ops nvidia_irot_nops = {
 	.ndo_start_xmit = nvidia_irot_start_xmit,
 	.ndo_open = nvidia_irot_open,
 	.ndo_stop = nvidia_irot_stop,
 };
 
-void nvidia_irot_netdev_setup(struct net_device *dev)
+static void nvidia_irot_netdev_setup(struct net_device *dev)
 {
 	dev->type = ARPHRD_MCTP;
 
-	// NOTE: will be replaced outside of setup
+	/* MTU is replaced after shared memory negotiation */
 	dev->min_mtu = 68;
 	dev->max_mtu = 68;
 	dev->mtu = 68;
@@ -450,22 +406,24 @@ void nvidia_irot_netdev_setup(struct net_device *dev)
 	dev->hard_header_len = 0;
 	dev->tx_queue_len = NVIDIA_IROT_QUEUE_SIZE;
 	dev->netdev_ops = &nvidia_irot_nops;
-
 	dev->addr_len = 0;
 }
 
 static int nvidia_irot_create_mctp_dev(struct nvidia_irot_driver *driver,
 				       const char *name)
 {
+	struct nvidia_irot_netdev_priv *priv;
+	int ret;
+	u32 mtu;
+
 	driver->netdev = alloc_netdev(sizeof(struct nvidia_irot_netdev_priv),
 				      name, NET_NAME_PREDICTABLE,
 				      nvidia_irot_netdev_setup);
-	if (!driver->netdev) {
+	if (!driver->netdev)
 		return -ENOMEM;
-	}
 
 	spin_lock_irq(&driver->shared_spin);
-	const u32 mtu = driver->shared_state.shmem.mtu_limit;
+	mtu = driver->shared_state.shmem.mtu_limit;
 	spin_unlock_irq(&driver->shared_spin);
 	if (mtu >= 68) {
 		driver->netdev->min_mtu = mtu;
@@ -473,11 +431,11 @@ static int nvidia_irot_create_mctp_dev(struct nvidia_irot_driver *driver,
 		driver->netdev->mtu = mtu;
 	}
 
-	struct nvidia_irot_netdev_priv *priv = netdev_priv(driver->netdev);
+	priv = netdev_priv(driver->netdev);
 	priv->driver = driver;
 
-	const int ret = mctp_register_netdev(driver->netdev, NULL,
-					     MCTP_PHYS_BINDING_VENDOR);
+	ret = mctp_register_netdev(driver->netdev, NULL,
+				   MCTP_PHYS_BINDING_VENDOR);
 	if (ret) {
 		free_netdev(driver->netdev);
 		driver->netdev = NULL;
@@ -486,34 +444,41 @@ static int nvidia_irot_create_mctp_dev(struct nvidia_irot_driver *driver,
 	return 0;
 }
 
-/// @brief Gets the driver managing a mailbox client.
-/// @details There are two methods to identify the mailbox client:
-/// container_of, and dev_get_drvdata(client->dev).
-/// This function does both and ensures they match.
-/// @retval NULL On error.
+/**
+ * nvidia_irot_driver_of_mbox() - get driver from mailbox client
+ * @client: the mailbox client
+ *
+ * Resolves the driver via container_of and cross-checks against
+ * dev_get_drvdata() as defense-in-depth for this safety-critical path.
+ *
+ * Return: driver pointer, or NULL on error.
+ */
 static struct nvidia_irot_driver *
 nvidia_irot_driver_of_mbox(struct mbox_client *client)
 {
-	if (client == NULL) {
-		LOG_ERR("null client input to %s", __func__);
+	struct nvidia_irot_driver *driver;
+	void *driver_from_devdata;
+
+	if (!client) {
+		pr_err("nvidia-ast27xx-irot: null client in %s\n", __func__);
 		return NULL;
 	}
 
-	void *const driver_from_container_of =
-		container_of(client, struct nvidia_irot_driver, mbox_client);
+	driver = container_of(client, struct nvidia_irot_driver, mbox_client);
 
-	if (client->dev == NULL) {
-		LOG_ERR("null client->dev input to %s", __func__);
+	if (!client->dev) {
+		dev_err(driver->dev, "null client->dev in %s\n", __func__);
 		return NULL;
 	}
-	void *const driver_from_devdata = dev_get_drvdata(client->dev);
 
-	if (driver_from_container_of != driver_from_devdata) {
-		LOG_ERR("container_of and dev_get_drvdata(client->dev) disagree in %s",
+	driver_from_devdata = dev_get_drvdata(client->dev);
+	if (driver != driver_from_devdata) {
+		dev_err(driver->dev,
+			"container_of and dev_get_drvdata disagree in %s\n",
 			__func__);
 		return NULL;
 	}
-	return (struct nvidia_irot_driver *)driver_from_devdata;
+	return driver;
 }
 
 static void wake_rx_worker(struct nvidia_irot_driver *driver)
@@ -522,85 +487,65 @@ static void wake_rx_worker(struct nvidia_irot_driver *driver)
 	wake_up(&driver->rx_worker_wq);
 }
 
-/// @brief Handles a duplicate command by scheduling a response
-/// without scheduling command handling.
-/// @details Performs no IO and does not suspend as is
-/// called from a callback that does not allow this.
-/// @pre driver->shared_spin is locked by the caller.
-/// @param driver The driver handling the mailbox.
-/// @param command The duplicate command.
+/*
+ * Schedule a response to a duplicate command without re-processing it.
+ * Called from mailbox callback — must not block.
+ * Caller must hold driver->shared_spin.
+ */
 static void
 locked_handle_duplicate_rx_command(struct nvidia_irot_driver *driver,
 				   const struct nvidia_irot_message *command)
 {
-	struct nvidia_irot_message *staged_response =
+	struct nvidia_irot_message *staged =
 		&driver->shared_state.duplicate_response;
-
-	if (staged_response->command != 0) {
-		// already have a duplicate response schedule
-		return;
-	}
-	if (command->command != nvidia_irot_cc_mctp) {
-		// currently this is the only command that needs duplication logic.
-		return;
-	}
-
-	// build the response
 	struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
+
+	if (staged->command != 0)
+		return;
+	if (command->command != nvidia_irot_cc_mctp)
+		return;
+
 	response.command = nvidia_irot_cc_mctp_done;
 	response.data.value = command->data.mctp.counter;
+	*staged = response;
 
-	*staged_response = response;
-
-	// wake the worker to handle the response
 	wake_rx_worker(driver);
 }
 
-/// @brief Handles a read message.
-/// @details Performs no IO and does not suspend as is
-/// called from a callback that does not allow this.
-/// @pre driver->shared_spin is locked by the caller.
-/// @details Called from a mailbox callback so must not block.
-/// @param driver The driver managing the mailbox.
-/// @param message The read message.
+/*
+ * Process an incoming mailbox message.
+ * Called from mailbox callback — must not block.
+ * Caller must hold driver->shared_spin.
+ */
 static void locked_handle_rx_message(struct nvidia_irot_driver *driver,
 				     const struct nvidia_irot_message *message)
 {
 	switch (message->command) {
 	case nvidia_irot_cc_ping:
-		// ping: stage and wake the worker
-		// NOTE: don't need duplicate command checking as ping command handling does nothing.
 		driver->shared_state.rx_ping = *message;
 		wake_rx_worker(driver);
 		return;
 
 	case nvidia_irot_cc_mctp_buffer:
-		// got buffer addresses, check for duplicate
-		if (driver->shared_state.shmem.a35_read.size != 0) {
+		/* Duplicate buffer info — ignore if already initialized */
+		if (driver->shared_state.shmem.a35_read.size != 0)
 			return;
-		}
-		if (driver->shared_state.shmem.a35_write.size != 0) {
+		if (driver->shared_state.shmem.a35_write.size != 0)
 			return;
-		}
-		// is not a duplicate, inform the startup code
 		driver->shared_state.shmem = message->data.buffers;
 		up(&driver->probe_sem);
 		return;
 
 	case nvidia_irot_cc_mctp:
-		// new mctp packet
-		if (driver->shared_state.pending_read.command != 0) {
-			// read already pending, drop
-			return;
-		}
+		if (driver->shared_state.pending_read.command != 0)
+			return; /* read already pending, drop */
 		if (driver->mailbox_state.has_prev_rx_counter &&
 		    driver->mailbox_state.prev_rx_counter ==
 			    message->data.mctp.counter) {
-			// duplicate command, send response with no processing
+			/* duplicate command — send response without re-processing */
 			locked_handle_duplicate_rx_command(driver, message);
 			return;
 		}
-		// stage the packet and wake a reader
 		driver->shared_state.pending_read = *message;
 		driver->mailbox_state.has_prev_rx_counter = true;
 		driver->mailbox_state.prev_rx_counter =
@@ -609,42 +554,35 @@ static void locked_handle_rx_message(struct nvidia_irot_driver *driver,
 		return;
 
 	case nvidia_irot_cc_mctp_done:
-		// tx buffer emptied
-		if (driver->shared_state.pending_write.command == 0) {
-			// no write was pending, ignore
-			return;
-		}
+		/* TX buffer acknowledged by IRoT */
+		if (driver->shared_state.pending_write.command == 0)
+			return; /* no write was pending */
 		if (driver->shared_state.pending_write.data.mctp.counter !=
-		    message->data.value) {
-			// message counter missmatch, ignore
-			return;
-		}
-		// unstage the pending write and wake writers
+		    message->data.value)
+			return; /* counter mismatch */
 		driver->shared_state.pending_write.command = 0;
 		atomic_xchg(&driver->tx_shmem_ready, 1);
 		wake_up(&driver->tx_shmem_ready_wq);
 		return;
 
 	default:
-		// unexpected message type, ignore
 		return;
 	}
 }
 
-/// @brief Callback for when we recive a notification from the IRoT that
-/// shared memory has been updated.
-/// @param client The mailbox client handling notification receptions.
-/// @param data The 32-byte message sent over IPC.
+/*
+ * Mailbox RX callback — called when the IRoT sends us an IPC notification.
+ */
 static void nvidia_irot_on_notification(struct mbox_client *client, void *data)
 {
-	struct nvidia_irot_driver *const driver =
-		nvidia_irot_driver_of_mbox(client);
-	if (!driver) {
-		return;
-	}
+	struct nvidia_irot_driver *driver = nvidia_irot_driver_of_mbox(client);
 	struct nvidia_irot_message message;
-	memcpy(&message, data, sizeof(message));
 	unsigned long flags;
+
+	if (!driver)
+		return;
+
+	memcpy(&message, data, sizeof(message));
 	spin_lock_irqsave(&driver->shared_spin, flags);
 	locked_handle_rx_message(driver, &message);
 	spin_unlock_irqrestore(&driver->shared_spin, flags);
@@ -653,65 +591,65 @@ static void nvidia_irot_on_notification(struct mbox_client *client, void *data)
 static int nvidia_irot_load_mailbox(struct device *dev,
 				    struct nvidia_irot_driver *driver)
 {
-	struct mbox_chan *chan = NULL;
 	struct mbox_client *client = &driver->mbox_client;
+	struct mbox_chan *chan;
 
-	// bind mailbox to this device
 	client->dev = dev;
-
-	// bind notification RX callback
 	client->rx_callback = nvidia_irot_on_notification;
-
-	// on tx wait for the IRoT to clear the notification
 	client->tx_done = NULL;
 	client->tx_block = true;
 	client->tx_tout = 250;
 
-	// Request mailbox channel
 	chan = mbox_request_channel_byname(client, "irot");
 	if (IS_ERR(chan)) {
 		dev_err(dev, "Failed to request mailbox channel\n");
 		return PTR_ERR(chan);
 	}
 
-	// Store mailbox info in driver
 	driver->mbox_chan = chan;
-
-	dev_info(dev, "Mailbox channel configured successfully\n");
-
+	dev_dbg(dev, "Mailbox channel configured successfully\n");
 	return 0;
 }
 
-/// @brief Handles reading a message from shared memory.
-/// @returns The length of the read message on success.
-/// @returns A negative status code on failure.
+/*
+ * Read an MCTP packet from shared memory into an skb and deliver it.
+ *
+ * Return: packet length on success, negative errno on failure.
+ */
 static ssize_t worker_locked_handle_read(
 	struct nvidia_irot_driver *driver,
 	struct nvidia_irot_driver_shared_state *shared_state_copy)
 {
-	ssize_t ret = -EINVAL;
+	struct sk_buff *skb;
+	struct mctp_skb_cb *cb;
+	ssize_t offset;
+	size_t length;
+	int ret;
 
 	if (shared_state_copy->pending_read.command != nvidia_irot_cc_mctp ||
-	    shared_state_copy->pending_read.data.mctp.packet.size == 0) {
+	    shared_state_copy->pending_read.data.mctp.packet.size == 0)
 		return -EINVAL;
-	}
 
-	const size_t length =
-		shared_state_copy->pending_read.data.mctp.packet.size;
-	const ssize_t offset = get_start_offset(
+	length = shared_state_copy->pending_read.data.mctp.packet.size;
+	offset = get_start_offset(
 		shared_state_copy->shmem.a35_read,
 		shared_state_copy->pending_read.data.mctp.packet);
 	if (offset < 0) {
-		// TODO: Should we clear the pending transaction if it is invalid?
-		// This is kind of a fatal error currently.
-		LOG_ERR("bad read from shared memory");
+		/*
+		 * Error path: clear the pending read so the driver doesn't
+		 * get stuck.  The IRoT will retransmit if no ACK arrives.
+		 */
+		spin_lock_irq(&driver->shared_spin);
+		driver->shared_state.pending_read.command = 0;
+		spin_unlock_irq(&driver->shared_spin);
+		dev_err(driver->dev, "bad read from shared memory\n");
+		driver->netdev->stats.rx_errors++;
 		return -EINVAL;
 	}
 
-	struct sk_buff *skb;
 	skb = netdev_alloc_skb(driver->netdev, length);
 	if (!skb) {
-		LOG_ERR("failed to allocate skb for read packet");
+		driver->netdev->stats.rx_dropped++;
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
@@ -719,38 +657,27 @@ static ssize_t worker_locked_handle_read(
 			      shared_state_copy->pending_read.data.mctp.packet,
 			      driver->worker_state.rx_addr + offset);
 	if (ret != 0) {
-		LOG_ERR("failed to copy read packet from shared memory");
+		dev_err(driver->dev, "failed to copy rx from shared memory\n");
+		driver->netdev->stats.rx_errors++;
 		kfree_skb(skb);
 		return -EINVAL;
 	}
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 
-	struct mctp_skb_cb *const cb = __mctp_cb(skb);
+	cb = __mctp_cb(skb);
 	cb->halen = 0;
 
-#if NVIDIA_IROT_MCTP_LOG_ENABLED
-	{
-		int n = skb->len < NVIDIA_IROT_MCTP_LOG_BYTES ?
-				skb->len :
-				NVIDIA_IROT_MCTP_LOG_BYTES;
-		u8 data[NVIDIA_IROT_MCTP_LOG_BYTES] = { 0 };
-		skb_copy_bits(skb, 0, data, n);
-		char hexbuf[3 * NVIDIA_IROT_MCTP_LOG_BYTES + 1] = { 0 };
-		int i;
-		for (i = 0; i < n; ++i) {
-			snprintf(hexbuf + i * 3, 4, "%02x ", data[i]);
-		}
-		if (n > 0)
-			hexbuf[3 * n - 1] = '\0'; // Remove trailing space
-		LOG_INF("I->L: %s", hexbuf);
-	}
-#endif
+	dev_dbg(driver->dev, "rx: %zu bytes\n", length);
+
+	driver->netdev->stats.rx_packets++;
+	driver->netdev->stats.rx_bytes += length;
 
 	ret = netif_receive_skb(skb);
 	if (ret != NET_RX_SUCCESS) {
-		LOG_ERR("netif_rx failed with %d", (int)ret);
-		// NOTE: skb seems to still be freed by a failed netif_receive_skb.
+		/* skb is still freed by a failed netif_receive_skb */
+		dev_err(driver->dev, "netif_receive_skb failed: %d\n", ret);
+		driver->netdev->stats.rx_errors++;
 		return -EINVAL;
 	}
 	return length;
@@ -758,26 +685,24 @@ static ssize_t worker_locked_handle_read(
 
 static int nvidia_irot_rx_worker(void *data)
 {
-	struct nvidia_irot_driver *const driver = data;
+	struct nvidia_irot_driver *driver = data;
+	struct nvidia_irot_driver_shared_state state;
 
 	for (;;) {
 		wait_event_interruptible(
 			driver->rx_worker_wq,
 			kthread_should_stop() ||
 				atomic_read(&driver->rx_work_ready));
-		if (kthread_should_stop()) {
+		if (kthread_should_stop())
 			return 0;
-		}
+
 		atomic_xchg(&driver->rx_work_ready, 0);
-		struct nvidia_irot_driver_shared_state state;
 		mutex_lock(&driver->worker_mutex);
 		worker_locked_handle_shared_state(driver, &state);
-		const int ret = worker_locked_handle_read(driver, &state);
-		(void)finish_read_and_unlock(driver, ret, &state.pending_read);
+		finish_read_and_unlock(
+			driver, worker_locked_handle_read(driver, &state),
+			&state.pending_read);
 	}
-
-	// unreachable
-	BUG();
 }
 
 static ssize_t worker_locked_handle_write(
@@ -785,80 +710,75 @@ static ssize_t worker_locked_handle_write(
 	const struct nvidia_irot_driver_shared_state *shared_state_copy,
 	struct sk_buff *skb)
 {
-	int ret = -EINVAL;
-	const size_t count = skb->len;
-	if (count == 0) {
-		// empty packets make no sense
+	struct nvidia_irot_message message = NVIDIA_IROT_MESSAGE_INIT;
+	size_t count = skb->len;
+	int ret;
+
+	if (count == 0)
 		return -EINVAL;
-	}
 
 	if (count > shared_state_copy->shmem.mtu_limit) {
-		LOG_ERR("attempted to write mctp packet of length %zu to irot with mtu limit of %u",
-			count, shared_state_copy->shmem.mtu_limit);
+		dev_err(driver->dev,
+			"tx packet length %zu exceeds mtu limit %u\n", count,
+			shared_state_copy->shmem.mtu_limit);
+		driver->netdev->stats.tx_dropped++;
 		return -EINVAL;
 	}
 
-	// write to shmem
 	ret = copy_to_shmem(shared_state_copy->shmem.a35_write,
 			    driver->worker_state.tx_addr, skb);
 	if (ret < 0) {
-		LOG_ERR("copy_to_shmem failed");
+		dev_err(driver->dev, "copy_to_shmem failed\n");
+		driver->netdev->stats.tx_dropped++;
 		return ret;
 	}
 
-	// build the IPC message
-	struct nvidia_irot_message message = NVIDIA_IROT_MESSAGE_INIT;
 	message.command = nvidia_irot_cc_mctp;
 	message.data.mctp.counter = driver->worker_state.next_tx_counter++;
 	message.data.mctp.packet.address =
 		shared_state_copy->shmem.a35_write.address;
 	message.data.mctp.packet.size = count;
 
-	// stage the pending write
 	spin_lock_irq(&driver->shared_spin);
 	driver->shared_state.pending_write = message;
 	spin_unlock_irq(&driver->shared_spin);
 
-	// perform the write
 	ret = send_message(driver, &message);
 	if (ret < 0) {
-		// send failed, clear the pending write
 		spin_lock_irq(&driver->shared_spin);
 		driver->shared_state.pending_write.command = 0;
 		spin_unlock_irq(&driver->shared_spin);
+		driver->netdev->stats.tx_errors++;
 		return ret;
 	}
 
-	// successfully sent, mailbox callback will clear pending_write
+	driver->netdev->stats.tx_packets++;
+	driver->netdev->stats.tx_bytes += count;
+
 	return count;
 }
 
 static int nvidia_irot_tx_worker(void *data)
 {
-	struct nvidia_irot_driver *const driver = data;
+	struct nvidia_irot_driver *driver = data;
+	struct nvidia_irot_driver_shared_state ssc;
 	struct sk_buff *skb = NULL;
+	ssize_t ret;
 
 	for (;;) {
-		// get a packet to send
 		while (!skb) {
 			wait_event_interruptible(
 				driver->tx_queue_ready_wq,
 				!skb_queue_empty(&driver->tx_queue) ||
 					kthread_should_stop());
-			if (kthread_should_stop()) {
+			if (kthread_should_stop())
 				return 0;
-			}
 
 			skb = skb_dequeue(&driver->tx_queue);
-			netif_start_queue(driver->netdev);
-			if (skb) {
+			if (skb)
 				break;
-			}
 		}
-		// we now have a packet to write
 
-		// wait for shared memory to be ready for a written packet
-		struct nvidia_irot_driver_shared_state shared_state_copy;
 		for (;;) {
 			wait_event_interruptible(
 				driver->tx_shmem_ready_wq,
@@ -871,139 +791,143 @@ static int nvidia_irot_tx_worker(void *data)
 			atomic_xchg(&driver->tx_shmem_ready, 0);
 
 			mutex_lock(&driver->worker_mutex);
-			worker_locked_handle_shared_state(driver,
-							  &shared_state_copy);
-			if (driver->worker_state.tx_addr != NULL &&
-			    shared_state_copy.pending_write.command == 0) {
-				// shmem is init and no write is pending, allow the write.
-				// NOTE: pending_write is only cleared by mailbox callback,
-				//       so since we hold worker_mutex and know that pending_write is
-				//       clear we have exclusive write access.
+			worker_locked_handle_shared_state(driver, &ssc);
+			/*
+			 * pending_write is only cleared by the
+			 * mailbox callback, so while we hold
+			 * worker_mutex we have exclusive write
+			 * access.
+			 */
+			if (driver->worker_state.tx_addr &&
+			    ssc.pending_write.command == 0)
 				break;
-			}
 			mutex_unlock(&driver->worker_mutex);
-
-			// loop to reload and recheck state after notification
 		}
-		// We now hold the worker_mutex and tx buffer ownership.
 
-		// send the packet
-		const ssize_t status = worker_locked_handle_write(
-			driver, &shared_state_copy, skb);
+		ret = worker_locked_handle_write(driver, &ssc, skb);
+		if (ret < 0)
+			dev_err(driver->dev, "failed to send MCTP packet\n");
 		mutex_unlock(&driver->worker_mutex);
-		if (status < 0) {
-			// TODO: could attempt to send again, but have never seen this error
-			LOG_ERR("failed to send MCTP packet, status: %d",
-				(int)status);
-		}
-		kfree_skb(skb);
-		skb = NULL;
-	}
 
-	// unreachable
-	BUG();
+		/*
+		 * Error path: drop is intentional — the IRoT protocol
+		 * handles retransmission at the peer level, so driver-level
+		 * retry adds complexity for marginal benefit.
+		 */
+		if (ret >= 0)
+			consume_skb(skb);
+		else
+			kfree_skb(skb);
+		skb = NULL;
+
+		/*
+		 * Wake the queue after freeing the skb so the xmit path
+		 * can enqueue new packets.  netif_wake_queue both sets
+		 * the queue-running flag and reschedules the qdisc.
+		 */
+		if (skb_queue_len(&driver->tx_queue) < NVIDIA_IROT_QUEUE_SIZE)
+			netif_wake_queue(driver->netdev);
+	}
 }
 
-/// @brief Inits shared memory by requesting the IRoT to send buffer
-/// information and waiting for its response.
+/*
+ * Request shared memory buffer information from the IRoT and wait for
+ * the response.  Called during probe before workers are started, so
+ * worker_mutex need not be held.
+ */
 static int nvidia_irot_init_shmem(struct nvidia_irot_driver *driver)
 {
-	// NOTE: worker_mutex does not need to be held by
-	// this function as no workers are started yet.
+	struct nvidia_irot_driver_shared_state ssc;
+	struct nvidia_irot_message message;
+	int i, ret;
 
-	struct nvidia_irot_driver_shared_state shared_state_copy;
-	shared_state_copy.shmem.mtu_limit = 0;
+	ssc.shmem.mtu_limit = 0;
 
-	int i;
 	for (i = 0; i < 3; ++i) {
-		// request memory buffers from the IRoT
-		struct nvidia_irot_message message = NVIDIA_IROT_MESSAGE_INIT;
+		u64 end_jiffies64;
+
+		message = (struct nvidia_irot_message)NVIDIA_IROT_MESSAGE_INIT;
 		message.command = nvidia_irot_cc_get_mctp_buffers;
-		const int ret = send_message(driver, &message);
+		ret = send_message(driver, &message);
 		if (ret < 0) {
-			LOG_ERR("failed to send startup IPC message, ret: %d",
+			dev_err(driver->dev,
+				"failed to send startup IPC message: %d\n",
 				ret);
 			return ret;
 		}
 
-		// wait for the response
-		const u64 end_jiffies64 = get_jiffies_64() + (5 * HZ);
+		end_jiffies64 = get_jiffies_64() + (5 * HZ);
 		while (time_is_after_jiffies64(end_jiffies64)) {
+			/* return value intentionally ignored — we poll state */
 			(void)down_timeout(&driver->probe_sem, HZ);
-			worker_locked_handle_shared_state(driver,
-							  &shared_state_copy);
-			if (shared_state_copy.shmem.mtu_limit != 0) {
-				// success, got shared memory info
+			worker_locked_handle_shared_state(driver, &ssc);
+			if (ssc.shmem.mtu_limit != 0)
 				break;
-			}
 		}
 
-		if (shared_state_copy.shmem.mtu_limit == 0) {
-			LOG_WRN("timed out waiting for IRoT buffer information");
-		} else {
+		if (ssc.shmem.mtu_limit != 0)
 			break;
-		}
+		dev_warn(driver->dev,
+			 "timed out waiting for IRoT buffer info\n");
 	}
 
-	if (shared_state_copy.shmem.mtu_limit == 0) {
-		LOG_ERR("Timeout waiting for IRoT to provide shared memory buffers");
+	if (ssc.shmem.mtu_limit == 0) {
+		dev_err(driver->dev,
+			"timeout waiting for IRoT shared memory buffers\n");
 		return -ETIMEDOUT;
 	}
 	return 0;
 }
 
-/// @brief Performs cleanup for our custom driver bound to the given platform_device.
-/// @param pdev The device having its driver cleaned up.
-/// @note The driver can be in any stage of initialization including completely unbound.
+/*
+ * Tear down a driver that may be in any stage of initialization.
+ * Every field is NULL-checked, so this is safe to call after partial
+ * construction (devm_kzalloc zero-initializes all pointers).
+ * The driver struct itself is devm-managed and freed by the driver core.
+ */
 static void clean_driver(struct platform_device *pdev)
 {
-	if (pdev == NULL) {
-		return;
-	}
+	struct nvidia_irot_driver *driver;
 
-	struct nvidia_irot_driver *const driver =
-		(struct nvidia_irot_driver *)platform_get_drvdata(pdev);
-	if (driver == NULL) {
+	if (!pdev)
 		return;
-	}
 
-	// remove worker threads
+	driver = platform_get_drvdata(pdev);
+	if (!driver)
+		return;
+
 	if (driver->rx_worker) {
-		if (0 != kthread_stop(driver->rx_worker)) {
-			LOG_ERR("failed to stop rx worker thread");
-		}
+		int rv = kthread_stop(driver->rx_worker);
+
+		if (rv)
+			dev_err(driver->dev,
+				"rx worker exited with error: %d\n", rv);
 		driver->rx_worker = NULL;
 	}
 	if (driver->tx_worker) {
-		if (0 != kthread_stop(driver->tx_worker)) {
-			LOG_ERR("failed to stop tx worker thread");
-		}
+		int rv = kthread_stop(driver->tx_worker);
+
+		if (rv)
+			dev_err(driver->dev,
+				"tx worker exited with error: %d\n", rv);
 		driver->tx_worker = NULL;
 	}
 
-	// remove network device
 	if (driver->netdev) {
-		// Stop the queue to prevent new packets
 		netif_tx_disable(driver->netdev);
-
-		// Purge any remaining packets in the queue
 		skb_queue_purge(&driver->tx_queue);
 
-		// Explicitly bring the device down if it's still running
 		rtnl_lock();
-		if (netif_running(driver->netdev)) {
+		if (netif_running(driver->netdev))
 			dev_close(driver->netdev);
-		}
 		rtnl_unlock();
 
-		// Unregister the netdev - this should handle final cleanup
 		mctp_unregister_netdev(driver->netdev);
 		free_netdev(driver->netdev);
 		driver->netdev = NULL;
 	}
 
-	// free shared memory
-	// NOTE: workers are stopped so can use worker_state freely
+	/* Workers are stopped — worker_state can be accessed freely */
 	if (driver->worker_state.rx_addr) {
 		memunmap((void *)driver->worker_state.rx_addr);
 		driver->worker_state.rx_addr = NULL;
@@ -1013,30 +937,28 @@ static void clean_driver(struct platform_device *pdev)
 		driver->worker_state.tx_addr = NULL;
 	}
 
-	// release mailbox
 	if (driver->mbox_chan) {
 		mbox_free_channel(driver->mbox_chan);
 		driver->mbox_chan = NULL;
 	}
 
-	// the driver is always heap allocated and we have exclusive ownership of it, free it.
 	platform_set_drvdata(pdev, NULL);
-	kfree(driver);
-};
+	/* driver is devm-managed — freed automatically by the driver core */
+}
 
 static int nvidia_irot_probe(struct platform_device *pdev)
 {
-	struct device *const dev = &pdev->dev;
-	dev_info(dev, "Probe starting for device: %s\n", dev_name(dev));
+	struct nvidia_irot_driver *driver;
+	struct device *dev = &pdev->dev;
+	int ret;
 
-	int ret = -EINVAL;
-	struct nvidia_irot_driver *const driver =
-		kzalloc(sizeof(struct nvidia_irot_driver), GFP_KERNEL);
-	if (!driver) {
-		dev_err(dev, "Failed to allocate memory for driver\n");
+	dev_info(dev, "probe starting\n");
+
+	driver = devm_kzalloc(dev, sizeof(*driver), GFP_KERNEL);
+	if (!driver)
 		return -ENOMEM;
-	}
 
+	driver->dev = dev;
 	platform_set_drvdata(pdev, driver);
 	spin_lock_init(&driver->shared_spin);
 	mutex_init(&driver->worker_mutex);
@@ -1048,56 +970,54 @@ static int nvidia_irot_probe(struct platform_device *pdev)
 	skb_queue_head_init(&driver->tx_queue);
 
 	ret = nvidia_irot_load_mailbox(dev, driver);
-	if (ret != 0) {
-		dev_err(dev, "Failed to load mailbox.\n");
-		clean_driver(pdev);
-		return ret;
-	}
+	if (ret)
+		goto err_cleanup;
 
 	ret = nvidia_irot_init_shmem(driver);
-	if (ret < 0) {
-		dev_err(dev, "failed to establish shared memory, ret: %d\n",
-			ret);
-		clean_driver(pdev);
-		return ret;
-	}
+	if (ret < 0)
+		goto err_cleanup;
 
-	// Signal that shared memory is ready for TX operations
 	atomic_set(&driver->tx_shmem_ready, 1);
 	wake_up(&driver->tx_shmem_ready_wq);
 
 	ret = nvidia_irot_create_mctp_dev(driver, dev_name(dev));
 	if (ret < 0) {
-		dev_err(dev, "failed to create mctp device, ret: %d\n", ret);
-		clean_driver(pdev);
-		return ret;
+		dev_err(dev, "failed to create mctp device: %d\n", ret);
+		goto err_cleanup;
 	}
+
 	driver->rx_worker = kthread_run(nvidia_irot_rx_worker, driver,
 					"%s-rx-worker", dev_name(dev));
 	if (IS_ERR(driver->rx_worker)) {
-		dev_err(dev, "Failed to create rx worker thread.\n");
+		ret = PTR_ERR(driver->rx_worker);
 		driver->rx_worker = NULL;
-		clean_driver(pdev);
-		return -EINVAL;
+		dev_err(dev, "failed to create rx worker thread\n");
+		goto err_cleanup;
 	}
+
 	driver->tx_worker = kthread_run(nvidia_irot_tx_worker, driver,
 					"%s-tx-worker", dev_name(dev));
 	if (IS_ERR(driver->tx_worker)) {
-		dev_err(dev, "Failed to create tx worker thread.\n");
+		ret = PTR_ERR(driver->tx_worker);
 		driver->tx_worker = NULL;
-		clean_driver(pdev);
-		return -EINVAL;
+		dev_err(dev, "failed to create tx worker thread\n");
+		goto err_cleanup;
 	}
 
-	dev_info(dev, "Probe successful for device: %s\n", dev_name(dev));
+	dev_info(dev, "probe successful\n");
 	return 0;
+
+err_cleanup:
+	dev_err(dev, "probe failed: %d\n", ret);
+	/* clean_driver handles partial construction (devm_kzalloc zero-init) */
+	clean_driver(pdev);
+	return ret;
 }
 
 static void nvidia_irot_remove(struct platform_device *pdev)
 {
-	dev_info(&pdev->dev, "Removing device: %s\n", dev_name(&pdev->dev));
+	dev_info(&pdev->dev, "removing device\n");
 	clean_driver(pdev);
-	dev_info(&pdev->dev, "Device removed: %s\n", dev_name(&pdev->dev));
 }
 
 static const struct of_device_id nvidia_irot_match[] = {
@@ -1106,17 +1026,16 @@ static const struct of_device_id nvidia_irot_match[] = {
 };
 MODULE_DEVICE_TABLE(of, nvidia_irot_match);
 
-static struct platform_driver nvidia_irot_driver = {
-    .probe = nvidia_irot_probe,
-    .remove = nvidia_irot_remove,
-    .driver =
-        {
-            .name = "nvidia-ast27xx-irot",
-            .of_match_table = nvidia_irot_match,
-        },
+static struct platform_driver nvidia_irot_pdriver = {
+	.probe		= nvidia_irot_probe,
+	.remove		= nvidia_irot_remove,
+	.driver		= {
+		.name		= "nvidia-ast27xx-irot",
+		.of_match_table	= nvidia_irot_match,
+	},
 };
 
-module_platform_driver(nvidia_irot_driver);
+module_platform_driver(nvidia_irot_pdriver);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("NVIDIA IRoT MCTP Driver for ASPEED AST27xx BMC");
