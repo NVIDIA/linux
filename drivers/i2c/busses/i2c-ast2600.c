@@ -1869,7 +1869,7 @@ static int ast2600_i2c_irq_err_to_errno(u32 irq_status)
 	if (irq_status & AST2600_I2CM_ARBIT_LOSS)
 		return -EAGAIN;
 	if (irq_status & (AST2600_I2CM_SDA_DL_TO | AST2600_I2CM_SCL_LOW_TO))
-		return -ETIMEDOUT;
+		return -EBUSY;
 	if (irq_status & (AST2600_I2CM_ABNORMAL))
 		return -EPROTO;
 
