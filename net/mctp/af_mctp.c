@@ -74,6 +74,7 @@ static int mctp_bind(struct socket *sock, struct sockaddr *addr, int addrlen)
 
 	lock_sock(sk);
 
+	/* TODO: allow rebind */
 	if (sk_hashed(sk)) {
 		rc = -EADDRINUSE;
 		goto out_release;
@@ -868,11 +869,9 @@ static void mctp_sk_close(struct sock *sk, long timeout)
 static int mctp_sk_hash(struct sock *sk)
 {
 	struct net *net = sock_net(sk);
-	struct sock *existing;
 	struct mctp_sock *msk;
 	mctp_eid_t remote;
 	u32 hash;
-	int rc;
 
 	msk = container_of(sk, struct mctp_sock, sk);
 
@@ -884,32 +883,13 @@ static int mctp_sk_hash(struct sock *sk)
 
 	mutex_lock(&net->mctp.bind_lock);
 
-	/* Prevent duplicate binds. */
-	sk_for_each(existing, &net->mctp.binds[hash]) {
-		struct mctp_sock *mex =
-			container_of(existing, struct mctp_sock, sk);
-
-		bool same_peer = (mex->bind_peer_set && msk->bind_peer_set &&
-				  mex->bind_peer_addr == msk->bind_peer_addr) ||
-				 (!mex->bind_peer_set && !msk->bind_peer_set);
-
-		if (mex->bind_type == msk->bind_type &&
-		    mex->bind_local_addr == msk->bind_local_addr && same_peer &&
-		    mex->bind_net == msk->bind_net) {
-			rc = -EADDRINUSE;
-			goto out;
-		}
-	}
-
 	/* Bind lookup runs under RCU, remain live during that. */
 	sock_set_flag(sk, SOCK_RCU_FREE);
 
 	sk_add_node_rcu(sk, &net->mctp.binds[hash]);
-	rc = 0;
-
-out:
 	mutex_unlock(&net->mctp.bind_lock);
-	return rc;
+
+	return 0;
 }
 
 static void mctp_sk_unhash(struct sock *sk)
