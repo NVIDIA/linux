@@ -625,6 +625,7 @@ err_free:
 
 static void mctp_report_rx_reassembly_error(struct mctp_sk_key *key,
 					    struct sk_buff *skb,
+					    struct net_device *dev,
 					    struct mctp_hdr *mh,
 					    unsigned long *flags,
 					    int err_code)
@@ -637,11 +638,11 @@ static void mctp_report_rx_reassembly_error(struct mctp_sk_key *key,
 
 	spin_unlock_irqrestore(&key->lock, *flags);
 
-	if (skb->dev) {
+	if (dev) {
 		struct mctp_dev *mdev;
 
 		rcu_read_lock();
-		mdev = __mctp_dev_get(skb->dev);
+		mdev = __mctp_dev_get(dev);
 		if (mdev) {
 			binding = mdev->binding;
 			mctp_dev_put(mdev);
@@ -649,11 +650,11 @@ static void mctp_report_rx_reassembly_error(struct mctp_sk_key *key,
 		rcu_read_unlock();
 	}
 
-	sk = mctp_lookup_sock_for_error(report_skb, skb->dev, key, NULL);
+	sk = mctp_lookup_sock_for_error(report_skb, dev, key, NULL);
 	if (sk) {
 		mctp_queue_error(sk, report_skb,
 				 err_code == -EMSGSIZE ? EMSGSIZE : EPROTO,
-				 skb->dev, MCTP_DIR_RX, binding, key);
+				 dev, MCTP_DIR_RX, binding, key);
 		sock_put(sk);
 	}
 
@@ -811,15 +812,22 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		/* we need to be continuing an existing reassembly... */
 		if (!key->reasm_head) {
 			rc = -EINVAL;
-			mctp_report_rx_reassembly_error(key, skb, mh,
+			mctp_report_rx_reassembly_error(key, skb, skb->dev, mh,
 							&f, rc);
 		} else {
+			/* mctp_frag_queue() takes ownership of skb in all
+			 * cases (frees it on both success and error), so save
+			 * dev first and always clear skb to prevent double-free
+			 * at the out: label.
+			 */
+			struct net_device *orig_dev = skb->dev;
+
 			rc = mctp_frag_queue(key, skb);
+			skb = NULL;
 			if (rc == -EINVAL || rc == -EMSGSIZE)
-				mctp_report_rx_reassembly_error(key, skb, mh,
+				mctp_report_rx_reassembly_error(key, NULL,
+								orig_dev, mh,
 								&f, rc);
-			else
-				skb = NULL;
 		}
 
 		if (rc)
