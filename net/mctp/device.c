@@ -453,6 +453,7 @@ static void mctp_unregister(struct net_device *dev)
 
 	mctp_route_remove_dev(mdev);
 	mctp_neigh_remove_dev(mdev);
+	mctp_key_remove_dev(mdev);
 
 	mctp_dev_put(mdev);
 }
