@@ -2135,6 +2135,28 @@ void mctp_route_remove_dev(struct mctp_dev *mdev)
 	}
 }
 
+/* Release device references from all keys bound to a departing mctp_dev.
+ * Called during NETDEV_UNREGISTER to ensure the mctp_dev (and thus the
+ * underlying net_device) refcount can reach zero. Without this,
+ * manually-allocated keys (SIOCMCTPALLOCTAG) hold mctp_dev refs
+ * indefinitely, blocking unregister_netdevice().
+ */
+void mctp_key_remove_dev(struct mctp_dev *mdev)
+{
+	struct net *net = dev_net(mdev->dev);
+	struct mctp_sk_key *key;
+	unsigned long flags, fl2;
+
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+	hlist_for_each_entry(key, &net->mctp.keys, hlist) {
+		spin_lock_irqsave(&key->lock, fl2);
+		if (key->dev == mdev)
+			mctp_dev_release_key(key->dev, key);
+		spin_unlock_irqrestore(&key->lock, fl2);
+	}
+	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+}
+
 /* Lookup bound socket for packet delivery when no route exists */
 static struct mctp_route *mctp_route_lookup_bound_socket(struct net *net, struct sk_buff *skb)
 {
