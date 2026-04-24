@@ -300,6 +300,7 @@ int mctp_default_net_set(struct net *net, unsigned int index);
 int mctp_route_add_local(struct mctp_dev *mdev, mctp_eid_t addr);
 int mctp_route_remove_local(struct mctp_dev *mdev, mctp_eid_t addr);
 void mctp_route_remove_dev(struct mctp_dev *mdev);
+void mctp_key_remove_dev(struct mctp_dev *mdev);
 
 /* neighbour definitions */
 enum mctp_neigh_source {
