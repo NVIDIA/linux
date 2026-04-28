@@ -44,7 +44,7 @@ static long aspeed_espi_oob_dma_desc_get_rx(struct file *fp,
 		ASPEED_ESPI_OOB_RX_DMA_WS_PTR_SP_SHIFT;
 	d = &espi_oob->dma.rx_desc[sptr];
 	if (!d->dirty)
-		return -EFAULT;
+		return -EAGAIN;
 
 	pkt_len = ((d->len) ? : OOB_DEFAULT_RX_PACKET_LEN) + sizeof(struct espi_comm_hdr);
 	if (ioc->pkt_len < pkt_len)
