@@ -5,6 +5,15 @@
 #ifndef _ASPEED_ESPI_OOB_H_
 #define _ASPEED_ESPI_OOB_H_
 
+#include <linux/types.h>
+#include <linux/wait.h>
+#include <linux/mutex.h>
+#include <linux/spinlock.h>
+#include <linux/miscdevice.h>
+
+struct device;
+struct aspeed_espi_ctrl;
+
 struct oob_tx_dma_desc {
 	u32 data_addr;
 	u8 cyc;
