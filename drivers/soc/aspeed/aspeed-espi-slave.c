@@ -536,12 +536,17 @@ static void aspeed_espi_remove(struct platform_device *pdev)
 	misc_deregister(&priv->smi_miscdev);
 }
 
+static const struct aspeed_espi_model ast2500_model = {
+	.version = ASPEED_ESPI_AST2500,
+};
+
 static const struct aspeed_espi_model ast2600_model = {
 	.version = ASPEED_ESPI_AST2600,
 };
 
 static const struct of_device_id of_espi_match_table[] = {
-	{ .compatible = "aspeed,ast2500-espi-slave" },
+	{ .compatible = "aspeed,ast2500-espi-slave",
+	  .data       = &ast2500_model},
 	{ .compatible = "aspeed,ast2600-espi-slave",
 	  .data	      = &ast2600_model},
 	{ }
