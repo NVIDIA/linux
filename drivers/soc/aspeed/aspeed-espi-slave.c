@@ -465,22 +465,21 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	}
 
 	priv->irq = platform_get_irq(pdev, 0);
-	if (priv->irq < 0)
-		return priv->irq;
+	if (priv->irq < 0) {
+		ret = priv->irq;
+		goto err_oob_free;
+	}
 
 	ret = devm_request_irq(&pdev->dev, priv->irq, aspeed_espi_irq, 0,
 			       "aspeed-espi-irq", priv);
 	if (ret)
-		return ret;
+		goto err_oob_free;
 
-	priv->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(priv->clk))
-		return dev_err_probe(&pdev->dev, PTR_ERR(priv->clk),
-				     "couldn't get clock\n");
-	ret = clk_prepare_enable(priv->clk);
-	if (ret) {
-		dev_err(&pdev->dev, "couldn't enable clock\n");
-		return ret;
+	priv->clk = devm_clk_get_enabled(&pdev->dev, NULL);
+	if (IS_ERR(priv->clk)) {
+		ret = dev_err_probe(&pdev->dev, PTR_ERR(priv->clk),
+			"failed to get/enable clock\n");
+		goto err_oob_free;
 	}
 
 	/*
@@ -491,7 +490,7 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	ret = regmap_read(priv->map, ASPEED_ESPI_CTRL, &ctrl);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to read ctrl register\n");
-		goto err_clk_disable_out;
+		goto err_oob_free;
 	}
 
 	priv->pltrstn_miscdev.minor = MISC_DYNAMIC_MINOR;
@@ -507,13 +506,13 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	ret = misc_register(&priv->pltrstn_miscdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Unable to register device\n");
-		goto err_clk_disable_out;
+		goto err_oob_free;
 	}
 
 	ret = misc_register(&priv->smi_miscdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Unable to register SMI device\n");
-		goto err_clk_disable_out;
+		goto err_pltrstn_unreg;
 	}
 
 	aspeed_espi_boot_ack(priv);
@@ -521,8 +520,10 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "eSPI registered, irq %d\n", priv->irq);
 	return 0;
 
-err_clk_disable_out:
-	clk_disable_unprepare(priv->clk);
+err_pltrstn_unreg:
+	misc_deregister(&priv->pltrstn_miscdev);
+err_oob_free:
+	aspeed_espi_oob_free(&pdev->dev, priv->espi_ctrl->oob);
 	return ret;
 }
 
@@ -533,7 +534,6 @@ static void aspeed_espi_remove(struct platform_device *pdev)
 	aspeed_espi_oob_free(priv->dev, priv->espi_ctrl->oob);
 	misc_deregister(&priv->pltrstn_miscdev);
 	misc_deregister(&priv->smi_miscdev);
-	clk_disable_unprepare(priv->clk);
 }
 
 static const struct aspeed_espi_model ast2600_model = {
