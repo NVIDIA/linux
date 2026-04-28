@@ -446,7 +446,7 @@ static int aspeed_espi_oob_dma_alloc(struct device *dev, struct aspeed_espi_oob 
 	return 0;
 }
 
-void *aspeed_espi_oob_alloc(struct device *dev, struct aspeed_espi_ctrl *espi_ctrl)
+struct aspeed_espi_oob *aspeed_espi_oob_alloc(struct device *dev, struct aspeed_espi_ctrl *espi_ctrl)
 {
 	struct aspeed_espi_oob *espi_oob =
 		devm_kzalloc(dev, sizeof(struct aspeed_espi_oob), GFP_KERNEL);

@@ -65,7 +65,7 @@ struct aspeed_espi_oob {
 
 void aspeed_espi_oob_event(u32 sts, struct aspeed_espi_oob *espi_oob);
 void aspeed_espi_oob_enable(struct aspeed_espi_oob *espi_oob);
-void *aspeed_espi_oob_alloc(struct device *dev, struct aspeed_espi_ctrl *espi_ctrl);
+struct aspeed_espi_oob *aspeed_espi_oob_alloc(struct device *dev, struct aspeed_espi_ctrl *espi_ctrl);
 void aspeed_espi_oob_free(struct device *dev, struct aspeed_espi_oob *espi_oob);
 
 #endif
