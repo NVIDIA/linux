@@ -44,76 +44,76 @@
  * Intel eSPI Interface Base Specification, Rev 1.0, Jan. 2016.
  */
 struct espi_comm_hdr {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
 } __packed;
 
 struct espi_perif_mem32 {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u32 addr_be;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u32 addr_be;
+	__u8 data[];
 } __packed;
 
 struct espi_perif_mem64 {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u32 addr_be;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u32 addr_be;
+	__u8 data[];
 } __packed;
 
 struct espi_perif_msg {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u8 msg_code;
-	u8 msg_byte[4];
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u8 msg_code;
+	__u8 msg_byte[4];
+	__u8 data[];
 } __packed;
 
 struct espi_perif_cmplt {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u8 data[];
 } __packed;
 
 struct espi_oob_msg {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u8 data[];
 } __packed;
 
 struct espi_flash_rwe {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u32 addr_be;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u32 addr_be;
+	__u8 data[];
 } __packed;
 
 struct espi_flash_cmplt {
-	u8 cyc;
-	u8 len_h : 4;
-	u8 tag : 4;
-	u8 len_l;
-	u8 data[];
+	__u8 cyc;
+	__u8 len_h : 4;
+	__u8 tag : 4;
+	__u8 len_l;
+	__u8 data[];
 } __packed;
 
 struct aspeed_espi_ioc {
-	u32 pkt_len;
-	u8 *pkt;
+	__u32 pkt_len;
+	__u64 pkt; /* userspace pointer */
 };
 
 #define ESPI_LEN_HIGH(len)	(((len) >> 0x08) & 0x0F)
@@ -169,9 +169,9 @@ struct aspeed_espi_ioc {
  *      Write the output value of GPIO over the VW channel
  */
 #define ASPEED_ESPI_VW_GET_GPIO_VAL	_IOR(__ASPEED_ESPI_IOCTL_MAGIC, \
-					     0x10, u8)
+					     0x10, __u8)
 #define ASPEED_ESPI_VW_PUT_GPIO_VAL	_IOW(__ASPEED_ESPI_IOCTL_MAGIC, \
-					     0x11, u8)
+					     0x11, __u8)
 /*
  * Out-of-band Channel (CH2)
  *  - ASPEED_ESPI_OOB_GET_RX
