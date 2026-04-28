@@ -239,9 +239,9 @@ static int aspeed_espi_gpio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	gpio->map = device_node_to_regmap(pdev->dev.parent->of_node);
-	if (!gpio->map) {
+	if (IS_ERR_OR_NULL(gpio->map)) {
 		dev_err(&pdev->dev, "Couldn't get regmap\n");
-		return -ENODEV;
+		return gpio->map ? PTR_ERR(gpio->map) : -ENODEV;
 	}
 
 	dev_set_drvdata(&pdev->dev, gpio);
