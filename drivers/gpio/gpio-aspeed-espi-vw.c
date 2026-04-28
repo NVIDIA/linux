@@ -69,14 +69,6 @@ static void aspeed_espi_vw_gpio_disable(struct regmap *map)
 	regmap_update_bits(map, ASPEED_ESPI_INT_EN, ASPEED_ESPI_INT_EN_VW_MASK, 0);
 }
 
-static void set_nth_bit(u32 *n, uint8_t offset, u32 val)
-{
-	if (val == 0)
-		*n = *n & ~(1ul << offset);
-	else
-		*n = *n | (1ul << offset);
-}
-
 static int vgpio_get_value(struct gpio_chip *gc, unsigned int offset)
 {
 	struct aspeed_espi_gpio *gpio = gpiochip_get_data(gc);
@@ -93,13 +85,16 @@ static void vgpio_set_value(struct gpio_chip *gc, unsigned int offset, int val)
 {
 	struct aspeed_espi_gpio *gpio = gpiochip_get_data(gc);
 	unsigned long flags;
+	u32 mask = BIT(offset);
+	u32 bit_val = val ? mask : 0;
 	int ret;
 
-	val = val ? BIT(offset) : 0;
 	spin_lock_irqsave(&gpio->lock, flags);
-	ret = regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, BIT(offset), val);
-	if (!ret)
-		set_nth_bit(&cached_reg_val, offset, val);
+	ret = regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, mask, bit_val);
+	if (!ret) {
+		cached_reg_val &= ~mask;
+		cached_reg_val |= bit_val;
+	}
 	spin_unlock_irqrestore(&gpio->lock, flags);
 }
 
