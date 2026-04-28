@@ -60,7 +60,7 @@ static long aspeed_espi_oob_dma_desc_get_rx(struct file *fp,
 	hdr->len_h = ESPI_LEN_HIGH(d->len);
 	hdr->len_l = ESPI_LEN_LOW(d->len);
 	memcpy(hdr + 1, espi_oob->dma.rx_virt + (PAGE_SIZE * sptr), pkt_len - sizeof(*hdr));
-	if (copy_to_user((void __user *)ioc->pkt, pkt, pkt_len)) {
+	if (copy_to_user((void __user *)(uintptr_t)ioc->pkt, pkt, pkt_len)) {
 		rc = -EFAULT;
 		goto free_n_out;
 	}
@@ -156,7 +156,7 @@ static long aspeed_espi_oob_get_rx(struct file *fp,
 		}
 	}
 
-	if (copy_to_user((void __user *)ioc->pkt, pkt, pkt_len)) {
+	if (copy_to_user((void __user *)(uintptr_t)ioc->pkt, pkt, pkt_len)) {
 		rc = -EFAULT;
 		goto free_n_out;
 	}
@@ -193,7 +193,7 @@ static long aspeed_espi_oob_dma_desc_put_tx(struct file *fp,
 		return -ENOMEM;
 
 	hdr = (struct espi_comm_hdr *)pkt;
-	if (copy_from_user(pkt, (void __user *)ioc->pkt, ioc->pkt_len)) {
+	if (copy_from_user(pkt, (void __user *)(uintptr_t)ioc->pkt, ioc->pkt_len)) {
 		rc = -EFAULT;
 		goto free_n_out;
 	}
@@ -260,7 +260,7 @@ static long aspeed_espi_oob_put_tx(struct file *fp,
 
 	hdr = (struct espi_comm_hdr *)pkt;
 
-	if (copy_from_user(pkt, (void __user *)ioc->pkt, ioc->pkt_len)) {
+	if (copy_from_user(pkt, (void __user *)(uintptr_t)ioc->pkt, ioc->pkt_len)) {
 		rc = -EFAULT;
 		goto free_n_out;
 	}
