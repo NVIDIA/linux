@@ -17,4 +17,4 @@ Example:
         reg = <0x1e6ee000 0x100>;
         interrupts = <23>;
         status = "disabled";
-};
+    };
