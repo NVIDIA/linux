@@ -41,12 +41,12 @@
 #define ASPEED_ESPI_VW_RESET_BY_ESPI 0
 #define ASPEED_ESPI_VW_RESET_BY_PLTRST 1
 
-static u32 cached_reg_val;
 struct aspeed_espi_gpio {
 	struct device *dev;
 	struct gpio_chip chip;
 	struct regmap *map;
 	u32 dir_mask;
+	u32 cached_reg_val;
 	/* Lock to protect GPIO val register access */
 	spinlock_t lock;
 };
@@ -92,8 +92,8 @@ static void vgpio_set_value(struct gpio_chip *gc, unsigned int offset, int val)
 	spin_lock_irqsave(&gpio->lock, flags);
 	ret = regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, mask, bit_val);
 	if (!ret) {
-		cached_reg_val &= ~mask;
-		cached_reg_val |= bit_val;
+		gpio->cached_reg_val &= ~mask;
+		gpio->cached_reg_val |= bit_val;
 	}
 	spin_unlock_irqrestore(&gpio->lock, flags);
 }
@@ -219,12 +219,12 @@ static void aspeed_espi_vw_irq(int irq, void *arg)
 	}
 
 	if (sts & ASPEED_ESPI_INT_STS_HW_RESET) {
-		dev_dbg(gpio->dev, "Resetting VGPIO value [%08X]\n", cached_reg_val);
+		dev_dbg(gpio->dev, "Resetting VGPIO value [%08X]\n", gpio->cached_reg_val);
 		aspeed_espi_vw_gpio_enable(gpio->map, gpio->dir_mask);
 
 		spin_lock_irqsave(&gpio->lock, flags);
 		regmap_update_bits(gpio->map, ASPEED_ESPI_VW_GPIO_VAL, gpio->dir_mask,
-				   cached_reg_val);
+				   gpio->cached_reg_val);
 		spin_unlock_irqrestore(&gpio->lock, flags);
 	}
 	/* Clearing of status register will be done from parent driver*/
