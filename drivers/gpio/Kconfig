@@ -2011,7 +2011,7 @@ config GPIO_ASPEED_ESPI_VW
 	  Say Y here to enable ASPEED ESPI VW GPIO
 	  The ASPEED eSPI Slave Interface shall support the eSPI Virtual Wire
 	  channel and implement support for the General Purpose I/O Expander
-	  Virtual Wire  group (Index 128..255) which allows the master to
+	  Virtual Wire group (Index 128..255) which allows the master to
 	  control GPIOs on the slave. Aim of this driver is to
 	  expose virtual wire gpios to be used as regular gpios using libgpiod.
 	  This module will work as a child of espi.
