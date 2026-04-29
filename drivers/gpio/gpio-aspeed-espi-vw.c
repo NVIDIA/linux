@@ -12,6 +12,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/soc/aspeed/aspeed-espi.h>
 
+#define ASPEED_ESPI_VW_GPIO_MAX 32
+
 #define ASPEED_ESPI_CTRL 0x000
 #define ASPEED_ESPI_CTRL_VW_SW_RDY BIT(3)
 
@@ -149,6 +151,12 @@ static int aspeed_espi_vw_gpio_init(struct device *dev, struct aspeed_espi_gpio 
 	if (ret) {
 		dev_err(dev, "Unable to read gpio names count: %d %d\n", ret, gpio_count);
 		return ret;
+	}
+
+	if (gpio_count > ASPEED_ESPI_VW_GPIO_MAX) {
+		dev_err(dev, "gpio-count must be <= %u (got %u)\n",
+			ASPEED_ESPI_VW_GPIO_MAX, gpio_count);
+		return -EINVAL;
 	}
 
 	names_count = of_property_read_string_array(dev->of_node, "gpio-names", NULL, 0);
