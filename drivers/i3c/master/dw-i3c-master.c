@@ -1937,6 +1937,7 @@ static int dw_i3c_master_i2c_xfers(struct i2c_dev_desc *dev,
 		dev_err(master->dev,
 			"<%s> cannot resume i3c bus master, err: %d\n",
 			__func__, ret);
+		dw_i3c_master_free_xfer(xfer);
 		return ret;
 	}
 	master->platform_ops->flush_dat(master, dev->addr);
@@ -2726,6 +2727,8 @@ int dw_i3c_common_probe(struct dw_i3c_master *master,
 
 	spin_lock_init(&master->xferqueue.lock);
 	INIT_LIST_HEAD(&master->xferqueue.list);
+
+	spin_lock_init(&master->devs_lock);
 
 	writel(INTR_ALL, master->regs + INTR_STATUS);
 	irq = platform_get_irq(pdev, 0);
