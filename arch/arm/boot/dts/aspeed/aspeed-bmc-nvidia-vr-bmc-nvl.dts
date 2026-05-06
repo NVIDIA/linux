@@ -111,6 +111,14 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	// eMMC HW reset sequencer. Pulses EMMC_RST_L-O (GPIO Y3) before
+	// every mmc card init so the kernel-side mmc subsystem starts
+	// from a known idle state. Required for kdump capture kernel.
+	mmc_pwrseq: mmc-pwrseq {
+		compatible = "mmc-pwrseq-emmc";
+		reset-gpios = <&gpio0 ASPEED_GPIO(Y, 3) GPIO_ACTIVE_LOW>;
+	};
 };
 
 // Enabled Primary flash on FMC for bring up activity
@@ -238,6 +246,7 @@
     bus-width = <8>;
     max-frequency = <200000000>;
     clk-phase-mmc-hs200 = <9>, <225>;
+    mmc-pwrseq = <&mmc_pwrseq>;
 };
 
 /*
