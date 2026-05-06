@@ -1,0 +1,977 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "nvidia-vr-bmc-c2-core.dtsi"
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+    model = "AST2600 VR200NVL BMC";
+    compatible = "aspeed,ast2600";
+
+	aliases {
+		serial2 = &uart3;
+		serial4 = &uart5;
+		i2c16	= &i2c_usbhub;
+		i2c17	= &i2c_tpm;
+		i2c18	= &i2c_dp;
+		i2c19	= &i2c_rtc;
+		i2c20   = &i2c_fan_ctrl0;
+		i2c21   = &i2c_fan_ctrl1;
+		i2c22   = &i2c_fan_iox;
+		i2c23   = &i2c_fan_hsc;
+
+		i2c30   = &i2c_mcio_c0c1_north0;
+		i2c31   = &i2c_mcio_c0c1_north1;
+		i2c32   = &i2c_mcio_c0c1_north2;
+		i2c33   = &i2c_mcio_c0c1_north3;
+		i2c34   = &i2c_mcio_c0c1_north4;
+		i2c35   = &i2c_mcio_c0c1_north5;
+		i2c36   = &i2c_mcio_c0c1_north6;
+		i2c37   = &i2c_mcio_c0c1_north7;
+
+		i2c40   = &i2c_mcio_c0_south0;
+		i2c41   = &i2c_mcio_c0_south1;
+		i2c42   = &i2c_mcio_c0_south2;
+		i2c43   = &i2c_mcio_c0_south3;
+		i2c44   = &i2c_mcio_c0_south4;
+		i2c45   = &i2c_mcio_c0_south5;
+		i2c46   = &i2c_mcio_c0_south6;
+		i2c47   = &i2c_mcio_c0_south7;
+
+		i2c50   = &i2c_mcio_c1_south0;
+		i2c51   = &i2c_mcio_c1_south1;
+		i2c52   = &i2c_mcio_c1_south2;
+		i2c53   = &i2c_mcio_c1_south3;
+		i2c54   = &i2c_mcio_c1_south4;
+		i2c55   = &i2c_mcio_c1_south5;
+		i2c56   = &i2c_mcio_c1_south6;
+		i2c57   = &i2c_mcio_c1_south7;
+
+		i2c70	= &i2c70;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200n8 earlyprintk";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x80000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+
+		ramoops@a0000000 {
+			compatible = "ramoops";
+			reg = <0xa0000000 0x100000>; /* 1MB */
+			record-size = <0x10000>; /* 64KB */
+			max-reason = <2>; /* KMSG_DUMP_OOPS */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+	};
+
+    power-gpios{
+        n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+    };
+
+    leds {
+        compatible = "gpio-leds";
+        uid_led {
+                gpios = <&exp7 10 GPIO_ACTIVE_LOW>;
+        };
+        fault_led {
+                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
+        };
+        power_led {
+                gpios = <&exp7 8 GPIO_ACTIVE_LOW>;
+        };
+    };
+
+    buttons {
+        power-btn {
+            gpio = <&exp7 9 GPIO_ACTIVE_LOW>;
+        };
+        uid-btn {
+            gpio = <&exp7 11 GPIO_ACTIVE_LOW>;
+        };
+    };
+
+    standby_power_regulator: standby-power-regulator {
+		status = "okay";
+		compatible = "regulator-fixed";
+		regulator-name = "standby_power";
+		gpio = <&gpio0 ASPEED_GPIO(M, 3) GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+    status = "okay";
+    flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-gh-flash-layout-64.dtsi"
+    };
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "mctp-spi";
+        alert-gpio = <&gpio0 ASPEED_GPIO(R, 1) GPIO_ACTIVE_HIGH>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <&gpio0 ASPEED_GPIO(R, 1) GPIO_ACTIVE_HIGH>;
+        status = "okay";
+    };
+};
+
+&spi1raw {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+    spidev@0 {
+        spi-max-frequency = <25000000>;
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
+&spi2 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
+
+    // Data SPI is 64MB in size
+    flash@0 {
+        status = "okay";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;            // 256KB at offset 0
+                label = "u-boot-env";
+            };
+
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;      // 16MB at offset 0x40000
+                label = "rwfs";
+            };
+
+            log@0x1040000 {
+                reg = <0x1040000 0x2800000>;    // 40MB at offset 0x1040000
+                label = "log";                  // Move log to EMMC, make this unused
+            };
+        };
+    };
+};
+
+&uart1 {
+        status = "okay";
+};
+
+&uart3 {
+        //Enabling SOL
+        status = "okay";
+
+};
+
+&uart5 {
+    // BMC Debug Console
+    status = "okay";
+};
+
+&uart_routing {
+       status = "okay";
+};
+
+// MAC1 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
+// This is "mac0" in zero-based DTS
+&mdio0 {
+    status = "okay";
+    ethphy0: ethernet-phy@0 {
+        compatible = "ethernet-phy-ieee802.3-c22";
+        reg = <0>;
+    };
+
+};
+
+&mac0 {
+    status = "okay";
+    pinctrl-names = "default";
+    phy-mode = "rgmii-rxid";
+    max-speed = <1000>;
+    phy-handle = <&ethphy0>;
+    pinctrl-0 = <&pinctrl_rgmii1_default>;
+};
+
+&mac2 {
+    status = "okay";
+    phy-mode = "rmii";
+    use-ncsi;
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_rmii3_default>;
+};
+
+
+// Enable emmc
+&emmc_controller {
+    status = "okay";
+};
+
+&emmc {
+    non-removable;
+    pinctrl-0 = <&pinctrl_emmcg9_default>;
+    bus-width = <8>;
+    max-frequency = <200000000>;
+    clk-phase-mmc-hs200 = <9>, <225>;
+};
+
+/*
+ * Enable USB port A as device (via the virtual hub) to host
+ */
+&vhub {
+    status = "okay";
+    pinctrl-names = "default";
+    /*
+        Uncomment below line to enable internal EHCI controller
+        Current config uses xHCI Port1
+    */
+    // pinctrl-0 = <&pinctrl_usb2adp_default>;
+};
+
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
+// USB 2.0 to HMC, on USB Port B
+&ehci1 {
+    status = "okay";
+
+    hub@1 {
+        reg = <1>;
+        hub@2 {
+            reg = <2>;
+            hub@1 {
+                reg = <1>;
+                device@1 {
+                    reg = <1>;
+                    cp2112: interface@1 {
+                        reg = <1 1>;
+
+                        gpio-controller;
+                        interrupt-controller;
+                        #gpio-cells = <2>;
+                        #interrupt-cells = <2>;
+
+                        i2c70: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+
+                            exp16: pca9555@50 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x50>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "CPU0_IROT_RECOVERY_L_3V3-I",
+                                    "CPU0_IROT_FATAL_ERR_L_3V3-I",
+                                    "CPU0_OVERT_L-I",
+                                    "C0_THERM_WARN_N-I",
+                                    "C0_S0_THERM_OVERT_N-I",
+                                    "CPU0_CHIPTHROT_L-I",
+                                    "C0_SOCAMM_0_ID_PRSNT_N_1V8-I",
+                                    "C0_SOCAMM_1_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_2_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_3_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_4_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_5_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_6_ID_PRSNT_N-I",
+                                    "C0_SOCAMM_7_ID_PRSNT_N-I",
+                                    "MCU_JTAG_BYPASS_CPU0_S-O",
+                                    "MCU_JTAG_BYPASS_CPU0-O";
+                            };
+                            exp17: pca9555@51 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x51>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "CPU1_IROT_RECOVERY_L_3V3-I",
+                                    "CPU1_IROT_FATAL_ERR_L_3V3-I",
+                                    "CPU1_OVERT_L-I",
+                                    "C1_THERM_WARN_N-I",
+                                    "C1_S0_THERM_OVERT_N-I",
+                                    "CPU1_CHIPTHROT_L-I",
+                                    "C1_SOCAMM_0_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_1_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_2_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_3_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_4_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_5_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_6_ID_PRSNT_N-I",
+                                    "C1_SOCAMM_7_ID_PRSNT_N-I",
+                                    "MCU_JTAG_BYPASS_CPU1_S-O",
+                                    "MCU_JTAG_BYPASS_CPU1-O";
+                            };
+                            exp18: pca9555@52 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x52>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "COMBINED_CPU_CEM_WAKE_L-I",
+                                    "MCU_THERM_OVERT_N-I",
+                                    "MCU_THERM_WARN_N-I",
+                                    "PCB_T_SENSOR_ALERT_L-I",
+                                    "GLOBAL_WP_1V8-I",
+                                    "NVBUF_LOS_L-I",
+                                    "LEAK_DETECT_L-I",
+                                    "vLeakDetect1Status0-I",
+                                    "vLeakDetect1Status1-I",
+                                    "vLeakDetect2Status0-I",
+                                    "vLeakDetect2Status1-I",
+                                    "BMC_IOX_INT_L-I",
+                                    "MCU_BMC_ALERT_L-I",
+                                    "MCU_HMC_ALERT_L-I",
+                                    "MCU_USER_STRAP-I",
+                                    "HPM_MCU_OK-I";
+                            };
+                            exp19: pca9555@53 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x53>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "CPLD_RESET_L-I",
+                                    "CPLD_PSEQ_FAULT-I",
+                                    "CPLD_READY-I",
+                                    "CPLD_PROGRAM-I",
+                                    "INPUT_12V_VALID_VMON_PG-I",
+                                    "RUN_PWR_EN_1V8-I",
+                                    "MODULE_PWR_GOOD_1V8-I",
+                                    "MCU_I2C_RTC_ALERT_L-I",
+                                    "SLOT_PWR_BRAKE_EN_L-I",
+                                    "OOB_MUX_CTRL0-O",
+                                    "OOB_MUX_CTRL1-O",
+                                    "OOB_MUX_CTRL2-O",
+                                    "CPU_OOB_CS0_L-O",
+                                    "CPU_OOB_CS1_L-O",
+                                    "LEAK_SELF_TEST_L_1V8-I",
+                                    "MCU_RECOVERY_L-I";
+                            };
+                            exp20: pca9555@54 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x54>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112>;
+                                interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "JTAG_SEL_MCU-O",
+                                    "JTAG_TCK_MCU-O",
+                                    "JTAG_TMS_MCU-O",
+                                    "JTAG_TDO_MCU-I",
+                                    "JTAG_TDI_MCU-O",
+                                    "JTAG_TRST_L_MCU-O",
+                                    "CPU0_SSIF_ALERT_L_3V3-I",
+                                    "CPU1_SSIF_ALERT_L_1V8-I",
+                                    "USB_HMC_TO_CPU_FORCE_EN_L-O",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "";
+                            };
+                        };
+                    };
+                };
+
+            };
+        };
+    };
+};
+
+// I2C1, SSIF IPMI interface
+&i2c0 {
+    status = "okay";
+    clock-frequency = <400000>;
+    disable-master = <1>;
+    i2c-scl-clk-low-timeout-us = <128000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    tout-baseclk-div = <4096>;
+
+    ssif-bmc@10 {
+        compatible = "ssif-bmc";
+        alert-gpio = <&gpio1 ASPEED_GPIO(D, 7) GPIO_ACTIVE_LOW>;
+        pulse_width_us = <5>;
+        timeout_ms = <4995>;
+        reg = <0x10>;
+    };
+};
+
+// I2C2
+// BMC_I2C1_FPGA - Secondary FPGA
+// HMC EROT
+&i2c1 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    multi-master;
+    mctp-controller;
+    // MCTP for HPM MCU
+    mctp@18 {
+        compatible = "mctp-i2c-controller";
+        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+    };
+};
+
+// I2C3
+// BMC_I2C0_FPGA - Primary FPGA
+// HMC FRU EEPROM
+&i2c2 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+};
+
+// I2C4
+&i2c3 {
+    status = "ok";
+    clock-frequency = <400000>;
+};
+
+// I2C5, MCIO Buses
+&i2c4 {
+    status = "okay";
+    clock-frequency = <400000>;
+    multi-master;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+
+	i2c-mux@70 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
+
+		i2c_mcio_c0_south0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_mcio_c0_south1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_mcio_c0_south2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_mcio_c0_south3: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+
+		i2c_mcio_c0_south4: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+		};
+
+		i2c_mcio_c0_south5: i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+		};
+
+		i2c_mcio_c0_south6: i2c@6 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <6>;
+		};
+
+		i2c_mcio_c0_south7: i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+		};
+	};
+
+	i2c-mux@71 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>;
+		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
+
+		i2c_mcio_c0c1_north0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_mcio_c0c1_north1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_mcio_c0c1_north2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_mcio_c0c1_north3: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+
+		i2c_mcio_c0c1_north4: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+		};
+
+		i2c_mcio_c0c1_north5: i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+		};
+
+		i2c_mcio_c0c1_north6: i2c@6 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <6>;
+		};
+
+		i2c_mcio_c0c1_north7: i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+		};
+	};
+
+	i2c-mux@75 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x75>;
+		vdd-supply = <&standby_power_regulator>;
+		i2c-mux-idle-disconnect;
+
+		i2c_mcio_c1_south0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_mcio_c1_south1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_mcio_c1_south2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_mcio_c1_south3: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+
+		i2c_mcio_c1_south4: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+		};
+
+		i2c_mcio_c1_south5: i2c@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+		};
+
+		i2c_mcio_c1_south6: i2c@6 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <6>;
+		};
+
+		i2c_mcio_c1_south7: i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+		};
+	};
+};
+
+// I2C6
+// Module 0/1 I2C MUX x3
+&i2c5 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+};
+
+// I2C7
+// Module 0/1 Leak Sensors
+// Module 0/1 Fan Controllers
+&i2c6 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+
+	i2c-mux@70 {
+		compatible = "nxp,pca9546";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+		i2c-mux-idle-disconnect;
+
+		i2c_usbhub: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_tpm: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_dp: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_rtc: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+// I2C8
+&i2c7 {
+    status = "okay";
+    clock-frequency = <400000>;
+};
+
+// I2C9
+// M.2
+&i2c8 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+};
+
+// I2C10
+// PDB
+&i2c9 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+
+	i2c-mux@76 {
+		compatible = "nxp,pca9546";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x76>;
+		i2c-mux-idle-disconnect;
+
+		i2c_fan_ctrl0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_fan_ctrl1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_fan_iox: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_fan_hsc: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+// I2C11
+// BMC FRU EEPROM
+// BMC Temp Sensor
+&i2c10 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    // BMC FRU EEPROM - 256 bytes
+    eeprom@50 {
+        compatible = "atmel,24c02";
+        reg = <0x50>;
+        pagesize = <8>;
+    };
+};
+
+// I2C12
+&i2c11 {
+    status = "ok";
+    clock-frequency = <400000>;
+};
+
+// I2C13
+&i2c12 {
+    status = "ok";
+    clock-frequency = <400000>;
+};
+
+// I2C14
+// Module 0 UPHY3 SMBus
+&i2c13 {
+    status = "ok";
+    clock-frequency = <400000>;
+};
+
+// I2C15
+// Module 1 UPHY3 SMBus
+&i2c14 {
+    status = "okay";
+    clock-frequency = <400000>;
+};
+
+// I2C16
+&i2c15 {
+    status = "okay";
+    clock-frequency = <400000>;
+};
+
+// I2C Fan Control 0
+&i2c_fan_ctrl0 {
+    status = "okay";
+    clock-frequency = <400000>;
+
+    max31790_0 {
+        compatible = "maxim,max31790";
+        reg = <0x2C>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+};
+
+// I2C Fan Control 1
+&i2c_fan_ctrl1 {
+    status = "okay";
+    clock-frequency = <400000>;
+
+    max31790_1 {
+        compatible = "maxim,max31790";
+        reg = <0x2F>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+};
+
+// E1S Backplane GPIO Expander
+&i2c_mcio_c0c1_north6 {
+    // E1S Backplane, Expander @0x20
+    exp22: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "E1S_MCU_RESET_L-O",
+            "E1S_MCU_RECOVERY_L-O",
+            "",
+            "",
+            "",
+            "",
+            "E1S_LOWER_PERST-O",
+            "E1S_UPPER_PERST-O";
+    };
+};
+
+// GPU0 GPIO Expander
+&i2c_mcio_c0_south2 {
+    // GPU 0, Expander @0x20
+    exp23: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "GPU0_GLOBAL_WP-O",
+            "GPU0_OOB_RST_N-O",
+            "GPU0_OOB_RECOVERY-O",
+            "GPU0_MCU_RECOVERY_N-O",
+            "GPU0_MCU_RST_N-O",
+            "GPU0_MCU_BYPASS_N-O",
+            "GPU0_SMBUS_FRU_EEPROM_WP-O",
+            "";
+    };
+};
+
+// GPU1 GPIO Expander
+&i2c_mcio_c1_south0 {
+    // GPU 1, Expander @0x20
+    exp24: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "GPU1_GLOBAL_WP-O",
+            "GPU1_OOB_RST_N-O",
+            "GPU1_OOB_RECOVERY-O",
+            "GPU1_MCU_RECOVERY_N-O",
+            "GPU1_MCU_RST_N-O",
+            "GPU1_MCU_BYPASS_N-O",
+            "GPU1_SMBUS_FRU_EEPROM_WP-O",
+            "";
+    };
+};
+
+// PCIe RC
+&pcie0 {
+    status = "okay";
+
+    interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&mctp1 {
+    status = "okay";
+};
+
+&jtag0 {
+    status = "okay";
+};
+
+&jtag1 {
+    status = "okay";
+};
+
+&rng1 {
+    status = "okay";
+};
+
+&chassis {
+	status = "okay";
+};

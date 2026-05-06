@@ -1,0 +1,349 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+       model = "AST2600 IGX - p3809";
+       compatible = "aspeed,ast2600";
+
+       aliases {
+               serial4 = &uart5;
+       };
+
+       chosen {
+               stdout-path = &uart5;
+               bootargs = "console=ttyS4,115200n8 root=/dev/ram rw earlyprintk";
+       };
+
+       memory@80000000 {
+               reg = <0x80000000 0x40000000>;
+       };
+
+       reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		vga_memory: framebuffer@9f000000 {
+			no-map;
+			reg = <0x9f000000 0x01000000>; /* 16M */
+		};
+
+		ramoops@a0000000 {
+			compatible = "ramoops";
+			reg = <0xa0000000 0x100000>; /* 1MB */
+			record-size = <0x10000>; /* 64KB */
+			max-reason = <2>; /* KMSG_DUMP_OOPS */
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x01000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory: jpegbuffer {
+			size = <0x02000000>;	/* 32M */
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+	};
+
+};
+
+&pinctrl {
+	pinctrl_gpioj0_unbiased_default: gpioj0 {
+						pins = "B20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj1_unbiased_default: gpioj1 {
+						pins = "A20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj2_unbiased_default: gpioj2 {
+						pins = "E19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj3_unbiased_default: gpioj3 {
+						pins = "D20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj4_unbiased_default: gpioj4 {
+						pins = "C19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj5_unbiased_default: gpioj5 {
+						pins = "A19";
+						bias-disable;
+					};
+
+	pinctrl_gpioj6_unbiased_default: gpioj6 {
+						pins = "C20";
+						bias-disable;
+					};
+
+	pinctrl_gpioj7_unbiased_default: gpioj7 {
+						pins = "D19";
+						bias-disable;
+					};
+
+};
+
+&gpio0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpioj0_unbiased_default &pinctrl_gpioj1_unbiased_default &pinctrl_gpioj2_unbiased_default
+			&pinctrl_gpioj3_unbiased_default &pinctrl_gpioj4_unbiased_default &pinctrl_gpioj5_unbiased_default
+			&pinctrl_gpioj6_unbiased_default &pinctrl_gpioj7_unbiased_default>;
+        gpio-line-names =
+        /*A0-A7*/       "","","mod_shutdown","","bmc_gpio_n0","tlf_aurix_reset_i2c","bmc_i2c10_en","VM_EN1",
+        /*B0-B7*/       "","","","","","","","",
+        /*C0-C7*/       "","","soc_reset","soc_safestate","","","vmon_irq","",
+        /*D0-D7*/       "soc_pwr_req","bmc_pwr_btn_n","bmc_rec_btn_n","","","","","",
+        /*E0-E7*/       "","","","bmc_gpio_e3","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","bmc_gpiog1","bmc_gpiog2","bmc_gpiog3","","","","",
+        /*H0-H7*/       "","","","","bmc_gpio_n1","tlf_aurix_hwcfg3","","",
+        /*I0-I7*/       "","","","","","","global_wp","",
+        /*J0-J7*/       "carrier_pwr_on","","","pwr_irq","ephy_irq","ephy_rst","soc_temp_alert","shifter_enable_uart",
+        /*K0-K7*/       "","aurix_int","","","","","bmc_rst_btn_n","bmc_cx7_i2csw",
+        /*L0-L7*/       "","shifter_enable_gpio","","","","","","",
+        /*M0-M7*/       "","","","hpm_stby_en","","","","",
+        /*N0-N7*/       "","","","","","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","sp0_ap_intr","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "","","","","","","","",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "","","","","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+
+	/* Keep GPIOM1 output direction to feed in FRU */
+	fru_wp_gpiom1 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(M, 1) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
+       
+        bmc_cx7_i2c_k7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(K, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
+};
+
+&gpio1 {
+        gpio-line-names =
+        /*A0-A7*/     "","","","","","","","",
+        /*B0-B7*/     "","","","","","","","",
+        /*C0-C7*/     "","","","","","","bmc_m2b_disable","",
+        /*D0-D7*/     "","","","","","","","",
+        /*E0-E7*/     "","","","","","","","";
+
+        bmc_m2b_rst_c7 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(C, 7) GPIO_ACTIVE_HIGH>;
+                 output-low;
+        };
+
+        usb2_hub_rst_b6 {
+                 gpio-hog;
+                 gpios = <ASPEED_GPIO(B, 6) GPIO_ACTIVE_HIGH>;
+                 output-high;
+        };
+};
+
+/* Primary flash - FMC */
+&fmc {
+       status = "okay";
+       flash@0 {
+               status = "okay";
+               m25p,fast-read;
+               label = "bmc";
+               spi-max-frequency = <50000000>;
+	       #include "aspeed-bmc-nvidia-igx-flash-layout-64.dtsi"
+       };
+};
+
+&fmcraw {
+         status = "okay";
+         spidev@0 {
+                  compatible = "igx,glacier";
+                  status = "okay";
+         };
+};
+
+&spi2 {
+       status = "okay";
+       pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_spi2_default>;
+       flash@0 {
+               status = "okay";
+               label = "config";
+               spi-max-frequency = <50000000>;
+               partitions {
+                       compatible = "fixed-partitions";
+                       #address-cells = <1>;
+                       #size-cells = <1>;
+
+                       u-boot-env@0 {
+                               reg = <0x0 0x40000>;				// 256KB at offset 0
+                               label = "u-boot-env";
+                       };
+
+                       rwfs@40000 {
+                               reg = <0x40000 0x1000000>;		// 16MB at offset 0x40000
+                               label = "rwfs";
+                       };
+
+                       log@3800000 {
+                               reg = <0x1040000 0x2800000>;		// 40MB at offset 0x1040000
+                               label = "log";
+                       };
+               };
+       };
+};
+
+&rtc {
+        status = "okay";
+};
+
+&uart3 {
+       // Host  Debug Console
+       status = "okay";
+};
+
+&uart5 {
+       // BMC Debug Console
+       status = "okay";
+};
+
+&mdio0 {
+       status = "okay";
+       ethphy0: ethernet-phy@1 {
+               compatible = "ethernet-phy-ieee802.3-c22";
+               reg = <1>;
+       };
+};
+
+/* MAC1 of SoC connected to external PHY */
+&mac0 {
+       status = "okay";
+       phy-mode = "rgmii-rxid";
+       phy-handle = <&ethphy0>;
+
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_rgmii1_default>;
+};
+
+&ehci0 {
+   status = "disabled";
+};
+
+&vhub {
+       status = "okay";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_usb2adp_default>;
+};
+
+&video {
+	status = "okay";
+	memory-region = <&video_engine_memory>;
+};
+
+/* Tegra USB Path */
+&ehci1 {
+   status = "okay";
+};
+
+&i2c5 {
+    status = "okay";
+};
+
+&i2c6 {
+    status = "okay";
+};
+
+&i2c9 {
+        status = "okay";
+        rtl8367@5c {
+                compatible = "rtl8367-i2c";
+		ethernet-gpios = <&gpio0 ASPEED_GPIO(A, 6) GPIO_ACTIVE_LOW>;
+                reg = <0x5c>;
+        };
+
+	eeprom@50 {
+		compatible = "at,24c128";
+		reg = <0x50>;
+	};
+};
+
+&i2c10 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+
+    eeprom@50 {
+	    compatible = "at,24c02";
+	    reg = <0x50>;
+    };
+};
+
+&i2c15 {
+       status = "okay";
+    };
+
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
+};
+
+&pinctrl {
+	pinctrl_emmcg8_default: emmcg8_default {
+		function = "EMMC";
+		groups = "EMMCG8";
+};
+};
+
+/* Enable emmc */
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <8>;
+        max-frequency = <200000000>;
+	pinctrl-0 = <&pinctrl_emmcg8_default>;
+	clk-phase-mmc-hs200 = <9>, <225>;
+
+};
+

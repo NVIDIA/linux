@@ -1,0 +1,213 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-bmc-nvidia-hgxb300-hmc-common.dtsi"
+
+/{
+   /* modify common dts to support C00/C01 board */
+    model = "AST2600 HGXB300 HMC CXX";
+    
+    aliases {
+        /delete-property/ i2c19;
+        /delete-property/ i2c20;
+        /delete-property/ i2c21;
+        /delete-property/ i2c22;
+
+        /delete-property/ i2c23;
+        /delete-property/ i2c24;
+        /delete-property/ i2c25;
+        /delete-property/ i2c26;
+
+        /delete-property/ i2c27;
+        /delete-property/ i2c28;
+        /delete-property/ i2c29;
+        /delete-property/ i2c30;
+
+        /delete-property/ i2c31;
+        /delete-property/ i2c32;
+        /delete-property/ i2c33;
+        /delete-property/ i2c34;
+
+        i2c19 = &i2c5_mux71_0;
+        i2c20 = &i2c5_mux71_1;
+        i2c21 = &i2c5_mux71_2;
+        i2c22 = &i2c5_mux71_3;
+
+        i2c23 = &i2c5_mux72_0;
+        i2c24 = &i2c5_mux72_1;
+        i2c25 = &i2c5_mux72_2;
+        i2c26 = &i2c5_mux72_3;
+        i2c27 = &i2c7_mux73_0;
+        i2c28 = &i2c7_mux73_1;
+        i2c29 = &i2c7_mux73_2;
+        i2c30 = &i2c7_mux73_3;
+        i2c31 = &i2c7_mux74_0;
+        i2c32 = &i2c7_mux74_1;
+        i2c33 = &i2c7_mux74_2;
+        i2c34 = &i2c7_mux74_3;
+    };
+ 
+};
+
+&i2c5 {
+
+    /delete-node/ i2c-switch@75;
+    /delete-node/ i2c-switch@76;
+
+    // CX8_2 / CX8_4 DBG I2C, CX8_2 / CX8_4 I2C_2 FW update (C00/C01)
+    i2c-switch@71 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x71>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
+
+        i2c5_mux71_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux71_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+
+    // CX8_3 / CX8_1 DBG I2C, CX8_3 / CX8_1 I2C_2 FW update (C01)
+    i2c-switch@72 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x72>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
+
+        i2c5_mux72_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux72_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux72_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c5_mux72_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+};
+
+&i2c7 {
+    /delete-node/ i2c-switch@77;
+    /delete-node/ i2c-switch@70;
+
+    // CX8_8 / CX8_6 DBG I2C, CX8_8 / CX8_6 I2C_2 FW update (C01)
+    i2c-switch@73 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x73>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
+
+        i2c7_mux73_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux73_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux73_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux73_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+
+    // CX8_5 / CX8_7 DBG I2C, CX8_5 / CX8_7 I2C_2 FW update (C01)
+    i2c-switch@74 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x74>;
+
+        // interrupt-parent = <&ipic>;
+        // interrupts = <17 IRQ_TYPE_LEVEL_LOW>;
+        // interrupt-controller;
+        // #interrupt-cells = <2>;
+        i2c-mux-idle-disconnect;
+        
+        i2c7_mux74_0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux74_1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux74_2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c7_mux74_3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+};

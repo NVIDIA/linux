@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+
+&gpio0 {
+    gpio-line-names =
+
+    /* gpio-line-names are the combination of <signal>-<I/O> , "" is the placeholder for the unused pins*/
+
+    /* 208 (26*8) 3.3V GPIOs */
+
+    /*A0-A7*/
+    "", "", "", "", "", "", "", "",
+
+    /*B0-B7*/
+    "", "", "", "", "", "", "", "",
+
+    /*C0-C7*/
+    "", 
+    "NCSI_SCM_HPM_TX_EN_GPIO-O",
+    "NCSI_SCM_HPM_D0_GPIO-O",
+    "", "", "", "", "",
+
+    /*D0-D7*/
+    "", "", "", "", "", "", "", "",
+
+    /*E0-E7*/
+    "RTL8211_PHY_RST_L-O",
+    "RTL8211_PHY_INT_L-I",
+    "", "", "", "", "", "",
+
+    /*F0-F7*/
+    "", "", "", "", "", "", "", "",
+
+    /*G0-G7*/
+    "", "", "", "", "", "", "", "",
+
+    /*H0-H7*/
+    "", "", "", "", "", "", "", "",
+
+    /*I0-I7*/
+    "", "", "", "", "",
+    "QSPI2_RST_L-O",
+    "GLOBAL_WP_BUF-I",
+    "BMC_DDR4_TEN-O",
+
+    /*J0-J7*/
+    "", "", "", "", "", "", "", "",
+
+    /*K0-K7*/
+    "", "", "", "", "", "", "", "",
+
+    /*L0-L7*/
+    "", "", "", "", "", "", "", "",
+
+    /*M0-M7*/
+    "HUB_RST_L-O",
+    "",
+    "HMC_POWER_GOOD-I",
+    "HPM_STBY_POWER_EN-O",
+    "", "", "", "",
+
+    /*N0-N7*/
+    "", "", "", "", "", "", "", "",
+
+    /*O0-O7*/
+    "", "", "", "", "", "", "", "",
+
+    /*P0-P7*/
+    "", "", "", "", "", "", "", "",
+
+    /*Q0-Q7*/
+    "", "", "", "", "", "", "", "",
+
+    /*R0-R7*/
+    "", 
+    "SP0_AP_INTR_L-I",
+    "", "", "", "", "", "",
+
+    /*S0-S7*/
+    "", "", "", "", "", "", "", "",
+
+    /*T0-T7*/
+    "", "", "", "", "", "", "", "",
+
+    /*U0-U7*/
+    "", "", "", "", "", "", "", "",
+
+    /*V0-V7*/
+    "", "", "", "",
+    "PCB_TEMP_ALERT-I",
+    "", "", "",
+
+    /*W0-W7*/
+    "", "", "", "", "", "", "", "",
+
+    /*X0-X7*/
+    "", "", "", "", "", "", "", "",
+
+    /*Y0-Y7*/
+    "", "", "", 
+    "EMMC_RST_L-O",
+    "", "", "", "",
+
+    /*Z0-Z7*/
+    "", "", "", "", "", "", "", "";
+
+    rtl8211-reset-hog {
+        gpio-hog;
+        gpios = <ASPEED_GPIO(E, 0) GPIO_ACTIVE_LOW>;
+        output-high;  // Keep RTL8211 PHY in reset state (power saving)
+    };
+};
+
+&gpio1 {
+    /* 36 1.8V GPIOs */
+    gpio-line-names =
+    /*A0-A7*/
+    "", "", "", "", "", "", "", "",
+
+    /*B0-B7*/
+    "", "", "", "", 
+    "AP_EROT_REQ_1V8-O",
+    "EROT_AP_GNT_1V8-I",
+    "", "",
+
+    /*C0-C7*/
+    "", "", "", "", "", "", "", "",
+
+    /*D0-D7*/
+    "", "", "", "", "", "", "",
+    "I2C_SSIF_ALERT_1V8_L-I",
+
+    /*E0-E7*/
+    "", "", "", "", "", "", "", "";
+};
+
+// EMMC group that excludes WP & CD pin
+&pinctrl {
+    pinctrl_emmcg9_default: emmcg9_default {
+        function = "EMMC";
+        groups = "EMMCG9";
+    };
+};
+

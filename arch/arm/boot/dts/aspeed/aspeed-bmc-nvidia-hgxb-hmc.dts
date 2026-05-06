@@ -1,0 +1,278 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/i2c/i2c.h>
+
+/ {
+	model = "AST2600 HGXB HMC";
+	compatible = "aspeed,ast2600";
+
+	aliases {
+		serial4 = &uart5;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlyprintk";
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x40000000>;
+	};
+
+        power-gpios{
+                n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+                n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
+        };
+
+	reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        ramoops@0xbc000000 {
+                compatible = "ramoops";
+                reg = <0 0xbc000000 0 0x100000>; // 1MB at 0xbc000000
+                record-size = <0x10000>; // 64kB per record
+                console-size = <0x10000>; // 64kB for console output
+                pmsg-size = <0x1000>; // 4kB for user messages
+        };
+    };
+};
+
+&gpio0 {
+        gpio-line-names =
+        /*A0-A7*/       "","","","","","","","",
+        /*B0-B7*/       "","","","","","","","",
+        /*C0-C7*/       "","","","","","","","",
+        /*D0-D7*/       "","","","","","","","",
+        /*E0-E7*/       "","","","","","","","",
+        /*F0-F7*/       "","","","","","","","",
+        /*G0-G7*/       "","","","","","","","",
+        /*H0-H7*/       "","","","","","","","",
+        /*I0-I7*/       "","","","","","","","",
+        /*J0-J7*/       "","","","","","","","",
+        /*K0-K7*/       "","","","","","","","",
+        /*L0-L7*/       "","","","","","","","",
+        /*M0-M7*/       "","","","","","","","",
+        /*N0-N7*/       "","","","fpga_ready","","","","",
+        /*O0-O7*/       "","","","","","","","",
+        /*P0-P7*/       "","","","","","","","",
+        /*Q0-Q7*/       "","","","","","","","",
+        /*R0-R7*/       "","","","","","","","",
+        /*S0-S7*/       "","","","","","","","",
+        /*T0-T7*/       "","","","","","","","",
+        /*U0-U7*/       "","","","","","","","",
+        /*V0-V7*/       "","","","","","","","",
+        /*W0-W7*/       "","","","","","","","",
+        /*X0-X7*/       "","","","","","","","",
+        /*Y0-Y7*/       "","","","","","","","",
+        /*Z0-Z7*/       "","","","","","","","";
+};
+
+&gpio1 {
+        gpio-line-names =
+        /*AA0-AA7*/     "","","","","","","","",
+        /*AB0-AB7*/     "","","","","","","","",
+        /*AC0-AC7*/     "","","","","","","","",
+        /*AD0-AD7*/     "","","","","","","","",
+        /*AE0-AE7*/     "","","","","","","","";
+};
+
+&fmc {
+    status = "okay";
+    flash@0 {
+        status = "okay";
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-hgxb-flash-layout-64.dtsi"
+    };
+};
+
+&fmcraw {
+    status = "okay";
+    spidev@0 {
+        compatible = "hgx,glacier";
+        status = "okay";
+    };
+};
+
+&spi2 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
+
+    flash@0 {
+        status = "okay";
+        label = "config";
+        spi-max-frequency = <50000000>;
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;         // 0.25 MB
+                label = "u-boot-env";
+            };
+
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;   // 16 MB
+                label = "rwfs";
+            };
+
+            log@3800000 {
+                reg = <0x3800000 0xc800000>; // 200 MB
+                label = "log";
+            };
+        };
+    };
+};
+
+
+&uart5 {
+	// BMC Debug Console
+	status = "okay";
+};
+
+// Bring-up effort: Remove for Umbriel production
+// MAC2 of SoC connected to external PHY (non Umbriel HMC POR)
+&mac2 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii3_default>;
+};
+
+// Enable emmc
+&emmc_controller {
+        status = "okay";
+};
+
+&emmc {
+        non-removable;
+        bus-width = <4>;
+        max-frequency = <52000000>;
+};
+
+/*
+ * Enable port A as device (via the virtual hub) and port B as
+ * host by default on the eval board. This can be easily changed
+ * by replacing the override below with &ehci0 { ... } to enable
+ * host on both ports.
+ */
+&vhub {
+   status = "okay";
+};
+
+// USB 2.0 to HMC & Host BMC connectivity
+&udc {
+    status = "okay";
+};
+
+// Bring-up effort: Shall remove for Umbriel production?
+// I2C Master (non Umbriel HMC POR), though Vulcan keeps it
+&i2c0 {             
+    status = "okay";
+};                  
+
+// Bring-up effort: Shall remove for Umbriel production?
+// I2C Master (non Umbriel HMC POR), though Vulcan keeps it
+&i2c1 {
+    status = "okay";
+};
+
+&i2c2 {
+    status = "okay";
+    i2c-slave-mqueue@18 {
+        compatible = "slave-mqueue";
+        reg = <(I2C_OWN_SLAVE_ADDRESS | 0x18)>;
+    };
+};
+
+&i2c3 {
+    status = "okay";
+    // GPU Baseboard FRU
+    eeprom@53 {
+    compatible = "atmel,24c256";
+    reg = <0x53>;
+    };
+
+    // HMC FRU
+    eeprom@4e {
+    compatible = "atmel,24c02";
+    reg = <0x4E>;
+    };
+};
+
+&i2c4 {
+    status = "okay";
+    rtc@32 {
+        compatible = "epson,rx8130";
+        reg = <0x32>;
+    };
+};
+
+// HMC - FPGA Bus
+&i2c6 {
+    status = "okay";
+};
+
+// Ethernet SW
+&i2c10 {
+    status = "okay";
+};
+
+&i2c12 {
+    status = "okay";
+};
+
+&i2c13 {
+    status = "okay";
+};
+
+&i2c14 {
+    status = "okay";
+    lm75@48 {
+        compatible = "ti,tmp75";
+        reg = <0x48>;
+    };
+};
+
+// PCIe RC
+&pcie {
+        status = "okay";
+
+        interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+
+        pcie_intc0: legacy-interrupt-controller {
+                interrupts = <GIC_SPI 168 IRQ_TYPE_EDGE_RISING>;
+        };
+};
+
+// Bridge between AHB bus and PCIe RC.
+&h2x {
+        status = "okay";
+};
+
+&mctp {
+    status = "okay";
+};
+
+&rng {
+    status = "okay";
+};
+
+&hace {
+	status = "okay";
+	dummy-key1 = /bits/ 8 <0x86 0xD0 0x02 0x8D 0x1E 0x3D 0x44 0x0F 0x06 0x13 0xC7 0x6F 0xFC 0x4B 0x0B 0x22 0x75 0x1E 0x55 0x6E 0x5E 0x01 0x2E 0x6B 0x24 0x29 0x0B 0xBF 0xB8 0x29 0x90 0x8F>;
+	dummy-key2 = /bits/ 8 <0xCD 0x83 0xBA 0x8D 0xD4 0x71 0x66 0x5E 0xC6 0x67 0xCC 0xE4 0x8C 0x7C 0xFC 0x40 0x0A 0xC5 0x00 0xB1 0x24 0xAC 0xF4 0x7C 0x3D 0x40 0x37 0x28 0xB0 0x3E 0x50 0x74>;
+};
+
+&acry {
+	status = "okay";
+};
