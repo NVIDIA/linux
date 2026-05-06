@@ -335,8 +335,8 @@
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
-                                        "IOB1_CX0_RST_L-I",
-                                        "IOB1_CX1_RST_L-I",
+                                        "IOB1_CX0_RST_L-O",
+                                        "IOB1_CX1_RST_L-O",
                                         "IOB1_CX0_INBAND_RECOVERY-I",
                                         "IOB1_CX1_INBAND_RECOVERY-I",
                                         "IOB1_CX0_BOOT_COMPLT-I",
@@ -345,8 +345,8 @@
                                         "IOB1_CX1_TMP_WARNING-I",
                                         "IOB1_CX0_OVT_SHTDN-I",
                                         "IOB1_CX1_OVT_SHTDN-I",
-                                        "IOB1_CX0_FNP_L-I",
-                                        "IOB1_CX1_FNP_L-I",
+                                        "IOB1_CX0_FNP_L-O",
+                                        "IOB1_CX1_FNP_L-O",
                                         "IOB1_MCU_STRAP_P1_0-I",
                                         "IOB1_MCU_STRAP_P2_0-I",
                                         "IOB1_MCU_READY-I",
@@ -470,8 +470,8 @@
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
-                                        "IOB0_CX0_RST_L-I",
-                                        "IOB0_CX1_RST_L-I",
+                                        "IOB0_CX0_RST_L-O",
+                                        "IOB0_CX1_RST_L-O",
                                         "IOB0_CX0_INBAND_RECOVERY-I",
                                         "IOB0_CX1_INBAND_RECOVERY-I",
                                         "IOB0_CX0_BOOT_COMPLT-I",
@@ -480,8 +480,8 @@
                                         "IOB0_CX1_TMP_WARNING-I",
                                         "IOB0_CX0_OVT_SHTDN-I",
                                         "IOB0_CX1_OVT_SHTDN-I",
-                                        "IOB0_CX0_FNP_L-I",
-                                        "IOB0_CX1_FNP_L-I",
+                                        "IOB0_CX0_FNP_L-O",
+                                        "IOB0_CX1_FNP_L-O",
                                         "IOB0_MCU_STRAP_P1_0-I",
                                         "IOB0_MCU_STRAP_P2_0-I",
                                         "IOB0_MCU_READY-I",
@@ -780,8 +780,8 @@
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
-                                        "IOB2_CX0_RST_L-I",
-                                        "IOB2_CX1_RST_L-I",
+                                        "IOB2_CX0_RST_L-O",
+                                        "IOB2_CX1_RST_L-O",
                                         "IOB2_CX0_INBAND_RECOVERY-I",
                                         "IOB2_CX1_INBAND_RECOVERY-I",
                                         "IOB2_CX0_BOOT_COMPLT-I",
@@ -790,8 +790,8 @@
                                         "IOB2_CX1_TMP_WARNING-I",
                                         "IOB2_CX0_OVT_SHTDN-I",
                                         "IOB2_CX1_OVT_SHTDN-I",
-                                        "IOB2_CX0_FNP_L-I",
-                                        "IOB2_CX1_FNP_L-I",
+                                        "IOB2_CX0_FNP_L-O",
+                                        "IOB2_CX1_FNP_L-O",
                                         "IOB2_MCU_STRAP_P1_0-I",
                                         "IOB2_MCU_STRAP_P2_0-I",
                                         "IOB2_MCU_READY-I",
@@ -915,8 +915,8 @@
                                     interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 
                                     gpio-line-names =
-                                        "IOB3_CX0_RST_L-I",
-                                        "IOB3_CX1_RST_L-I",
+                                        "IOB3_CX0_RST_L-O",
+                                        "IOB3_CX1_RST_L-O",
                                         "IOB3_CX0_INBAND_RECOVERY-I",
                                         "IOB3_CX1_INBAND_RECOVERY-I",
                                         "IOB3_CX0_BOOT_COMPLT-I",
@@ -925,8 +925,8 @@
                                         "IOB3_CX1_TMP_WARNING-I",
                                         "IOB3_CX0_OVT_SHTDN-I",
                                         "IOB3_CX1_OVT_SHTDN-I",
-                                        "IOB3_CX0_FNP_L-I",
-                                        "IOB3_CX1_FNP_L-I",
+                                        "IOB3_CX0_FNP_L-O",
+                                        "IOB3_CX1_FNP_L-O",
                                         "IOB3_MCU_STRAP_P1_0-I",
                                         "IOB3_MCU_STRAP_P2_0-I",
                                         "IOB3_MCU_READY-I",
