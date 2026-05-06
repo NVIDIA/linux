@@ -69,7 +69,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-lenovo-hr630.dtb \
 	aspeed-bmc-lenovo-hr855xg2.dtb \
 	aspeed-bmc-microsoft-olympus.dtb \
-	aspeed-bmc-nvidia-gb200nvl-bmc.dtb \
 	aspeed-bmc-nvidia-msx4-bmc.dtb \
 	aspeed-bmc-opp-lanyang.dtb \
 	aspeed-bmc-opp-mowgli.dtb \
@@ -92,4 +91,13 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-ufispace-ncplite.dtb \
 	aspeed-bmc-vegman-n110.dtb \
 	aspeed-bmc-vegman-rx20.dtb \
-	aspeed-bmc-vegman-sx20.dtb
+	aspeed-bmc-vegman-sx20.dtb \
+	aspeed-bmc-nvidia-moonraker.dtb \
+	aspeed-bmc-nvidia-moonraker-smbus-overlay.dtb\
+	aspeed-bmc-nvidia-bluesphere.dtb \
+	aspeed-bmc-nvidia-bluesphere-dual-dpu.dtb \
+	aspeed-bmc-nvidia-vr-bmc-c2.dtb \
+	aspeed-bmc-nvidia-vr-bmc-e5010.dtb \
+	aspeed-bmc-nvidia-vr-bmc-nvl.dtb \
+	aspeed-bmc-nvidia-vr-bmc-nvl72-gl10.dtb \
+	aspeed-bmc-nvidia-vr-bmc-quark.dtb
