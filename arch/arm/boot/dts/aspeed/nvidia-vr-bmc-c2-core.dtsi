@@ -205,7 +205,7 @@
             "B0_M1_CPU_IST_BOOT_HMC-O",
             "B0_M1_CPU_BOOT_CHAIN0-O",
             "B0_M1_HMC_BRD_ID1",
-            "B0_M1_HMC_MCU_I2C_ENABLE-O",
+            "B0_M1_HPM_MCU_I2C_ENABLE-O",
             "B0_M1_CPU_DIE_SEL0-O",
             "B0_M1_CPU_DIE_SEL1-O",
             "B0_M1_CPU_DIE_SEL2-O",
