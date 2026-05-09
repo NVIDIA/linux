@@ -851,7 +851,13 @@ static void mctp_i2c_release_flow(struct mctp_dev *mdev,
 		midev->release_count++;
 		queue_release = true;
 	}
-	key->dev_flow_state = MCTP_I2C_FLOW_STATE_INVALID;
+	/* Manual-alloc keys persist across exchanges for tag reuse; reset
+	 * to NEW so the next send on the same key re-locks the bus segment.
+	 * Auto-alloc keys are being torn down -- INVALID prevents reuse.
+	 */
+	key->dev_flow_state = key->manual_alloc
+				      ? MCTP_I2C_FLOW_STATE_NEW
+				      : MCTP_I2C_FLOW_STATE_INVALID;
 	spin_unlock_irqrestore(&midev->lock, flags);
 
 	if (queue_release) {
