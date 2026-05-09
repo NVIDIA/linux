@@ -499,8 +499,12 @@ out_unlock:
 /* Helper for mctp_route_input().
  * We're done with the key; unlock and unref the key.
  * For the usual case of automatic expiry we remove the key from lists.
- * In the case that manual allocation is set on a key we release the lock
- * and local ref, reset reassembly, but don't remove from lists.
+ * In the case that manual allocation is set on a key we release the
+ * local ref and reset reassembly, but don't remove the key from lists.
+ * We also notify the transport that the current request/response flow
+ * has finished (via dev->ops->release_flow), so transport-specific
+ * per-flow state -- e.g. the mctp-i2c bus segment lock -- can be
+ * dropped even though the key itself persists for tag reuse.
  */
 static void __mctp_key_done_in(struct mctp_sk_key *key, struct net *net,
 			       unsigned long flags, unsigned long reason)
@@ -516,6 +520,14 @@ __releases(&key->lock)
 		key->reasm_dead = true;
 		key->valid = false;
 		mctp_dev_release_key(key->dev, key);
+	} else if (key->dev && key->dev->ops &&
+		   key->dev->ops->release_flow) {
+		/* Manual-alloc keys live on for tag reuse, but the current
+		 * transport flow is finished; release per-flow state (e.g.
+		 * the mctp-i2c bus segment lock) so other transport users
+		 * can proceed.
+		 */
+		key->dev->ops->release_flow(key->dev, key);
 	}
 	spin_unlock_irqrestore(&key->lock, flags);
 
