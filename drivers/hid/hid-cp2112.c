@@ -379,7 +379,7 @@ static int cp2112_gpio_get_all(struct gpio_chip *chip)
 	ret = cp2112_hid_get(hdev, CP2112_GPIO_GET, buf, CP2112_GPIO_GET_LENGTH,
 			     HID_FEATURE_REPORT);
 	if (ret != CP2112_GPIO_GET_LENGTH) {
-		hid_err(hdev, "error requesting GPIO values: %d\n", ret);
+		dev_err_ratelimited(&hdev->dev, "error requesting GPIO values: %d\n", ret);
 		ret = ret < 0 ? ret : -EIO;
 		goto exit;
 	}
