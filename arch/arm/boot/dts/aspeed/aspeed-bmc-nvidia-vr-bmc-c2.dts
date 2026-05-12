@@ -48,7 +48,17 @@
 		i2c56   = &i2c_mcio_c1_south6;
 		i2c57   = &i2c_mcio_c1_south7;
 
+		i2c60	= &e1s_ssd0_i2c;
+		i2c61	= &e1s_ssd1_i2c;
+		i2c62	= &e1s_ssd2_i2c;
+		i2c63	= &e1s_ssd3_i2c;
+		i2c64	= &e1s_ssd4_i2c;
+		i2c65	= &e1s_ssd5_i2c;
+		i2c66	= &e1s_ssd6_i2c;
+		i2c67	= &e1s_ssd7_i2c;
+
 		i2c70	= &i2c70;
+		i2c71	= &i2c71;
 	};
 
 	chosen {
@@ -462,7 +472,91 @@
                         };
                     };
                 };
+            };
+        };
 
+        hub@3 {
+            reg = <3>;
+            hub@1 {
+                reg = <1>;
+                hub@2 {
+                    reg = <2>;
+                    device@2 {
+                        compatible = "usb0955,cf11";
+                        reg = <2>;
+
+                        bp_sma_cp2112: interface@1 {
+                            reg = <1 1>;
+
+                            i2c71: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+
+                        lstp_mcu: interface@2 {
+                            reg = <2 1>;
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+
+                            e1s_ssd0_i2c: channel@1 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <1>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd1_i2c: channel@2 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <2>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd2_i2c: channel@3 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <3>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd3_i2c: channel@4 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <4>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd4_i2c: channel@5 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <5>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd5_i2c: channel@6 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <6>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd6_i2c: channel@7 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <7>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+
+                            e1s_ssd7_i2c: channel@8 {
+                                compatible = "nvidia,lstp-i2c";
+                                reg = <8>;
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
+                };
             };
         };
     };
