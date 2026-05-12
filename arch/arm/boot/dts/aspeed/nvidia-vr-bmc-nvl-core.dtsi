@@ -315,7 +315,7 @@
             "HMC_READY-I",
             "HMC_PRSNT_R-I",
             "BMC_SELF_PWR_CYCLE-O",
-            "EEDO_LED2-O",
+            "1GB_NIC_ENABLE-O",
             "PWR_LED_L-O",
             "PWR_BTN_L-I",
             "UID_LED_L-O",
