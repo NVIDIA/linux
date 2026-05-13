@@ -1689,6 +1689,9 @@ static int ast2600_i2c_setup_dma_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 	int xfer_len = msg->len - i2c_bus->controller_xfer_cnt;
 	int ret;
 
+	if (WARN_ON_ONCE(xfer_len <= 0))
+		return -EINVAL;
+
 	cmd |= AST2600_I2CM_PKT_EN | AST2600_I2CM_RX_DMA_EN | AST2600_I2CM_RX_CMD;
 
 	if (msg->flags & I2C_M_RECV_LEN) {
@@ -1739,6 +1742,9 @@ static int ast2600_i2c_setup_buff_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
 {
 	struct i2c_msg *msg = &i2c_bus->msgs[i2c_bus->msgs_index];
 	int xfer_len = msg->len - i2c_bus->controller_xfer_cnt;
+
+	if (WARN_ON_ONCE(xfer_len <= 0))
+		return -EINVAL;
 
 	cmd |= AST2600_I2CM_PKT_EN | AST2600_I2CM_RX_BUFF_EN | AST2600_I2CM_RX_CMD;
 
@@ -2432,6 +2438,10 @@ static const struct i2c_algorithm i2c_ast2600_algorithm = {
 #endif
 };
 
+static const struct i2c_adapter_quirks i2c_ast2600_quirks = {
+	.flags = I2C_AQ_NO_ZERO_LEN_READ,
+};
+
 static int ast2600_i2c_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -2543,6 +2553,7 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	/* Initialize the I2C adapter */
 	i2c_bus->adap.owner = THIS_MODULE;
 	i2c_bus->adap.algo = &i2c_ast2600_algorithm;
+	i2c_bus->adap.quirks = &i2c_ast2600_quirks;
 	i2c_bus->adap.retries = 0;
 	if (!device_property_read_u32(dev, "i2c-retries", &dt_val))
 		i2c_bus->adap.retries = dt_val;
