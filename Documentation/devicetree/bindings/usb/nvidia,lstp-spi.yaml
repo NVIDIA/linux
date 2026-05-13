@@ -14,7 +14,7 @@ description: |
   falls back to board_info registration.
 
   The number of chip selects and bus speed are reported by the device
-  firmware.  The firmware supports up to 4 chip selects (CS0-CS3).
+  firmware.  Up to 2 chip selects (CS0-CS1) are supported by the driver.
 
 allOf:
   - $ref: /schemas/spi/spi-controller.yaml#
@@ -43,9 +43,9 @@ patternProperties:
         description: Compatible string for the SPI peripheral device.
 
       reg:
-        description: Chip-select number (0-3).
+        description: Chip-select number (0-1).
         minimum: 0
-        maximum: 3
+        maximum: 1
 
       spi-max-frequency:
         description: |

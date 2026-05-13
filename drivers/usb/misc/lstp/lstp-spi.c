@@ -30,16 +30,12 @@ enum lstp_spi_cmd_cs_toggle {
 /* clang-format off */
 enum lstp_spi_cmd_cs_sel {
 	LSTP_SPI_CMD_CS0 = 0x00,
-	LSTP_SPI_CMD_CS1 = 0x40,
-	LSTP_SPI_CMD_CS2 = 0x80,
-	LSTP_SPI_CMD_CS3 = 0xC0
+	LSTP_SPI_CMD_CS1 = 0x40
 }; /* clang-format on */
 /* clang-format off */
 static const u8 lstp_spi_cs_map[] = {
 	LSTP_SPI_CMD_CS0,
-	LSTP_SPI_CMD_CS1,
-	LSTP_SPI_CMD_CS2,
-	LSTP_SPI_CMD_CS3
+	LSTP_SPI_CMD_CS1
 }; /* clang-format on */
 
 union lstp_spi_req_payload {
@@ -71,7 +67,7 @@ struct lstp_spi_priv {
  * lstp_spi_do_transfer() - Execute a single SPI transfer with CS flags.
  * @ch:       LSTP channel to transfer on
  * @xfer:     SPI transfer descriptor containing tx/rx buffers and length
- * @cs_bits:  Chip select selection bits (LSTP_SPI_CMD_CS0..CS3)
+ * @cs_bits:  Chip select selection bits (LSTP_SPI_CMD_CS0..CS1)
  * @cs_flags: Chip select toggle flags (LSTP_SPI_CMD_CS_ASSERT/DEASSERT)
  *
  * Core transfer routine shared by lstp_spi_transfer_one_message(). Supports
@@ -316,7 +312,7 @@ static void lstp_spi_create_spidev(struct spi_controller *ctrl, struct lstp_chan
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_spi_init(struct lstp_channel *ch)
+static int lstp_spi_init(struct lstp_channel *ch)
 {
 	int ret;
 	struct lstp_spi_priv *priv;
@@ -324,6 +320,9 @@ int lstp_spi_init(struct lstp_channel *ch)
 	struct lstp_channel *ch0 = ch->usb->channels[0];
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	union lstp_ch0_resp_payload *ch0_resp;
+	size_t payload_len;
+	u8 num_devices;
+	u32 speed_hz;
 
 	/* Validate expected SPI config size */
 	ret = lstp_validate_resp(ch->usb, rx_pkt, LSTP_ANY_RX_LEN);
@@ -343,21 +342,10 @@ int lstp_spi_init(struct lstp_channel *ch)
 	if (!ctrl)
 		return -ENOMEM;
 
-	/* Save channel data and name */
+	/* Parse SPI config (uses defaults if no config is present) */
 	ch0_resp = (union lstp_ch0_resp_payload *)rx_pkt->payload;
-	ch->ch_type = ch0_resp->read.ch_type;
-	if (ch0_resp->read.ch_name[0] == '\0') {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Invalid SPI controller name\n", __func__,
-			ch->ch_id);
-		return -EINVAL;
-	}
-
-	/* Parse SPI config (Uses defaults if no config is present)*/
-	size_t payload_len = le16_to_cpu(rx_pkt->hdr.length);
-	u8 num_devices;
-	u32 speed_hz;
-
-	if (payload_len == sizeof(struct lstp_ch0_resp_read) + sizeof(struct lstp_spi_config)) {
+	payload_len = le16_to_cpu(rx_pkt->hdr.length);
+	if (payload_len >= sizeof(struct lstp_ch0_resp_read) + sizeof(struct lstp_spi_config)) {
 		struct lstp_spi_config *config = (struct lstp_spi_config *)ch0_resp->read.ch_config;
 
 		num_devices = config->num_devices;
@@ -397,8 +385,8 @@ int lstp_spi_init(struct lstp_channel *ch)
 
 	ch->priv = priv;
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Initialized (devices=%u, speed=%u Hz)\n",
-		 __func__, ch->ch_id, ctrl->num_chipselect, priv->current_speed_hz);
+	dev_dbg(&ch->usb->intf->dev, "%s: ch_%d: Initialized as %s\n", __func__, ch->ch_id,
+		ch->display_name);
 	return 0;
 }
 
@@ -414,7 +402,7 @@ int lstp_spi_init(struct lstp_channel *ch)
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_spi_start(struct lstp_channel *ch)
+static int lstp_spi_start(struct lstp_channel *ch)
 {
 	int ret;
 	struct lstp_spi_priv *priv = ch->priv;
@@ -457,6 +445,14 @@ int lstp_spi_start(struct lstp_channel *ch)
 
 	ch->child_dev = &ctrl->dev;
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started\n", __func__, ch->ch_id);
+	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started as %s (devices=%u, speed=%u Hz)\n",
+		 __func__, ch->ch_id, ch->display_name, ctrl->num_chipselect,
+		 priv->current_speed_hz);
 	return 0;
 }
+
+/* clang-format off */
+LSTP_SUBSYS(spi, LSTP_CHANNEL_TYPE_SPI, lstp_spi_init, lstp_spi_start,
+	    .fwnode_compatible = "nvidia,lstp-spi",
+);
+/* clang-format on */

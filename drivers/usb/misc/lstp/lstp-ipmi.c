@@ -10,11 +10,20 @@
 #include <linux/miscdevice.h>
 #include <linux/kfifo.h>
 #include <linux/idr.h>
+#include <linux/kref.h>
+#include <linux/slab.h>
 
 #include "lstp-main.h"
 #include "lstp-ipmi-postcodes.h"
 
-#define BUFFER_SIZE 1024
+/*
+ * Byte capacity of the pending-request fifo. One PAGE_SIZE-equivalent
+ * allocation: cheap from the buddy allocator, and at typical OpenBMC IPMI
+ * rates (~100 req/s, ~25 B avg payload) it absorbs ~1 s of userspace
+ * stall before drop-oldest kicks in -- around the host's IPMI retry
+ * timeout, so deeper buffering would just queue stale work.
+ */
+#define BUFFER_SIZE 4096
 
 static DEFINE_IDA(lstp_ipmi_ida);
 
@@ -33,15 +42,45 @@ struct ipmi_lstp_msg {
 	__u8 payload[IPMI_LSTP_PAYLOAD_MAX];
 };
 
+/**
+ * struct lstp_ipmi_ctx - Per-channel IPMI userspace state.
+ * @kref:      Refcount. Open fds and the channel's devres action each hold
+ *             one, so @ctx outlives disconnect while any fd is open.
+ * @ch:       Owning channel. Freed by devres after disconnect, before
+ *            @ctx; only safe to dereference under @tx_mutex while
+ *            @stopped is clear.
+ * @miscdev:   /dev/ipmi-lstpN node. Lifecycle managed via devres (see
+ *             lstp_ipmi_deregister()), independent of @kref.
+ * @ida_id:    Auto-generated name suffix, or -1 if a firmware "label"
+ *             supplied the name.
+ * @running:   Exclusive-open flag. Protected by @lock.
+ * @stopped:   Disconnect-quiesce flag. Set under both @tx_mutex and @lock.
+ *             Distinct from @ch->disconnected (the USB transport flag).
+ * @tx_mutex:  Serializes lstp_ipmi_write() against lstp_ipmi_stop().
+ *             Owned by @ctx (kref-pinned) rather than @ch -- see the
+ *             rationale in lstp_ipmi_write().
+ * @lock:      Serializes @running, @msg_count and the @fifo producer/
+ *             consumer paths. Held only across kfifo_in / kfifo_out;
+ *             copy_to_user() in lstp_ipmi_read() runs after the unlock.
+ * @req_wq:    Wait queue for blocked readers / pollers.
+ * @fifo:      Inbound IPMI requests pending read(), one variable-size
+ *             record per message (2-byte length prefix per record).
+ *             Drops oldest records on overflow until the new one fits.
+ * @msg_count: Per-message tag echoed back on write() to drop responses
+ *             to stale requests.
+ * @postcodes: Embedded postcodes sub-device.
+ */
 struct lstp_ipmi_ctx {
+	struct kref kref;
 	struct lstp_channel *ch;
 	struct miscdevice miscdev;
 	int ida_id;
 	bool running;
-	spinlock_t lock; /* Protects running, fifo, msg_count */
+	bool stopped;
+	struct mutex tx_mutex; /* serializes write() vs lstp_ipmi_stop() */
+	spinlock_t lock; /* protects @running, @msg_count, @fifo */
 	wait_queue_head_t req_wq;
-	struct ipmi_lstp_msg request;
-	struct kfifo fifo;
+	struct kfifo_rec_ptr_2 fifo;
 	u8 msg_count;
 	struct lstp_ipmi_postcodes postcodes;
 };
@@ -49,6 +88,55 @@ struct lstp_ipmi_ctx {
 enum lstp_ipmi_cmd {
 	LSTP_IPMI_CMD_MESSAGE = 0x00,
 };
+
+/*******************************************************************************
+ * Lifetime management
+ ******************************************************************************/
+
+static inline bool lstp_ipmi_stopped(struct lstp_ipmi_ctx *ctx)
+{
+	/* Pairs with smp_store_release() in lstp_ipmi_stop(). */
+	return smp_load_acquire(&ctx->stopped);
+}
+
+static inline bool lstp_ipmi_readable(struct lstp_ipmi_ctx *ctx)
+{
+	return !kfifo_is_empty(&ctx->fifo) || lstp_ipmi_stopped(ctx);
+}
+
+static void lstp_ipmi_ctx_release(struct kref *kref)
+{
+	struct lstp_ipmi_ctx *ctx = container_of(kref, struct lstp_ipmi_ctx, kref);
+
+	lstp_ipmi_postcodes_destroy(&ctx->postcodes);
+	kfifo_free(&ctx->fifo);
+	if (ctx->ida_id >= 0)
+		ida_free(&lstp_ipmi_ida, ctx->ida_id);
+	kfree(ctx->miscdev.name);
+	mutex_destroy(&ctx->tx_mutex);
+	kfree(ctx);
+}
+
+static void lstp_ipmi_ctx_get(struct lstp_ipmi_ctx *ctx)
+{
+	kref_get(&ctx->kref);
+}
+
+static void lstp_ipmi_ctx_put(struct lstp_ipmi_ctx *ctx)
+{
+	kref_put(&ctx->kref, lstp_ipmi_ctx_release);
+}
+
+/* void * trampolines for postcodes parent_get/put and the devres put. */
+static void lstp_ipmi_ctx_get_cb(void *data)
+{
+	lstp_ipmi_ctx_get(data);
+}
+
+static void lstp_ipmi_ctx_put_cb(void *data)
+{
+	lstp_ipmi_ctx_put(data);
+}
 
 /*******************************************************************************
  * Helper functions
@@ -76,15 +164,15 @@ static inline struct lstp_ipmi_ctx *to_ctx(struct file *file)
 
 /**
  * lstp_ipmi_open() - Open the IPMI character device.
- * @inode: Inode structure for the device
- * @file:  File pointer for the opened device
+ * @inode: Unused.
+ * @file:  File for the opened device.
  *
- * Opens the IPMI character device for exclusive access. Only one process
- * can have the device open at a time. If already open, returns -EBUSY.
+ * Exclusive-open. Bumps @ctx->kref so the fd can outlive disconnect, and
+ * rejects the post-stop / pre-misc_deregister window with -ENODEV.
  *
- * Context: Process context. Acquires ctx->lock.
+ * Context: Process context.
  *
- * Return: 0 on success, -EBUSY if device is already open
+ * Return: 0, -EBUSY if already open, -ENODEV if torn down.
  */
 static int lstp_ipmi_open(struct inode *inode, struct file *file)
 {
@@ -92,76 +180,94 @@ static int lstp_ipmi_open(struct inode *inode, struct file *file)
 	int ret = 0;
 
 	spin_lock_irq(&ctx->lock);
-	if (!ctx->running)
-		ctx->running = true;
-	else
+	if (lstp_ipmi_stopped(ctx))
+		ret = -ENODEV;
+	else if (ctx->running)
 		ret = -EBUSY;
+	else
+		ctx->running = true;
 	spin_unlock_irq(&ctx->lock);
 
-	return ret;
+	if (ret)
+		return ret;
+
+	lstp_ipmi_ctx_get(ctx);
+	return 0;
 }
 
 /**
  * lstp_ipmi_read() - Read IPMI request from the device.
- * @file:  File pointer for the device
- * @buf:   User-space buffer to copy data to
- * @count: Maximum number of bytes to read
- * @ppos:  File position (unused)
+ * @file:  File for the device.
+ * @buf:   User buffer.
+ * @count: Maximum bytes to read.
+ * @ppos:  Unused.
  *
- * Reads incoming IPMI requests from the FIFO buffer. If no data is available
- * and O_NONBLOCK is not set, blocks until data arrives. The data format
- * consists of an ipmi_lstp_msg_header followed by the IPMI payload.
+ * Drains the FIFO; blocks until data arrives or the channel is torn down
+ * unless O_NONBLOCK is set. Output format is &struct ipmi_lstp_msg_header
+ * followed by the IPMI payload.
  *
- * Context: Process context. May sleep waiting for data. Acquires ctx->lock.
+ * Context: Process context. May sleep.
  *
- * Return: Number of bytes read on success, negative errno on failure.
- *         Returns -EAGAIN if O_NONBLOCK is set and no data is available.
- *         Returns -ERESTARTSYS if interrupted by a signal.
+ * Return: Bytes read, or -EAGAIN / -ERESTARTSYS / -ENODEV.
  */
 static ssize_t lstp_ipmi_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	struct lstp_ipmi_ctx *ctx = to_ctx(file);
+	struct ipmi_lstp_msg msg;
 	unsigned long flags;
-	unsigned int count_out;
-	ssize_t ret = 0;
+	unsigned int len = 0;
+	int ret;
 
-	if (kfifo_is_empty(&ctx->fifo)) {
-		if (file->f_flags & O_NONBLOCK)
-			return -EAGAIN;
-		ret = wait_event_interruptible(ctx->req_wq, !kfifo_is_empty(&ctx->fifo));
-		if (ret == -ERESTARTSYS)
-			return ret;
+	/*
+	 * Drain into a stack-local @msg under @ctx->lock, then copy_to_user
+	 * outside the lock since it may sleep. Loop to handle two threads
+	 * sharing an fd both winning the wait_event() but only one the
+	 * kfifo_out().
+	 */
+	while (!len) {
+		if (kfifo_is_empty(&ctx->fifo)) {
+			if (lstp_ipmi_stopped(ctx))
+				return -ENODEV;
+			if (file->f_flags & O_NONBLOCK)
+				return -EAGAIN;
+			ret = wait_event_interruptible(ctx->req_wq, lstp_ipmi_readable(ctx));
+			if (ret)
+				return ret;
+		}
+
+		spin_lock_irqsave(&ctx->lock, flags);
+		len = kfifo_out(&ctx->fifo, &msg, sizeof(msg));
+		spin_unlock_irqrestore(&ctx->lock, flags);
 	}
-	spin_lock_irqsave(&ctx->lock, flags);
-	ret = kfifo_to_user(&ctx->fifo, buf, count, &count_out);
-	spin_unlock_irqrestore(&ctx->lock, flags);
-	return (ret < 0) ? ret : count_out;
+
+	len = min_t(unsigned int, count, len);
+	if (copy_to_user(buf, &msg, len))
+		return -EFAULT;
+	return len;
 }
 
 /**
  * lstp_ipmi_write() - Write IPMI response to the device.
- * @file:  File pointer for the device
- * @buf:   User-space buffer containing the response
- * @count: Number of bytes to write
- * @ppos:  File position (unused)
+ * @file:  File for the device.
+ * @buf:   User buffer holding &struct ipmi_lstp_msg_header + payload.
+ * @count: Bytes available in @buf.
+ * @ppos:  Unused.
  *
- * Sends an IPMI response message to the remote endpoint via the LSTP channel.
- * The message must include an ipmi_lstp_msg_header followed by the payload.
- * The msg_num in the header must match the current expected message number;
- * if it doesn't match, the write is silently ignored (returns count).
+ * Forwards a response to the remote endpoint. Writes whose @msg_num
+ * doesn't match the current request tag are silently dropped (return
+ * @count) so userspace doesn't have to track the race against new
+ * incoming requests.
  *
- * Context: Process context. Takes ch->tx_mutex. Performs blocking USB I/O.
+ * Context: Process context. Takes @ctx->tx_mutex. Performs blocking USB I/O.
  *
- * Return: Number of bytes written on success, negative errno on failure.
- *         Returns -EINVAL if message size is invalid.
- *         Returns -EFAULT if copy from user fails.
+ * Return: @count, or -EINVAL / -EFAULT / -ENODEV.
  */
 static ssize_t lstp_ipmi_write(struct file *file, const char __user *buf, size_t count,
 			       loff_t *ppos)
 {
 	struct lstp_ipmi_ctx *ctx = to_ctx(file);
-	struct lstp_channel *ch = ctx->ch;
-	struct lstp_packet *tx_pkt = (struct lstp_packet *)ch->tx_buf;
+	struct lstp_channel *ch;
+	struct lstp_packet *tx_pkt;
 	struct ipmi_lstp_msg msg;
 	ssize_t ret;
 
@@ -171,14 +277,35 @@ static ssize_t lstp_ipmi_write(struct file *file, const char __user *buf, size_t
 	if (copy_from_user(&msg, buf, count))
 		return -EFAULT;
 
-	if (msg.header.msg_num != ctx->msg_count)
+	/* Stale tag read is fine; pairs with WRITE_ONCE in the IRQ producer. */
+	if (msg.header.msg_num != READ_ONCE(ctx->msg_count))
 		return count;
 
 	if (!msg.header.len || msg.header.len > IPMI_LSTP_PAYLOAD_MAX ||
 	    count < sizeof(struct ipmi_lstp_msg_header) + msg.header.len)
 		return -EINVAL;
 
-	mutex_lock(&ch->tx_mutex);
+	/*
+	 * Lock on @ctx, not @ch: open fds kref-pin @ctx, but @ch is freed
+	 * by devres once lstp_disconnect() returns, so @ch->tx_mutex would
+	 * itself UAF for a writer preempted between the @ctx->ch load and
+	 * mutex_lock(). lstp_ipmi_stop() flips @stopped under the same
+	 * mutex, so once we hold it @ch is either declared dead (bail) or
+	 * pinned alive until we unlock.
+	 *
+	 * TODO: drop this private mutex+flag once the lstp_subsys API
+	 * exposes a kref-pinned tx fence with fd-lifetime semantics; the
+	 * per-subsystem duplication of @ch->tx_mutex disappears then.
+	 */
+	mutex_lock(&ctx->tx_mutex);
+
+	if (ctx->stopped) {
+		ret = -ENODEV;
+		goto out_unlock;
+	}
+
+	ch = ctx->ch;
+	tx_pkt = (struct lstp_packet *)ch->tx_buf;
 
 	tx_pkt->hdr.ch_id = ch->ch_id;
 	tx_pkt->hdr.cmd = LSTP_IPMI_CMD_MESSAGE;
@@ -188,27 +315,25 @@ static ssize_t lstp_ipmi_write(struct file *file, const char __user *buf, size_t
 	ret = usb_bulk_msg(ch->usb->udev, usb_sndbulkpipe(ch->usb->udev, ch->usb->bulk_out_ep),
 			   ch->tx_buf, sizeof(tx_pkt->hdr) + msg.header.len, NULL,
 			   LSTP_USB_REQUEST_TIMEOUT_MS);
-	if (ret) {
+	if (ret)
 		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not forward response (%pe)\n",
 			__func__, ch->ch_id, ERR_PTR(ret));
-	}
 
-	mutex_unlock(&ch->tx_mutex);
+out_unlock:
+	mutex_unlock(&ctx->tx_mutex);
 
 	return (ret < 0) ? ret : count;
 }
 
 /**
  * lstp_ipmi_release() - Release the IPMI character device.
- * @inode: Inode structure for the device
- * @file:  File pointer for the device
+ * @inode: Unused.
+ * @file:  File for the device.
  *
- * Releases the IPMI character device, allowing another process to open it.
- * Clears the running flag to indicate the device is no longer in use.
+ * Drops the @ctx->kref taken by lstp_ipmi_open(); the last fd to release
+ * after disconnect is what triggers lstp_ipmi_ctx_release().
  *
- * Context: Process context. Acquires ctx->lock.
- *
- * Return: Always returns 0
+ * Return: 0.
  */
 static int lstp_ipmi_release(struct inode *inode, struct file *file)
 {
@@ -218,26 +343,26 @@ static int lstp_ipmi_release(struct inode *inode, struct file *file)
 	ctx->running = false;
 	spin_unlock_irq(&ctx->lock);
 
+	lstp_ipmi_ctx_put(ctx);
+
 	return 0;
 }
 
 /**
  * lstp_ipmi_poll() - Poll for readable data on the device.
- * @file: File pointer for the device
- * @wait: Poll table to register wait queue with
+ * @file: File for the device.
+ * @wait: Poll table.
  *
- * Implements poll/select/epoll support for the IPMI device. Returns
- * POLLIN | POLLRDNORM when data is available to read from the FIFO.
- *
- * Context: Process context. May be called with interrupts disabled.
- *
- * Return: Poll mask indicating readable state
+ * Returns POLLIN | POLLRDNORM when the FIFO has data, EPOLLHUP after
+ * disconnect.
  */
 static __poll_t lstp_ipmi_poll(struct file *file, poll_table *wait)
 {
 	struct lstp_ipmi_ctx *ctx = to_ctx(file);
 
 	poll_wait(file, &ctx->req_wq, wait);
+	if (lstp_ipmi_stopped(ctx))
+		return EPOLLHUP;
 	if (!kfifo_is_empty(&ctx->fifo))
 		return POLLIN | POLLRDNORM;
 
@@ -258,48 +383,16 @@ static const struct file_operations lstp_ipmi_fops = {
  ******************************************************************************/
 
 /**
- * lstp_ipmi_free_fifo() - Free the IPMI FIFO buffer.
- * @data: Pointer to lstp_ipmi_ctx structure
+ * lstp_ipmi_deregister() - Devres action: drop the miscdev only.
+ * @data: &struct lstp_ipmi_ctx.
  *
- * Devres action callback to free the kfifo buffer when the device is removed.
- *
- * Context: Process context.
- */
-static void lstp_ipmi_free_fifo(void *data)
-{
-	struct lstp_ipmi_ctx *ctx = (struct lstp_ipmi_ctx *)data;
-
-	kfifo_free(&ctx->fifo);
-}
-
-/**
- * lstp_ipmi_free_ida() - Free the IDA-allocated device ID.
- * @data: Pointer to the device ID integer
- *
- * Devres action callback to release the IDA-allocated device ID when the
- * device is removed.
- *
- * Context: Process context.
- */
-static void lstp_ipmi_free_ida(void *data)
-{
-	int *dev_id = data;
-
-	ida_free(&lstp_ipmi_ida, *dev_id);
-}
-
-/**
- * lstp_ipmi_deregister() - Deregister the misc device.
- * @data: Pointer to lstp_ipmi_ctx structure
- *
- * Devres action callback to deregister the miscdevice when the LSTP device
- * is removed.
- *
- * Context: Process context.
+ * @ctx-owned allocations (kfifo, ida slot, miscdev.name, @ctx itself)
+ * are freed by lstp_ipmi_ctx_release() once the last fd drops the kref,
+ * so they outlive disconnect for any still-open fds.
  */
 static void lstp_ipmi_deregister(void *data)
 {
-	struct lstp_ipmi_ctx *ctx = (struct lstp_ipmi_ctx *)data;
+	struct lstp_ipmi_ctx *ctx = data;
 
 	misc_deregister(&ctx->miscdev);
 }
@@ -317,19 +410,21 @@ static void lstp_ipmi_deregister(void *data)
  * message length, filters out postcode messages (netfn=0x2c, cmd=0x02,
  * group=0xAE), and queues valid requests to the FIFO for userspace to read.
  *
- * If the FIFO is full, it is reset to make room for the new message. This
- * ensures that stale messages don't block new incoming requests.
+ * If the FIFO is full, oldest queued messages are dropped one at a time
+ * until the new message fits, so stale messages don't block fresh ones.
  *
  * Context: Interrupt context (called from USB RX completion). Acquires
- *          ctx->lock with irqsave. Must not sleep.
+ *          @ctx->lock with irqsave. Must not sleep.
  */
 static void lstp_ipmi_irq_callback(struct lstp_channel *ch)
 {
-	struct lstp_ipmi_ctx *ctx = (struct lstp_ipmi_ctx *)ch->priv;
+	struct lstp_ipmi_ctx *ctx = ch->priv;
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->irq_buf;
 	u16 rx_len = le16_to_cpu(rx_pkt->hdr.length);
-	unsigned long flags = 0;
-	int retval = 0;
+	struct ipmi_lstp_msg msg;
+	unsigned long flags;
+	unsigned int msg_size;
+	unsigned int dropped = 0;
 
 	if (rx_len < IPMI_MIN_MSG_LEN || rx_len > IPMI_LSTP_PAYLOAD_MAX) {
 		dev_warn(&ch->usb->intf->dev, "%s: ch_%d: Invalid IPMI request length %u\n",
@@ -339,43 +434,38 @@ static void lstp_ipmi_irq_callback(struct lstp_channel *ch)
 
 	if (lstp_ipmi_postcodes_is_postcode(rx_pkt->payload, rx_len)) {
 		lstp_ipmi_postcodes_send(&ctx->postcodes, rx_pkt->payload, rx_len);
-	} else if (kfifo_initialized(&ctx->fifo)) {
-		ssize_t to_send = sizeof(struct ipmi_lstp_msg_header) + rx_len;
-
-		if (to_send > BUFFER_SIZE)
-			return;
-
-		spin_lock_irqsave(&ctx->lock, flags);
-
-		/* Reset FIFO if there's not enough space for the new message */
-		if ((BUFFER_SIZE - kfifo_len(&ctx->fifo)) < to_send)
-			kfifo_reset(&ctx->fifo);
-
-		ctx->request.header.len = rx_len;
-		ctx->request.header.msg_num = (++ctx->msg_count);
-
-		retval = kfifo_in(&ctx->fifo, &ctx->request.header,
-				  sizeof(struct ipmi_lstp_msg_header));
-		if (retval != sizeof(struct ipmi_lstp_msg_header)) {
-			kfifo_reset(&ctx->fifo);
-			spin_unlock_irqrestore(&ctx->lock, flags);
-			return;
-		}
-		to_send = min_t(ssize_t, rx_len, IPMI_LSTP_PAYLOAD_MAX);
-		retval = kfifo_in(&ctx->fifo, rx_pkt->payload, to_send);
-		if (retval != to_send) {
-			kfifo_reset(&ctx->fifo);
-			spin_unlock_irqrestore(&ctx->lock, flags);
-			return;
-		}
-
-		spin_unlock_irqrestore(&ctx->lock, flags);
-		wake_up_all(&ctx->req_wq);
+		return;
 	}
+
+	if (!kfifo_initialized(&ctx->fifo))
+		return;
+
+	msg_size = sizeof(msg.header) + rx_len;
+	msg.header.len = rx_len;
+	memcpy(msg.payload, rx_pkt->payload, rx_len);
+
+	spin_lock_irqsave(&ctx->lock, flags);
+	/* WRITE_ONCE pairs with the lockless READ_ONCE in lstp_ipmi_write(). */
+	msg.header.msg_num = ctx->msg_count + 1;
+	WRITE_ONCE(ctx->msg_count, msg.header.msg_num);
+	/* Drop oldest first: stale requests have likely timed out host-side. */
+	while (kfifo_avail(&ctx->fifo) < msg_size) {
+		kfifo_skip(&ctx->fifo);
+		dropped++;
+	}
+	kfifo_in(&ctx->fifo, &msg, msg_size);
+	spin_unlock_irqrestore(&ctx->lock, flags);
+
+	if (dropped)
+		dev_warn_ratelimited(&ch->usb->intf->dev,
+				     "%s: ch_%d: FIFO full, dropped %u stale request(s)\n",
+				     __func__, ch->ch_id, dropped);
+
+	wake_up_all(&ctx->req_wq);
 }
 
 /*******************************************************************************
- * IPMI channel initialization and start
+ * IPMI channel initialization, start, and stop
  ******************************************************************************/
 
 /**
@@ -396,22 +486,22 @@ static void lstp_ipmi_irq_callback(struct lstp_channel *ch)
  *                                   // If omitted, uses "ipmi-lstpN"
  *   };
  *
- * This function only allocates resources and sets up the RX callback.
- * Call lstp_ipmi_start() after the RX URB is active to register the
- * miscdevice and make it available to userspace.
+ * @ctx is kref-refcounted; the channel's initial ref is dropped via the
+ * lstp_ipmi_ctx_put_cb() devres action. @ctx-owned allocations (kfifo,
+ * ida slot, miscdev.name) are freed by the kref release callback, not
+ * via devres, so they outlive disconnect for still-open fds.
  *
  * Context: Process context. Called during probe before RX URB is active.
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_ipmi_init(struct lstp_channel *ch)
+static int lstp_ipmi_init(struct lstp_channel *ch)
 {
 	int ret;
 	struct lstp_ipmi_ctx *ctx;
 	struct lstp_channel *ch0 = ch->usb->channels[0];
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 	const char *label;
-	int dev_id;
 
 	/* Validate expected IPMI config size */
 	ret = lstp_validate_resp(ch->usb, rx_pkt, sizeof(struct lstp_ch0_resp_read));
@@ -423,9 +513,21 @@ int lstp_ipmi_init(struct lstp_channel *ch)
 	if (!ch->irq_buf)
 		return -ENOMEM;
 
-	ctx = devm_kzalloc(&ch->usb->intf->dev, sizeof(*ctx), GFP_KERNEL);
+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
+
+	/* Init fields the release path may touch; failed devres call invokes it. */
+	kref_init(&ctx->kref);
+	ctx->ida_id = -1;
+	ctx->ch = ch;
+	spin_lock_init(&ctx->lock);
+	mutex_init(&ctx->tx_mutex);
+	init_waitqueue_head(&ctx->req_wq);
+
+	ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_ipmi_ctx_put_cb, ctx);
+	if (ret)
+		return ret;
 
 	ch->priv = ctx;
 
@@ -433,33 +535,14 @@ int lstp_ipmi_init(struct lstp_channel *ch)
 	if (ret)
 		return ret;
 
-	ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_ipmi_free_fifo, ctx);
-	if (ret)
-		return ret;
-
-	spin_lock_init(&ctx->lock);
-	init_waitqueue_head(&ctx->req_wq);
-
-	ctx->ch = ch;
-	ctx->running = false;
-	ctx->msg_count = 0;
-	ctx->ida_id = -1;
-
 	/* Get device name from firmware node label (DT or ACPI) or generate one */
 	if (ctx->ch->fwnode && !fwnode_property_read_string(ctx->ch->fwnode, "label", &label)) {
-		ctx->miscdev.name = devm_kstrdup(&ch->usb->intf->dev, label, GFP_KERNEL);
+		ctx->miscdev.name = kstrdup(label, GFP_KERNEL);
 	} else {
-		dev_id = ida_alloc(&lstp_ipmi_ida, GFP_KERNEL);
-		if (dev_id < 0)
-			return dev_id;
-		ctx->ida_id = dev_id;
-		ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_ipmi_free_ida,
-					       &ctx->ida_id);
-		if (ret)
-			return ret;
-
-		ctx->miscdev.name =
-			devm_kasprintf(&ch->usb->intf->dev, GFP_KERNEL, "ipmi-lstp%d", dev_id);
+		ctx->ida_id = ida_alloc(&lstp_ipmi_ida, GFP_KERNEL);
+		if (ctx->ida_id < 0)
+			return ctx->ida_id;
+		ctx->miscdev.name = kasprintf(GFP_KERNEL, "ipmi-lstp%d", ctx->ida_id);
 	}
 	if (!ctx->miscdev.name)
 		return -ENOMEM;
@@ -469,13 +552,15 @@ int lstp_ipmi_init(struct lstp_channel *ch)
 	ctx->miscdev.parent = &ch->usb->intf->dev;
 
 	/* Initialize postcodes support (name derived from miscdev.name) */
-	ret = lstp_ipmi_postcodes_init(&ctx->postcodes, &ch->usb->intf->dev, ctx->miscdev.name);
+	ret = lstp_ipmi_postcodes_init(&ctx->postcodes, &ch->usb->intf->dev, ctx->miscdev.name, ctx,
+				       lstp_ipmi_ctx_get_cb, lstp_ipmi_ctx_put_cb);
 	if (ret)
 		return ret;
 
 	ch->irq_callback = lstp_ipmi_irq_callback;
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Initialized\n", __func__, ch->ch_id);
+	dev_dbg(&ch->usb->intf->dev, "%s: ch_%d: Initialized as %s\n", __func__, ch->ch_id,
+		ch->display_name);
 	return 0;
 }
 
@@ -483,15 +568,17 @@ int lstp_ipmi_init(struct lstp_channel *ch)
  * lstp_ipmi_start() - Start an LSTP IPMI channel.
  * @ch: LSTP channel to start
  *
- * Registers the miscdevice to make the IPMI interface available to userspace.
- * This should be called after the RX URB is active so the channel can properly
- * receive unsolicited IPMI requests.
+ * Registers the miscdevice to make the IPMI interface available to userspace
+ * and arms the lstp_ipmi_deregister() devres action so the node is torn down
+ * on disconnect or on later probe failure. This should be called after the
+ * RX URB is active so the channel can properly receive unsolicited IPMI
+ * requests.
  *
  * Context: Process context. Called during probe after RX URB is active.
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_ipmi_start(struct lstp_channel *ch)
+static int lstp_ipmi_start(struct lstp_channel *ch)
 {
 	struct lstp_ipmi_ctx *ctx = (struct lstp_ipmi_ctx *)ch->priv;
 	int ret;
@@ -514,12 +601,45 @@ int lstp_ipmi_start(struct lstp_channel *ch)
 		return ret;
 
 	/* Start postcodes device */
-	ret = lstp_ipmi_postcodes_start(&ctx->postcodes, &ch->usb->intf->dev);
+	ret = lstp_ipmi_postcodes_start(&ctx->postcodes);
 	if (ret)
 		return ret;
 
 	ch->child_dev = ctx->miscdev.this_device;
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started\n", __func__, ch->ch_id);
+	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started as %s\n", __func__, ch->ch_id,
+		 ch->display_name);
 	return 0;
 }
+
+/**
+ * lstp_ipmi_stop() - Quiesce the IPMI channel on disconnect.
+ * @ch: LSTP channel being stopped.
+ *
+ * Flips @ctx->stopped and wakes blocked readers/pollers. The main miscdev
+ * is unregistered later by the lstp_ipmi_deregister() devres action; opens
+ * that race the window are rejected via @stopped in lstp_ipmi_open().
+ */
+static void lstp_ipmi_stop(struct lstp_channel *ch)
+{
+	struct lstp_ipmi_ctx *ctx = ch->priv;
+
+	lstp_ipmi_postcodes_stop(&ctx->postcodes);
+
+	/* Lock order: @tx_mutex (sleeping) outer, @ctx->lock (irq-safe) inner. */
+	mutex_lock(&ctx->tx_mutex);
+	spin_lock_irq(&ctx->lock);
+	/* Pairs with smp_load_acquire() in lstp_ipmi_stopped(). */
+	smp_store_release(&ctx->stopped, true);
+	spin_unlock_irq(&ctx->lock);
+	mutex_unlock(&ctx->tx_mutex);
+
+	wake_up_all(&ctx->req_wq);
+}
+
+/* clang-format off */
+LSTP_SUBSYS(ipmi, LSTP_CHANNEL_TYPE_IPMI, lstp_ipmi_init, lstp_ipmi_start,
+	    .fwnode_compatible = "nvidia,lstp-ipmi",
+	    .channel_stop = lstp_ipmi_stop,
+);
+/* clang-format on */

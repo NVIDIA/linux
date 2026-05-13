@@ -25,19 +25,41 @@ struct lstp_ch0_config {
  * Forward declarations
  ******************************************************************************/
 
-static void lstp_usb_tx_callback(struct urb *urb);
 static void lstp_usb_rx_callback(struct urb *urb);
+static void lstp_rx_retry_work(struct work_struct *work);
+static void lstp_teardown(struct lstp_usb *dev);
+static void lstp_kobj_release(struct kobject *kobj);
 static void lstp_channel_kobj_release(struct kobject *kobj);
+static ssize_t lstp_name_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
 static ssize_t lstp_channel_enable_show(struct kobject *kobj, struct kobj_attribute *attr,
 					char *buf);
 static ssize_t lstp_channel_enable_store(struct kobject *kobj, struct kobj_attribute *attr,
 					 const char *buf, size_t count);
+static ssize_t lstp_channel_name_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+
+static struct kobj_attribute lstp_name_attr = __ATTR(name, 0444, lstp_name_show, NULL);
+
+static struct attribute *lstp_attrs[] = {
+	&lstp_name_attr.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(lstp);
+
+static const struct kobj_type lstp_ktype = {
+	.release = lstp_kobj_release,
+	.sysfs_ops = &kobj_sysfs_ops,
+	.default_groups = lstp_groups,
+};
 
 static struct kobj_attribute lstp_enable_attr =
 	__ATTR(enable, 0644, lstp_channel_enable_show, lstp_channel_enable_store);
 
+static struct kobj_attribute lstp_channel_name_attr =
+	__ATTR(name, 0444, lstp_channel_name_show, NULL);
+
 static struct attribute *lstp_channel_attrs[] = {
 	&lstp_enable_attr.attr,
+	&lstp_channel_name_attr.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(lstp_channel);
@@ -56,7 +78,8 @@ static const int lstp_errno_map[] = {
 	[LSTP_BUSY] = -EBUSY,
 	[LSTP_NACK] = -ENXIO,
 	[LSTP_ARB_LOST] = -EAGAIN,
-	[LSTP_NOT_SUPP] = -ENOTSUPP,
+	[LSTP_NOT_SUPP] = -EOPNOTSUPP,
+	[LSTP_TOO_LARGE] = -EFBIG,
 }; /* clang-format on */
 
 /**
@@ -133,16 +156,19 @@ int lstp_validate_rx_pkt(struct lstp_usb *dev, struct lstp_packet *rx_pkt, size_
 
 /**
  * lstp_validate_resp() - Validate LSTP response packets.
- * @dev:                  Device structure for error reporting
- * @rx_pkt:               Received packet to validate
- * @expected_payload_len: Expected payload length, or LSTP_ANY_RX_LEN to accept any length
+ * @dev:             Device structure for error reporting
+ * @rx_pkt:          Received packet to validate
+ * @min_payload_len: Minimum payload length, or LSTP_ANY_RX_LEN to accept any length
  *
  * Assumes the packet has already been validated with lstp_validate_rx_pkt().
  *
+ * Accepts payloads at least @min_payload_len bytes long; longer payloads are
+ * permitted to allow forward compatibility with newer firmware that may
+ * append additional fields.
+ *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt,
-		       size_t expected_payload_len)
+int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt, size_t min_payload_len)
 {
 	int ret;
 	struct lstp_header *rx_hdr = &rx_pkt->hdr;
@@ -157,14 +183,24 @@ int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt,
 		return ret;
 	}
 
-	/* Validate payload length matches expectation (if specified) */
+	/* Validate payload length meets minimum */
 	payload_len = le16_to_cpu(rx_hdr->length);
-	if (expected_payload_len != LSTP_ANY_RX_LEN && payload_len < expected_payload_len) {
+	if (payload_len < min_payload_len) {
 		dev_err(&dev->intf->dev,
-			"%s: ch_%u: Unexpected payload length (expected %zu, got %zu)\n", __func__,
-			ch_id, expected_payload_len, payload_len);
+			"%s: ch_%u: Payload too short (need at least %zu, got %zu)\n", __func__,
+			ch_id, min_payload_len, payload_len);
 		return -EIO;
 	}
+
+	/*
+	 * Surface oversized payloads under dynamic debug so wire-format mismatches
+	 * are visible during investigation without spamming the kernel log on the
+	 * normal forward-compat path. Suppressed when no minimum was requested.
+	 */
+	if (min_payload_len && payload_len > min_payload_len)
+		dev_dbg(&dev->intf->dev,
+			"%s: ch_%u: Payload longer than minimum (got %zu, min %zu) -- forward-compat extension?\n",
+			__func__, ch_id, payload_len, min_payload_len);
 
 	return 0;
 }
@@ -206,6 +242,14 @@ int lstp_ch0_read_helper(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length)
 		dev_err(&dev->intf->dev, "%s: ch_0: READ_CONFIG for ch_%d failed (%pe)\n", __func__,
 			ch_id, ERR_PTR(ret));
 		return ret;
+	}
+
+	/* Validate payload has at least the base lstp_ch0_resp_read config */
+	if (!LSTP_GET_PAYLOAD((struct lstp_packet *)ch0->resp_buf, struct lstp_ch0_resp_read)) {
+		dev_err(&dev->intf->dev, "%s: ch_%d: READ_CONFIG response too short\n", __func__,
+			ch_id);
+		lstp_unlock_resp_buffer(ch0);
+		return -EINVAL;
 	}
 
 	/* Note: response in ch0->resp_buf */
@@ -448,6 +492,15 @@ static void lstp_kobj_del_put(void *data)
 }
 
 /**
+ * lstp_kobj_release() - Release callback for the lstp kobject.
+ * @kobj: Kobject being released
+ */
+static void lstp_kobj_release(struct kobject *kobj)
+{
+	/* Intentionally empty: memory is devm-managed in struct lstp_usb */
+}
+
+/**
  * lstp_channel_kobj_release() - Release callback for channel kobjects.
  * @kobj: Kobject being released
  */
@@ -490,6 +543,23 @@ static struct lstp_channel *lstp_sysfs_get_channel(struct kobject *kobj,
 		*lstp_dev_out = ch->usb;
 
 	return ch;
+}
+
+/**
+ * lstp_name_show() - Read handler for ``lstp/name``.
+ * @kobj: Kobject for the ``lstp`` sysfs directory (embedded in lstp_usb)
+ * @attr: Sysfs kobject attribute
+ * @buf:  Output buffer for sysfs read
+ *
+ * Emits the LSTP interface name from the channel-0 discovery response.
+ *
+ * Return: Number of bytes written to buf, or negative errno on failure
+ */
+static ssize_t lstp_name_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct lstp_usb *lstp = container_of(kobj, struct lstp_usb, lstp_kobj);
+
+	return sysfs_emit(buf, "%s\n", lstp->lstp_intf_name);
 }
 
 /**
@@ -561,12 +631,34 @@ static ssize_t lstp_channel_enable_store(struct kobject *kobj, struct kobj_attri
 }
 
 /**
- * lstp_create_sysfs_hierarchy() - Create lstp/channel sysfs directories.
+ * lstp_channel_name_show() - Show channel display name via sysfs "name" attr.
+ * @kobj: Kobject for the channel (embedded in lstp_channel)
+ * @attr: Sysfs kobject attribute
+ * @buf:  Output buffer for sysfs read
+ *
+ * Emits the channel's display_name.
+ *
+ * Return: Number of bytes written to buf, or negative errno on failure
+ */
+static ssize_t lstp_channel_name_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct lstp_channel *ch;
+
+	ch = lstp_sysfs_get_channel(kobj, NULL);
+	if (IS_ERR(ch))
+		return PTR_ERR(ch);
+
+	return sysfs_emit(buf, "%s\n", ch->display_name);
+}
+
+/**
+ * lstp_create_sysfs_hierarchy() - Create lstp sysfs ("name" + "channel/").
  * @dev: LSTP USB device structure
  *
- * Creates the "lstp" and "lstp/channel" directories under the USB interface
- * device's sysfs directory. These serve as parent directories for per-channel
- * sysfs entries.
+ * Under the USB interface device sysfs directory, create:
+ *     lstp/
+ *     ├── name			(LSTP interface name, read-only)
+ *     └── channel/		(per-channel sysfs parent directory)
  *
  * Return: 0 on success, negative errno on failure
  */
@@ -575,17 +667,19 @@ static int lstp_create_sysfs_hierarchy(struct lstp_usb *dev)
 	struct device *parent_dev = &dev->intf->dev;
 	int ret;
 
-	/* Create lstp directory */
-	dev->lstp_kobj = kobject_create_and_add("lstp", &parent_dev->kobj);
-	if (!dev->lstp_kobj)
-		return -ENOMEM;
+	/* Create lstp directory (name attribute provided by lstp_ktype) */
+	ret = kobject_init_and_add(&dev->lstp_kobj, &lstp_ktype, &parent_dev->kobj, "lstp");
+	if (ret) {
+		kobject_put(&dev->lstp_kobj);
+		return ret;
+	}
 
-	ret = devm_add_action_or_reset(parent_dev, lstp_kobj_del_put, dev->lstp_kobj);
+	ret = devm_add_action_or_reset(parent_dev, lstp_kobj_del_put, &dev->lstp_kobj);
 	if (ret)
 		return ret;
 
 	/* Create channel directory under lstp */
-	dev->channel_kobj = kobject_create_and_add("channel", dev->lstp_kobj);
+	dev->channel_kobj = kobject_create_and_add("channel", &dev->lstp_kobj);
 	if (!dev->channel_kobj)
 		return -ENOMEM;
 
@@ -618,7 +712,8 @@ static int lstp_channel_link_device(struct lstp_channel *ch)
 	struct device *parent_dev = &ch->usb->intf->dev;
 	int ret;
 
-	if (!ch->child_dev)
+	if (WARN(!ch->child_dev, "lstp: ch_%d (%s): child_dev not set\n", ch->ch_id,
+		 ch->subsys ? ch->subsys->name : "?"))
 		return 0;
 
 	ret = sysfs_create_link(&ch->kobj, &ch->child_dev->kobj, "device");
@@ -635,10 +730,10 @@ static int lstp_channel_link_device(struct lstp_channel *ch)
  * lstp_create_channel_sysfs() - Create sysfs directory and attrs for channel.
  * @ch: LSTP channel
  *
- * Creates a directory "lstp/channel/N" (where N is the channel ID) with an
- * "enable" attribute for runtime access to the channel's enable status.
- * The attribute is read-write and queries/updates the device via the
- * management channel.
+ * Creates a directory "lstp/channel/N" (where N is the channel ID) with
+ * "enable" and "name" attributes. "enable" is read-write and queries/updates
+ * the device via the management channel. "name" is read-only and shows the
+ * channel's display_name.
  *
  * Also creates a "device" symlink to the child device if ch->child_dev is set.
  *
@@ -745,6 +840,9 @@ static struct fwnode_handle *lstp_find_channel_fwnode(struct fwnode_handle *usb_
  */
 static int lstp_init_channel_fwnode(struct lstp_channel *ch, const char *compatible)
 {
+	if (!compatible)
+		return 0;
+
 	ch->fwnode = lstp_find_channel_fwnode(dev_fwnode(&ch->usb->udev->dev),
 					      ch->usb->intf->cur_altsetting->desc.bInterfaceNumber,
 					      ch->ch_id, compatible);
@@ -791,7 +889,9 @@ static struct lstp_channel *lstp_create_channel(struct lstp_usb *dev, u8 ch_id)
 	init_waitqueue_head(&ch->rx_wq);
 	ch->resp_buffer_lock = 0;
 	ch->irq_buffer_lock = 0;
+	ch->irq_resp_buffer_lock = 0;
 	ch->rx_ready = false;
+	ch->disconnected = false;
 	ch->priv = NULL;
 	dev->channels[ch_id] = ch;
 	return ch;
@@ -850,13 +950,17 @@ static int lstp_ch0_init(struct lstp_usb *dev)
 		goto out;
 	}
 
-	/* Validate channel name */
+	/* Validate interface name */
 	if (ch0_resp->read.ch_name[0] == '\0') {
-		dev_err(&dev->intf->dev, "%s: ch_0: Invalid LSTP interface name\n", __func__);
-		ret = -EINVAL;
-		goto out;
+		dev_warn(&dev->intf->dev,
+			 "%s: ch_0: Empty LSTP interface name, consider fixing it! Using default 'LSTP'\n",
+			 __func__);
+		strscpy(dev->lstp_intf_name, "LSTP", sizeof(dev->lstp_intf_name));
+	} else {
+		snprintf(dev->lstp_intf_name, sizeof(dev->lstp_intf_name), "%.*s", LSTP_CH_NAME_LEN,
+			 ch0_resp->read.ch_name);
 	}
-	strscpy(dev->lstp_intf_name, ch0_resp->read.ch_name, LSTP_CH_NAME_LEN);
+	strscpy(ch0->display_name, dev->lstp_intf_name, sizeof(ch0->display_name));
 
 	/* Validate LSTP version */
 	if (config->lstp_version != LSTP_VERSION) {
@@ -882,6 +986,45 @@ out:
 	lstp_unlock_resp_buffer(ch0);
 	mutex_unlock(&ch0->tx_mutex);
 	return ret;
+}
+
+/* clang-format off */
+static const char * const lstp_ch_type_tags[] = {
+	[LSTP_CHANNEL_TYPE_SPI] = "SPI",
+	[LSTP_CHANNEL_TYPE_GPIO] = "GPIO",
+	[LSTP_CHANNEL_TYPE_I2C] = "I2C",
+	[LSTP_CHANNEL_TYPE_UART] = "UART",
+	[LSTP_CHANNEL_TYPE_IPMI] = "IPMI",
+}; /* clang-format on */
+
+/**
+ * lstp_set_display_name() - Set ch->display_name from firmware or synthesize a default.
+ * @ch:          Channel (ch_id and ch_type must already be set)
+ * @ch_name:     Raw firmware ch_name (may not be NUL-terminated)
+ * @ch_name_len: Size of @ch_name buffer (typically LSTP_CH_NAME_LEN)
+ *
+ * Format: "<intf_name>_<ch_name>" or "<intf_name>_<TYPE>_CH<id>" (with a warning).
+ */
+static void lstp_set_display_name(struct lstp_channel *ch, const char *ch_name, size_t ch_name_len)
+{
+	size_t name_len = strnlen(ch_name, ch_name_len);
+	const char *tag;
+
+	if (name_len) {
+		snprintf(ch->display_name, sizeof(ch->display_name), "%s_%.*s",
+			 ch->usb->lstp_intf_name, (int)name_len, ch_name);
+		return;
+	}
+
+	tag = (ch->ch_type < ARRAY_SIZE(lstp_ch_type_tags)) ? lstp_ch_type_tags[ch->ch_type] : NULL;
+	if (!tag)
+		tag = "UNKNOWN";
+
+	snprintf(ch->display_name, sizeof(ch->display_name), "%s_%s_CH%u", ch->usb->lstp_intf_name,
+		 tag, ch->ch_id);
+	dev_warn(&ch->usb->intf->dev,
+		 "%s: ch_%d: Empty channel name, consider fixing it! Using default '%s'\n",
+		 __func__, ch->ch_id, ch->display_name);
 }
 
 /**
@@ -927,37 +1070,17 @@ static int lstp_init_channels(struct lstp_usb *dev)
 		rx_pkt = (struct lstp_packet *)ch0->resp_buf;
 		ch0_resp = (union lstp_ch0_resp_payload *)rx_pkt->payload;
 		ch->ch_type = ch0_resp->read.ch_type;
+		lstp_set_display_name(ch, ch0_resp->read.ch_name, LSTP_CH_NAME_LEN);
 
-		switch (ch0_resp->read.ch_type) {
-		case LSTP_CHANNEL_TYPE_SPI:
-			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-spi");
-			if (ret)
-				break;
-			ret = lstp_spi_init(ch);
-			break;
-		case LSTP_CHANNEL_TYPE_GPIO:
-			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-gpio");
-			if (ret)
-				break;
-			ret = lstp_gpio_init(ch);
-			break;
-		case LSTP_CHANNEL_TYPE_I2C:
-			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-i2c");
-			if (ret)
-				break;
-			ret = lstp_i2c_init(ch);
-			break;
-		case LSTP_CHANNEL_TYPE_IPMI:
-			ret = lstp_init_channel_fwnode(ch, "nvidia,lstp-ipmi");
-			if (ret)
-				break;
-			ret = lstp_ipmi_init(ch);
-			break;
-		default:
+		ch->subsys = lstp_subsys_by_channel_type(ch->ch_type);
+		if (!ch->subsys) {
 			dev_warn(&dev->intf->dev, "%s: Channel %d has unsupported type %d\n",
-				 __func__, ch_id, ch0_resp->read.ch_type);
+				 __func__, ch_id, ch->ch_type);
 			ret = 0;
-			break;
+		} else {
+			ret = lstp_init_channel_fwnode(ch, ch->subsys->fwnode_compatible);
+			if (!ret)
+				ret = ch->subsys->channel_init(ch);
 		}
 
 		/* Done using ch0->resp_buf for this channel; release before next iteration. */
@@ -985,39 +1108,14 @@ static int lstp_start_channels(struct lstp_usb *dev)
 
 	for (i = 1; i < LSTP_MAX_CHANNELS; i++) {
 		ch = dev->channels[i];
-		if (!ch)
+		/* Skip unsupported channel types: nothing to expose. */
+		if (!ch || !ch->subsys)
 			continue;
 
-		switch (ch->ch_type) {
-		case LSTP_CHANNEL_TYPE_SPI:
-			ret = lstp_spi_start(ch);
-			if (ret)
-				return ret;
-			break;
-		case LSTP_CHANNEL_TYPE_GPIO:
-			ret = lstp_gpio_start(ch);
-			if (ret)
-				return ret;
-			break;
-		case LSTP_CHANNEL_TYPE_I2C:
-			ret = lstp_i2c_start(ch);
-			if (ret)
-				return ret;
-			break;
-		case LSTP_CHANNEL_TYPE_IPMI:
-			ret = lstp_ipmi_start(ch);
-			if (ret)
-				return ret;
-			break;
-		default:
-			break;
-		}
-	}
-
-	for (i = 1; i < LSTP_MAX_CHANNELS; i++) {
-		ch = dev->channels[i];
-		if (!ch)
-			continue;
+		ret = ch->subsys->channel_start(ch);
+		if (ret)
+			return ret;
+		ch->started = true;
 
 		ret = lstp_create_channel_sysfs(ch);
 		if (ret)
@@ -1089,6 +1187,8 @@ static int lstp_probe(struct usb_interface *intf, const struct usb_device_id *id
 
 	usb_set_intfdata(intf, dev);
 
+	INIT_DELAYED_WORK(&dev->bulk_rx_retry.work, lstp_rx_retry_work);
+
 	usb_fill_bulk_urb(dev->bulk_rx_urb, dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep),
 			  dev->rx_buf, dev->bulk_rx_size, lstp_usb_rx_callback, dev);
 	ret = usb_submit_urb(dev->bulk_rx_urb, GFP_KERNEL);
@@ -1102,33 +1202,176 @@ static int lstp_probe(struct usb_interface *intf, const struct usb_device_id *id
 	if (ret) {
 		dev_err(&intf->dev, "%s: Failed to initialize channels (%pe)\n", __func__,
 			ERR_PTR(ret));
-		return ret;
+		goto err_teardown;
 	}
 
 	ret = lstp_create_sysfs_hierarchy(dev);
 	if (ret) {
 		dev_err(&intf->dev, "%s: Failed to create sysfs hierarchy (%pe)\n", __func__,
 			ERR_PTR(ret));
-		return ret;
+		goto err_teardown;
 	}
 
 	ret = lstp_start_channels(dev);
 	if (ret) {
 		dev_err(&intf->dev, "%s: Failed to start channels (%pe)\n", __func__, ERR_PTR(ret));
-		return ret;
+		goto err_teardown;
 	}
 
 	dev_info(&intf->dev, "%s: LSTP device initialized successfully\n", __func__);
 	return 0;
+
+err_teardown:
+	lstp_teardown(dev);
+	return ret;
+}
+
+/*******************************************************************************
+ * Channel State Helpers
+ ******************************************************************************/
+
+/**
+ * lstp_signal_disconnect() - Signal all channels that the device is disconnected.
+ * @dev: LSTP USB device structure
+ */
+static void lstp_signal_disconnect(struct lstp_usb *dev)
+{
+	for (int i = 0; i < LSTP_MAX_CHANNELS; i++) {
+		if (dev->channels[i]) {
+			/*
+			 * Pairs with smp_load_acquire() in lstp_ch_disconnected().
+			 * Ensures the flag is visible to the waiter before
+			 * wake_up_all().
+			 */
+			smp_store_release(&dev->channels[i]->disconnected, true);
+			wake_up_all(&dev->channels[i]->rx_wq);
+		}
+	}
+}
+
+/**
+ * lstp_ch_signal_response() - Signal that a response has been received on a channel.
+ * @ch: LSTP channel that received the response
+ */
+static void lstp_ch_signal_response(struct lstp_channel *ch)
+{
+	/*
+	 * Pairs with smp_load_acquire() in lstp_ch_got_response().
+	 * Release semantics ensure the memcpy into resp_buf is visible
+	 * to readers before rx_ready becomes true.
+	 */
+	smp_store_release(&ch->rx_ready, true);
+	wake_up_all(&ch->rx_wq);
+}
+
+/**
+ * lstp_ch_got_response() - Check if a solicited response has been received.
+ * @ch: LSTP channel to check
+ *
+ * Return: true if a response is available in resp_buf.
+ */
+static inline bool lstp_ch_got_response(struct lstp_channel *ch)
+{
+	/* Pairs with smp_store_release() in lstp_ch_signal_response() */
+	return smp_load_acquire(&ch->rx_ready);
+}
+
+/**
+ * lstp_ch_should_wake() - wait_event condition for lstp_recv_resp_helper().
+ * @ch: LSTP channel to check
+ *
+ * Return: true if the waiter should wake (response received or device disconnected).
+ */
+static inline bool lstp_ch_should_wake(struct lstp_channel *ch)
+{
+	return lstp_ch_got_response(ch) || lstp_ch_disconnected(ch);
+}
+
+/**
+ * lstp_stop_rx() - Quiesce the RX path.
+ * @dev: LSTP USB device structure
+ *
+ * Poison first so any racing resubmit (callback or worker) gets -EPERM,
+ * then drain the worker.
+ */
+static void lstp_stop_rx(struct lstp_usb *dev)
+{
+	usb_poison_urb(dev->bulk_rx_urb);
+	cancel_delayed_work_sync(&dev->bulk_rx_retry.work);
+}
+
+/**
+ * lstp_stop_channels() - Stop all channels in reverse start order.
+ * @dev: LSTP USB device structure
+ *
+ * Mirrors lstp_start_channels() so subsystems are torn down in the
+ * opposite order they were brought up. Skips channels that never started.
+ */
+static void lstp_stop_channels(struct lstp_usb *dev)
+{
+	for (int i = LSTP_MAX_CHANNELS - 1; i >= 1; i--) {
+		struct lstp_channel *ch = dev->channels[i];
+
+		if (ch && ch->started && ch->subsys->channel_stop)
+			ch->subsys->channel_stop(ch);
+	}
+}
+
+/**
+ * lstp_stop_tx() - Quiesce all per-channel TX URBs.
+ * @dev: LSTP USB device structure
+ *
+ * Poison the request and IRQ-response URBs on every initialised channel
+ * so any racing usb_submit_urb() returns -EPERM. Safe on never-submitted
+ * URBs.
+ */
+static void lstp_stop_tx(struct lstp_usb *dev)
+{
+	for (int i = 0; i < LSTP_MAX_CHANNELS; i++) {
+		struct lstp_channel *ch = dev->channels[i];
+
+		if (!ch)
+			continue;
+
+		usb_poison_urb(ch->bulk_tx_urb);
+		usb_poison_urb(ch->bulk_tx_resp_urb);
+	}
+}
+
+/**
+ * lstp_teardown() - Ordered driver-level teardown of the LSTP device.
+ * @dev: LSTP USB device structure
+ *
+ * Shared by lstp_disconnect() and the lstp_probe() error path (USB core
+ * does not call .disconnect() on probe failure). RX must stop before
+ * channel_stop, or the dispatcher can race teardown.
+ */
+static void lstp_teardown(struct lstp_usb *dev)
+{
+	/* RX must stop before channel_stop, or the dispatcher can race teardown. */
+	lstp_stop_rx(dev);
+
+	lstp_signal_disconnect(dev);
+	lstp_stop_channels(dev);
+	lstp_stop_tx(dev);
 }
 
 /**
  * lstp_disconnect() - USB driver disconnect function.
  * @intf: USB interface being disconnected
+ *
+ * Ordered teardown; remaining cleanup runs via devres on interface unbind.
  */
 static void lstp_disconnect(struct usb_interface *intf)
 {
+	struct lstp_usb *dev = usb_get_intfdata(intf);
+
 	dev_info(&intf->dev, "%s: LSTP device disconnected\n", __func__);
+
+	if (!dev)
+		return;
+
+	lstp_teardown(dev);
 }
 
 /*******************************************************************************
@@ -1151,6 +1394,225 @@ static void lstp_usb_tx_callback(struct urb *urb)
 }
 
 /**
+ * lstp_usb_resp_tx_callback() - Completion callback for @bulk_tx_resp_urb.
+ * @urb: Completed transmit URB
+ *
+ * Clears @ch->irq_resp_buffer_lock on every completion path (including kill
+ * paths -ENOENT / -ECONNRESET / -ESHUTDOWN) so the bit never gets stuck
+ * across disconnect/re-probe.
+ */
+static void lstp_usb_resp_tx_callback(struct urb *urb)
+{
+	struct lstp_channel *ch = urb->context;
+
+	if (urb->status != 0 && urb->status != -ENOENT && urb->status != -ECONNRESET &&
+	    urb->status != -ESHUTDOWN) {
+		dev_warn(&ch->usb->intf->dev, "%s: ch_%d: RX response TX URB error (%pe)\n",
+			 __func__, ch->ch_id, ERR_PTR(urb->status));
+	}
+
+	clear_bit(LSTP_BUFFER_LOCK_BIT, &ch->irq_resp_buffer_lock);
+}
+
+/**
+ * lstp_alloc_irq_resp() - Allocate the response-TX buffer/URB used by lstp_send_irq_resp().
+ * @ch: LSTP channel that will reply to unsolicited requests
+ *
+ * Subsystems whose @irq_callback ACKs unsolicited requests must call this
+ * from their channel_init(); channels that never invoke lstp_send_irq_resp()
+ * should not allocate these resources. Both the buffer and the URB are
+ * managed via devres and freed when the USB interface goes away.
+ *
+ * Return: 0 on success, negative errno on failure.
+ */
+int lstp_alloc_irq_resp(struct lstp_channel *ch)
+{
+	struct device *dev = &ch->usb->intf->dev;
+	int ret;
+
+	ch->tx_resp_buf = devm_kzalloc(dev, sizeof(struct lstp_header), GFP_KERNEL);
+	if (!ch->tx_resp_buf)
+		return -ENOMEM;
+
+	ch->bulk_tx_resp_urb = usb_alloc_urb(0, GFP_KERNEL);
+	if (!ch->bulk_tx_resp_urb)
+		return -ENOMEM;
+
+	ret = devm_add_action_or_reset(dev, lstp_kill_and_free_urb, ch->bulk_tx_resp_urb);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+/**
+ * lstp_send_irq_resp() - Post a zero-payload response for an unsolicited RX packet.
+ * @ch:     LSTP channel that received the IRQ packet
+ * @status: Status byte to return to firmware (bit 7 is forced to 1 = response)
+ *
+ * Builds a header-only response packet in @ch->tx_resp_buf and submits it on
+ * @ch->bulk_tx_resp_urb with GFP_ATOMIC. Intended to be called from an
+ * ``irq_callback`` handler (atomic context, USB RX completion path), where
+ * the caller has no meaningful recovery for a submission failure — errors
+ * are logged here and the function returns void (fire-and-forget).
+ *
+ * @ch->irq_resp_buffer_lock guards @tx_resp_buf / @bulk_tx_resp_urb against
+ * concurrent reuse while a previous response is still being DMA'd. Under a
+ * strictly 1-in-flight firmware contract the guard should never trip; any
+ * hit is logged (ratelimited) as an actionable anomaly.
+ */
+void lstp_send_irq_resp(struct lstp_channel *ch, u8 status)
+{
+	struct lstp_packet *tx_pkt;
+	int ret;
+
+	if (!ch || !ch->usb || !ch->usb->udev || !ch->tx_resp_buf || !ch->bulk_tx_resp_urb)
+		return;
+
+	if (test_and_set_bit(LSTP_BUFFER_LOCK_BIT, &ch->irq_resp_buffer_lock)) {
+		dev_warn_ratelimited(&ch->usb->intf->dev,
+				     "%s: ch_%d: Dropping response - prior URB in flight\n",
+				     __func__, ch->ch_id);
+		return;
+	}
+
+	tx_pkt = (struct lstp_packet *)ch->tx_resp_buf;
+	tx_pkt->hdr.ch_id = ch->ch_id;
+	tx_pkt->hdr.length = 0;
+	tx_pkt->hdr.status = SET_U8_BYTE(status, 1);
+
+	usb_fill_bulk_urb(ch->bulk_tx_resp_urb, ch->usb->udev,
+			  usb_sndbulkpipe(ch->usb->udev, ch->usb->bulk_out_ep), tx_pkt,
+			  sizeof(struct lstp_header), lstp_usb_resp_tx_callback, ch);
+
+	ret = usb_submit_urb(ch->bulk_tx_resp_urb, GFP_ATOMIC);
+	if (ret) {
+		clear_bit(LSTP_BUFFER_LOCK_BIT, &ch->irq_resp_buffer_lock);
+		dev_err_ratelimited(&ch->usb->intf->dev,
+				    "%s: ch_%d: Failed to submit TX URB (%pe)\n", __func__,
+				    ch->ch_id, ERR_PTR(ret));
+	}
+}
+
+/*
+ * Retry indefinitely with bounded exponential backoff. No attempt budget:
+ * giving up on transient pressure (-ENOMEM, etc.) would permanently kill
+ * RX even when the underlying condition would self-heal.
+ *
+ * BASE_DELAY: minimum gap before the worker reposts the RX URB. Used both
+ *             as the entry delay after a usb_submit_urb() failure and as a
+ *             throttle for URB completion errors (e.g. -EPROTO from a
+ *             babbling / mid-disconnect device) so we don't tight-loop the
+ *             HCD from the completion callback. Kept well under
+ *             LSTP_USB_RESPONSE_TIMEOUT_MS so a single transient blip does
+ *             not burn the protocol's response budget.
+ * MAX_DELAY:  ceiling for repeated submit failures' exponential backoff.
+ */
+#define LSTP_RX_RETRY_BASE_DELAY_MS 50
+#define LSTP_RX_RETRY_MAX_DELAY_MS 1000
+#define LSTP_RX_RETRY_MAX_BACKOFF_SHIFT 5
+
+/**
+ * lstp_rx_retry_backoff_ms() - Compute next RX retry delay.
+ * @failures: Consecutive submit failure count (0 == first attempt)
+ *
+ * Doubles per attempt up to LSTP_RX_RETRY_MAX_DELAY_MS.
+ *
+ * Return: Delay in milliseconds before the next retry attempt.
+ */
+static unsigned long lstp_rx_retry_backoff_ms(unsigned int failures)
+{
+	unsigned int shift = failures ? min(failures - 1, LSTP_RX_RETRY_MAX_BACKOFF_SHIFT) : 0;
+	unsigned long ms = (unsigned long)LSTP_RX_RETRY_BASE_DELAY_MS << shift;
+
+	return min_t(unsigned long, ms, LSTP_RX_RETRY_MAX_DELAY_MS);
+}
+
+/**
+ * lstp_rx_handle_err() - Defer or terminate RX after a URB error.
+ * @dev:      LSTP USB device structure
+ * @ret:      Errno from a usb_submit_urb() failure or a URB completion
+ * @delay_ms: Backoff delay if scheduling a retry
+ *
+ * Records @ret in @bulk_rx_retry.last_err so the worker can act on it
+ * (e.g. clear the endpoint halt for -EPIPE). Terminal teardown errnos
+ * signal disconnect silently; everything else schedules the worker.
+ */
+static void lstp_rx_handle_err(struct lstp_usb *dev, int ret, unsigned long delay_ms)
+{
+	struct lstp_rx_retry *rxr = &dev->bulk_rx_retry;
+
+	WRITE_ONCE(rxr->last_err, ret);
+
+	/*
+	 * -EPERM is the usb_poison_urb() fence set in lstp_stop_rx();
+	 * -ENODEV/-ESHUTDOWN mean the device or HCD is gone. All three are
+	 * the expected outcome of disconnect, not failures: signal the
+	 * disconnect path and stop reposting. lstp_disconnect() already
+	 * logs the device removal, so no message here.
+	 */
+	if (ret == -ENODEV || ret == -ESHUTDOWN || ret == -EPERM) {
+		lstp_signal_disconnect(dev);
+		return;
+	}
+
+	/*
+	 * Wire-side completion errors (-EPROTO/-EOVERFLOW/-EILSEQ) come
+	 * from a babbling or otherwise misbehaving device and can fire
+	 * back-to-back, so ratelimit them. Everything else (notably
+	 * submit-side -ENOMEM/-EAGAIN/-EINVAL from the worker) is rare and
+	 * per-event diagnostic, so log unconditionally; the worker's
+	 * exponential backoff already throttles repeats.
+	 */
+	if (ret == -EPROTO || ret == -EOVERFLOW || ret == -EILSEQ)
+		dev_warn_ratelimited(&dev->intf->dev,
+				     "%s: RX URB transient error (%pe), retry in %lums\n",
+				     __func__, ERR_PTR(ret), delay_ms);
+	else
+		dev_warn(&dev->intf->dev, "%s: RX URB transient error (%pe), retry in %lums\n",
+			 __func__, ERR_PTR(ret), delay_ms);
+
+	schedule_delayed_work(&rxr->work, msecs_to_jiffies(delay_ms));
+}
+
+/**
+ * lstp_rx_retry_work() - Process-context fallback for the RX completion
+ *                           callback's atomic-context resubmit.
+ * @work: &struct lstp_rx_retry.work embedded in &struct lstp_usb
+ *
+ * Clears endpoint halts on -EPIPE, then retries the RX URB with GFP_KERNEL.
+ * Failures are handed to lstp_rx_handle_err() with an exponential
+ * backoff.
+ */
+static void lstp_rx_retry_work(struct work_struct *work)
+{
+	struct lstp_rx_retry *rxr =
+		container_of(to_delayed_work(work), struct lstp_rx_retry, work);
+	struct lstp_usb *dev = container_of(rxr, struct lstp_usb, bulk_rx_retry);
+	int last_err = READ_ONCE(rxr->last_err);
+	int ret;
+
+	if (last_err == -EPIPE) {
+		ret = usb_clear_halt(dev->udev, usb_rcvbulkpipe(dev->udev, dev->bulk_in_ep));
+		if (ret)
+			dev_warn(&dev->intf->dev, "%s: usb_clear_halt failed (%pe)\n", __func__,
+				 ERR_PTR(ret));
+	}
+
+	ret = usb_submit_urb(dev->bulk_rx_urb, GFP_KERNEL);
+	if (ret == 0) {
+		if (rxr->failures)
+			dev_info(&dev->intf->dev, "%s: RX URB resubmitted after %u failure(s)\n",
+				 __func__, rxr->failures);
+		rxr->failures = 0;
+		return;
+	}
+
+	rxr->failures++;
+	lstp_rx_handle_err(dev, ret, lstp_rx_retry_backoff_ms(rxr->failures));
+}
+
+/**
  * lstp_usb_rx_callback() - USB RX URB completion callback.
  * @urb: Completed receive URB
  *
@@ -1159,20 +1621,22 @@ static void lstp_usb_tx_callback(struct urb *urb)
 static void lstp_usb_rx_callback(struct urb *urb)
 {
 	struct lstp_usb *dev = urb->context;
+	int ret;
 
 	/* URB killed during disconnect */
 	if (urb->status == -ENOENT || urb->status == -ECONNRESET || urb->status == -ESHUTDOWN) {
-		for (int i = 0; i < LSTP_MAX_CHANNELS; i++) {
-			if (dev->channels[i])
-				wake_up_all(&dev->channels[i]->rx_wq);
-		}
+		lstp_signal_disconnect(dev);
 		return;
 	}
 
+	/*
+	 * Persistent HCD errors (e.g. -EPROTO from a babbling or mid-disconnect
+	 * device) can fire back-to-back. Defer resubmit to the worker instead
+	 * of tight-looping the HCD from atomic context.
+	 */
 	if (urb->status) {
-		dev_err(&dev->intf->dev, "%s: RX URB error (%pe)\n", __func__,
-			ERR_PTR(urb->status));
-		goto resubmit;
+		lstp_rx_handle_err(dev, urb->status, LSTP_RX_RETRY_BASE_DELAY_MS);
+		return;
 	}
 
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)dev->rx_buf;
@@ -1209,8 +1673,7 @@ static void lstp_usb_rx_callback(struct urb *urb)
 				 __func__, ch_id);
 		} else {
 			memcpy(ch->resp_buf, dev->rx_buf, urb->actual_length);
-			smp_store_release(&ch->rx_ready, true); /* Unblocks recv_resp_helper() */
-			wake_up_all(&ch->rx_wq);
+			lstp_ch_signal_response(ch);
 		}
 	} else {
 		dev_err_ratelimited(&dev->intf->dev,
@@ -1219,19 +1682,21 @@ static void lstp_usb_rx_callback(struct urb *urb)
 	}
 
 resubmit:
-	/* Resubmit URB for continuous reception */
-	usb_submit_urb(urb, GFP_ATOMIC);
+	ret = usb_submit_urb(urb, GFP_ATOMIC);
+	if (ret)
+		lstp_rx_handle_err(dev, ret, LSTP_RX_RETRY_BASE_DELAY_MS);
 }
 
 /**
  * lstp_recv_resp_helper() - Send request and wait for response.
- * @ch:           LSTP channel
- * @cmd:          Command byte (bit 7 set automatically)
- * @request_len:  Payload length in tx_buf
- * @response_len: Expected response length, or LSTP_ANY_RX_LEN
+ * @ch:               LSTP channel
+ * @cmd:              Command byte (bit 7 set automatically)
+ * @request_len:      Payload length in tx_buf
+ * @min_response_len: Minimum response payload length, or LSTP_ANY_RX_LEN
  *
  * Caller prepares tx_buf->payload, this sends and waits. Response in rx_buf.
- * Will return after a timeout.
+ * Will return after a timeout. Responses larger than @min_response_len are
+ * accepted to allow forward compatibility with newer firmware.
  *
  * Lock contract:
  *
@@ -1240,7 +1705,7 @@ resubmit:
  *
  * Return: 0 on success, negative errno on failure
  */
-int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 response_len)
+int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 min_response_len)
 {
 	int ret = 0;
 
@@ -1250,8 +1715,7 @@ int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 
 
 	/* Validate Request and Response packet sizes */
 	if (sizeof(struct lstp_header) + request_len > ch->usb->bulk_tx_size ||
-	    (response_len != LSTP_ANY_RX_LEN &&
-	     sizeof(struct lstp_header) + response_len > ch->usb->bulk_rx_size))
+	    sizeof(struct lstp_header) + min_response_len > ch->usb->bulk_rx_size)
 		return -EINVAL;
 
 	/* Try to claim rx buffer - if already in use, that's a bug */
@@ -1271,43 +1735,53 @@ int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 
 	if (request_len > 0) {
 		dev_dbg(&ch->usb->intf->dev,
 			"%s: ch_%d: TX cmd=0x%02x, tx_len=%d, rx_len=%d, payload=0x%*ph\n",
-			__func__, ch->ch_id, cmd, request_len, response_len, request_len,
+			__func__, ch->ch_id, cmd, request_len, min_response_len, request_len,
 			request_pkt->payload);
 	} else {
 		dev_dbg(&ch->usb->intf->dev, "%s: ch_%d: TX cmd=0x%02x, tx_len=%d, rx_len=%d\n",
-			__func__, ch->ch_id, cmd, request_len, response_len);
+			__func__, ch->ch_id, cmd, request_len, min_response_len);
 	}
 
 	usb_fill_bulk_urb(ch->bulk_tx_urb, ch->usb->udev,
 			  usb_sndbulkpipe(ch->usb->udev, ch->usb->bulk_out_ep), ch->tx_buf,
 			  sizeof(struct lstp_header) + request_len, lstp_usb_tx_callback, ch);
 
-	ch->rx_ready = false;
+	/* Pairs with smp_store_release()/smp_load_acquire() on rx_ready. */
+	WRITE_ONCE(ch->rx_ready, false);
 
 	ret = usb_submit_urb(ch->bulk_tx_urb, GFP_KERNEL);
 
-	if (ret)
-		goto out_unlock;
-	/* Unblocks recv_resp_helper() */
-	bool got_response = wait_event_timeout(ch->rx_wq, smp_load_acquire(&ch->rx_ready),
-					       msecs_to_jiffies(LSTP_USB_RESPONSE_TIMEOUT_MS));
-	if (!got_response) {
-		usb_kill_urb(ch->bulk_tx_urb);
-		if (!usb_get_intfdata(ch->usb->intf)) {
+	if (ret) {
+		/*
+		 * If teardown raced our submit, return -ENODEV (same as the
+		 * lstp_ch_disconnected() branch below) instead of leaking
+		 * -EPERM/-ESHUTDOWN to userspace.
+		 */
+		if (ret == -EPERM || ret == -ESHUTDOWN)
 			ret = -ENODEV;
-		} else {
-			/*
-			 * Device is not allowed to take longer than LSTP_USB_RESPONSE_TIMEOUT_MS to
-			 * respond. Timeout indicates device hang.
-			 */
-			dev_err(&ch->usb->intf->dev, "%s: ch_%d: Response timeout\n", __func__,
-				ch->ch_id);
-			ret = -ETIMEDOUT;
-		}
 		goto out_unlock;
 	}
 
-	ret = lstp_validate_resp(ch->usb, response_pkt, response_len);
+	wait_event_timeout(ch->rx_wq, lstp_ch_should_wake(ch),
+			   msecs_to_jiffies(LSTP_USB_RESPONSE_TIMEOUT_MS));
+
+	if (!lstp_ch_got_response(ch)) {
+		/* Safe to call even if URB already killed during disconnect */
+		usb_kill_urb(ch->bulk_tx_urb);
+
+		if (lstp_ch_disconnected(ch)) {
+			ret = -ENODEV;
+		} else {
+			/* Timeout - indicates protocol violation and device hang */
+			ret = -ETIMEDOUT;
+		}
+
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: No response (%pe)\n", __func__, ch->ch_id,
+			ERR_PTR(ret));
+		goto out_unlock;
+	}
+
+	ret = lstp_validate_resp(ch->usb, response_pkt, min_response_len);
 	if (ret)
 		goto out_unlock;
 
@@ -1350,10 +1824,79 @@ static struct usb_driver lstp_usb_driver = {
 	.id_table = lstp_id_table,
 };
 
-module_usb_driver(lstp_usb_driver);
+LSTP_SUBSYS_DECLARE(spi);
+LSTP_SUBSYS_DECLARE(gpio);
+LSTP_SUBSYS_DECLARE(i2c);
+LSTP_SUBSYS_DECLARE(uart);
+LSTP_SUBSYS_DECLARE(ipmi);
+
+/* clang-format off */
+static const struct lstp_subsys *const lstp_subsystems[] = {
+	LSTP_SUBSYS_REF(spi),
+	LSTP_SUBSYS_REF(gpio),
+	LSTP_SUBSYS_REF(i2c),
+	LSTP_SUBSYS_REF(uart),
+	LSTP_SUBSYS_REF(ipmi),
+};
+
+/* clang-format on */
+
+const struct lstp_subsys *lstp_subsys_by_channel_type(u8 channel_type)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(lstp_subsystems); i++)
+		if (lstp_subsystems[i]->channel_type == channel_type)
+			return lstp_subsystems[i];
+	return NULL;
+}
+
+static int __init lstp_module_init(void)
+{
+	size_t i;
+	int ret;
+
+	for (i = 0; i < ARRAY_SIZE(lstp_subsystems); i++) {
+		ret = lstp_subsystems[i]->init ? lstp_subsystems[i]->init() : 0;
+		if (ret) {
+			pr_err("lstp: subsys %s init failed: %pe\n", lstp_subsystems[i]->name,
+			       ERR_PTR(ret));
+			goto unwind_subsys;
+		}
+	}
+
+	ret = usb_register(&lstp_usb_driver);
+	if (ret)
+		goto unwind_subsys;
+
+	return 0;
+
+unwind_subsys:
+	while (i-- > 0)
+		if (lstp_subsystems[i]->exit)
+			lstp_subsystems[i]->exit();
+	return ret;
+}
+
+static void __exit lstp_module_exit(void)
+{
+	size_t i = ARRAY_SIZE(lstp_subsystems);
+
+	usb_deregister(&lstp_usb_driver);
+
+	while (i-- > 0)
+		if (lstp_subsystems[i]->exit)
+			lstp_subsystems[i]->exit();
+}
+
+module_init(lstp_module_init);
+module_exit(lstp_module_exit);
 
 bool lstp_auto_bind_spidev = IS_ENABLED(CONFIG_USB_LSTP_SPI_SPIDEV);
 module_param_named(auto_bind_spidev, lstp_auto_bind_spidev, bool, 0444);
+/* clang-format off */
 MODULE_PARM_DESC(auto_bind_spidev, "Auto-create spidev devices on SPI channels without firmware nodes (default: CONFIG_USB_LSTP_SPI_SPIDEV)");
+/* clang-format on */
 
+MODULE_DESCRIPTION("LSTP USB device driver");
 MODULE_LICENSE("GPL");
