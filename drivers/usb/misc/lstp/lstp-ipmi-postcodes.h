@@ -14,6 +14,7 @@
 
 #include <linux/miscdevice.h>
 #include <linux/kfifo.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/wait.h>
 #include <linux/poll.h>
@@ -35,13 +36,17 @@
 #define LSTP_IPMI_POST_BUFFER_SIZE 1024
 
 /**
- * struct lstp_ipmi_postcodes - Postcodes device context
- * @miscdev: Misc device for userspace access
- * @lock: Spinlock protecting FIFO and running flag
- * @wait_queue: Wait queue for readers
- * @fifo: FIFO buffer for postcode data
- * @running: Exclusive access flag
- * @initialized: Set to true after successful initialization
+ * struct lstp_ipmi_postcodes - Postcodes device context.
+ * @miscdev:     Userspace miscdev.
+ * @lock:        Protects @fifo and @running.
+ * @wait_queue:  Blocked readers / pollers.
+ * @fifo:        Inbound postcode bytes pending read().
+ * @running:     Exclusive-open flag.
+ * @initialized: Init succeeded; gates _start / _stop / _destroy.
+ * @stopped:     Set by lstp_ipmi_postcodes_stop() to fence file ops.
+ * @parent:      Opaque enclosing object pinned while any fd is open.
+ * @parent_get:  Bumps @parent's refcount; invoked from open().
+ * @parent_put:  Drops @parent's refcount; invoked from release().
  */
 struct lstp_ipmi_postcodes {
 	struct miscdevice miscdev;
@@ -50,6 +55,10 @@ struct lstp_ipmi_postcodes {
 	struct kfifo fifo;
 	bool running;
 	bool initialized;
+	bool stopped;
+	void *parent;
+	void (*parent_get)(void *parent);
+	void (*parent_put)(void *parent);
 };
 
 /* Helper to get postcodes context from file */
@@ -58,19 +67,31 @@ static inline struct lstp_ipmi_postcodes *lstp_ipmi_postcodes_to_ctx(struct file
 	return container_of(file->private_data, struct lstp_ipmi_postcodes, miscdev);
 }
 
+static inline bool lstp_ipmi_postcodes_stopped(struct lstp_ipmi_postcodes *post)
+{
+	/* Pairs with smp_store_release() in lstp_ipmi_postcodes_stop(). */
+	return smp_load_acquire(&post->stopped);
+}
+
 static int lstp_ipmi_postcodes_open(struct inode *inode, struct file *file)
 {
 	struct lstp_ipmi_postcodes *post = lstp_ipmi_postcodes_to_ctx(file);
 	int ret = 0;
 
 	spin_lock_irq(&post->lock);
-	if (!post->running)
-		post->running = true;
-	else
+	if (post->running)
 		ret = -EBUSY;
+	else
+		post->running = true;
 	spin_unlock_irq(&post->lock);
 
-	return ret;
+	if (ret)
+		return ret;
+
+	if (post->parent_get)
+		post->parent_get(post->parent);
+
+	return 0;
 }
 
 static ssize_t lstp_ipmi_postcodes_read(struct file *file, char __user *buf, size_t count,
@@ -85,9 +106,13 @@ static ssize_t lstp_ipmi_postcodes_read(struct file *file, char __user *buf, siz
 	if (kfifo_is_empty(&post->fifo)) {
 		if (file->f_flags & O_NONBLOCK)
 			return -EAGAIN;
-		ret = wait_event_interruptible(post->wait_queue, !kfifo_is_empty(&post->fifo));
+		ret = wait_event_interruptible(post->wait_queue,
+					       !kfifo_is_empty(&post->fifo) ||
+						       lstp_ipmi_postcodes_stopped(post));
 		if (ret == -ERESTARTSYS)
 			return ret;
+		if (lstp_ipmi_postcodes_stopped(post))
+			return -ENODEV;
 	}
 
 	/*
@@ -116,6 +141,9 @@ static int lstp_ipmi_postcodes_release(struct inode *inode, struct file *file)
 	post->running = false;
 	spin_unlock_irq(&post->lock);
 
+	if (post->parent_put)
+		post->parent_put(post->parent);
+
 	return 0;
 }
 
@@ -124,6 +152,8 @@ static __poll_t lstp_ipmi_postcodes_poll(struct file *file, poll_table *wait)
 	struct lstp_ipmi_postcodes *post = lstp_ipmi_postcodes_to_ctx(file);
 
 	poll_wait(file, &post->wait_queue, wait);
+	if (lstp_ipmi_postcodes_stopped(post))
+		return EPOLLHUP;
 	if (!kfifo_is_empty(&post->fifo))
 		return POLLIN | POLLRDNORM;
 
@@ -138,36 +168,23 @@ static const struct file_operations lstp_ipmi_postcodes_fops = {
 	.poll = lstp_ipmi_postcodes_poll,
 };
 
-/* Devres cleanup callbacks */
-static void lstp_ipmi_postcodes_free_fifo(void *data)
-{
-	struct lstp_ipmi_postcodes *post = data;
-
-	kfifo_free(&post->fifo);
-}
-
-static void lstp_ipmi_postcodes_deregister(void *data)
-{
-	struct lstp_ipmi_postcodes *post = data;
-
-	misc_deregister(&post->miscdev);
-}
-
 /**
- * lstp_ipmi_postcodes_init - Initialize postcodes support
- * @post: Postcodes context to initialize
- * @dev: Device for devres management and naming
- * @base_name: Base device name (will be suffixed with "-postcodes")
- *
- * Initializes the postcodes context with FIFO, spinlock, and wait queue.
- * Must be called after the base device name is known.
+ * lstp_ipmi_postcodes_init() - Initialize postcodes support.
+ * @post:       Postcodes context.
+ * @dev:        Parent device for the miscdev (sysfs hierarchy).
+ * @base_name:  Device name; "-postcodes" is appended.
+ * @parent:     See &struct lstp_ipmi_postcodes.
+ * @parent_get: See &struct lstp_ipmi_postcodes.
+ * @parent_put: See &struct lstp_ipmi_postcodes.
  *
  * Context: Process context.
  *
  * Return: 0 on success, negative errno on failure.
  */
 static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *post, struct device *dev,
-					   const char *base_name)
+					   const char *base_name, void *parent,
+					   void (*parent_get)(void *parent),
+					   void (*parent_put)(void *parent))
 {
 	int ret;
 
@@ -177,22 +194,22 @@ static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *post, str
 	if (ret)
 		return ret;
 
-	ret = devm_add_action_or_reset(dev, lstp_ipmi_postcodes_free_fifo, post);
-	if (ret)
-		return ret;
-
 	spin_lock_init(&post->lock);
 	init_waitqueue_head(&post->wait_queue);
-	post->running = false;
 
-	/* Generate postcodes device name from base name */
-	post->miscdev.name = devm_kasprintf(dev, GFP_KERNEL, "%s-postcodes", base_name);
-	if (!post->miscdev.name)
+	post->miscdev.name = kasprintf(GFP_KERNEL, "%s-postcodes", base_name);
+	if (!post->miscdev.name) {
+		kfifo_free(&post->fifo);
 		return -ENOMEM;
+	}
 
 	post->miscdev.minor = MISC_DYNAMIC_MINOR;
 	post->miscdev.fops = &lstp_ipmi_postcodes_fops;
 	post->miscdev.parent = dev;
+
+	post->parent = parent;
+	post->parent_get = parent_get;
+	post->parent_put = parent_put;
 
 	post->initialized = true;
 
@@ -202,7 +219,6 @@ static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *post, str
 /**
  * lstp_ipmi_postcodes_start - Register the postcodes misc device
  * @post: Postcodes context
- * @dev: Device for error reporting
  *
  * Registers the postcodes misc device to make it available to userspace.
  *
@@ -210,24 +226,49 @@ static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *post, str
  *
  * Return: 0 on success, negative errno on failure.
  */
-static inline int lstp_ipmi_postcodes_start(struct lstp_ipmi_postcodes *post, struct device *dev)
+static inline int lstp_ipmi_postcodes_start(struct lstp_ipmi_postcodes *post)
 {
-	int ret;
-
 	if (!post->initialized)
 		return -EINVAL;
 
-	ret = misc_register(&post->miscdev);
-	if (ret) {
-		dev_err(dev, "Could not register postcodes device (%d)\n", ret);
-		return ret;
-	}
+	return misc_register(&post->miscdev);
+}
 
-	ret = devm_add_action_or_reset(dev, lstp_ipmi_postcodes_deregister, post);
-	if (ret)
-		return ret;
+/**
+ * lstp_ipmi_postcodes_stop() - Quiesce the postcodes miscdev on disconnect.
+ * @post: Postcodes context.
+ *
+ * Deregisters the miscdev, sets @stopped, and wakes blocked readers.
+ * Open fds keep @parent alive via @parent_put until they release.
+ *
+ * Context: Process context.
+ */
+static inline void lstp_ipmi_postcodes_stop(struct lstp_ipmi_postcodes *post)
+{
+	if (!post->initialized)
+		return;
 
-	return 0;
+	misc_deregister(&post->miscdev);
+	/* Pairs with smp_load_acquire() in lstp_ipmi_postcodes_stopped(). */
+	smp_store_release(&post->stopped, true);
+	wake_up_all(&post->wait_queue);
+}
+
+/**
+ * lstp_ipmi_postcodes_destroy() - Free postcodes-owned resources.
+ * @post: Postcodes context.
+ *
+ * Caller must ensure _stop() has run and no fds remain.
+ */
+static inline void lstp_ipmi_postcodes_destroy(struct lstp_ipmi_postcodes *post)
+{
+	if (!post->initialized)
+		return;
+
+	kfifo_free(&post->fifo);
+	kfree(post->miscdev.name);
+	post->miscdev.name = NULL;
+	post->initialized = false;
 }
 
 /**
@@ -301,14 +342,23 @@ struct lstp_ipmi_postcodes {
 };
 
 static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *, struct device *,
-					   const char *)
+					   const char *, void *, void (*)(void *),
+					   void (*)(void *))
 {
 	return 0;
 }
 
-static inline int lstp_ipmi_postcodes_start(struct lstp_ipmi_postcodes *, struct device *)
+static inline int lstp_ipmi_postcodes_start(struct lstp_ipmi_postcodes *)
 {
 	return 0;
+}
+
+static inline void lstp_ipmi_postcodes_stop(struct lstp_ipmi_postcodes *)
+{
+}
+
+static inline void lstp_ipmi_postcodes_destroy(struct lstp_ipmi_postcodes *)
+{
 }
 
 static inline bool lstp_ipmi_postcodes_is_postcode(const u8 *, u16)

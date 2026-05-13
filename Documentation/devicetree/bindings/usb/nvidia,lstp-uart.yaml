@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA LSTP UART Channel
+
+description: |
+  UART channel on an NVIDIA LSTP USB device.
+
+  The LSTP UART channel registers as a Linux tty device (/dev/ttyLSTPN,
+  where N is a dynamically allocated minor).  Baud rate, framing, parity,
+  and flow-control settings are reported by the device firmware at probe
+  time and cannot be changed at runtime — userspace termios hardware bits
+  are silently preserved across stty(1) invocations.
+
+  A DT node is optional.  When present, it is attached to the tty device
+  so that udev rules can produce stable /dev/serial/by-* symlinks and so
+  that serdev-attached child devices (Bluetooth, GNSS, NFC, etc.) can be
+  enumerated as DT children.
+
+properties:
+  compatible:
+    const: nvidia,lstp-uart
+
+  reg:
+    description: LSTP channel ID as reported by firmware.
+    maxItems: 1
+
+patternProperties:
+  "^[a-zA-Z][a-zA-Z0-9,-]*$":
+    type: object
+    description: |
+      Optional serdev child device attached to this UART (e.g. Bluetooth
+      HCI, GNSS module).  Enumerated by the serdev core when the tty is
+      opened.
+    additionalProperties: true
+
+    properties:
+      compatible:
+        description: Compatible string for the serdev peripheral.
+
+    required:
+      - compatible
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    /* Bare UART exposed as /dev/ttyLSTPN */
+    channel@5 {
+        compatible = "nvidia,lstp-uart";
+        reg = <5>;
+    };
+  - |
+    /* UART with an attached serdev child */
+    channel@5 {
+        compatible = "nvidia,lstp-uart";
+        reg = <5>;
+
+        bluetooth {
+            compatible = "brcm,bcm43438-bt";
+            max-speed = <3000000>;
+        };
+    };

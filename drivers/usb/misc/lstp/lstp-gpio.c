@@ -11,16 +11,17 @@
 #include <linux/gpio/driver.h>
 #include <linux/irq.h>
 #include <linux/kernel.h>
+#include <linux/seq_file.h>
 #include <linux/string.h>
 #include <linux/version.h>
 #include <linux/workqueue.h>
+#include <uapi/linux/gpio.h>
 
 /* gpio_chip set/set_multiple return int since 6.17, void before */
 #define LSTP_GPIO_SET_RETURNS_INT (KERNEL_VERSION(6, 17, 0) <= LINUX_VERSION_CODE)
 #include "lstp-main.h"
 
 #define LSTP_GPIO_PIN_NAME_LEN 32
-#define LSTP_GPIO_CONSUMER_NAME_MAX 32
 
 enum lstp_gpio_cmd {
 	LSTP_GPIO_CMD_GET_VALUE = 0x00,
@@ -67,6 +68,7 @@ enum lstp_gpio_irq_type {
 	LSTP_GPIO_IRQ_BOTH = 0x03,
 	LSTP_GPIO_IRQ_HIGH = 0x04,
 	LSTP_GPIO_IRQ_LOW = 0x05,
+	LSTP_GPIO_IRQ_MAX = LSTP_GPIO_IRQ_LOW,
 } __packed;
 
 struct lstp_gpio_pin_config {
@@ -121,14 +123,9 @@ struct lstp_gpio_priv {
 	u16 max_pins_per_read;
 	struct gpio_chip gc;
 	struct workqueue_struct *wq; /* Workqueue for IRQ event handling */
-};
-
-/* Work structure for setting IRQ configuration (mask/unmask/set_type) */
-struct lstp_gpio_irq_config_work {
-	struct work_struct work;
-	struct gpio_chip *gc;
-	u16 pin;
-	u8 irq_type;
+	struct mutex irq_lock; /* Serializes irq_chip callbacks (irq_bus_lock/sync_unlock) */
+	u8 *shadow_irq_type; /* Pending IRQ type per pin, written by mask/unmask/set_type */
+	u8 *hw_irq_type; /* Last successfully committed IRQ type per pin */
 };
 
 /* Work structure for handling IRQ events from device */
@@ -372,20 +369,17 @@ out_unlock:
 }
 
 /**
- * lstp_gpio_get_irq_config() - Query interrupt configuration for GPIO pin. (blocking)
- * @gc: GPIO chip
- * @pin: Pin number
- * @irq_type: Pointer to store IRQ type (LSTP_GPIO_IRQ_* constants)
+ * lstp_gpio_get_irq_config() - Query IRQ config for a single pin from the MCU.
+ * @priv: GPIO private data
+ * @pin: Pin offset within the GPIO chip
  *
- * Sends GET_IRQ_CONFIG over LSTP; stores current trigger type in @irq_type.
- * Holds ch->tx_mutex.
+ * Sends GET_IRQ_CONFIG over LSTP. Holds ch->tx_mutex.
  *
- * Return: 0 on success, negative errno on failure.
+ * Return: IRQ type on success, negative errno on failure.
  */
-static int __maybe_unused lstp_gpio_get_irq_config(struct gpio_chip *gc, u16 pin, u8 *irq_type)
+static int lstp_gpio_get_irq_config(struct lstp_gpio_priv *priv, u16 pin)
 {
 	int ret;
-	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
 	struct lstp_channel *ch = priv->ch;
 	struct lstp_packet *tx_pkt = (struct lstp_packet *)ch->tx_buf;
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->resp_buf;
@@ -397,93 +391,47 @@ static int __maybe_unused lstp_gpio_get_irq_config(struct gpio_chip *gc, u16 pin
 	ret = lstp_recv_resp_helper(ch, LSTP_GPIO_CMD_GET_IRQ_CONFIG, sizeof(gpio_req->get_irq),
 				    sizeof(gpio_resp->get_irq));
 	if (ret) {
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: GET_IRQ_CONFIG failed for pin %u (%pe)\n",
+			__func__, ch->ch_id, pin, ERR_PTR(ret));
 		mutex_unlock(&ch->tx_mutex);
-		dev_err(&ch->usb->intf->dev,
-			"%s: ch_%d: Could not get IRQ config for pin %u (%pe)\n", __func__,
-			ch->ch_id, pin, ERR_PTR(ret));
 		return ret;
 	}
 
-	*irq_type = gpio_resp->get_irq.irq_type;
+	ret = gpio_resp->get_irq.irq_type;
 	lstp_unlock_resp_buffer(ch);
 	mutex_unlock(&ch->tx_mutex);
-	return 0;
+	return ret;
 }
 
 /**
- * lstp_gpio_set_irq_config_work() - Deferred IRQ configuration work handler.
- * @work: Work structure containing IRQ configuration parameters
+ * lstp_gpio_set_irq_config() - Send SET_IRQ_CONFIG over LSTP. (blocking)
+ * @priv: GPIO private data
+ * @pin: Pin number
+ * @irq_type: Interrupt type (LSTP_GPIO_IRQ_* constants)
  *
- * Workqueue handler. Sends SET_IRQ_CONFIG over LSTP; frees work when done.
- * Blocking; holds ch->tx_mutex.
+ * Sends SET_IRQ_CONFIG over LSTP. Holds ch->tx_mutex.
+ *
+ * Return: 0 on success, negative errno on failure.
  */
-static void lstp_gpio_set_irq_config_work(struct work_struct *work)
+static int lstp_gpio_set_irq_config(struct lstp_gpio_priv *priv, u16 pin, u8 irq_type)
 {
-	struct lstp_gpio_irq_config_work *irq_work =
-		container_of(work, struct lstp_gpio_irq_config_work, work);
-	struct gpio_chip *gc = irq_work->gc;
-	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
+	int ret;
 	struct lstp_channel *ch = priv->ch;
 	struct lstp_packet *tx_pkt = (struct lstp_packet *)ch->tx_buf;
 	union lstp_gpio_req_payload *gpio_req = (union lstp_gpio_req_payload *)tx_pkt->payload;
-	int ret;
 
 	mutex_lock(&ch->tx_mutex);
-	gpio_req->set_irq.pin = cpu_to_le16(irq_work->pin);
-	gpio_req->set_irq.irq_type = irq_work->irq_type;
+	gpio_req->set_irq.pin = cpu_to_le16(pin);
+	gpio_req->set_irq.irq_type = irq_type;
 	ret = lstp_recv_resp_helper(ch, LSTP_GPIO_CMD_SET_IRQ_CONFIG, sizeof(gpio_req->set_irq), 0);
 	if (ret) {
-		dev_err(&ch->usb->intf->dev,
-			"%s: ch_%d: Failed to set IRQ config for pin %u (%pe)\n", __func__,
-			ch->ch_id, irq_work->pin, ERR_PTR(ret));
+		dev_err(&ch->usb->intf->dev, "%s: ch_%d: SET_IRQ_CONFIG failed for pin %u (%pe)\n",
+			__func__, ch->ch_id, pin, ERR_PTR(ret));
 	} else {
 		lstp_unlock_resp_buffer(ch);
 	}
 	mutex_unlock(&ch->tx_mutex);
-
-	kfree(irq_work);
-}
-
-/**
- * lstp_gpio_set_irq_config() - Configure interrupt type for GPIO pin.
- * @gc: GPIO chip
- * @pin: Pin number
- * @irq_type: Interrupt type (LSTP_GPIO_IRQ_* constants)
- *
- * Queues work to send SET_IRQ_CONFIG over LSTP. Callable from atomic context;
- * actual I/O runs in workqueue.
- *
- * Return: 0 if work queued, -ENODEV if workqueue gone, -ENOMEM on alloc failure.
- */
-static int lstp_gpio_set_irq_config(struct gpio_chip *gc, u16 pin, u8 irq_type)
-{
-	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
-	struct lstp_channel *ch = priv->ch;
-	struct lstp_gpio_irq_config_work *work;
-	bool queued;
-
-	/* Check if workqueue is still available */
-	if (!priv->wq)
-		return -ENODEV;
-
-	work = kzalloc(sizeof(*work), GFP_ATOMIC);
-	if (!work)
-		return -ENOMEM;
-
-	INIT_WORK(&work->work, lstp_gpio_set_irq_config_work);
-	work->gc = gc;
-	work->pin = pin;
-	work->irq_type = irq_type;
-
-	queued = queue_work(priv->wq, &work->work);
-	if (!queued) {
-		dev_warn(gc->parent, "%s: ch_%d: Work already pending for pin %u (unexpected)\n",
-			 __func__, ch->ch_id, pin);
-		kfree(work);
-		return -EBUSY;
-	}
-
-	return 0;
+	return ret;
 }
 
 /*******************************************************************************
@@ -516,7 +464,7 @@ static int lstp_gpio_read_config_range(struct lstp_gpio_priv *priv, unsigned int
 	union lstp_ch0_resp_payload *ch0_resp;
 	u16 offset;
 	u16 length;
-	size_t expected_payload_len;
+	size_t min_payload_len;
 
 	if (n_pins == 0 || n_pins > priv->max_pins_per_read || start_pin + n_pins > priv->ngpio ||
 	    !pin_data)
@@ -524,7 +472,7 @@ static int lstp_gpio_read_config_range(struct lstp_gpio_priv *priv, unsigned int
 
 	offset = sizeof(struct lstp_gpio_config) + start_pin * sizeof(struct lstp_gpio_pin);
 	length = n_pins * sizeof(struct lstp_gpio_pin);
-	expected_payload_len = sizeof(struct lstp_ch0_resp_read) + length;
+	min_payload_len = sizeof(struct lstp_ch0_resp_read) + length;
 
 	mutex_lock(&ch0->tx_mutex);
 	ret = lstp_ch0_read_helper(ch->usb, ch->ch_id, offset, length);
@@ -532,7 +480,7 @@ static int lstp_gpio_read_config_range(struct lstp_gpio_priv *priv, unsigned int
 		goto out;
 
 	rx_pkt = (struct lstp_packet *)ch0->resp_buf;
-	ret = lstp_validate_resp(ch->usb, rx_pkt, expected_payload_len);
+	ret = lstp_validate_resp(ch->usb, rx_pkt, min_payload_len);
 	if (ret)
 		goto out;
 
@@ -582,7 +530,7 @@ static int lstp_gpio_get_direction(struct gpio_chip *gc, unsigned int pin)
  * Direction is firmware-fixed; validates that the pin exists and is
  * actually configured as input by firmware.
  *
- * Return: 0 on success, -EINVAL if pin invalid, -ENOTSUPP if pin is output.
+ * Return: 0 on success, -EINVAL if pin invalid, -EOPNOTSUPP if pin is output.
  */
 static int lstp_gpio_direction_input(struct gpio_chip *gc, unsigned int pin)
 {
@@ -598,7 +546,7 @@ static int lstp_gpio_direction_input(struct gpio_chip *gc, unsigned int pin)
 		return ret;
 
 	if (pin_data.config.direction != LSTP_GPIO_INPUT)
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 
 	return 0;
 }
@@ -611,7 +559,7 @@ static int lstp_gpio_direction_input(struct gpio_chip *gc, unsigned int pin)
  *
  * Validates pin is output (firmware-fixed), then sets value via lstp_gpio_set_value.
  *
- * Return: 0 on success, -EINVAL if pin invalid, -ENOTSUPP if pin is input.
+ * Return: 0 on success, -EINVAL if pin invalid, -EOPNOTSUPP if pin is input.
  */
 static int lstp_gpio_direction_output(struct gpio_chip *gc, unsigned int pin, int value)
 {
@@ -627,7 +575,7 @@ static int lstp_gpio_direction_output(struct gpio_chip *gc, unsigned int pin, in
 		return ret;
 
 	if (pin_data.config.direction != LSTP_GPIO_OUTPUT)
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 
 #if LSTP_GPIO_SET_RETURNS_INT
 	return lstp_gpio_set_value(gc, pin, value);
@@ -642,7 +590,7 @@ static int lstp_gpio_direction_output(struct gpio_chip *gc, unsigned int pin, in
  ******************************************************************************/
 
 /**
- * lstp_gpio_linux_type_to_lstp() - Maps Linux IRQ type to LSTP IRQ type.
+ * lstp_gpio_linux_irq_to_lstp() - Map Linux IRQ type to LSTP IRQ type.
  * @type: Linux IRQ type (IRQ_TYPE_EDGE_*, IRQ_TYPE_LEVEL_*)
  * @irq_type: Output LSTP IRQ type
  *
@@ -676,18 +624,98 @@ static int lstp_gpio_linux_irq_to_lstp(unsigned int type, u8 *irq_type)
 }
 
 /**
+ * lstp_gpio_sync_hw_irq_state() - Read MCU IRQ state for all pins at probe time.
+ * @priv: GPIO private data (shadow_irq_type and hw_irq_type must be allocated)
+ *
+ * Queries GET_IRQ_CONFIG for each pin and populates both hw_irq_type and
+ * shadow_irq_type so the driver starts in sync with the MCU, even after a
+ * module reload without MCU reset.
+ *
+ * Return: 0 on success, negative errno on first failure.
+ */
+static int lstp_gpio_sync_hw_irq_state(struct lstp_gpio_priv *priv)
+{
+	struct lstp_channel *ch = priv->ch;
+	unsigned int active = 0;
+	int ret;
+	u16 pin;
+
+	for (pin = 0; pin < priv->ngpio; pin++) {
+		ret = lstp_gpio_get_irq_config(priv, pin);
+		if (ret < 0)
+			return ret;
+		if (ret > LSTP_GPIO_IRQ_MAX)
+			dev_warn(&ch->usb->intf->dev, "%s: ch_%d: pin %u has unknown IRQ type %u\n",
+				 __func__, ch->ch_id, pin, ret);
+		priv->hw_irq_type[pin] = ret;
+		priv->shadow_irq_type[pin] = ret;
+		if (ret != LSTP_GPIO_IRQ_NONE)
+			active++;
+	}
+
+	if (active)
+		dev_info(&ch->usb->intf->dev,
+			 "%s: ch_%d: Synced IRQ state, %u/%u pins with active IRQ config\n",
+			 __func__, ch->ch_id, active, priv->ngpio);
+
+	return 0;
+}
+
+/**
+ * lstp_gpio_irq_mask() - Mask (disable) a GPIO interrupt.
+ * @d: IRQ data
+ *
+ * Sets shadow to IRQ_NONE; SET_IRQ_CONFIG sent in irq_bus_sync_unlock().
+ */
+static void lstp_gpio_irq_mask(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
+	unsigned int pin = irqd_to_hwirq(d);
+
+	priv->shadow_irq_type[pin] = LSTP_GPIO_IRQ_NONE;
+	gpiochip_disable_irq(gc, pin);
+}
+
+/**
+ * lstp_gpio_irq_unmask() - Unmask (enable) a GPIO interrupt.
+ * @d: IRQ data
+ *
+ * Restores shadow to trigger type from IRQ descriptor.
+ * SET_IRQ_CONFIG sent in irq_bus_sync_unlock().
+ */
+static void lstp_gpio_irq_unmask(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
+	unsigned int pin = irqd_to_hwirq(d);
+	unsigned int type = irqd_get_trigger_type(d);
+	u8 irq_type;
+
+	if (lstp_gpio_linux_irq_to_lstp(type, &irq_type)) {
+		dev_err(gc->parent, "%s: Invalid trigger type %u for pin %u\n", __func__, type,
+			pin);
+		return;
+	}
+
+	gpiochip_enable_irq(gc, pin);
+	priv->shadow_irq_type[pin] = irq_type;
+}
+
+/**
  * lstp_gpio_irq_set_type() - Set GPIO interrupt trigger type.
  * @d: IRQ data
  * @type: IRQ type flags (IRQ_TYPE_EDGE_*, IRQ_TYPE_LEVEL_*)
  *
- * If the IRQ is masked, returns success without sending to device.
- * If unmasked, queues SET_IRQ_CONFIG over LSTP.
+ * IRQCHIP_SET_TYPE_MASKED ensures the IRQ is masked, so this only validates
+ * the type; the shadow update is deferred to irq_unmask().
  *
  * Return: 0 on success, -EINVAL if type unsupported.
  */
 static int lstp_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
 	unsigned int pin = irqd_to_hwirq(d);
 	u8 irq_type;
 	int ret;
@@ -699,50 +727,65 @@ static int lstp_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	if (irqd_irq_masked(d))
 		return 0;
 
-	return lstp_gpio_set_irq_config(gc, (u16)pin, irq_type);
+	priv->shadow_irq_type[pin] = irq_type;
+	return 0;
 }
 
 /**
- * lstp_gpio_irq_mask() - Mask GPIO interrupt.
+ * lstp_gpio_irq_bus_lock() - Acquire IRQ configuration lock.
  * @d: IRQ data
  *
- * Disables IRQ for this line by queuing SET_IRQ_CONFIG with type NONE.
+ * Serializes irq_chip callbacks in a sleepable context (bus_lock pattern).
  */
-static void lstp_gpio_irq_mask(struct irq_data *d)
+static void lstp_gpio_irq_bus_lock(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-	unsigned int pin = irqd_to_hwirq(d);
-	int ret = lstp_gpio_set_irq_config(gc, (u16)pin, LSTP_GPIO_IRQ_NONE);
+	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
 
-	if (ret)
-		dev_err(gc->parent, "%s: Failed to mask IRQ for pin %u (%pe)\n", __func__, pin,
-			ERR_PTR(ret));
+	mutex_lock(&priv->irq_lock);
 }
 
 /**
- * lstp_gpio_irq_unmask() - Unmask GPIO interrupt.
- * @d: IRQ data
+ * lstp_gpio_irq_bus_sync_unlock() - Commit pending IRQ config and release lock.
+ * @d: IRQ data for the pin that was modified
  *
- * Enables IRQ for this line by queuing SET_IRQ_CONFIG with the saved type.
+ * Sends SET_IRQ_CONFIG if shadow differs from hardware for this pin.
+ * On failure, reverts shadow to previous known state. Releases priv->irq_lock.
  */
-static void lstp_gpio_irq_unmask(struct irq_data *d)
+static void lstp_gpio_irq_bus_sync_unlock(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-	unsigned int pin = irqd_to_hwirq(d);
-	unsigned int type = irqd_get_trigger_type(d);
-	u8 irq_type;
-	int ret;
+	struct lstp_gpio_priv *priv = gpiochip_get_data(gc);
+	u16 pin = irqd_to_hwirq(d);
 
-	if (lstp_gpio_linux_irq_to_lstp(type, &irq_type)) {
-		dev_err(gc->parent, "%s: Invalid trigger type %u for pin %u\n", __func__, type,
-			pin);
-		return;
+	if (priv->shadow_irq_type[pin] != priv->hw_irq_type[pin]) {
+		if (lstp_gpio_set_irq_config(priv, pin, priv->shadow_irq_type[pin]))
+			priv->shadow_irq_type[pin] = priv->hw_irq_type[pin];
+		else
+			priv->hw_irq_type[pin] = priv->shadow_irq_type[pin];
 	}
-	ret = lstp_gpio_set_irq_config(gc, (u16)pin, irq_type);
-	if (ret)
-		dev_err(gc->parent, "%s: Failed to unmask IRQ for pin %u (%pe)\n", __func__, pin,
-			ERR_PTR(ret));
+
+	mutex_unlock(&priv->irq_lock);
 }
+
+static void lstp_gpio_irq_print_chip(struct irq_data *d, struct seq_file *p)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+
+	seq_puts(p, gc->label ? gc->label : d->chip->name);
+}
+
+static const struct irq_chip lstp_gpio_irq_chip = {
+	.name = "lstp-gpio",
+	.irq_mask = lstp_gpio_irq_mask,
+	.irq_unmask = lstp_gpio_irq_unmask,
+	.irq_set_type = lstp_gpio_irq_set_type,
+	.irq_bus_lock = lstp_gpio_irq_bus_lock,
+	.irq_bus_sync_unlock = lstp_gpio_irq_bus_sync_unlock,
+	.irq_print_chip = lstp_gpio_irq_print_chip,
+	.flags = IRQCHIP_SET_TYPE_MASKED | IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_IMMUTABLE,
+	GPIOCHIP_IRQ_RESOURCE_HELPERS,
+};
 
 /**
  * lstp_gpio_irq_event_work() - Deferred GPIO interrupt event handler.
@@ -843,15 +886,6 @@ static void lstp_gpio_irq_event(struct lstp_channel *ch)
 	work->pin = pin;
 	work->value = gpio_req->irq_event.value;
 
-	/* Check if workqueue is still available */
-	if (!priv->wq) {
-		dev_warn(&ch->usb->intf->dev,
-			 "%s: ch_%d: Workqueue destroyed, dropping IRQ event for pin %u\n",
-			 __func__, ch->ch_id, pin);
-		kfree(work);
-		return;
-	}
-
 	queued = queue_work(priv->wq, &work->work);
 	if (!queued) {
 		dev_warn(&ch->usb->intf->dev,
@@ -867,24 +901,9 @@ static void lstp_gpio_irq_event(struct lstp_channel *ch)
  * GPIO channel initialization
  ******************************************************************************/
 
-/**
- * lstp_gpio_teardown_action() - Devm action: cancel RX URB, clear IRQ callback, destroy workqueue.
- * @data: Pointer to struct lstp_channel
- */
-static void lstp_gpio_teardown_action(void *data)
+static void lstp_gpio_destroy_wq(void *wq)
 {
-	struct lstp_channel *ch = data;
-	struct lstp_gpio_priv *priv = ch->priv;
-
-	/* Synchronously cancel RX URB so no completion runs after we destroy the wq */
-	if (ch->usb && ch->usb->bulk_rx_urb)
-		usb_kill_urb(ch->usb->bulk_rx_urb);
-
-	ch->irq_callback = NULL;
-	if (priv && priv->wq) {
-		destroy_workqueue(priv->wq);
-		priv->wq = NULL;
-	}
+	destroy_workqueue(wq);
 }
 
 /**
@@ -915,7 +934,7 @@ static int lstp_gpio_get_pin_info(struct lstp_gpio_priv *priv, const char **pin_
 	unsigned int pin;
 	unsigned int chunk;
 	unsigned int i;
-	size_t expected_payload_size;
+	size_t min_payload_size;
 
 	pin_data = kcalloc(max_per_read, sizeof(*pin_data), GFP_KERNEL);
 	if (!pin_data)
@@ -934,10 +953,10 @@ static int lstp_gpio_get_pin_info(struct lstp_gpio_priv *priv, const char **pin_
 		if (chunk == 0) {
 			/* Chunk 0 already in resp_buf from lstp_init_channels */
 			rx_pkt = (struct lstp_packet *)ch0->resp_buf;
-			expected_payload_size = sizeof(struct lstp_ch0_resp_read) +
-						sizeof(struct lstp_gpio_config) +
-						pins_in_chunk * sizeof(struct lstp_gpio_pin);
-			ret = lstp_validate_resp(ch->usb, rx_pkt, expected_payload_size);
+			min_payload_size = sizeof(struct lstp_ch0_resp_read) +
+					   sizeof(struct lstp_gpio_config) +
+					   pins_in_chunk * sizeof(struct lstp_gpio_pin);
+			ret = lstp_validate_resp(ch->usb, rx_pkt, min_payload_size);
 			if (ret) {
 				dev_err(&ch->usb->intf->dev,
 					"%s: ch_%d: Chunk 0 validation failed (%pe)\n", __func__,
@@ -966,8 +985,8 @@ static int lstp_gpio_get_pin_info(struct lstp_gpio_priv *priv, const char **pin_
 		for (i = 0; i < pins_in_chunk; i++) {
 			pin = pin_base + i;
 			name = (char *)pin_names[pin];
-			snprintf(name, LSTP_GPIO_CONSUMER_NAME_MAX, "%.*s",
-				 (int)LSTP_GPIO_PIN_NAME_LEN, pin_data[i].pin_name);
+			snprintf(name, GPIO_MAX_NAME_SIZE, "%.*s", (int)LSTP_GPIO_PIN_NAME_LEN,
+				 pin_data[i].pin_name);
 		}
 
 		dev_dbg(&ch->usb->intf->dev,
@@ -988,22 +1007,19 @@ out_free:
  * lstp_gpio_init() - Initialize GPIO channel.
  * @ch: LSTP channel configured for GPIO
  *
- * Caller must hold ch0->tx_mutex and have run lstp_ch0_read_helper for this channel
- * (response in ch0->resp_buf). Allocates priv, resp_buf, irq_buf; sets up gpio_chip
- * and irq_chip. Returns with ch0->tx_mutex still held so lstp_init_channels can
- * lstp_unlock_resp_buffer() and mutex_unlock(). Call lstp_gpio_start() after RX URB is active.
+ * Allocates priv, buffers, shadow IRQ state; sets up gpio_chip and irq_chip (bus_lock pattern).
+ * Caller must hold ch0->tx_mutex with this channel's READ_CONFIG response already in ch0->resp_buf;
+ * returns with it still held. Call lstp_gpio_start() after RX URB is active.
  *
  * Return: 0 on success, negative errno on failure.
  */
-int lstp_gpio_init(struct lstp_channel *ch)
+static int lstp_gpio_init(struct lstp_channel *ch)
 {
 	int ret;
-	char *ch_name;
 	char *name;
 	const char **pin_names = NULL;
 	struct lstp_gpio_priv *priv;
 	struct gpio_chip *gc;
-	struct irq_chip *irq_chip;
 	struct gpio_irq_chip *girq;
 	struct lstp_channel *ch0 = ch->usb->channels[0];
 	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
@@ -1031,16 +1047,12 @@ int lstp_gpio_init(struct lstp_channel *ch)
 	if (!ch->irq_buf)
 		return -ENOMEM;
 
-	ch_name = devm_kzalloc(&ch->usb->intf->dev, LSTP_CH_NAME_LEN, GFP_KERNEL);
-	if (!ch_name)
-		return -ENOMEM;
-
 	pin_names = devm_kcalloc(&ch->usb->intf->dev, config->ch_ngpio, sizeof(char *), GFP_KERNEL);
 	if (!pin_names)
 		return -ENOMEM;
 
 	for (int pin = 0; pin < config->ch_ngpio; pin++) {
-		name = devm_kzalloc(&ch->usb->intf->dev, LSTP_GPIO_CONSUMER_NAME_MAX, GFP_KERNEL);
+		name = devm_kzalloc(&ch->usb->intf->dev, GPIO_MAX_NAME_SIZE, GFP_KERNEL);
 		if (!name)
 			return -ENOMEM;
 		pin_names[pin] = name;
@@ -1050,14 +1062,15 @@ int lstp_gpio_init(struct lstp_channel *ch)
 	if (!priv)
 		return -ENOMEM;
 
-	irq_chip = devm_kzalloc(&ch->usb->intf->dev, sizeof(*irq_chip), GFP_KERNEL);
-	if (!irq_chip)
+	priv->shadow_irq_type = devm_kcalloc(&ch->usb->intf->dev, config->ch_ngpio,
+					     sizeof(*priv->shadow_irq_type), GFP_KERNEL);
+	if (!priv->shadow_irq_type)
 		return -ENOMEM;
 
-	/* Save channel type and name */
-	ch->ch_type = ch0_resp->read.ch_type;
-	snprintf(ch_name, LSTP_CH_NAME_LEN, "%s_%s", ch->usb->lstp_intf_name,
-		 ch0_resp->read.ch_name);
+	priv->hw_irq_type = devm_kcalloc(&ch->usb->intf->dev, config->ch_ngpio,
+					 sizeof(*priv->hw_irq_type), GFP_KERNEL);
+	if (!priv->hw_irq_type)
+		return -ENOMEM;
 
 	/* Initialize private data */
 	priv->ch = ch;
@@ -1079,9 +1092,18 @@ int lstp_gpio_init(struct lstp_channel *ch)
 	}
 	ch->priv = priv;
 
+	/* Truncate display_name to fit GPIO_MAX_NAME_SIZE (32 bytes including '\0') */
+	if (strlen(ch->display_name) >= GPIO_MAX_NAME_SIZE) {
+		dev_warn(&ch->usb->intf->dev,
+			 "%s: ch_%d: display_name truncated to '%.*s' (max %d chars)\n", __func__,
+			 ch->ch_id, GPIO_MAX_NAME_SIZE - 1, ch->display_name,
+			 GPIO_MAX_NAME_SIZE - 1);
+		ch->display_name[GPIO_MAX_NAME_SIZE - 1] = '\0';
+	}
+
 	/* Initialize GPIO chip structure */
 	gc = &priv->gc;
-	gc->label = ch_name;
+	gc->label = ch->display_name;
 	gc->owner = THIS_MODULE;
 	gc->names = pin_names;
 	gc->base = -1;
@@ -1109,19 +1131,16 @@ int lstp_gpio_init(struct lstp_channel *ch)
 	}
 
 	/* Setup IRQ */
-	irq_chip->name = ch_name;
-	irq_chip->irq_mask = lstp_gpio_irq_mask;
-	irq_chip->irq_unmask = lstp_gpio_irq_unmask;
-	irq_chip->irq_set_type = lstp_gpio_irq_set_type;
-
 	girq = &gc->irq;
-	girq->chip = irq_chip;
+	gpio_irq_chip_set_chip(girq, &lstp_gpio_irq_chip);
 	girq->parent_handler = NULL;
 	girq->num_parents = 0;
 	girq->parents = NULL;
 	girq->default_type = IRQ_TYPE_NONE;
 	girq->handler = handle_simple_irq;
 	girq->threaded = true;
+
+	mutex_init(&priv->irq_lock);
 
 	/* Create dedicated workqueue for IRQ event handling */
 	priv->wq = alloc_workqueue("lstp_gpio_wq", WQ_UNBOUND, 0);
@@ -1130,8 +1149,11 @@ int lstp_gpio_init(struct lstp_channel *ch)
 			ch->ch_id);
 		return -ENOMEM;
 	}
+	ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_gpio_destroy_wq, priv->wq);
+	if (ret)
+		return ret;
 
-	dev_dbg(&ch->usb->intf->dev, "%s: GPIO channel %d initialized as %s\n", __func__, ch->ch_id,
+	dev_dbg(&ch->usb->intf->dev, "%s: ch_%d: Initialized as %s\n", __func__, ch->ch_id,
 		gc->label);
 	return 0;
 }
@@ -1145,7 +1167,7 @@ int lstp_gpio_init(struct lstp_channel *ch)
  *
  * Return: 0 on success, negative errno on failure.
  */
-int lstp_gpio_start(struct lstp_channel *ch)
+static int lstp_gpio_start(struct lstp_channel *ch)
 {
 	int ret;
 	struct lstp_gpio_priv *priv = ch->priv;
@@ -1158,25 +1180,43 @@ int lstp_gpio_start(struct lstp_channel *ch)
 	}
 
 	gc = &priv->gc;
-	ret = devm_gpiochip_add_data(&ch->usb->intf->dev, gc, priv);
+
+	ret = lstp_gpio_sync_hw_irq_state(priv);
+	if (ret)
+		return ret;
+
+	ret = gpiochip_add_data(gc, priv);
 	if (ret) {
 		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Could not register GPIO chip (%pe)\n",
 			__func__, ch->ch_id, ERR_PTR(ret));
-		destroy_workqueue(priv->wq);
-		priv->wq = NULL;
-		return ret;
-	}
-	ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_gpio_teardown_action, ch);
-	if (ret) {
-		dev_err(&ch->usb->intf->dev,
-			"%s: ch_%d: Failed to register teardown action (%pe)\n", __func__,
-			ch->ch_id, ERR_PTR(ret));
 		return ret;
 	}
 
 	ch->irq_callback = lstp_gpio_irq_event;
+	ch->child_dev = gpio_device_to_device(gc->gpiodev);
 
-	dev_info(&ch->usb->intf->dev, "%s: GPIO channel %d registered as %s with %u pins\n",
-		 __func__, ch->ch_id, gc->label, gc->ngpio);
+	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started as %s with %u pins\n", __func__,
+		 ch->ch_id, gc->label, gc->ngpio);
 	return 0;
 }
+
+/**
+ * lstp_gpio_stop() - Tear down the GPIO chip's userspace/kernel surface.
+ * @ch: LSTP channel previously started by lstp_gpio_start()
+ */
+static void lstp_gpio_stop(struct lstp_channel *ch)
+{
+	struct lstp_gpio_priv *priv = ch->priv;
+
+	/* Drain RX-queued IRQ-event work while gc->irq.domain is still valid. */
+	flush_workqueue(priv->wq);
+
+	gpiochip_remove(&priv->gc);
+}
+
+/* clang-format off */
+LSTP_SUBSYS(gpio, LSTP_CHANNEL_TYPE_GPIO, lstp_gpio_init, lstp_gpio_start,
+	    .fwnode_compatible = "nvidia,lstp-gpio",
+	    .channel_stop = lstp_gpio_stop,
+);
+/* clang-format on */

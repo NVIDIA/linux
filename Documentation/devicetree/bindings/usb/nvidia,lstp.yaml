@@ -7,9 +7,9 @@ title: NVIDIA LSTP USB Multi-Function Device
 
 description: |
   The NVIDIA LSTP (Low-Speed Transport Protocol) is a USB device that
-  exposes multiple function channels (SPI, GPIO, I2C, IPMI) over a single
-  USB interface.  The host driver multiplexes channel traffic over USB
-  bulk endpoints using a lightweight packet protocol.
+  exposes multiple function channels (SPI, GPIO, I2C, IPMI, UART) over a
+  single USB interface.  The host driver multiplexes channel traffic over
+  USB bulk endpoints using a lightweight packet protocol.
 
   Device tree nodes describe the USB device, the USB interface used for
   channel communication, and the individual channel sub-devices.  The
@@ -23,7 +23,8 @@ description: |
            ├─ channel@1  compatible = "nvidia,lstp-spi"
            ├─ channel@2  compatible = "nvidia,lstp-i2c"
            ├─ channel@3  compatible = "nvidia,lstp-gpio"
-           └─ channel@4  compatible = "nvidia,lstp-ipmi"
+           ├─ channel@4  compatible = "nvidia,lstp-ipmi"
+           └─ channel@5  compatible = "nvidia,lstp-uart"
 
   Channel IDs and types are reported by the device firmware at probe time.
   The reg value in each channel node must match the firmware channel ID.
@@ -85,6 +86,7 @@ patternProperties:
               - nvidia,lstp-gpio
               - nvidia,lstp-ipmi
               - nvidia,lstp-i2c
+              - nvidia,lstp-uart
 
           reg:
             description: Firmware channel ID.
@@ -119,6 +121,12 @@ patternProperties:
                   const: nvidia,lstp-i2c
             then:
               $ref: nvidia,lstp-i2c.yaml#
+          - if:
+              properties:
+                compatible:
+                  const: nvidia,lstp-uart
+            then:
+              $ref: nvidia,lstp-uart.yaml#
 
     required:
       - reg
@@ -191,6 +199,11 @@ examples:
                 compatible = "nvidia,lstp-ipmi";
                 reg = <4>;
                 label = "ipmi-lstp-mcu";
+            };
+
+            channel@5 {
+                compatible = "nvidia,lstp-uart";
+                reg = <5>;
             };
         };
     };
