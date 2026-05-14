@@ -64,6 +64,7 @@ struct mctp_i2c_dev {
 	struct list_head list; /* For mctp_i2c_client.devs */
 
 	size_t rx_pos;
+	bool rx_overflow;
 	u8 rx_buffer[MCTP_I2C_BUFSZ];
 	struct completion rx_done;
 
@@ -254,8 +255,9 @@ static int mctp_i2c_slave_cb(struct i2c_client *client,
 		if (midev->rx_pos < MCTP_I2C_BUFSZ) {
 			midev->rx_buffer[midev->rx_pos] = *val;
 			midev->rx_pos++;
-		} else {
+		} else if (!midev->rx_overflow) {
 			midev->ndev->stats.rx_over_errors++;
+			midev->rx_overflow = true;
 		}
 
 		break;
@@ -263,9 +265,13 @@ static int mctp_i2c_slave_cb(struct i2c_client *client,
 		/* dest_slave as first byte */
 		midev->rx_buffer[0] = mcli->lladdr << 1;
 		midev->rx_pos = 1;
+		midev->rx_overflow = false;
 		break;
 	case I2C_SLAVE_STOP:
-		rc = mctp_i2c_recv(midev);
+		if (midev->rx_overflow)
+			rc = -EINVAL;
+		else
+			rc = mctp_i2c_recv(midev);
 		break;
 	default:
 		break;
