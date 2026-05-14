@@ -312,10 +312,14 @@ static int __net_init mctp_neigh_net_init(struct net *net)
 static void __net_exit mctp_neigh_net_exit(struct net *net)
 {
 	struct netns_mctp *ns = &net->mctp;
-	struct mctp_neigh *neigh;
+	struct mctp_neigh *neigh, *tmp;
 
-	list_for_each_entry(neigh, &ns->neighbours, list)
+	mutex_lock(&ns->neigh_lock);
+	list_for_each_entry_safe(neigh, tmp, &ns->neighbours, list) {
+		list_del_rcu(&neigh->list);
 		call_rcu(&neigh->rcu, __mctp_neigh_free);
+	}
+	mutex_unlock(&ns->neigh_lock);
 }
 
 /* net namespace implementation */
