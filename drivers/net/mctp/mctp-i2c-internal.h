@@ -31,6 +31,7 @@ struct mctp_i2c_dev {
 	struct list_head list; /* For mctp_i2c_client.devs */
 
 	size_t rx_pos;
+	bool rx_overflow;
 	u8 rx_buffer[MCTP_I2C_BUFSZ];
 	struct completion rx_done;
 
@@ -114,4 +115,3 @@ struct mctp_i2c_dev {
 };
 
 #endif /* __MCTP_I2C_INTERNAL_H */
-
