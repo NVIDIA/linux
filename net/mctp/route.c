@@ -2187,17 +2187,28 @@ static int __net_init mctp_routes_net_init(struct net *net)
 
 static void __net_exit mctp_routes_net_exit(struct net *net)
 {
-	struct mctp_route *rt;
+	struct mctp_route *rt, *tmp;
 
-	rcu_read_lock();
-	list_for_each_entry_rcu(rt, &net->mctp.routes, list)
+	ASSERT_RTNL();
+
+	list_for_each_entry_safe(rt, tmp, &net->mctp.routes, list) {
+		list_del_rcu(&rt->list);
 		mctp_route_release(rt);
-	rcu_read_unlock();
+	}
+}
+
+static void __net_exit mctp_routes_net_exit_batch(struct list_head *net_exit_list,
+						  struct list_head *dev_kill_list)
+{
+	struct net *net;
+
+	list_for_each_entry(net, net_exit_list, exit_list)
+		mctp_routes_net_exit(net);
 }
 
 static struct pernet_operations mctp_net_ops = {
 	.init = mctp_routes_net_init,
-	.exit = mctp_routes_net_exit,
+	.exit_batch_rtnl = mctp_routes_net_exit_batch,
 };
 
 static const struct rtnl_msg_handler mctp_route_rtnl_msg_handlers[] = {
