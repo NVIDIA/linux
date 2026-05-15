@@ -12,24 +12,6 @@
 	#size-cells = <1>;
 	interrupt-parent = <&gic>;
 
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		mctp0_reserved: mctp0_reserved@b1000000 {
-			reg = <0xb1000000 0x10000>;
-			compatible = "shared-dma-pool";
-			no-map;
-		};
-
-		mctp1_reserved: mctp1_reserved@b1010000 {
-			reg = <0xb1010000 0x10000>;
-			compatible = "shared-dma-pool";
-			no-map;
-		};
-	};
-
 	aliases {
 		i3c0 = &i3c0;
 		i3c1 = &i3c1;
@@ -602,37 +584,14 @@
 				status = "disabled";
 			};
 
-			h2x: h2x@1e770000 {
-				compatible = "aspeed,ast2600-h2x";
-				reg = <0x1e770000 0x100>;
-				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
-				resets = <&syscon ASPEED_RESET_H2X>;
-				#address-cells = <1>;
-				#size-cells = <1>;
-				ranges = <0x0 0x1e770000 0x100>;
-
-				status = "disabled";
-
-					pcie_cfg0: cfg0@80 {
-						reg = <0x80 0x80>;
-					};
-
-					pcie_cfg1: cfg1@C0 {
-						reg = <0xC0 0x80>;
-					};
-			};
-
 			mctp0: mctp@1e6e8000 {
 				compatible = "aspeed,ast2600-mctp";
-				reg = <0x1e6e8000 0x1000>;
-				interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
-						      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_HI_TO_LO>,
-						      <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
-				interrupt-names = "mctp", "perst-lo", "perst-hi";
+				reg = <0x1e6e8000 0x30>;
+				interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>, <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
+				interrupt-names = "mctp", "pcie";
 				resets = <&syscon ASPEED_RESET_DEV_MCTP>;
 				aspeed,scu = <&syscon>;
 				aspeed,pcieh = <&pcie_phy0>;
-				memory-region = <&mctp0_reserved>;
 				status = "disabled";
 			};
 
