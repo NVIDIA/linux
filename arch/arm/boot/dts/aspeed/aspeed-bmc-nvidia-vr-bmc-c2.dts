@@ -102,6 +102,18 @@
 			compatible = "shared-dma-pool";
 			reusable;
 		};
+
+		mctp0_reserved: mctp0_reserved@b1000000 {
+			reg = <0xb1000000 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		mctp1_reserved: mctp1_reserved@b1010000 {
+			reg = <0xb1010000 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
 	};
 
     power-gpios{
@@ -141,6 +153,33 @@
 		enable-active-high;
 		regulator-always-on;
 		regulator-boot-on;
+	};
+};
+
+// Bridge between AHB bus and PCIe RC
+/ {
+	ahb {
+		apb@1e6e0000 {
+			h2x: h2x@1e770000 {
+				compatible = "aspeed,ast2600-h2x";
+				reg = <0x1e770000 0x100>;
+				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&syscon ASPEED_RESET_H2X>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0x1e770000 0x100>;
+
+				status = "disabled";
+
+				pcie_cfg0: cfg0@80 {
+					reg = <0x80 0x80>;
+				};
+
+				pcie_cfg1: cfg1@c0 {
+					reg = <0xc0 0x80>;
+				};
+			};
+		};
 	};
 };
 
@@ -1098,7 +1137,13 @@
     interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
 };
 
-&mctp1 {
+&mctp0 {
+    reg = <0x1e6e8000 0x1000>;
+    interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
+                          <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_HI_TO_LO>,
+                          <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
+    interrupt-names = "mctp", "perst-lo", "perst-hi";
+    memory-region = <&mctp0_reserved>;
     status = "okay";
 };
 
