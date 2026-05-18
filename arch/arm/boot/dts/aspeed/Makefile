@@ -97,4 +97,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-vr-bmc-e5010.dtb \
 	aspeed-bmc-nvidia-vr-bmc-nvl.dtb \
 	aspeed-bmc-nvidia-vr-bmc-nvl72-gl10.dtb \
-	aspeed-bmc-nvidia-vr-bmc-quark.dtb
+	aspeed-bmc-nvidia-vr-bmc-quark.dtb \
+	aspeed-bmc-nvidia-vc-bmc-256.dtb
