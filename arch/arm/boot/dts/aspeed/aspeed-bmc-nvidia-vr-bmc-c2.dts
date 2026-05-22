@@ -1058,6 +1058,67 @@
     };
 };
 
+// I2C Fan Board IOX
+&i2c_fan_iox {
+    exp25: pca9555@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+
+        gpio-line-names =
+            "FAN_P12V_FAN12_EN-O",
+            "FAN_P12V_FAN34_EN-O",
+            "FAN_P12V_FAN56_EN-O",
+            "FAN_P12V_FAN12_PG-I",
+            "FAN_P12V_FAN34_PG-I",
+            "FAN_P12V_FAN56_PG-I",
+            "",
+            "",
+            "FAN_FAN1_PRSNT_BUF-I",
+            "FAN_FAN2_PRSNT_BUF-I",
+            "FAN_FAN3_PRSNT_BUF-I",
+            "FAN_FAN4_PRSNT_BUF-I",
+            "FAN_FAN5_PRSNT_BUF-I",
+            "FAN_FAN6_PRSNT_BUF-I",
+            "FAN_FANCTRL_FAIL_L-I",
+            "FAN_FANCTRL2_FAIL_L-I";
+    };
+
+    exp26: pca9555@27 {
+        compatible = "nxp,pca9555";
+        reg = <0x27>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+        vcc-supply = <&standby_power_regulator>;
+
+        gpio-line-names =
+            "FAN_FAN1_FAIL_LED-O",
+            "FAN_FAN2_FAIL_LED-O",
+            "FAN_FAN3_FAIL_LED-O",
+            "FAN_FAN4_FAIL_LED-O",
+            "FAN_FAN5_FAIL_LED-O",
+            "FAN_FAN6_FAIL_LED-O",
+            "",
+            "",
+            "FAN_VR_P12V_FAN12_ALERT-I",
+            "FAN_VR_P12V_FAN34_ALERT-I",
+            "FAN_P12V_FAN56_ALERT-I",
+            "",
+            "",
+            "",
+            "",
+            "";
+    };
+};
+
 // E1S Backplane GPIO Expander
 &i2c_mcio_c0c1_north6 {
     // E1S Backplane, Expander @0x20
