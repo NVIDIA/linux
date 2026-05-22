@@ -676,6 +676,12 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
+
+			// GPU_1 FRU EEPROM (C1)
+			eeprom@50 {
+				compatible = "atmel,24c128";
+				reg = <0x50>;
+			};
 		};
 
 		i2c_mcio_c0_south1: i2c@1 {
@@ -770,6 +776,12 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
+
+			// E1.S Backplane FRU EEPROM (C1)
+			eeprom@51 {
+				compatible = "atmel,24c02";
+				reg = <0x51>;
+			};
 		};
 
 		i2c_mcio_c0c1_north4: i2c@4 {
@@ -796,7 +808,7 @@
 			#size-cells = <0>;
 			reg = <6>;
 
-			// E1.S Backplane FRU EEPROM
+			// E1.S Backplane FRU EEPROM (C2)
 			eeprom@51 {
 				compatible = "atmel,24c02";
 				reg = <0x51>;
@@ -822,7 +834,7 @@
 			#size-cells = <0>;
 			reg = <0>;
 
-			// GPU_1 FRU EEPROM
+			// GPU_1 FRU EEPROM (C2)
 			eeprom@50 {
 				compatible = "atmel,24c128";
 				reg = <0x50>;
