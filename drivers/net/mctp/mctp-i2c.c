@@ -670,6 +670,8 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		break;
 
 	case MCTP_I2C_TX_FLOW_INVALID:
+		stats->tx_dropped++;
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_flow_invalid);
 		return;
 	}
 
