@@ -314,6 +314,8 @@ static int mctp_rtm_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh,
 	mdev->num_addrs--;
 	spin_unlock_irqrestore(&mdev->addrs_lock, flags);
 
+	mctp_key_remove_addr(mdev, addr->s_addr);
+
 	netdev_dbg(dev, "MCTP: address %u deleted (remaining %u addresses)\n",
 		   addr->s_addr, mdev->num_addrs);
 	trace_mctp_address_del(dev, addr->s_addr);

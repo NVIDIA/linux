@@ -2244,6 +2244,60 @@ void mctp_key_remove_dev(struct mctp_dev *mdev)
 	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
 }
 
+void mctp_key_remove_addr(struct mctp_dev *mdev, mctp_eid_t addr)
+{
+	struct net *net = dev_net(mdev->dev);
+	unsigned int netid = READ_ONCE(mdev->net);
+	int ifindex = mdev->dev->ifindex;
+	struct mctp_sk_key *key;
+	struct hlist_node *tmp;
+	unsigned long flags, fl2;
+
+	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+	hlist_for_each_entry_safe(key, tmp, &net->mctp.keys, hlist) {
+		struct sk_buff *skb;
+		int bound_if;
+		bool remove;
+
+		spin_lock_irqsave(&key->lock, fl2);
+		bound_if = READ_ONCE(key->sk->sk_bound_dev_if);
+		/* Exact-address keys on unbound sockets are network-scoped and
+		 * have no device association, as is usual for RX reassembly.
+		 * For wildcard keys, explicit device ownership takes precedence
+		 * over the socket binding.
+		 */
+		remove = key->net == netid &&
+			 ((key->local_addr == addr &&
+			   (key->dev == mdev ||
+			    (!key->dev &&
+			     (!bound_if || bound_if == ifindex)))) ||
+			  (key->local_addr == MCTP_ADDR_ANY &&
+			   (key->dev == mdev ||
+			    (!key->dev && bound_if == ifindex))));
+		if (!remove) {
+			spin_unlock_irqrestore(&key->lock, fl2);
+			continue;
+		}
+
+		trace_mctp_key_release(key, MCTP_TRACE_KEY_INVALIDATED);
+		skb = key->reasm_head;
+		key->reasm_head = NULL;
+		key->reasm_dead = true;
+		key->valid = false;
+		mctp_dev_release_key(key->dev, key);
+		spin_unlock_irqrestore(&key->lock, fl2);
+
+		if (!hlist_unhashed(&key->hlist)) {
+			hlist_del_init(&key->hlist);
+			hlist_del_init(&key->sklist);
+			mctp_key_unref(key);
+		}
+
+		kfree_skb(skb);
+	}
+	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+}
+
 /* Lookup bound socket for packet delivery when no route exists */
 static struct mctp_route *mctp_route_lookup_bound_socket(struct net *net, struct sk_buff *skb)
 {

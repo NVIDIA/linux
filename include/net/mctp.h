@@ -391,6 +391,7 @@ int mctp_route_add_local(struct mctp_dev *mdev, mctp_eid_t addr);
 int mctp_route_remove_local(struct mctp_dev *mdev, mctp_eid_t addr);
 void mctp_route_remove_dev(struct mctp_dev *mdev);
 void mctp_key_remove_dev(struct mctp_dev *mdev);
+void mctp_key_remove_addr(struct mctp_dev *mdev, mctp_eid_t addr);
 
 /* neighbour definitions */
 enum mctp_neigh_source {
