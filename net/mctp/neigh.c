@@ -301,7 +301,7 @@ int mctp_neigh_lookup(struct mctp_dev *mdev, mctp_eid_t eid, void *ret_hwaddr)
 		if (mdev == neigh->dev && eid == neigh->eid) {
 			if (ret_hwaddr)
 				memcpy(ret_hwaddr, neigh->ha,
-				       sizeof(neigh->ha));
+				       mdev->dev->addr_len);
 			rc = 0;
 			break;
 		}
