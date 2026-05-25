@@ -618,14 +618,8 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	else
 		fs = MCTP_I2C_TX_FLOW_NONE;
 
-	if (skb_tailroom(skb) >= 1) {
-		/* Linear case with space, we can just append the PEC */
-		skb_put(skb, 1);
-	} else {
-		/* Otherwise need to copy the buffer */
-		skb_copy_bits(skb, 0, midev->tx_scratch, skb->len);
-		hdr = (void *)midev->tx_scratch;
-	}
+	skb_copy_bits(skb, 0, midev->tx_scratch, skb->len);
+	hdr = (void *)midev->tx_scratch;
 
 	pecp = (void *)&hdr->source_slave + hdr->byte_count;
 	*pecp = i2c_smbus_pec(0, (u8 *)hdr, hdr->byte_count + 3);
