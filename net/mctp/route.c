@@ -1001,7 +1001,14 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			key = NULL;
 
 		} else {
-			if (key->reasm_head || key->reasm_dead) {
+			if (key->reasm_head) {
+				kfree_skb(key->reasm_head);
+				key->reasm_head = NULL;
+				key->reasm_tailp = NULL;
+				rc = mctp_frag_queue(key, skb);
+				skb = NULL;
+				MCTP_SOCK_STAT_INC(NULL, net, rx_dropped_seq_mismatch);
+			} else if (key->reasm_dead) {
 				/* duplicate start? drop everything */
 				__mctp_key_done_in(key, net, f,
 						   MCTP_TRACE_KEY_INVALIDATED);
