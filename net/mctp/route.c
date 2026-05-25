@@ -1776,6 +1776,14 @@ static int mctp_route_lookup_null(struct net *net, struct net_device *dev,
 	return rc;
 }
 
+static struct sk_buff *mctp_fragment_alloc_skb(unsigned int length,
+					       gfp_t gfp_mask)
+{
+	KUNIT_STATIC_STUB_REDIRECT(mctp_fragment_alloc_skb, length, gfp_mask);
+
+	return alloc_skb(length, gfp_mask);
+}
+
 /* Fragment and batch: pack multiple fragments into a single SKB with space
  * for transport headers. The transport driver will fill in headers and send.
  * This function may send multiple batches if the message is large.
@@ -1827,7 +1835,8 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 			num_frags, skb_pos, skb->len, total_len,
 			batch_max_xfer);
 
-		batch_skb = alloc_skb(headroom + total_len, GFP_KERNEL);
+		batch_skb = mctp_fragment_alloc_skb(headroom + total_len,
+						    GFP_KERNEL);
 		if (!batch_skb) {
 			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev), tx_dropped_no_memory);
 			rc = -ENOMEM;
@@ -1961,7 +1970,8 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 		size = min(mtu - hlen, skb->len - pos);
 		is_last_fragment = (pos + size >= skb->len);
 
-		skb2 = alloc_skb(headroom + hlen + size, GFP_KERNEL);
+		skb2 = mctp_fragment_alloc_skb(headroom + hlen + size,
+					       GFP_KERNEL);
 		if (!skb2) {
 			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev),
 					   tx_dropped_no_memory);

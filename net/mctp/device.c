@@ -621,3 +621,7 @@ void __exit mctp_device_exit(void)
 	rtnl_af_unregister(&mctp_af_ops);
 	unregister_netdevice_notifier(&mctp_dev_nb);
 }
+
+#if IS_ENABLED(CONFIG_MCTP_TEST)
+#include "test/device-test.c"
+#endif

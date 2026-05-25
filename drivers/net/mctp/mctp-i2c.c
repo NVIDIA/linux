@@ -1704,6 +1704,10 @@ static __exit void mctp_i2c_mod_exit(void)
 	mctp_i2c_error_inject_module_exit();
 }
 
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_I2C_TEST)
+#include "test/i2c-test.c"
+#endif
+
 module_init(mctp_i2c_mod_init);
 module_exit(mctp_i2c_mod_exit);
 
