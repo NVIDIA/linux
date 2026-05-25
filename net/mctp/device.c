@@ -242,13 +242,22 @@ static int mctp_rtm_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh,
 	swap(mdev->addrs, tmp_addrs);
 	spin_unlock_irqrestore(&mdev->addrs_lock, flags);
 
+	rc = mctp_route_add_local(mdev, addr->s_addr);
+	if (rc) {
+		spin_lock_irqsave(&mdev->addrs_lock, flags);
+		mdev->num_addrs--;
+		swap(mdev->addrs, tmp_addrs);
+		spin_unlock_irqrestore(&mdev->addrs_lock, flags);
+		kfree(tmp_addrs);
+		return rc;
+	}
+
 	kfree(tmp_addrs);
 
 	netdev_dbg(dev, "MCTP: address %u added (total %u addresses)\n",
 		   addr->s_addr, mdev->num_addrs);
 	trace_mctp_address_add(dev, addr->s_addr);
 	mctp_addr_notify(mdev, addr->s_addr, RTM_NEWADDR, skb, nlh);
-	mctp_route_add_local(mdev, addr->s_addr);
 
 	return 0;
 }
