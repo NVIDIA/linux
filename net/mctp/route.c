@@ -545,7 +545,7 @@ out_unlock:
  */
 static void __mctp_key_done_in(struct mctp_sk_key *key, struct net *net,
 			       unsigned long flags, unsigned long reason)
-__releases(&key->lock)
+	__releases(&key->lock)
 {
 	struct sk_buff *skb;
 
@@ -621,6 +621,51 @@ static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev)
 #else
 static void mctp_skb_set_flow(struct sk_buff *skb, struct mctp_sk_key *key) {}
 static void mctp_flow_prepare_output(struct sk_buff *skb, struct mctp_dev *dev) {}
+#endif
+
+#ifdef CONFIG_MCTP_FLOWS
+static void mctp_report_tx_partial(struct sk_buff *skb)
+{
+	struct mctp_sk_key *key;
+	struct mctp_flow *flow;
+	struct sock *sk;
+	unsigned long flags;
+	bool pushed;
+
+	flow = skb_ext_find(skb, SKB_EXT_MCTP);
+	if (!flow || !flow->key)
+		return;
+
+	key = flow->key;
+	refcount_inc(&key->refs);
+
+	pushed = false;
+	if (skb_network_header(skb) + sizeof(struct mctp_hdr) == skb->data) {
+		skb_push(skb, sizeof(struct mctp_hdr));
+		pushed = true;
+	}
+
+	sk = mctp_lookup_sock_for_error(skb, skb->dev, key, NULL);
+	if (sk) {
+		mctp_queue_error(sk, skb, EPIPE, skb->dev, MCTP_DIR_TX,
+				 mctp_get_binding_type(skb->dev), key);
+		sock_put(sk);
+	}
+
+	if (pushed)
+		skb_pull(skb, sizeof(struct mctp_hdr));
+
+	spin_lock_irqsave(&key->lock, flags);
+	if (key->valid) {
+		__mctp_key_done_in(key, sock_net(key->sk), flags,
+				   MCTP_TRACE_KEY_TX_PARTIAL);
+	} else {
+		spin_unlock_irqrestore(&key->lock, flags);
+		mctp_key_unref(key);
+	}
+}
+#else
+static void mctp_report_tx_partial(struct sk_buff *skb) {}
 #endif
 
 /* takes ownership of skb, both in success and failure cases */
@@ -1687,10 +1732,12 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 	struct mctp_hdr *hdr, *hdr2;
 	struct mctp_skb_cb *cb;
 	struct sk_buff *batch_skb;
+	struct sk_buff_head batches;
 	unsigned int pos, size, headroom;
 	unsigned int total_len, num_frags;
 	unsigned int skb_pos;
 	u8 *batch_data;
+	bool partial;
 	u8 seq;
 	int rc;
 
@@ -1701,7 +1748,9 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 	/* we've got the header */
 	skb_pull(skb, hlen);
 
+	skb_queue_head_init(&batches);
 	skb_pos = 0;
+	partial = false;
 	rc = 0;
 
 	while (skb_pos < skb->len) {
@@ -1721,26 +1770,12 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 			num_frags, skb_pos, skb->len, total_len,
 			batch_max_xfer);
 
-		/* Allocate a single large SKB to hold all fragments */
-		struct sock *sk_save = skb->sk;
-
-		/* Hold a ref so sk_save stays valid across kfree_skb — the skb
-		 * destructor (sock_wfree) may drop the socket's last ref otherwise.
-		 */
-		if (sk_save)
-			sock_hold(sk_save);
-
 		batch_skb = alloc_skb(headroom + total_len, GFP_KERNEL);
 		if (!batch_skb) {
-			kfree_skb(skb);
-			MCTP_SOCK_STAT_INC(sk_save, dev_net(dst->dev->dev), tx_dropped_no_memory);
-			if (sk_save)
-				sock_put(sk_save);
-			return -ENOMEM;
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev), tx_dropped_no_memory);
+			rc = -ENOMEM;
+			goto out;
 		}
-
-		if (sk_save)
-			sock_put(sk_save);
 
 		/* Copy generic SKB properties */
 		batch_skb->protocol = htons(ETH_P_MCTP | 0x8000); /* Mark as batched */
@@ -1798,14 +1833,22 @@ static int mctp_do_fragment_route_batch(struct mctp_dst *dst, struct sk_buff *sk
 		}
 
 		skb_pos = pos;
-
-		rc = dst->output(dst, batch_skb);
-		if (rc) {
-			rc = net_xmit_errno(rc);
-			break;
-		}
+		__skb_queue_tail(&batches, batch_skb);
 	}
 
+	while ((batch_skb = __skb_dequeue(&batches))) {
+		rc = dst->output(dst, batch_skb);
+		if (rc) {
+			if (partial)
+				mctp_report_tx_partial(skb);
+			skb_queue_purge(&batches);
+			break;
+		}
+		partial = true;
+	}
+
+out:
+	skb_queue_purge(&batches);
 	consume_skb(skb);
 	return rc;
 }
@@ -1817,8 +1860,10 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 	struct mctp_hdr *hdr, *hdr2;
 	unsigned int pos, size, headroom;
 	struct sk_buff *skb2;
+	struct sk_buff_head frags;
 	unsigned int batch_hdr_len;
 	unsigned int batch_max_xfer;
+	bool partial;
 	int rc;
 	u8 seq;
 
@@ -1849,6 +1894,9 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 	/* we've got the header */
 	skb_pull(skb, hlen);
 
+	skb_queue_head_init(&frags);
+	partial = false;
+
 	for (pos = 0; pos < skb->len;) {
 		bool is_last_fragment;
 
@@ -1858,9 +1906,10 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 
 		skb2 = alloc_skb(headroom + hlen + size, GFP_KERNEL);
 		if (!skb2) {
-			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev), tx_dropped_no_memory);
+			MCTP_SOCK_STAT_INC(skb->sk, dev_net(dst->dev->dev),
+					   tx_dropped_no_memory);
 			rc = -ENOMEM;
-			break;
+			goto out;
 		}
 
 		/* generic skb copy */
@@ -1900,15 +1949,25 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 		/* we need to copy the extensions, for MCTP flow data */
 		skb_ext_copy(skb2, skb);
 
-		/* do route */
-		rc = dst->output(dst, skb2);
-		if (rc)
-			break;
+		__skb_queue_tail(&frags, skb2);
 
 		seq = (seq + 1) & MCTP_HDR_SEQ_MASK;
 		pos += size;
 	}
 
+	while ((skb2 = __skb_dequeue(&frags))) {
+		rc = dst->output(dst, skb2);
+		if (rc) {
+			if (partial)
+				mctp_report_tx_partial(skb);
+			skb_queue_purge(&frags);
+			break;
+		}
+		partial = true;
+	}
+
+out:
+	skb_queue_purge(&frags);
 	consume_skb(skb);
 	return rc;
 }
