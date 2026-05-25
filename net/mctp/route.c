@@ -17,6 +17,8 @@
 #include <linux/netfilter_netdev.h>
 #include <linux/rtnetlink.h>
 #include <linux/skbuff.h>
+#include <linux/slab.h>
+#include <linux/sysctl.h>
 #include <linux/jhash.h>
 
 #include <kunit/static_stub.h>
@@ -31,6 +33,7 @@
 #include <trace/events/mctp.h>
 
 static const unsigned int mctp_message_maxlen = 64 * 1024;
+static const unsigned int mctp_default_max_keys = 1024;
 static const unsigned long mctp_nf_track_timeout = 2 * CONFIG_HZ;
 
 /* Helper to determine binding type from network device
@@ -495,18 +498,22 @@ static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk,
 			unsigned long lifetime)
 {
 	struct net *net = sock_net(&msk->sk);
+	struct netns_mctp *mns = &net->mctp;
 	struct mctp_sk_key *tmp;
 	unsigned long flags;
+	unsigned int key_count;
 	int rc = 0;
 
-	spin_lock_irqsave(&net->mctp.keys_lock, flags);
+	spin_lock_irqsave(&mns->keys_lock, flags);
 
 	if (sock_flag(&msk->sk, SOCK_DEAD)) {
 		rc = -EINVAL;
 		goto out_unlock;
 	}
 
-	hlist_for_each_entry(tmp, &net->mctp.keys, hlist) {
+	key_count = 0;
+	hlist_for_each_entry(tmp, &mns->keys, hlist) {
+		key_count++;
 		if (mctp_key_match(tmp, key->net, key->local_addr,
 				   key->peer_addr, key->tag)) {
 			spin_lock(&tmp->lock);
@@ -518,17 +525,20 @@ static int mctp_key_add(struct mctp_sk_key *key, struct mctp_sock *msk,
 		}
 	}
 
+	if (!rc && key_count >= READ_ONCE(mns->max_keys))
+		rc = -ENOBUFS;
+
 	if (!rc) {
 		refcount_inc(&key->refs);
 		key->expiry = jiffies + lifetime;
 		timer_reduce(&msk->key_expiry, key->expiry);
 
-		hlist_add_head(&key->hlist, &net->mctp.keys);
+		hlist_add_head(&key->hlist, &mns->keys);
 		hlist_add_head(&key->sklist, &msk->keys);
 	}
 
 out_unlock:
-	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
 
 	return rc;
 }
@@ -1033,10 +1043,19 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			 * can do is drop.
 			 */
 			rc = mctp_key_add(key, msk, lifetime);
-			if (!rc)
+			if (!rc) {
 				trace_mctp_key_acquire(key);
-			else
-				MCTP_SOCK_STAT_INC(&msk->sk, net, rx_dropped_seq_mismatch);
+			} else {
+				if (rc == -ENOBUFS)
+					MCTP_SOCK_STAT_INC(&msk->sk, net,
+							   rx_dropped_no_memory);
+				else
+					MCTP_SOCK_STAT_INC(&msk->sk, net,
+							   rx_dropped_seq_mismatch);
+				kfree_skb(key->reasm_head);
+				key->reasm_head = NULL;
+				key->reasm_tailp = NULL;
+			}
 
 			/* we don't need to release key->lock on exit, so
 			 * clean up here and suppress the unlock via
@@ -1322,6 +1341,19 @@ static struct mctp_tag_hint *mctp_tag_hint_find(struct netns_mctp *mns,
 	return NULL;
 }
 
+static void mctp_tag_hint_trim(struct netns_mctp *mns, unsigned int limit)
+{
+	struct mctp_tag_hint *hint;
+
+	while (mns->tag_hint_count > limit) {
+		hint = hlist_entry(mns->tag_hints.first,
+				   struct mctp_tag_hint, hlist);
+		hlist_del(&hint->hlist);
+		kfree(hint);
+		mns->tag_hint_count--;
+	}
+}
+
 /* Allocate a locally-owned tag value for (local, peer), and reserve
  * it for the socket msk
  */
@@ -1335,9 +1367,12 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	struct netns_mctp *mns = &net->mctp;
 	struct mctp_sk_key *key, *tmp;
 	unsigned long flags;
+	unsigned int key_count;
+	unsigned int max_keys;
 	pid_t holder_pids[8];
 	u8 holder_counts[8];
 	int nholders, i;
+	int rc = 0;
 	u8 tagbits;
 
 	/* for NULL destination EIDs, we may get a response from any peer */
@@ -1361,7 +1396,9 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	 * This includes dynamically allocated and preallocated/reserved tags
 	 * (all are keys in the list); we must not allocate a tag already in use.
 	 */
+	key_count = 0;
 	hlist_for_each_entry(tmp, &mns->keys, hlist) {
+		key_count++;
 		/* We can check the lookup fields (*_addr, tag) without the
 		 * lock held, they don't change over the lifetime of the key.
 		 */
@@ -1398,13 +1435,20 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 			break;
 	}
 
-	if (tagbits) {
+	max_keys = READ_ONCE(mns->max_keys);
+	if (tagbits && key_count >= max_keys)
+		rc = -ENOBUFS;
+
+	if (tagbits && !rc) {
 		struct mctp_tag_hint *hint;
 		u8 start;
 		u8 tag;
 		int i;
 
-		/* Use persistent hint so req-resp pairs get 0, 1, 2, ... even after key release */
+		/* Apply a reduced runtime limit before the linear lookup. */
+		mctp_tag_hint_trim(mns, max_keys);
+
+		/* Keep rolling across request/response key lifetimes. */
 		hint = mctp_tag_hint_find(mns, netid, peer);
 		start = hint ? hint->next_tag : 0;
 
@@ -1420,15 +1464,19 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 		if (hint) {
 			hint->next_tag = (tag + 1) % 8;
 		} else {
+			/* Hint metadata must not make tag allocation fail. */
+			if (max_keys && mns->tag_hint_count >= max_keys)
+				mctp_tag_hint_trim(mns, max_keys - 1);
+
 			hint = kzalloc(sizeof(*hint), GFP_ATOMIC);
 			if (hint) {
 				hint->net = netid;
 				hint->peer = peer;
 				hint->next_tag = (tag + 1) % 8;
 				hlist_add_head(&hint->hlist, &mns->tag_hints);
+				mns->tag_hint_count++;
 			}
 		}
-
 		mctp_reserve_tag(net, key, msk, lifetime);
 		trace_mctp_key_acquire(key);
 
@@ -1479,6 +1527,15 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	}
 
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
+
+	if (rc == -ENOBUFS) {
+		pr_warn_ratelimited("mctp: key limit reached net %u local %u peer %u max %u\n",
+				    netid, local, peer, READ_ONCE(mns->max_keys));
+		mctp_key_unref(key);
+		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_drops);
+		MCTP_SOCK_STAT_INC(&msk->sk, net, tx_dropped_no_memory);
+		return ERR_PTR(rc);
+	}
 
 	if (!tagbits) {
 		pr_warn_ratelimited("mctp: tag exhaustion net %u local %u peer %u\n",
@@ -2830,6 +2887,64 @@ static int mctp_dump_rtinfo(struct sk_buff *skb, struct netlink_callback *cb)
 	return skb->len;
 }
 
+#ifdef CONFIG_SYSCTL
+static struct ctl_table mctp_sysctl_table[] = {
+	{
+		.procname	= "max_keys",
+		.data		= &init_net.mctp.max_keys,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_douintvec_minmax,
+		.extra1		= SYSCTL_ONE,
+	},
+};
+
+static int __net_init mctp_sysctl_net_init(struct net *net)
+{
+	struct ctl_table *table;
+
+	if (net_eq(net, &init_net)) {
+		table = mctp_sysctl_table;
+	} else {
+		table = kmemdup(mctp_sysctl_table, sizeof(mctp_sysctl_table),
+				GFP_KERNEL);
+		if (!table)
+			return -ENOMEM;
+
+		table[0].data = &net->mctp.max_keys;
+	}
+
+	net->mctp.ctl = register_net_sysctl_sz(net, "net/mctp", table,
+					       ARRAY_SIZE(mctp_sysctl_table));
+	if (!net->mctp.ctl) {
+		if (!net_eq(net, &init_net))
+			kfree(table);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static void __net_exit mctp_sysctl_net_exit(struct net *net)
+{
+	const struct ctl_table *table;
+
+	table = net->mctp.ctl->ctl_table_arg;
+	unregister_net_sysctl_table(net->mctp.ctl);
+	if (!net_eq(net, &init_net))
+		kfree(table);
+}
+#else
+static int __net_init mctp_sysctl_net_init(struct net *net)
+{
+	return 0;
+}
+
+static void __net_exit mctp_sysctl_net_exit(struct net *net)
+{
+}
+#endif
+
 /* net namespace implementation */
 static int __net_init mctp_routes_net_init(struct net *net)
 {
@@ -2840,9 +2955,11 @@ static int __net_init mctp_routes_net_init(struct net *net)
 	mutex_init(&ns->bind_lock);
 	INIT_HLIST_HEAD(&ns->keys);
 	INIT_HLIST_HEAD(&ns->tag_hints);
+	ns->tag_hint_count = 0;
 	spin_lock_init(&ns->keys_lock);
+	WRITE_ONCE(ns->max_keys, mctp_default_max_keys);
 	WARN_ON(mctp_default_net_set(net, MCTP_INITIAL_DEFAULT_NET));
-	return 0;
+	return mctp_sysctl_net_init(net);
 }
 
 static void __net_exit mctp_routes_net_exit(struct net *net)
@@ -2858,6 +2975,7 @@ static void __net_exit mctp_routes_net_exit(struct net *net)
 		hlist_del(&hint->hlist);
 		kfree(hint);
 	}
+	ns->tag_hint_count = 0;
 	spin_unlock_irqrestore(&ns->keys_lock, flags);
 
 	ASSERT_RTNL();
@@ -2879,6 +2997,7 @@ static void __net_exit mctp_routes_net_exit_batch(struct list_head *net_exit_lis
 
 static struct pernet_operations mctp_net_ops = {
 	.init = mctp_routes_net_init,
+	.exit = mctp_sysctl_net_exit,
 	.exit_batch_rtnl = mctp_routes_net_exit_batch,
 };
 

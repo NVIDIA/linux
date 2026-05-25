@@ -9,6 +9,8 @@
 #include <linux/mutex.h>
 #include <linux/types.h>
 
+struct ctl_table_header;
+
 struct netns_mctp {
 	/* Only updated under RTNL, entries freed via RCU */
 	struct list_head routes;
@@ -25,9 +27,15 @@ struct netns_mctp {
 	 */
 	spinlock_t keys_lock;
 	struct hlist_head keys;
+	unsigned int max_keys;
 
-	/* Persistent "next tag" hint per (net, peer) for incremental allocation */
+#ifdef CONFIG_SYSCTL
+	struct ctl_table_header *ctl;
+#endif
+
+	/* Bounded "next tag" hints, protected by keys_lock */
 	struct hlist_head tag_hints;
+	unsigned int tag_hint_count;
 
 	/* MCTP network */
 	unsigned int default_net;
