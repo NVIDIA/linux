@@ -17,6 +17,7 @@
 #include <linux/crc16.h>
 #include <linux/printk.h>
 #include <linux/delay.h>
+#include <linux/jiffies.h>
 #include <linux/minmax.h>
 
 #define DRV_NAME "virtual-mux-client"
@@ -33,14 +34,39 @@
 #define RI_MSG_XFER_RESULT 0x81
 #define RI_MSG_NOT_READY   0x82
 
-#define RI_FLAG_CRC16      BIT(0)
+#define RI_FLAG_CRC16        BIT(0)
+/*
+ * Capability flag, host -> client: "host will read the response in a single
+ * I2C transaction starting at offset 0". When set, we serve every
+ * READ_REQUESTED from offset 0 (no cross-STOP cursor) and echo the flag
+ * back in the response so the host knows we honored it. When absent, we
+ * fall back to the legacy cursor-across-STOP behavior so this client
+ * stays compatible with old hosts.
+ */
+#define RI_FLAG_OFFSET0_READ BIT(1)
 
 #define RI_MAX_MSGS        4
 #define RI_MAX_REQ_BYTES   2048
 #define RI_MAX_RESP_BYTES  4096
 #define RI_MSG_DESC_LEN    4 /* addr(1) + flags(1) + len(2) */
-#define RI_DOWNSTREAM_RETRIES 5
-#define RI_SLEEP_MS        5
+/*
+ * Defaults for the downstream retry budget (overridable via DT
+ * downstream-retry-max-ms / downstream-retry-sleep-ms). The worker
+ * retries -EBUSY / -EAGAIN from i2c_transfer() until either a
+ * non-transient outcome or this deadline. Sized to fit inside the BMC
+ * host's per-attempt budget so the host doesn't time out mid-xfer; if
+ * the host now uses xfer-timeout-ms=2500 (DTS) and host-retry-max-ms=8000,
+ * 1500 ms here leaves comfortable headroom for transport plus polling.
+ */
+#define RI_DEFAULT_DOWNSTREAM_MAX_MS         1500
+#define RI_DEFAULT_DOWNSTREAM_RETRY_SLEEP_MS 20
+
+/*
+ * Sanity ceiling for DT-supplied timing values (ms). A typo'd value
+ * shouldn't be able to push the downstream retry wallclock or sleep
+ * interval into pathological territory.
+ */
+#define RI_DT_TIMING_MAX_MS                  60000
 
 struct __packed ri_hdr {
 	__le16 magic;
@@ -60,21 +86,28 @@ struct bridge_target {
 	/* RX accumulation */
 	u8  *rx_buf;
 	u16  rx_len;
-	/* (rx accumulation size hint removed; we parse in worker) */
+	/* WRITE_REQUESTED seen, awaiting first WRITE_RECEIVED */
+	bool rx_write_pending;
+	/* bumped on each new submit STOP; worker drops stale publish */
+	u32  rx_gen;
 
 	/* Response */
 	u8  *tx_buf;                        /* primary tx buffer */
-	u8  *tx_active;                     /* pointer to buffer currently served (tx_buf) */
+	u8  *tx_active;                     /* current served buffer */
 	u16  tx_len;                        /* length of active buffer */
 	bool tx_ready;
 	u16  tx_idx;
+	/* serve current response from offset 0 each READ_REQUESTED */
+	bool tx_offset0;
 	/* Static NOT_READY frame */
 	u8  *tx_not_ready;
 	u16  tx_not_ready_len;
 
 	/* Workspaces to avoid per-transfer allocations */
-	u8  *payload_ws;                    /* workspace for building read payloads */
-	u8  *read_ws;                       /* workspace backing READ i2c_msg buffers */
+	u8  *payload_ws;                    /* read-payload build buffer */
+	u8  *read_ws;                       /* READ i2c_msg backing storage */
+	/* per-worker snapshot of rx_buf; owned by worker after snapshot */
+	u8  *rx_local_buf;
 
 	/* Current READ serving pointer (decoupled from tx_active when serving NOT_READY) */
 	const u8 *rd_ptr;
@@ -84,8 +117,11 @@ struct bridge_target {
 
 	/* State */
 	bool use_crc;
+	u32 downstream_max_ms;              /* DT: downstream-retry-max-ms */
+	u32 downstream_retry_sleep_ms;      /* DT: downstream-retry-sleep-ms */
 
 	/* Async execution */
+	struct workqueue_struct *wq;        /* private ordered wq; one submit in flight */
 	struct work_struct work;
 
 	spinlock_t lock;                    /* protects tx/rx indices/flags */
@@ -104,17 +140,20 @@ static u16 ri_crc16(const void *buf, size_t len)
 
 static s16 ri_exec_downstream(struct bridge_target *b,
 			      struct i2c_msg *msgs, int nmsgs,
-			      u32 exec_bus)
+			      u32 exec_bus, u8 seq)
 {
 	struct i2c_adapter *exec_adap = NULL;
-	int ret, i, tries;
+	int ret, i;
+	unsigned int retries = 0;
+	unsigned long deadline;
+	u8 addr0 = nmsgs > 0 ? (msgs[0].addr & 0x7f) : 0xff;
 
 	if (exec_bus == (u32)-1)
 		return -ENODEV;
 
 	exec_adap = i2c_get_adapter(exec_bus);
 	if (!exec_adap) {
-		dev_dbg(b->dev, "no adapter for bus %u\n", exec_bus);
+		dev_err(b->dev, "no adapter for bus %u\n", exec_bus);
 		return -ENODEV;
 	}
 
@@ -126,29 +165,56 @@ static s16 ri_exec_downstream(struct bridge_target *b,
 			msgs[i].addr, msgs[i].len);
 	}
 
-	/* Rely on i2c_transfer() for proper bus locking; do not double-lock */
-	for (tries = 0; tries < RI_DOWNSTREAM_RETRIES; tries++) {
+	/*
+	 * Wallclock-bounded retry loop for transient downstream errors. -EBUSY
+	 * and -EAGAIN are both "try again" conditions (bus contended,
+	 * arbitration loss, downstream NACK with controller retries=0, etc.);
+	 * either can be cleared by waiting a moment for the bus to become
+	 * idle. Anything else (hard error, success, partial xfer) breaks out
+	 * immediately. The retry sleep is clamped to the remaining budget
+	 * so we don't overshoot downstream-retry-max-ms by a full sleep
+	 * interval on the last attempt; the in-flight i2c_transfer is always
+	 * allowed to finish, since aborting mid-xfer is what we explicitly
+	 * do not want.
+	 */
+	deadline = jiffies + msecs_to_jiffies(b->downstream_max_ms);
+	while (1) {
+		unsigned long left_jif;
+		u32 sleep_ms;
+
 		ret = i2c_transfer(exec_adap, msgs, nmsgs);
-		if (ret != -EBUSY)
+		if (ret != -EBUSY && ret != -EAGAIN)
 			break;
-		/* Allow bus to become idle (covers Tbuf) */
-		msleep(RI_SLEEP_MS);
+		if (time_after_eq(jiffies, deadline))
+			break;
+		retries++;
+		left_jif = deadline - jiffies;
+		sleep_ms = b->downstream_retry_sleep_ms;
+		if (jiffies_to_msecs(left_jif) < sleep_ms)
+			sleep_ms = jiffies_to_msecs(left_jif);
+		if (sleep_ms)
+			msleep(sleep_ms);
 	}
-	if (ret == -EBUSY)
-		dev_dbg(b->dev, "downstream busy after retries (bus=%u)\n", exec_bus);
 
 	i2c_put_adapter(exec_adap);
 
 	if (ret < 0) {
-		dev_dbg(b->dev, "xfer error: %d\n", ret);
+		dev_err(b->dev,
+			"downstream xfer error: seq=%u bus=%u addr=0x%02x ret=%d retries=%u\n",
+			seq, exec_bus, addr0, ret, retries);
 		return (s16)ret;
 	}
 	if (ret != nmsgs) {
-		dev_dbg(b->dev, "short xfer: %d/%u\n", ret, nmsgs);
+		dev_err(b->dev,
+			"downstream short xfer: seq=%u bus=%u addr=0x%02x got=%d want=%d\n",
+			seq, exec_bus, addr0, ret, nmsgs);
 		return -EIO;
 	}
+	if (retries)
+		dev_info(b->dev,
+			 "downstream recovered: seq=%u bus=%u addr=0x%02x retries=%u\n",
+			 seq, exec_bus, addr0, retries);
 
-	dev_dbg(b->dev, "downstream complete: ret=%d\n", ret);
 	return 0;
 }
 
@@ -180,8 +246,9 @@ static void ri_build_static_not_ready(struct bridge_target *b)
 
 static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 				       const u8 *buf, size_t len,
-				       u8 *out_seq,
-				       u8 *read_payloads, size_t *read_payloads_len)
+				       u8 *out_seq, bool *out_seq_valid,
+				       u8 *read_payloads, size_t *read_payloads_len,
+				       bool *out_offset0)
 {
 	const struct ri_hdr *hdr;
 	u16 total, flags;
@@ -190,54 +257,92 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 	int i, nread = 0;
 	struct i2c_msg msgs[RI_MAX_MSGS];
 	size_t read_ws_off = 0;
+	size_t resp_payload_off = 0;
 	int ret;
 	u32 exec_bus = (u32)-1;
 	u8  mapped_addr = 0;
 
 	*read_payloads_len = 0;
+	*out_offset0 = false;
+	*out_seq_valid = false;
 
-	if (len < sizeof(*hdr))
+	if (len < sizeof(*hdr)) {
+		dev_err_ratelimited(b->dev, "parse: short submit len=%zu (need >=%zu)\n",
+				    len, sizeof(*hdr));
 		return -EMSGSIZE;
+	}
 
 	hdr = (const struct ri_hdr *)buf;
-	if (hdr->magic != RI_MAGIC_REQ || hdr->version != RI_VER || hdr->msg_type != RI_MSG_SUBMIT_XFER)
+	if (hdr->magic != RI_MAGIC_REQ || hdr->version != RI_VER ||
+	    hdr->msg_type != RI_MSG_SUBMIT_XFER) {
+		dev_err_ratelimited(b->dev,
+				    "parse: bad header magic=0x%04x ver=0x%02x type=0x%02x len=%zu\n",
+				    (u32)le16_to_cpu(hdr->magic), hdr->version,
+				    hdr->msg_type, len);
 		return -EPROTO;
+	}
+
+	/*
+	 * From this point hdr->seq is trustworthy: publish-with-correct-seq
+	 * lets the host correlate any error response to its submit. The
+	 * worker checks *out_seq_valid before publishing so the two
+	 * pre-seq error paths above (short submit, bad header) do NOT emit
+	 * a bogus seq=0 response.
+	 */
+	*out_seq = hdr->seq;
+	*out_seq_valid = true;
 
 	total = le16_to_cpu(hdr->total_len);
 	flags = le16_to_cpu(hdr->flags);
 
-	if (total > len || total < sizeof(*hdr))
+	if (total > len || total < sizeof(*hdr)) {
+		dev_err_ratelimited(b->dev,
+				    "parse: total/len mismatch seq=%u total=%u len=%zu\n",
+				    hdr->seq, total, len);
 		return -EMSGSIZE;
+	}
 
 	if (flags & RI_FLAG_CRC16) {
 		u16 crc_frame, crc_calc;
 
-		if (total < sizeof(*hdr) + 2)
+		if (total < sizeof(*hdr) + 2) {
+			dev_err_ratelimited(b->dev,
+					    "parse: short for CRC trailer seq=%u total=%u\n",
+					    hdr->seq, total);
 			return -EMSGSIZE;
+		}
 		crc_frame = le16_to_cpu(*(__le16 *)&buf[total - 2]);
 		crc_calc = ri_crc16(buf, total - 2);
 		if (crc_frame != crc_calc) {
-			dev_dbg(b->dev, "crc mismatch: frame=0x%04x calc=0x%04x total=%u\n",
-				crc_frame, crc_calc, total);
+			dev_err_ratelimited(b->dev,
+					    "crc mismatch: frame=0x%04x calc=0x%04x total=%u\n",
+					    crc_frame, crc_calc, total);
 			return -EBADMSG;
 		}
 	}
 
-	*out_seq = hdr->seq;
+	*out_offset0 = !!(flags & RI_FLAG_OFFSET0_READ);
 	dev_dbg(b->dev, "rx submit: seq=%u total=%u flags=0x%x ver=0x%02x\n",
 		hdr->seq, total, flags, hdr->version);
 
 	off = sizeof(*hdr);
-	if (off + 1 + 1 + 2 + 4 > total)
+	if (off + 1 + 1 + 2 + 4 > total) {
+		dev_err_ratelimited(b->dev,
+				    "parse: short payload hdr seq=%u off=%zu total=%u\n",
+				    hdr->seq, off, total);
 		return -EMSGSIZE;
+	}
 
 	nmsgs = buf[off++];
 	off++;      /* retry_hint */
 	off += 2;   /* timeout hint */
 	off += 4;   /* client_cookie */
 
-	if (nmsgs == 0 || nmsgs > RI_MAX_MSGS)
+	if (nmsgs == 0 || nmsgs > RI_MAX_MSGS) {
+		dev_err_ratelimited(b->dev, "parse: bad nmsgs=%u seq=%u\n",
+				    nmsgs, hdr->seq);
 		return -EINVAL;
+	}
 
 	memset(msgs, 0, sizeof(msgs));
 
@@ -246,8 +351,12 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 		u16 mlen;
 		bool is_read;
 
-		if (off + RI_MSG_DESC_LEN > total)
+		if (off + RI_MSG_DESC_LEN > total) {
+			dev_err_ratelimited(b->dev,
+					    "parse: truncated msg desc seq=%u i=%d off=%zu total=%u\n",
+					    hdr->seq, i, off, total);
 			return -EMSGSIZE;
+		}
 
 		addr = buf[off++];
 		mflags = buf[off++];
@@ -258,7 +367,7 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 		/* Map virtual address -> downstream bus/addr */
 		if (addr >= 0x80 || !b->vmap_valid[addr]) {
 			/* not in whitelist */
-			dev_dbg(b->dev, "deny: virt=0x%02x not in whitelist\n", addr);
+			dev_warn(b->dev, "deny: virt=0x%02x not in whitelist\n", addr);
 			return -EPERM;
 		}
 		mapped_addr = b->vmap_down_addr[addr] & 0x7f;
@@ -266,7 +375,7 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 			exec_bus = b->vmap_down_bus[addr];
 		} else if (exec_bus != b->vmap_down_bus[addr]) {
 			/* mixed target buses in single transfer */
-			dev_dbg(b->dev, "deny: mixed buses virt=0x%02x bus=%u!=%u\n",
+			dev_warn(b->dev, "deny: mixed buses virt=0x%02x bus=%u!=%u\n",
 				addr, b->vmap_down_bus[addr], exec_bus);
 			return -EXDEV;
 		}
@@ -280,16 +389,43 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 			msgs[i].flags = I2C_M_RD;
 
 			/* Slice from preallocated read workspace */
-			if (read_ws_off + mlen > RI_MAX_RESP_BYTES)
+			if (read_ws_off + mlen > RI_MAX_RESP_BYTES) {
+				dev_err_ratelimited(b->dev,
+						    "parse: read ws overflow seq=%u i=%d off=%zu mlen=%u\n",
+						    hdr->seq, i, read_ws_off, mlen);
 				return -EMSGSIZE;
+			}
+
+			/*
+			 * Pre-validate the encoded response payload size
+			 * (u16 len + data per read msg) before we run
+			 * ri_exec_downstream. Failing this check after the
+			 * downstream transfer has already executed would leave
+			 * the host to retry, which on a SubmitXfer containing
+			 * downstream WRITE messages would re-execute them - the
+			 * "execute and then bail" hazard. The check here is
+			 * structurally equivalent to the one this replaces in
+			 * the post-execute payload-build loop.
+			 */
+			if (resp_payload_off + 2 + mlen > RI_MAX_RESP_BYTES) {
+				dev_err_ratelimited(b->dev,
+						    "parse: encoded resp overflow seq=%u i=%d off=%zu mlen=%u\n",
+						    hdr->seq, i, resp_payload_off, mlen);
+				return -EMSGSIZE;
+			}
 
 			msgs[i].buf = &b->read_ws[read_ws_off];
 			read_ws_off += mlen;
+			resp_payload_off += 2 + mlen;
 			nread++;
 		} else {
 			msgs[i].flags = 0;
-			if (off + mlen > total)
+			if (off + mlen > total) {
+				dev_err_ratelimited(b->dev,
+						    "parse: write data past total seq=%u i=%d off=%zu mlen=%u total=%u\n",
+						    hdr->seq, i, off, mlen, total);
 				return -EMSGSIZE;
+			}
 			/* Point directly into request buffer (safe during this function) */
 			msgs[i].buf = (u8 *)&buf[off];
 			off += mlen;
@@ -297,20 +433,22 @@ static s16 ri_parse_submit_and_execute(struct bridge_target *b,
 	}
 
 	/* Execute downstream transfer (adapter selected by whitelist mapping) */
-	ret = ri_exec_downstream(b, msgs, nmsgs, exec_bus);
+	ret = ri_exec_downstream(b, msgs, nmsgs, exec_bus, hdr->seq);
 	if (ret)
 		return (s16)ret;
 
-	/* Build read payloads: for each READ msg in order: u16 len + data */
+	/*
+	 * Build read payloads: for each READ msg in order: u16 len + data.
+	 * The total encoded size was already validated in the parse loop
+	 * above (resp_payload_off check), so no per-iteration bounds check
+	 * is needed here.
+	 */
 	{
 		size_t woff = 0;
 
 		for (i = 0; i < nmsgs; i++) {
 			if (!(msgs[i].flags & I2C_M_RD))
 				continue;
-
-			if (woff + 2 + msgs[i].len > RI_MAX_RESP_BYTES)
-				return -EMSGSIZE;
 
 			*(__le16 *)&read_payloads[woff] = cpu_to_le16(msgs[i].len);
 			woff += 2;
@@ -331,19 +469,50 @@ static void bridge_work_fn(struct work_struct *work)
 {
 	struct bridge_target *b = container_of(work, struct bridge_target, work);
 	u8 seq = 0;
+	bool seq_valid = false;
 	s16 status = -EIO;
 	unsigned long irqflags;
 	u8 *payload;
 	size_t payload_len = 0;
 	u8 nread_msgs = 0;
+	bool offset0 = false;
+	u32 my_gen = 0;
 
 	payload = b->payload_ws;
 
-	/* Parse and execute using the captured rx_buf */
-	/* No deferred READ logging; worker runs only for SubmitXfer processing */
+	/*
+	 * Snapshot rx_buf into rx_local_buf under the lock. After this
+	 * point the slave callback only writes to rx_buf (a new submit's
+	 * WRITE_RECEIVED stream lands there); rx_local_buf is owned by
+	 * this worker for the rest of its run, so msgs[].buf pointers
+	 * we set up later for downstream i2c_transfer stay stable.
+	 */
+	{
+		size_t snap_len;
 
-	status = ri_parse_submit_and_execute(b, b->rx_buf, b->rx_len,
-					     &seq, payload, &payload_len);
+		spin_lock_irqsave(&b->lock, irqflags);
+		snap_len = b->rx_len;
+		if (snap_len > RI_MAX_REQ_BYTES)
+			snap_len = RI_MAX_REQ_BYTES;
+		memcpy(b->rx_local_buf, b->rx_buf, snap_len);
+		b->rx_len = 0;
+		my_gen = b->rx_gen;
+		spin_unlock_irqrestore(&b->lock, irqflags);
+
+		status = ri_parse_submit_and_execute(b, b->rx_local_buf, snap_len,
+						     &seq, &seq_valid,
+						     payload, &payload_len,
+						     &offset0);
+	}
+
+	/*
+	 * Pre-seq parse failure (short submit or bad header): we have no
+	 * trustworthy seq to put on the response, so the host wouldn't be
+	 * able to correlate it anyway. Skip publishing entirely; the host
+	 * will time out on its FETCH poll and retry with a fresh seq.
+	 */
+	if (!seq_valid)
+		return;
 
 	/* Count how many read payload blocks exist (u16 len + data...) */
 	if (status == 0) {
@@ -362,6 +531,16 @@ static void bridge_work_fn(struct work_struct *work)
 
 	/* Build full response frame */
 	spin_lock_irqsave(&b->lock, irqflags);
+	/*
+	 * If a newer submit's STOP fired while this worker was running its
+	 * downstream xfer, b->rx_gen has been bumped past my_gen. Drop this
+	 * (now stale) publish; the worker queued by that newer STOP will
+	 * snapshot the fresh data and publish the right response.
+	 */
+	if (b->rx_gen != my_gen) {
+		spin_unlock_irqrestore(&b->lock, irqflags);
+		return;
+	}
 	{
 		struct ri_hdr *hdr;
 		u8 *buf;
@@ -380,10 +559,11 @@ static void bridge_work_fn(struct work_struct *work)
 		hdr->header_len = sizeof(*hdr);
 		hdr->reserved = 0;
 
-		if (b->use_crc) {
+		if (b->use_crc)
 			flags |= RI_FLAG_CRC16;
-			hdr->flags = cpu_to_le16(flags);
-		}
+		if (offset0)
+			flags |= RI_FLAG_OFFSET0_READ;
+		hdr->flags = cpu_to_le16(flags);
 
 		off = sizeof(*hdr);
 
@@ -427,6 +607,7 @@ static void bridge_work_fn(struct work_struct *work)
 		b->tx_len = off;
 		b->tx_ready = true;
 		b->tx_idx = 0;
+		b->tx_offset0 = offset0;
 		/* Log the prepared RESULT frame summary */
 		{
 			const struct ri_hdr *ph = (const struct ri_hdr *)b->tx_buf;
@@ -438,10 +619,13 @@ static void bridge_work_fn(struct work_struct *work)
 	}
 	spin_unlock_irqrestore(&b->lock, irqflags);
 
-	/* Clear RX capture and allow new frames */
-	spin_lock_irqsave(&b->lock, irqflags);
-	b->rx_len = 0;
-	spin_unlock_irqrestore(&b->lock, irqflags);
+	/*
+	 * Do not clear b->rx_len here: a new SubmitXfer may already have
+	 * started arriving on the link, and its WRITE_REQUESTED handler
+	 * has already reset rx_len = 0 and subsequent WRITE_RECEIVED events
+	 * are filling rx_buf from offset 0. Clearing it here would race with
+	 * those writes.
+	 */
 
 	/* payload_ws is persistent; no free */
 }
@@ -454,61 +638,106 @@ static int bridge_slave_cb(struct i2c_client *client,
 	/* no header peeking in callback; worker validates frame */
 
 	switch (event) {
+	case I2C_SLAVE_WRITE_REQUESTED:
+		/*
+		 * Mark that a write is about to begin. We do NOT zero rx_len
+		 * here because some I2C target back-ends (notably ast2600
+		 * when STOP is coalesced with the next transaction's
+		 * SLAVE_MATCH in one IRQ) fire WRITE_REQUESTED unconditionally
+		 * even when the next transaction is actually a read. Deferring
+		 * the rx_len reset to the first WRITE_RECEIVED makes such
+		 * spurious WRITE_REQUESTED events harmless: if no data byte
+		 * follows, rx_len keeps the previous submit's length and the
+		 * worker still snapshots the right data.
+		 */
+		spin_lock_irqsave(&b->lock, flags);
+		b->rx_write_pending = true;
+		spin_unlock_irqrestore(&b->lock, flags);
+		break;
+
 	case I2C_SLAVE_WRITE_RECEIVED:
 		spin_lock_irqsave(&b->lock, flags);
-
+		if (b->rx_write_pending) {
+			b->rx_len = 0;
+			b->rx_write_pending = false;
+		}
 		if (b->rx_len < RI_MAX_REQ_BYTES)
 			b->rx_buf[b->rx_len++] = *val;
 		spin_unlock_irqrestore(&b->lock, flags);
 		break;
 
 	case I2C_SLAVE_STOP:
-		/* If we captured a full frame, schedule work */
 		spin_lock_irqsave(&b->lock, flags);
 		if (b->rd_idx == 0 && b->rx_len > 0) {
-			/* 1) Host sent SubmitXfer (WRITE complete, nothing read yet) */
-			dev_dbg(b->dev, "host submit received: len=%u\n", b->rx_len);
-			print_hex_dump_debug("host submit rx: ", DUMP_PREFIX_OFFSET, 16, 1,
-					     b->rx_buf, min_t(u16, b->rx_len, 128), false);
-			/* New SubmitXfer arrived: cancel any stale outgoing response state */
+			/* Host sent a SubmitXfer; cancel stale result and run worker */
 			b->tx_ready = false;
 			b->tx_idx = 0;
 			b->tx_len = 0;
 			b->tx_active = b->tx_buf;
-			/* Prefer fresh work: cancel pending (non-blocking) and schedule new */
+			b->tx_offset0 = false;
+			b->rx_gen++;
 			cancel_work(&b->work);
-			schedule_work(&b->work);
-		}
-		/* End of current transaction: allow pending swap */
-		{
-			bool consumed_payload = (b->rd_is_result && b->rd_idx > sizeof(struct ri_hdr));
-			/* Log end of transaction */
-			dev_dbg(b->dev, "host read finished: sent=%u bytes\n", b->tx_idx);
+			queue_work(b->wq, &b->work);
+		} else if (b->rd_idx == 0 && b->rx_write_pending) {
 			/*
-			 * If we served a RESULT and the master read past the header,
-			 * assume it will not come back for more; clear the current result.
+			 * Address-matched write with no data byte accumulated:
+			 * either an explicit zero-length resync from the host, or
+			 * a SubmitXfer whose WRITE_RECEIVED stream got dropped by
+			 * the i2c-target subsystem (master saw all bytes ACKed but
+			 * slave_cb never received them). Drop any published result
+			 * so the next READ_REQUESTED serves NOT_READY, ensuring
+			 * the host's next submit is not shadowed by a frame from
+			 * a previous seq.
 			 */
+			b->tx_ready = false;
+			b->tx_idx = 0;
+			b->tx_len = 0;
+			b->tx_active = b->tx_buf;
+			b->tx_offset0 = false;
+		} else {
+			bool consumed_payload;
+
+			if (b->tx_offset0)
+				consumed_payload = (b->rd_is_result && b->rd_idx >= b->tx_len);
+			else
+				consumed_payload = (b->rd_is_result && b->tx_idx >= b->tx_len);
+
 			if (consumed_payload) {
 				b->tx_ready = false;
 				b->tx_idx = 0;
 				b->tx_len = 0;
 				b->tx_active = b->tx_buf;
+				b->tx_offset0 = false;
 			}
-			/* Clear read serving state */
-			b->rd_ptr = NULL;
-			b->rd_len = 0;
-			b->rd_idx = 0;
-			b->rd_is_result = false;
 		}
+		/* Reset per-transaction state for next transaction */
+		b->rx_write_pending = false;
+		b->rd_ptr = NULL;
+		b->rd_len = 0;
+		b->rd_idx = 0;
+		b->rd_is_result = false;
 		spin_unlock_irqrestore(&b->lock, flags);
 		break;
 
 	case I2C_SLAVE_READ_REQUESTED:
 		spin_lock_irqsave(&b->lock, flags);
-		/* Start of READ: always choose which response to serve */
+		/*
+		 * Two serving modes:
+		 *  - tx_offset0 (new host advertised RI_FLAG_OFFSET0_READ):
+		 *    start from offset 0 of the active buffer on every
+		 *    READ_REQUESTED; the host reads the full frame in one
+		 *    transaction so no cross-STOP cursor is needed.
+		 *  - legacy: start from tx_idx (cursor across STOPs) so old
+		 *    hosts that stitch header+remainder still work.
+		 */
 		if (b->tx_ready) {
-			b->rd_ptr = b->tx_active + b->tx_idx;
-			b->rd_len = b->tx_len - b->tx_idx;
+			if (b->tx_offset0) {
+				b->rd_ptr = b->tx_active;
+				b->rd_len = b->tx_len;
+			} else {
+				b->rd_ptr = b->tx_active + b->tx_idx;
+				b->rd_len = b->tx_len - b->tx_idx;
+			}
 			b->rd_idx = 0;
 			b->rd_is_result = true;
 		} else {
@@ -519,7 +748,8 @@ static int bridge_slave_cb(struct i2c_client *client,
 		}
 		if (b->rd_idx < b->rd_len) {
 			*val = b->rd_ptr[b->rd_idx++];
-			if (b->rd_is_result && b->tx_idx < b->tx_len)
+			if (!b->tx_offset0 && b->rd_is_result &&
+			    b->tx_idx < b->tx_len)
 				b->tx_idx++;
 		} else {
 			*val = 0x00;
@@ -529,10 +759,11 @@ static int bridge_slave_cb(struct i2c_client *client,
 
 	case I2C_SLAVE_READ_PROCESSED:
 		spin_lock_irqsave(&b->lock, flags);
-		/* READ_PROCESSED: just continue streaming bytes */
+		/* READ_PROCESSED: continue streaming bytes from rd_ptr */
 		if (b->rd_idx < b->rd_len) {
 			*val = b->rd_ptr[b->rd_idx++];
-			if (b->rd_is_result && b->tx_idx < b->tx_len)
+			if (!b->tx_offset0 && b->rd_is_result &&
+			    b->tx_idx < b->tx_len)
 				b->tx_idx++;
 		} else {
 			*val = 0x00;
@@ -565,13 +796,28 @@ static int bridge_probe(struct i2c_client *client)
 	INIT_WORK(&b->work, bridge_work_fn);
 	dev_dbg(&client->dev, "client probe: addr=%02x\n", client->addr);
 
+	/*
+	 * Private ordered workqueue so the long downstream xfer (up to
+	 * downstream-retry-max-ms) does not block other system_wq
+	 * consumers. WQ_MEM_RECLAIM keeps the queue drainable under
+	 * memory pressure.
+	 */
+	b->wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM,
+					dev_name(&client->dev));
+	if (!b->wq)
+		return -ENOMEM;
+
 	b->rx_buf = devm_kzalloc(&client->dev, RI_MAX_REQ_BYTES, GFP_KERNEL);
 	b->tx_buf = devm_kzalloc(&client->dev, RI_MAX_RESP_BYTES, GFP_KERNEL);
 	b->tx_not_ready = devm_kzalloc(&client->dev, RI_MAX_RESP_BYTES, GFP_KERNEL);
 	b->payload_ws = devm_kzalloc(&client->dev, RI_MAX_RESP_BYTES, GFP_KERNEL);
 	b->read_ws = devm_kzalloc(&client->dev, RI_MAX_RESP_BYTES, GFP_KERNEL);
-	if (!b->rx_buf || !b->tx_buf || !b->tx_not_ready || !b->payload_ws || !b->read_ws)
+	b->rx_local_buf = devm_kzalloc(&client->dev, RI_MAX_REQ_BYTES, GFP_KERNEL);
+	if (!b->rx_buf || !b->tx_buf || !b->tx_not_ready || !b->payload_ws ||
+	    !b->read_ws || !b->rx_local_buf) {
+		destroy_workqueue(b->wq);
 		return -ENOMEM;
+	}
 	b->tx_active = b->tx_buf;
 	b->tx_len = 0;
 	b->rx_len = 0;
@@ -602,7 +848,21 @@ static int bridge_probe(struct i2c_client *client)
 	}
 
 	b->use_crc = of_property_read_bool(client->dev.of_node, "use-crc16");
-	dev_dbg(&client->dev, "client: use-crc16=%d\n", b->use_crc);
+	if (of_property_read_u32(client->dev.of_node, "downstream-retry-max-ms",
+				 &b->downstream_max_ms))
+		b->downstream_max_ms = RI_DEFAULT_DOWNSTREAM_MAX_MS;
+	if (of_property_read_u32(client->dev.of_node, "downstream-retry-sleep-ms",
+				 &b->downstream_retry_sleep_ms))
+		b->downstream_retry_sleep_ms = RI_DEFAULT_DOWNSTREAM_RETRY_SLEEP_MS;
+	/* Clamp DT values to a sane ceiling */
+	if (b->downstream_max_ms > RI_DT_TIMING_MAX_MS)
+		b->downstream_max_ms = RI_DT_TIMING_MAX_MS;
+	if (b->downstream_retry_sleep_ms > RI_DT_TIMING_MAX_MS)
+		b->downstream_retry_sleep_ms = RI_DT_TIMING_MAX_MS;
+	if (b->downstream_retry_sleep_ms == 0)
+		b->downstream_retry_sleep_ms = RI_DEFAULT_DOWNSTREAM_RETRY_SLEEP_MS;
+	dev_dbg(&client->dev, "client: use-crc16=%d downstream-retry-max-ms=%u sleep-ms=%u\n",
+		b->use_crc, b->downstream_max_ms, b->downstream_retry_sleep_ms);
 
 	i2c_set_clientdata(client, b);
 
@@ -613,6 +873,7 @@ static int bridge_probe(struct i2c_client *client)
 	ret = i2c_slave_register(client, bridge_slave_cb);
 	if (ret) {
 		dev_err(&client->dev, "i2c_slave_register failed: %d\n", ret);
+		destroy_workqueue(b->wq);
 		return ret;
 	}
 
@@ -621,8 +882,10 @@ static int bridge_probe(struct i2c_client *client)
 	b->tx_idx = 0;
 	b->tx_len = 0;
 
-	dev_info(&client->dev, "virtual-mux-client up @%02x (maps=%u, crc=%d)\n",
-		 client->addr, count, b->use_crc);
+	dev_info(&client->dev,
+		 "virtual-mux-client up @%02x maps=%u crc=%d downstream-retry-max-ms=%u sleep-ms=%u\n",
+		 client->addr, count, b->use_crc,
+		 b->downstream_max_ms, b->downstream_retry_sleep_ms);
 	if (!client->dev.of_node && count == 0)
 		dev_warn(&client->dev, "no DT mapping found (sysfs new_device). All requests will be denied.\n");
 
@@ -635,6 +898,7 @@ static void bridge_remove(struct i2c_client *client)
 
 	i2c_slave_unregister(client);
 	cancel_work_sync(&b->work);
+	destroy_workqueue(b->wq);
 }
 
 static const struct of_device_id bridge_of_match[] = {
