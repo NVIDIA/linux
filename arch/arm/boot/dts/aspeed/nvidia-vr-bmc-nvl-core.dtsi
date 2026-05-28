@@ -219,6 +219,11 @@
         compatible = "virtual-mux-host";
         reg = <0x54>;
         virtual-bus-num = <90>;
+		use-crc16;
+		xfer-poll-sleep-ms = <40>;
+		xfer-timeout-ms = <2500>;
+		host-retry-max-ms = <8000>;
+		host-retry-sleep-ms = <20>;
         status = "okay";
     };
 };
