@@ -473,7 +473,7 @@ static void mctp_test_route_input_sk_keys(struct kunit *test)
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, key);
 
 	spin_lock_irqsave(&mns->keys_lock, flags);
-	mctp_reserve_tag(&init_net, key, msk);
+	mctp_reserve_tag(&init_net, key, msk, MCTP_DEFAULT_LIFETIME);
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
 
 	/* create packet and route */
@@ -671,7 +671,7 @@ mctp_test_route_input_multiple_nets_key_init(struct kunit *test,
 
 	mns = &sock_net(t->sock->sk)->mctp;
 	spin_lock_irqsave(&mns->keys_lock, flags);
-	mctp_reserve_tag(&init_net, t->key, msk);
+	mctp_reserve_tag(&init_net, t->key, msk, MCTP_DEFAULT_LIFETIME);
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
 
 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, t->key);
@@ -1410,6 +1410,91 @@ static void mctp_test_route_gw_output(struct kunit *test)
 	kfree_skb(skb);
 }
 
+static unsigned int mctp_test_route_list_count(struct net *net)
+{
+	struct mctp_route *rt;
+	unsigned int count = 0;
+
+	list_for_each_entry(rt, &net->mctp.routes, list)
+		count++;
+
+	return count;
+}
+
+static void mctp_test_routes_net_exit_unlinks_routes(struct kunit *test)
+{
+	struct mctp_route *rt1, *rt2, *rt, *tmp;
+	unsigned int before, after;
+	struct net *net;
+
+	net = kunit_kzalloc(test, sizeof(*net), GFP_KERNEL);
+	KUNIT_ASSERT_NOT_NULL(test, net);
+	INIT_LIST_HEAD(&net->mctp.routes);
+
+	rt1 = mctp_route_alloc();
+	KUNIT_ASSERT_NOT_NULL(test, rt1);
+	rt2 = mctp_route_alloc();
+	if (!rt2) {
+		mctp_route_release(rt1);
+		KUNIT_FAIL_AND_ABORT(test, "failed to allocate second route");
+	}
+
+	rt1->dst_type = MCTP_ROUTE_GATEWAY;
+	rt1->min = 8;
+	rt1->max = 8;
+	refcount_inc(&rt1->refs);
+	list_add_rcu(&rt1->list, &net->mctp.routes);
+	kunit_info(test,
+		   "KR-07 route net_exit proof: added route min=%u max=%u; KUnit holds an extra ref for safe post-exit inspection",
+		   rt1->min, rt1->max);
+
+	rt2->dst_type = MCTP_ROUTE_GATEWAY;
+	rt2->min = 9;
+	rt2->max = 9;
+	refcount_inc(&rt2->refs);
+	list_add_rcu(&rt2->list, &net->mctp.routes);
+	kunit_info(test,
+		   "KR-07 route net_exit proof: added route min=%u max=%u; production teardown would not keep this inspection ref",
+		   rt2->min, rt2->max);
+
+	before = mctp_test_route_list_count(net);
+	kunit_info(test,
+		   "KR-07 route net_exit proof: inserted %u routes into net->mctp.routes",
+		   before);
+	kunit_info(test,
+		   "KR-07 route net_exit proof: calling mctp_routes_net_exit(); fixed code must list_del_rcu() before release");
+
+	rtnl_lock();
+	mctp_routes_net_exit(net);
+	rtnl_unlock();
+
+	after = mctp_test_route_list_count(net);
+	kunit_info(test,
+		   "KR-07 route net_exit proof: before=%u after=%u list_empty=%u",
+		   before, after, list_empty(&net->mctp.routes));
+	kunit_info(test,
+		   "KR-07 route net_exit proof: after>0 means released routes are still reachable from net->mctp.routes");
+	kunit_info(test,
+		   "KR-07 route net_exit proof: an RCU reader or route dump can walk stale entries until they are unlinked");
+	kunit_info(test,
+		   "KR-07 route net_exit proof: fixed result is after=0 and list_empty=1 immediately after net_exit");
+
+	KUNIT_EXPECT_EQ_MSG(test, after, 0U,
+			    "KR-07: mctp_routes_net_exit() released routes but left %u stale route entries linked",
+			    after);
+	KUNIT_EXPECT_TRUE_MSG(test, list_empty(&net->mctp.routes),
+			      "KR-07: net->mctp.routes is not empty after net_exit");
+
+	if (!list_empty(&net->mctp.routes)) {
+		list_for_each_entry_safe(rt, tmp, &net->mctp.routes, list)
+			list_del_rcu(&rt->list);
+	}
+
+	mctp_route_release(rt1);
+	mctp_route_release(rt2);
+	rcu_barrier();
+}
+
 static struct kunit_case mctp_test_cases[] = {
 	KUNIT_CASE_PARAM(mctp_test_fragment, mctp_frag_gen_params),
 	KUNIT_CASE_PARAM(mctp_test_rx_input, mctp_rx_input_gen_params),
@@ -1431,6 +1516,7 @@ static struct kunit_case mctp_test_cases[] = {
 	KUNIT_CASE(mctp_test_route_gw_loop),
 	KUNIT_CASE_PARAM(mctp_test_route_gw_mtu, mctp_route_gw_mtu_gen_params),
 	KUNIT_CASE(mctp_test_route_gw_output),
+	KUNIT_CASE(mctp_test_routes_net_exit_unlinks_routes),
 	{}
 };
 

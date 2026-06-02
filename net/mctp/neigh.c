@@ -368,3 +368,7 @@ void mctp_neigh_exit(void)
 	rtnl_unregister_many(mctp_neigh_rtnl_msg_handlers);
 	unregister_pernet_subsys(&mctp_net_ops);
 }
+
+#if IS_ENABLED(CONFIG_MCTP_TEST)
+#include "test/neigh-test.c"
+#endif
