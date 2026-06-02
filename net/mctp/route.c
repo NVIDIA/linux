@@ -2197,18 +2197,19 @@ static void __net_exit mctp_routes_net_exit(struct net *net)
 	}
 }
 
-static void __net_exit mctp_routes_net_exit_batch(struct list_head *net_exit_list,
-						  struct list_head *dev_kill_list)
+static void __net_exit mctp_routes_net_exit_batch(struct list_head *net_exit_list)
 {
 	struct net *net;
 
+	rtnl_lock();
 	list_for_each_entry(net, net_exit_list, exit_list)
 		mctp_routes_net_exit(net);
+	rtnl_unlock();
 }
 
 static struct pernet_operations mctp_net_ops = {
 	.init = mctp_routes_net_init,
-	.exit_batch_rtnl = mctp_routes_net_exit_batch,
+	.exit_batch = mctp_routes_net_exit_batch,
 };
 
 static const struct rtnl_msg_handler mctp_route_rtnl_msg_handlers[] = {

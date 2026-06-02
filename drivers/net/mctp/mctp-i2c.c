@@ -1218,3 +1218,7 @@ module_exit(mctp_i2c_mod_exit);
 MODULE_DESCRIPTION("MCTP I2C device");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Matt Johnston <matt@codeconstruct.com.au>");
+
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_I2C_TEST)
+#include "mctp-i2c-test.c"
+#endif

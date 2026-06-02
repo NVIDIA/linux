@@ -38,6 +38,11 @@ config MCTP_TRANSPORT_I2C
 	  from DMTF specification DSP0237. A MCTP protocol network device is
 	  created for each I2C bus that has been assigned a mctp-i2c device.
 
+config MCTP_TRANSPORT_I2C_TEST
+	bool "MCTP SMBus/I2C transport tests" if !KUNIT_ALL_TESTS
+	depends on MCTP_TRANSPORT_I2C=y && KUNIT=y
+	default KUNIT_ALL_TESTS
+
 config MCTP_TRANSPORT_I3C
 	tristate "MCTP I3C transport"
 	depends on I3C
