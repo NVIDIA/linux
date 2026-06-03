@@ -493,16 +493,15 @@ static void mctp_i2c_invalidate_tx_flow(struct mctp_i2c_dev *midev,
 		return;
 
 	spin_lock_irqsave(&key->lock, flags);
-	if (key->manual_alloc) {
-		/* we don't have control over lifetimes for manually-allocated
-		 * keys, so cannot assume we can invalidate all future flows
-		 * that would use this key.
-		 */
-		release = false;
-	} else {
-		release = key->dev_flow_state == MCTP_I2C_FLOW_STATE_ACTIVE;
-		key->dev_flow_state = MCTP_I2C_FLOW_STATE_INVALID;
-	}
+	/* 
+	 * Decouple key lifetime from flow lifetime: always release the
+	 * lock if we held it. Reset manual_alloc keys to NEW so the next
+	 * send on the same key re-locks normally; auto-alloc keys are
+	 * being torn down so INVALID is correct.
+	 */
+	release = key->dev_flow_state == MCTP_I2C_FLOW_STATE_ACTIVE;
+	key->dev_flow_state = key->manual_alloc ? MCTP_I2C_FLOW_STATE_NEW
+					   : MCTP_I2C_FLOW_STATE_INVALID;
 	spin_unlock_irqrestore(&key->lock, flags);
 
 	/* if we have changed state from active, the flow held a reference on
