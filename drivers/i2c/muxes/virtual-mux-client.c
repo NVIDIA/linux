@@ -137,6 +137,30 @@ static u16 ri_crc16(const void *buf, size_t len)
 	return crc16(0, buf, len);
 }
 
+/*
+ * CP2112 reports address NACK as -ETIMEDOUT (same errno as a real bus
+ * timeout). NACK typically completes within one hid-xfer-timeout cycle
+ * (default 500ms on CP2112); link timeouts during host reboot take longer
+ * and should remain retryable upstream.
+ */
+#define RI_NACK_FAST_FAIL_MS 800
+
+/*
+ * Normalize downstream errno for relay to the BMC host driver.
+ */
+static s16 ri_classify_downstream_error(int ret, unsigned int elapsed_ms)
+{
+	switch (ret) {
+	case -EREMOTEIO:
+		return -ENXIO;
+	case -ETIMEDOUT:
+		if (elapsed_ms < RI_NACK_FAST_FAIL_MS)
+			return -ENXIO;
+		return (s16)ret;
+	default:
+		return (s16)ret;
+	}
+}
 
 static s16 ri_exec_downstream(struct bridge_target *b,
 			      struct i2c_msg *msgs, int nmsgs,
@@ -146,6 +170,7 @@ static s16 ri_exec_downstream(struct bridge_target *b,
 	int ret, i;
 	unsigned int retries = 0;
 	unsigned long deadline;
+	unsigned long attempt_start;
 	u8 addr0 = nmsgs > 0 ? (msgs[0].addr & 0x7f) : 0xff;
 
 	if (exec_bus == (u32)-1)
@@ -182,6 +207,7 @@ static s16 ri_exec_downstream(struct bridge_target *b,
 		unsigned long left_jif;
 		u32 sleep_ms;
 
+		attempt_start = jiffies;
 		ret = i2c_transfer(exec_adap, msgs, nmsgs);
 		if (ret != -EBUSY && ret != -EAGAIN)
 			break;
@@ -199,10 +225,14 @@ static s16 ri_exec_downstream(struct bridge_target *b,
 	i2c_put_adapter(exec_adap);
 
 	if (ret < 0) {
+		unsigned int elapsed_ms = jiffies_to_msecs(jiffies - attempt_start);
+		s16 classified = ri_classify_downstream_error(ret, elapsed_ms);
+
 		dev_err(b->dev,
-			"downstream xfer error: seq=%u bus=%u addr=0x%02x ret=%d retries=%u\n",
-			seq, exec_bus, addr0, ret, retries);
-		return (s16)ret;
+			"downstream xfer error: seq=%u bus=%u addr=0x%02x ret=%d classified=%d elapsed_ms=%u retries=%u\n",
+			seq, exec_bus, addr0, ret, (int)classified, elapsed_ms,
+			retries);
+		return classified;
 	}
 	if (ret != nmsgs) {
 		dev_err(b->dev,
