@@ -152,6 +152,66 @@ static void mctp_test_newaddr_rollback_preserves_existing_addr(struct kunit *tes
 	mctp_test_destroy_dev(dev);
 }
 
+static void mctp_test_deladdr_allows_missing_local_route(struct kunit *test)
+{
+	const mctp_eid_t eid = 42;
+	struct mctp_test_dev *dev;
+	struct nlmsghdr *nlh;
+	struct socket *sock;
+	struct sk_buff *skb;
+	int rc;
+
+	dev = mctp_test_create_dev();
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev);
+
+	rc = sock_create_kern(&init_net, AF_NETLINK, SOCK_RAW, NETLINK_ROUTE,
+			      &sock);
+	KUNIT_ASSERT_EQ(test, rc, 0);
+
+	dev->mdev->addrs = kmalloc(sizeof(eid), GFP_KERNEL);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev->mdev->addrs);
+	dev->mdev->addrs[0] = eid;
+	dev->mdev->num_addrs = 1;
+
+	skb = mctp_test_addr_nlmsg(test, sock, &nlh, dev->ndev->ifindex, eid,
+				   RTM_DELADDR);
+
+	rtnl_lock();
+	rc = mctp_route_add_local(dev->mdev, eid);
+	if (rc) {
+		KUNIT_FAIL(test, "KD-03: failed to add local route: %d", rc);
+		rtnl_unlock();
+		goto out;
+	}
+	rc = mctp_route_remove_local(dev->mdev, eid);
+	if (rc) {
+		KUNIT_FAIL(test, "KD-03: failed to pre-remove local route: %d", rc);
+		rtnl_unlock();
+		goto out;
+	}
+
+	kunit_info(test,
+		   "KD-03 missing-route proof: local address EID %u remains after its local route was already removed",
+		   eid);
+	rc = mctp_rtm_deladdr(skb, nlh, NULL);
+	rtnl_unlock();
+	kunit_info(test,
+		   "KD-03 missing-route proof: RTM_DELADDR rc=%d num_addrs=%zu",
+		   rc, dev->mdev->num_addrs);
+	kunit_info(test,
+		   "KD-03 missing-route proof: -ENOENT from local route removal is a valid pre-existing state, so warning-only fix would add noise");
+
+	KUNIT_EXPECT_EQ_MSG(test, rc, 0,
+			    "KD-03: address deletion failed when local route was already absent");
+	KUNIT_EXPECT_EQ_MSG(test, dev->mdev->num_addrs, (size_t)0,
+			    "KD-03: address was not deleted after missing local route");
+
+out:
+	kfree_skb(skb);
+	sock_release(sock);
+	mctp_test_destroy_dev(dev);
+}
+
 static void mctp_test_deladdr_removes_matching_key(struct kunit *test)
 {
 	const mctp_eid_t eid = 42;
@@ -220,6 +280,7 @@ static void mctp_test_deladdr_removes_matching_key(struct kunit *test)
 static struct kunit_case mctp_device_test_cases[] = {
 	KUNIT_CASE(mctp_test_newaddr_rolls_back_on_route_failure),
 	KUNIT_CASE(mctp_test_newaddr_rollback_preserves_existing_addr),
+	KUNIT_CASE(mctp_test_deladdr_allows_missing_local_route),
 	KUNIT_CASE(mctp_test_deladdr_removes_matching_key),
 	{}
 };

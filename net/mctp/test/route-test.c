@@ -1463,6 +1463,34 @@ static void mctp_test_remove_socket_keys(struct mctp_sock *msk)
 	spin_unlock_irqrestore(&net->mctp.keys_lock, flags);
 }
 
+static unsigned int mctp_test_count_keys(struct netns_mctp *mns)
+{
+	struct mctp_sk_key *key;
+	unsigned long flags;
+	unsigned int count = 0;
+
+	spin_lock_irqsave(&mns->keys_lock, flags);
+	hlist_for_each_entry(key, &mns->keys, hlist)
+		count++;
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
+
+	return count;
+}
+
+static unsigned int mctp_test_count_tag_hints(struct netns_mctp *mns)
+{
+	struct mctp_tag_hint *hint;
+	unsigned long flags;
+	unsigned int count = 0;
+
+	spin_lock_irqsave(&mns->keys_lock, flags);
+	hlist_for_each_entry(hint, &mns->tag_hints, hlist)
+		count++;
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
+
+	return count;
+}
+
 #if IS_ENABLED(CONFIG_MCTP_FLOWS)
 
 static void mctp_test_flow_init(struct kunit *test,
@@ -2097,6 +2125,145 @@ static void mctp_test_max_keys_cap_blocks_new_key(struct kunit *test)
 	sock_release(sock);
 }
 
+static void mctp_test_alloc_local_tag_scans_all_existing_keys(struct kunit *test)
+{
+	const unsigned int nkeys = 16;
+	struct netns_mctp *mns = &init_net.mctp;
+	unsigned int old_max_keys;
+	struct mctp_sk_key *key;
+	struct mctp_sock *msk;
+	struct socket *sock;
+	unsigned long flags;
+	bool empty;
+	u8 tag;
+	int rc;
+	int i;
+
+	rc = sock_create_kern(&init_net, AF_MCTP, SOCK_DGRAM, 0, &sock);
+	KUNIT_ASSERT_EQ(test, rc, 0);
+	msk = container_of(sock->sk, struct mctp_sock, sk);
+
+	spin_lock_irqsave(&mns->keys_lock, flags);
+	empty = hlist_empty(&mns->keys);
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
+	KUNIT_ASSERT_TRUE(test, empty);
+
+	old_max_keys = READ_ONCE(mns->max_keys);
+	WRITE_ONCE(mns->max_keys, nkeys + 2);
+
+	for (i = 0; i < nkeys; i++) {
+		key = mctp_alloc_local_tag(msk, 1000 + i, 8, 9, false,
+					   &tag, MCTP_DEFAULT_LIFETIME);
+		if (IS_ERR_OR_NULL(key)) {
+			KUNIT_FAIL(test, "KR-02: failed to seed key %d", i);
+			goto out;
+		}
+		mctp_key_unref(key);
+	}
+
+	mctp_test_alloc_local_tag_scan_count = 0;
+	key = mctp_alloc_local_tag(msk, 2000, 8, 9, false, &tag,
+				   MCTP_DEFAULT_LIFETIME);
+	if (IS_ERR_OR_NULL(key)) {
+		KUNIT_FAIL(test, "KR-02: probe key allocation failed");
+		goto out;
+	}
+	mctp_key_unref(key);
+
+	kunit_info(test,
+		   "KR-02 O(N) proof: seeded_keys=%u alloc_scan_count=%u max_keys=%u",
+		   nkeys, mctp_test_alloc_local_tag_scan_count,
+		   READ_ONCE(mns->max_keys));
+	kunit_info(test,
+		   "KR-02 O(N) proof: mctp_alloc_local_tag() visits every existing namespace key under keys_lock before choosing a tag");
+
+	KUNIT_EXPECT_EQ_MSG(test, mctp_test_alloc_local_tag_scan_count, nkeys,
+			    "KR-02: local tag allocation did not scan all existing keys");
+
+out:
+	WRITE_ONCE(mns->max_keys, old_max_keys);
+	mctp_test_remove_socket_keys(msk);
+	sock_release(sock);
+}
+
+static void mctp_test_max_keys_bounds_tag_hints(struct kunit *test)
+{
+	const unsigned int first_net = 0xf0000000;
+	const unsigned int nallocs = 16;
+	const mctp_eid_t peer = 9;
+	struct netns_mctp *mns = &init_net.mctp;
+	unsigned int old_max_keys;
+	unsigned int allocations = 0;
+	struct mctp_sk_key *key = NULL;
+	struct mctp_sock *msk;
+	struct socket *sock;
+	unsigned long flags;
+	unsigned int hints;
+	u8 tag;
+	int rc;
+	int i;
+
+	rc = sock_create_kern(&init_net, AF_MCTP, SOCK_DGRAM, 0, &sock);
+	KUNIT_ASSERT_EQ(test, rc, 0);
+	msk = container_of(sock->sk, struct mctp_sock, sk);
+
+	/* Earlier tests may leave best-effort hints, but not active keys. */
+	KUNIT_ASSERT_EQ(test, mctp_test_count_keys(mns), 0U);
+	old_max_keys = READ_ONCE(mns->max_keys);
+	WRITE_ONCE(mns->max_keys, 1);
+
+	for (i = 0; i < nallocs; i++) {
+		mctp_test_tag_hint_scan_count = 0;
+		key = mctp_alloc_local_tag(msk, first_net + i,
+					   MCTP_ADDR_ANY, peer, true, &tag,
+					   MCTP_DEFAULT_LIFETIME);
+		if (IS_ERR_OR_NULL(key)) {
+			KUNIT_FAIL(test,
+				   "KR-05: sequential TAG2-style allocation %d failed: %ld",
+				   i, IS_ERR(key) ? PTR_ERR(key) : (long)-ENOMEM);
+			key = NULL;
+			goto out;
+		}
+		allocations++;
+
+		KUNIT_EXPECT_EQ_MSG(test, mctp_test_count_keys(mns), 1U,
+				    "KR-05: active key count exceeded max_keys=1");
+		hints = mctp_test_count_tag_hints(mns);
+		KUNIT_EXPECT_LE_MSG(test, hints, 1U,
+				    "KR-05: tag hints exceeded max_keys=1");
+		KUNIT_EXPECT_EQ(test, hints, READ_ONCE(mns->tag_hint_count));
+		KUNIT_EXPECT_LE_MSG(test, mctp_test_tag_hint_scan_count, 1U,
+				    "KR-05: hint lookup exceeded the bounded cache");
+
+		mctp_test_remove_socket_keys(msk);
+		KUNIT_EXPECT_EQ_MSG(test, mctp_test_count_keys(mns), 0U,
+				    "KR-05: dropped key remained active");
+		mctp_key_unref(key);
+		key = NULL;
+	}
+
+	kunit_info(test,
+		   "KR-05 rolling-hint bound: max_keys=1 allocations=%u active_keys=%u persistent_hints=%u last_scan=%u",
+		   allocations, mctp_test_count_keys(mns),
+		   mctp_test_count_tag_hints(mns),
+		   mctp_test_tag_hint_scan_count);
+	KUNIT_EXPECT_EQ(test, mctp_test_count_tag_hints(mns), 1U);
+	KUNIT_EXPECT_EQ(test, mctp_test_tag_hint_scan_count, 1U);
+
+out:
+	if (key) {
+		mctp_test_remove_socket_keys(msk);
+		mctp_key_unref(key);
+	}
+	WRITE_ONCE(mns->max_keys, old_max_keys);
+	spin_lock_irqsave(&mns->keys_lock, flags);
+	mctp_tag_hint_trim(mns, 0);
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
+	KUNIT_EXPECT_EQ(test, mctp_test_count_tag_hints(mns), 0U);
+	mctp_test_tag_hint_scan_count = 0;
+	sock_release(sock);
+}
+
 static void mctp_test_max_keys_cap_blocks_rx_reasm_key(struct kunit *test)
 {
 	struct netns_mctp *mns = &init_net.mctp;
@@ -2570,6 +2737,78 @@ static void mctp_test_key_remove_addr_removes_bound_manual_any_key(struct kunit 
 	mctp_test_destroy_dev(dev2);
 }
 
+static void mctp_test_key_remove_addr_removes_device_owned_manual_any_key(struct kunit *test)
+{
+	const unsigned int netid = MCTP_INITIAL_DEFAULT_NET;
+	struct mctp_test_dev *dev1, *dev2;
+	struct mctp_sk_key *key_dev1;
+	struct mctp_sk_key *key_dev2;
+	struct mctp_sock *msk1, *msk2;
+	struct socket *sock1, *sock2;
+	unsigned long flags;
+	u8 tag;
+	int rc;
+
+	dev1 = mctp_test_create_dev();
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev1);
+	dev2 = mctp_test_create_dev();
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev2);
+	WRITE_ONCE(dev1->mdev->net, netid);
+	WRITE_ONCE(dev2->mdev->net, netid);
+
+	rc = sock_create_kern(&init_net, AF_MCTP, SOCK_DGRAM, 0, &sock1);
+	KUNIT_ASSERT_EQ(test, rc, 0);
+	rc = sock_create_kern(&init_net, AF_MCTP, SOCK_DGRAM, 0, &sock2);
+	KUNIT_ASSERT_EQ(test, rc, 0);
+	msk1 = container_of(sock1->sk, struct mctp_sock, sk);
+	msk2 = container_of(sock2->sk, struct mctp_sock, sk);
+
+	key_dev1 = mctp_alloc_local_tag(msk1, netid, MCTP_ADDR_ANY, 9,
+					true, &tag, MCTP_DEFAULT_LIFETIME);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, key_dev1);
+	key_dev2 = mctp_alloc_local_tag(msk2, netid, MCTP_ADDR_ANY, 9,
+					true, &tag, MCTP_DEFAULT_LIFETIME);
+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, key_dev2);
+
+	spin_lock_irqsave(&key_dev1->lock, flags);
+	mctp_dev_set_key(dev1->mdev, key_dev1);
+	spin_unlock_irqrestore(&key_dev1->lock, flags);
+	spin_lock_irqsave(&key_dev2->lock, flags);
+	mctp_dev_set_key(dev2->mdev, key_dev2);
+	spin_unlock_irqrestore(&key_dev2->lock, flags);
+
+	KUNIT_ASSERT_EQ(test, READ_ONCE(sock1->sk->sk_bound_dev_if), 0);
+	KUNIT_ASSERT_EQ(test, READ_ONCE(sock2->sk->sk_bound_dev_if), 0);
+	kunit_info(test,
+		   "KR-09/KD-01 wildcard-owner proof: local=ANY bound_if=0 key_dev=dev1 before deleting EID 8");
+
+	mctp_key_remove_addr(dev1->mdev, 8);
+	kunit_info(test,
+		   "KR-09/KD-01 wildcard-owner proof: dev1_valid=%u dev1_unhashed=%u dev1_dev_cleared=%u dev2_valid=%u",
+		   key_dev1->valid, hlist_unhashed(&key_dev1->hlist),
+		   !key_dev1->dev, key_dev2->valid);
+
+	KUNIT_EXPECT_TRUE(test, key_dev1->manual_alloc);
+	KUNIT_EXPECT_FALSE(test, key_dev1->valid);
+	KUNIT_EXPECT_TRUE(test, key_dev1->reasm_dead);
+	KUNIT_EXPECT_PTR_EQ(test, key_dev1->dev, NULL);
+	KUNIT_EXPECT_TRUE(test, hlist_unhashed(&key_dev1->hlist));
+	KUNIT_EXPECT_TRUE(test, hlist_unhashed(&key_dev1->sklist));
+
+	KUNIT_EXPECT_TRUE(test, key_dev2->valid);
+	KUNIT_EXPECT_PTR_EQ(test, key_dev2->dev, dev2->mdev);
+	KUNIT_EXPECT_FALSE(test, hlist_unhashed(&key_dev2->hlist));
+	KUNIT_EXPECT_FALSE(test, hlist_unhashed(&key_dev2->sklist));
+
+	mctp_key_remove_addr(dev2->mdev, 8);
+	mctp_key_unref(key_dev1);
+	mctp_key_unref(key_dev2);
+	sock_release(sock1);
+	sock_release(sock2);
+	mctp_test_destroy_dev(dev1);
+	mctp_test_destroy_dev(dev2);
+}
+
 static void mctp_test_key_remove_addr_frees_reasm_head(struct kunit *test)
 {
 	const unsigned int netid = MCTP_INITIAL_DEFAULT_NET;
@@ -2623,6 +2862,106 @@ static void mctp_test_key_remove_addr_frees_reasm_head(struct kunit *test)
 	mctp_key_unref(key);
 	sock_release(sock);
 	mctp_test_destroy_dev(dev);
+}
+
+static void mctp_test_key_remove_addr_removes_unbound_rx_reasm_key(struct kunit *test)
+{
+	const unsigned int netid = MCTP_INITIAL_DEFAULT_NET;
+	const struct mctp_hdr hdr = RX_FRAG(FL_S, 0);
+	struct netns_mctp *mns = &init_net.mctp;
+	struct mctp_test_pktqueue tpq;
+	struct mctp_test_dev *dev;
+	struct mctp_sk_key *key = NULL;
+	struct mctp_sock *msk;
+	struct sk_buff *reasm = NULL;
+	struct sk_buff *skb;
+	struct mctp_dst dst;
+	struct socket *sock;
+	unsigned long flags;
+	bool single = false;
+	u8 type = 0;
+	int rc;
+
+	__mctp_route_test_init(test, &dev, &dst, &tpq, &sock, netid);
+	msk = container_of(sock->sk, struct mctp_sock, sk);
+	KUNIT_EXPECT_EQ(test, READ_ONCE(sock->sk->sk_bound_dev_if), 0);
+
+	skb = mctp_test_create_skb_data(&hdr, &type);
+	if (!skb) {
+		KUNIT_FAIL(test, "KR-09/KD-01: failed to allocate RX SOM");
+		goto out;
+	}
+	mctp_test_skb_set_dev(skb, dev);
+
+	rc = mctp_dst_input(&dst, skb);
+	KUNIT_EXPECT_EQ_MSG(test, rc, 0,
+			    "KR-09/KD-01: RX SOM did not create reassembly");
+
+	spin_lock_irqsave(&mns->keys_lock, flags);
+	if (!hlist_empty(&msk->keys)) {
+		key = hlist_entry(msk->keys.first, struct mctp_sk_key, sklist);
+		single = hlist_is_singular_node(&key->sklist, &msk->keys);
+		refcount_inc(&key->refs);
+	}
+	spin_unlock_irqrestore(&mns->keys_lock, flags);
+
+	if (!key) {
+		KUNIT_FAIL(test,
+			   "KR-09/KD-01: RX reassembly key was not linked to socket");
+		goto out;
+	}
+
+	spin_lock_irqsave(&key->lock, flags);
+	if (key->reasm_head)
+		reasm = skb_get(key->reasm_head);
+	spin_unlock_irqrestore(&key->lock, flags);
+
+	KUNIT_EXPECT_TRUE(test, single);
+	KUNIT_EXPECT_PTR_EQ(test, key->sk, sock->sk);
+	KUNIT_EXPECT_EQ(test, key->net, netid);
+	KUNIT_EXPECT_EQ(test, key->local_addr, (mctp_eid_t)8);
+	KUNIT_EXPECT_EQ(test, key->peer_addr, (mctp_eid_t)10);
+	KUNIT_EXPECT_PTR_EQ_MSG(test, key->dev, NULL,
+				"KR-09/KD-01: ordinary RX key unexpectedly had a device association");
+	KUNIT_EXPECT_TRUE(test, key->valid);
+	KUNIT_EXPECT_FALSE(test, hlist_unhashed(&key->hlist));
+	KUNIT_EXPECT_FALSE(test, hlist_unhashed(&key->sklist));
+	if (!reasm) {
+		KUNIT_FAIL(test,
+			   "KR-09/KD-01: RX key did not retain the partial message");
+		goto out;
+	}
+	KUNIT_EXPECT_EQ(test, refcount_read(&reasm->users), 2);
+
+	kunit_info(test,
+		   "KR-09/KD-01 ordinary-RX proof: exact local EID=%u key_dev=NULL bound_if=%d reasm_users=%d",
+		   key->local_addr, READ_ONCE(sock->sk->sk_bound_dev_if),
+		   refcount_read(&reasm->users));
+	mctp_key_remove_addr(dev->mdev, 8);
+	kunit_info(test,
+		   "KR-09/KD-01 ordinary-RX proof: valid=%u hlist_unhashed=%u sklist_unhashed=%u reasm_present=%u reasm_users=%d",
+		   key->valid, hlist_unhashed(&key->hlist),
+		   hlist_unhashed(&key->sklist), !!key->reasm_head,
+		   refcount_read(&reasm->users));
+
+	KUNIT_EXPECT_FALSE_MSG(test, key->valid,
+			       "KR-09/KD-01: exact-EID RX key survived address deletion");
+	KUNIT_EXPECT_TRUE(test, key->reasm_dead);
+	KUNIT_EXPECT_PTR_EQ_MSG(test, key->reasm_head, NULL,
+				"KR-09/KD-01: partial RX message survived address deletion");
+	KUNIT_EXPECT_TRUE_MSG(test, hlist_unhashed(&key->hlist),
+			      "KR-09/KD-01: stale RX key remained in namespace lookup");
+	KUNIT_EXPECT_TRUE_MSG(test, hlist_unhashed(&key->sklist),
+			      "KR-09/KD-01: stale RX key remained linked to socket");
+	KUNIT_EXPECT_EQ_MSG(test, refcount_read(&reasm->users), 1,
+			    "KR-09/KD-01: address cleanup did not release its reassembly skb reference");
+
+out:
+	if (reasm)
+		kfree_skb(reasm);
+	if (key)
+		mctp_key_unref(key);
+	__mctp_route_test_fini(test, dev, &dst, &tpq, sock);
 }
 
 static void mctp_test_route_extaddr_input(struct kunit *test)
@@ -3098,12 +3437,16 @@ static struct kunit_case mctp_test_cases[] = {
 	KUNIT_CASE(mctp_test_batch_prealloc_partial_tx_releases_manual_key),
 	KUNIT_CASE(mctp_test_route_output_key_create),
 	KUNIT_CASE(mctp_test_max_keys_cap_blocks_new_key),
+	KUNIT_CASE(mctp_test_alloc_local_tag_scans_all_existing_keys),
+	KUNIT_CASE(mctp_test_max_keys_bounds_tag_hints),
 	KUNIT_CASE(mctp_test_max_keys_cap_blocks_rx_reasm_key),
 	KUNIT_CASE(mctp_test_max_keys_cap_blocks_local_output),
 	KUNIT_CASE(mctp_test_max_keys_cap_allows_prealloc_send),
 	KUNIT_CASE(mctp_test_key_remove_addr_scopes_to_device),
 	KUNIT_CASE(mctp_test_key_remove_addr_removes_bound_manual_any_key),
+	KUNIT_CASE(mctp_test_key_remove_addr_removes_device_owned_manual_any_key),
 	KUNIT_CASE(mctp_test_key_remove_addr_frees_reasm_head),
+	KUNIT_CASE(mctp_test_key_remove_addr_removes_unbound_rx_reasm_key),
 	KUNIT_CASE(mctp_test_max_keys_cap_rx_increments_no_memory_drop_counter),
 	KUNIT_CASE(mctp_test_max_keys_cap_new_key_increments_no_memory_drop_counter),
 	KUNIT_CASE(mctp_test_route_input_cloned_frag),

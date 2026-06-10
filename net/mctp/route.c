@@ -36,6 +36,11 @@ static const unsigned int mctp_message_maxlen = 64 * 1024;
 static const unsigned int mctp_default_max_keys = 1024;
 static const unsigned long mctp_nf_track_timeout = 2 * CONFIG_HZ;
 
+#ifdef CONFIG_MCTP_TEST
+static unsigned int mctp_test_alloc_local_tag_scan_count;
+static unsigned int mctp_test_tag_hint_scan_count;
+#endif
+
 /* Helper to determine binding type from network device
  * Returns the physical binding type from mctp_dev, which is set during
  * device registration and remains constant regardless of device renaming.
@@ -1335,6 +1340,9 @@ static struct mctp_tag_hint *mctp_tag_hint_find(struct netns_mctp *mns,
 	struct mctp_tag_hint *h;
 
 	hlist_for_each_entry(h, &mns->tag_hints, hlist) {
+#ifdef CONFIG_MCTP_TEST
+		mctp_test_tag_hint_scan_count++;
+#endif
 		if (h->net == netid && h->peer == peer)
 			return h;
 	}
@@ -1398,6 +1406,9 @@ struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
 	 */
 	key_count = 0;
 	hlist_for_each_entry(tmp, &mns->keys, hlist) {
+#ifdef CONFIG_MCTP_TEST
+		mctp_test_alloc_local_tag_scan_count++;
+#endif
 		key_count++;
 		/* We can check the lookup fields (*_addr, tag) without the
 		 * lock held, they don't change over the lifetime of the key.
