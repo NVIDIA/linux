@@ -270,6 +270,15 @@ config HID_CP2112
 	and gpiochip to expose these functions of the CP2112. The
 	customizable USB descriptor fields are exposed as sysfs attributes.
 
+config HID_CP2112_RESPONSE_TIMEOUT_MS
+	int "CP2112 default response timeout in ms"
+	depends on HID_CP2112
+	default 50
+	help
+	  Default timeout in milliseconds for waiting for a response from
+	  the CP2112 during status and read polling. Can be overridden at
+	  boot or module load via the response_timeout_ms module parameter.
+
 config HID_CREATIVE_SB0540
 	tristate "Creative SB0540 infrared receiver"
 	depends on USB_HID
