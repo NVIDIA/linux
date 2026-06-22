@@ -164,10 +164,6 @@ struct cp2112_string_report {
    or read/write/scl_low timeout settings are changed. */
 static const int XFER_STATUS_RETRIES = 100;
 
-/* Time in ms to wait for a CP2112_DATA_READ_RESPONSE or
-   CP2112_TRANSFER_STATUS_RESPONSE. */
-static const int RESPONSE_TIMEOUT = 50;
-
 static const struct hid_device_id cp2112_devices[] = {
 	{ HID_USB_DEVICE(USB_VENDOR_ID_CYGNAL, USB_DEVICE_ID_CYGNAL_CP2112) },
 	{ }
@@ -217,6 +213,11 @@ struct cp2112_hid_xfer {
 static int gpio_push_pull = CP2112_GPIO_ALL_GPIO_MASK;
 module_param(gpio_push_pull, int, 0644);
 MODULE_PARM_DESC(gpio_push_pull, "GPIO push-pull configuration bitmask");
+
+static unsigned int response_timeout_ms = CONFIG_HID_CP2112_RESPONSE_TIMEOUT_MS;
+module_param(response_timeout_ms, uint, 0644);
+MODULE_PARM_DESC(response_timeout_ms,
+	"Response timeout in ms for status/read polling (default 50)");
 
 static void cp2112_xfer_work_handler(struct work_struct *work)
 {
@@ -452,7 +453,7 @@ static int cp2112_wait(struct cp2112_device *dev, atomic_t *avail)
 	 * we can do anything about it anyway.
 	 */
 	ret = wait_event_interruptible_timeout(dev->wait,
-		atomic_read(avail), msecs_to_jiffies(RESPONSE_TIMEOUT));
+		atomic_read(avail), msecs_to_jiffies(response_timeout_ms));
 	if (-ERESTARTSYS == ret)
 		return ret;
 	if (!ret)
