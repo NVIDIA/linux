@@ -66,6 +66,7 @@ struct mctp_spi {
 
 	struct gpio_desc *rx_alert; //Input gpio to alert about the incoming package from SPI
 	int	rx_alert_irq;
+	int	idx;		/* mctp_spi_ida index, freed on remove */
 
 	SpbAp *ap;
 	wait_queue_head_t gpio_intr_wq;
@@ -78,9 +79,6 @@ struct mctp_spi_hdr {
 	u8 byte_count;
 	u8 resrv[2];
 };
-
-static LIST_HEAD(device_list);
-static DEFINE_MUTEX(device_list_lock);
 
 static unsigned bufsiz = 4096;
 module_param(bufsiz, uint, S_IRUGO);
@@ -420,6 +418,8 @@ static int mctp_spi_probe(struct spi_device *spi)
 		goto free_ida;
 	}
 	mctp_spi_dev = netdev_priv(ndev);
+	mctp_spi_dev->idx = idx;
+	spi_set_drvdata(spi, ndev);
 
 	mctp_spi_dev->rx_alert = devm_gpiod_get(&spi->dev, "alert", GPIOD_IN);
 
@@ -484,18 +484,37 @@ free_ida:
 
 static void mctp_spi_remove(struct spi_device *spi)
 {
-	struct spidev_data	*spidev = spi_get_drvdata(spi);
-	/* prevent new opens */
-	mutex_lock(&device_list_lock);
-	/* make sure ops on existing fds can abort cleanly */
-	spin_lock_irq(&spidev->spi_lock);
-	spidev->spi = NULL;
-	spin_unlock_irq(&spidev->spi_lock);
+	struct net_device *ndev = spi_get_drvdata(spi);
+	struct mctp_spi *midev = netdev_priv(ndev);
+	struct spidev_data *spidev = midev->spidev;
+	unsigned long flags;
 
-	list_del(&spidev->device_entry);
-	if (spidev->users == 0)
-		kfree(spidev);
-	mutex_unlock(&device_list_lock);
+	/* Stop feeding the rx path, then stop the tx/rx worker thread.
+	 * The thread uses netif_*() and the SPB AP context, so it must be
+	 * gone before we unregister the netdev or free midev->ap.
+	 */
+	spin_lock_irqsave(&midev->lock, flags);
+	midev->allow_rx = false;
+	spin_unlock_irqrestore(&midev->lock, flags);
+
+	if (midev->tx_thread) {
+		kthread_stop(midev->tx_thread);
+		midev->tx_thread = NULL;
+	}
+
+	/* The alert IRQ handler touches midev; release it before midev goes
+	 * away with free_netdev().
+	 */
+	free_irq(midev->rx_alert_irq, midev);
+
+	/* Drop the MCTP core's reference and unregister */
+	mctp_unregister_netdev(ndev);
+
+	skb_queue_purge(&midev->tx_queue);
+	kfree(midev->ap);
+	ida_free(&mctp_spi_ida, midev->idx);
+	free_netdev(ndev);
+	kfree(spidev);
 }
 
 static struct spi_driver mctp_spi_driver = {
