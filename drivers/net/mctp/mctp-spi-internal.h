@@ -49,6 +49,7 @@ struct mctp_spi {
 
 	struct gpio_desc *rx_alert; /* Input gpio to alert about the incoming package from SPI */
 	int	rx_alert_irq;
+	int	idx;		/* mctp_spi_ida index, freed on remove */
 
 	SpbAp *ap;
 	wait_queue_head_t gpio_intr_wq;
