@@ -73,6 +73,9 @@ struct mctp_usb {
 			u64 tx_drop_ehostunreach;     /* -EHOSTUNREACH: Device suspended */
 			u64 tx_drop_enoexec;          /* -ENOEXEC: Control URB missing Setup packet */
 			u64 tx_drop_queue_full;       /* Queue full condition */
+			u64 tx_drop_timeout;          /* -ECONNRESET: TX URB aborted by watchdog (link up) */
+			u64 tx_drop_unlinked;         /* -ECONNRESET: TX URB unlinked on interface down */
+			u64 tx_timeouts;              /* TX watchdog firings (stall events) */
 			u64 tx_requeued;
 			u64 rx_requeued;
 			u64 rx_urb_submitted;         /* RX URBs submitted */
