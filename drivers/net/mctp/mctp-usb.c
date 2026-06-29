@@ -122,6 +122,26 @@ static void mctp_usb_handle_tx_urb_status(struct mctp_usb *mctp_usb,
 		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enoexec += num_packets;
 		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
 		break;
+	case -ECONNRESET:
+		/* URB was unlinked rather than failing on the wire. This happens
+		 * in two cases: the TX watchdog (mctp_usb_tx_timeout) aborting a
+		 * stuck transfer while the link is up, or mctp_usb_stop() tearing
+		 * down on interface down (->stopped set). Only the former is a
+		 * transmit timeout; either way it is deliberate, so don't log it
+		 * as an "unexpected" status. Account the two cases separately so
+		 * neither is conflated with a genuine -ENOENT.
+		 */
+		netdev->stats.tx_dropped += num_packets;
+		if (READ_ONCE(mctp_usb->stopped)) {
+			mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_unlinked += num_packets;
+			trace_mctp_transport_error("usb", netdev, "tx_urb_unlinked", status);
+		} else {
+			netdev->stats.tx_errors += num_packets;
+			mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_timeout += num_packets;
+			trace_mctp_transport_error("usb", netdev, "tx_urb_timeout", status);
+		}
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
 	case 0:
 		netdev->stats.tx_packets += num_packets;
 		/* tx_bytes already updated per packet during batching */
@@ -1019,6 +1039,9 @@ static const struct mctp_usb_eid_stat_desc mctp_usb_eid_stat_descs[] = {
 	MCTP_USB_EID_STAT("tx_drop_ehostunreach",       tx_drop_ehostunreach),
 	MCTP_USB_EID_STAT("tx_drop_enoexec",            tx_drop_enoexec),
 	MCTP_USB_EID_STAT("tx_drop_queue_full",         tx_drop_queue_full),
+	MCTP_USB_EID_STAT("tx_drop_timeout",            tx_drop_timeout),
+	MCTP_USB_EID_STAT("tx_drop_unlinked",           tx_drop_unlinked),
+	MCTP_USB_EID_STAT("tx_timeouts",                tx_timeouts),
 	/* General statistics */
 	MCTP_USB_EID_STAT("tx_requeued",                tx_requeued),
 	MCTP_USB_EID_STAT("rx_requeued",                rx_requeued),
@@ -1153,7 +1176,16 @@ static const struct ethtool_ops mctp_usb_ethtool_ops = {
 static void mctp_usb_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+
 	netdev_dbg(netdev, "TX WDT timeout, unlinking stuck URBs\n");
+
+	/* Count the stall event. The aborted URBs are accounted per-packet as
+	 * tx_drop_timeout when they complete with -ECONNRESET.
+	 */
+	mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_timeouts++;
+	set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+	trace_mctp_transport_error("usb", netdev, "tx_watchdog_timeout", 0);
+
 	usb_unlink_anchored_urbs(&mctp_usb->tx_anchor);
 }
 
