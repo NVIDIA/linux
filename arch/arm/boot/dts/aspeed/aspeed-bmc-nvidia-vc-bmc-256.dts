@@ -3,7 +3,6 @@
 
 #include "nvidia-vc-bmc-256-core.dtsi"
 #include <dt-bindings/i2c/i2c.h>
-#include <dt-bindings/leds/common.h>
 
 / {
     model = "AST2600 Vera256 BMC";
@@ -15,14 +14,12 @@
 		i2c16	= &i2c_usbhub;
 		i2c17	= &i2c_tpm;
 		i2c18	= &i2c_dp;
-		i2c19	= &i2c_rtc;
-
-        i2c36   = &i2c_mcio_c0c1_north6;
-
 		i2c60	= &e1s_ssd0_i2c;
 		i2c61	= &e1s_ssd1_i2c;
-
 		i2c70	= &i2c70;
+		i2c71	= &i2c71;
+		i2c72	= &i2c72;
+		i2c73	= &i2c73;
 	};
 
 	chosen {
@@ -71,28 +68,6 @@
     power-gpios{
         n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
         n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-    };
-
-    leds {
-        compatible = "gpio-leds";
-        uid_led {
-                gpios = <&exp7 10 GPIO_ACTIVE_LOW>;
-        };
-        fault_led {
-                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
-        };
-        power_led {
-                gpios = <&exp7 8 GPIO_ACTIVE_LOW>;
-        };
-    };
-
-    buttons {
-        power-btn {
-            gpio = <&exp7 9 GPIO_ACTIVE_LOW>;
-        };
-        uid-btn {
-            gpio = <&exp7 11 GPIO_ACTIVE_LOW>;
-        };
     };
 
     standby_power_regulator: standby-power-regulator {
@@ -254,12 +229,57 @@
 	memory-region = <&video_engine_memory>;
 };
 
-// USB 2.0 to HMC, on USB Port B
+/*
+ * Enable USB port B as host to downstream USB hubs
+ */
 &ehci1 {
     status = "okay";
 
     hub@1 {
         reg = <1>;
+
+        // BF4 physical CP2112
+        hub@1 {
+            reg = <1>;
+            hub@1 {
+                reg = <1>;
+                device@1 {
+                    reg = <1>;
+                    interface@1 {
+                        reg = <1 1>;
+                        i2c73: bf4_sma_i2c: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
+                    };
+                };
+
+                bf4_cp2112: device@2 {
+                    reg = <2>;
+                    gpio-controller;
+                    #gpio-cells = <2>;
+                    interrupt-controller;
+                    #interrupt-cells = <2>;
+
+                    gpio-line-names =
+                        "BF4_USB_MCU_RECOVERY_L",
+                        "BF4_USB_MCU_RST_L",
+                        "BF4_USB_FORCE_FNP_L",
+                        "BF4_GLOBAL_WP",
+                        "BF4_FORCE_POR_L",
+                        "BF4_BMC_EROT_RST_L",
+                        "BF4_BMC_EROT_RECOVERY_L",
+                        "BF4_THERM_SHUTDOWN";
+
+                    i2c72: bf4_i2c: i2c {
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                    };
+                };
+            };
+        };
+
+        // HPM MCU virtual CP2112
         hub@2 {
             reg = <2>;
             hub@1 {
@@ -278,7 +298,7 @@
                             #address-cells = <1>;
                             #size-cells = <0>;
 
-                            exp16: pca9555@50 {
+                            exp9: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -309,7 +329,7 @@
                                     "MCU_JTAG_BYPASS_CPU0_S-O",
                                     "MCU_JTAG_BYPASS_CPU0-O";
                             };
-                            exp17: pca9555@51 {
+                            exp10: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
@@ -340,7 +360,7 @@
                                     "MCU_JTAG_BYPASS_CPU1_S-O",
                                     "MCU_JTAG_BYPASS_CPU1-O";
                             };
-                            exp18: pca9555@52 {
+                            exp11: pca9555@52 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x52>;
                                 gpio-controller;
@@ -371,7 +391,7 @@
                                     "MCU_USER_STRAP-I",
                                     "HPM_MCU_OK-I";
                             };
-                            exp19: pca9555@53 {
+                            exp12: pca9555@53 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x53>;
                                 gpio-controller;
@@ -402,7 +422,7 @@
                                     "LEAK_SELF_TEST_L_1V8-I",
                                     "MCU_RECOVERY_L-I";
                             };
-                            exp20: pca9555@54 {
+                            exp13: pca9555@54 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x54>;
                                 gpio-controller;
@@ -435,10 +455,16 @@
                             };
                         };
                     };
+
+                    /*
+                     * TODO: Add the HPM MCU LSTP interface here for SSIF:
+                     * CPU SMBus -> HPM MCU -> USB -> BMC.
+                     */
                 };
             };
         };
 
+        // E1.S MCU virtual CP2112 and LSTP
         hub@3 {
             reg = <3>;
             hub@1 {
@@ -449,7 +475,7 @@
                         compatible = "usb0955,cf11";
                         reg = <2>;
 
-                        bp_sma_cp2112: interface@1 {
+                        e1s_sma_cp2112: interface@1 {
                             reg = <1 1>;
 
                             i2c71: i2c {
@@ -485,6 +511,11 @@
 };
 
 // I2C1, SSIF IPMI interface
+/*
+ * SSIF is handled by the MCU LSTP path, not by the ASPEED I2C
+ * controller acting as a direct SMBus slave. Remove this legacy
+ * direct SSIF setup after bringup is complete.
+ */
 &i2c0 {
     status = "okay";
     clock-frequency = <400000>;
@@ -495,6 +526,7 @@
 
     ssif-bmc@10 {
         compatible = "ssif-bmc";
+        status = "disabled";
         alert-gpio = <&gpio1 ASPEED_GPIO(D, 7) GPIO_ACTIVE_LOW>;
         pulse_width_us = <5>;
         timeout_ms = <4995>;
@@ -503,8 +535,29 @@
 };
 
 // I2C2
-// BMC_I2C1_FPGA - Secondary FPGA
+// MGMT1 to E1.S MCU
+// I2C MUX (8 pin) x1
+// E1.S MCU FRU EEPROM
+// E1.S MCU Temp Sensor
 &i2c1 {
+    status = "okay";
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    multi-master;
+    mctp-controller;
+    // MCTP for E1.S MCU
+    mctp@18 {
+        compatible = "mctp-i2c-controller";
+        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+    };
+};
+
+// I2C3
+// MGMT0 to HPM MCU
+// I2C MUX (16 pin) x5
+// HPM FRU EEPROM
+&i2c2 {
     status = "okay";
     clock-frequency = <400000>;
     i2c-scl-clk-low-timeout-us = <32000>;
@@ -518,57 +571,23 @@
     };
 };
 
-// I2C3
-// BMC_I2C0_FPGA - Primary FPGA
-&i2c2 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-};
-
 // I2C4
 &i2c3 {
-    status = "ok";
+    status = "okay";
     clock-frequency = <400000>;
 };
 
-// I2C5, MCIO Buses
+// I2C5
 &i2c4 {
     status = "okay";
     clock-frequency = <400000>;
-    multi-master;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-
-    mctp@18 {
-        compatible = "mctp-i2c-controller";
-        reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
-    };
-
-    i2c-mux@71 {
-		compatible = "nxp,pca9548";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x71>;
-		vdd-supply = <&standby_power_regulator>;
-
-		i2c_mcio_c0c1_north6: i2c@6 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <6>;
-
-			// E1.S Backplane FRU EEPROM
-			eeprom@51 {
-				compatible = "atmel,24c02";
-				reg = <0x51>;
-			};
-		};
-	};
 };
 
 // I2C6
-// Module 0/1 I2C MUX x3
+// RTC
+// I2C MUX (16 pin) x2
+// SMM FRU EEPROM
+// SMM Temp Sensor
 &i2c5 {
     status = "okay";
     clock-frequency = <400000>;
@@ -577,43 +596,39 @@
 };
 
 // I2C7
-// Module 0/1 Leak Sensors
+// Module Leak Sensors
+// TPM
+// I2C MUX (8 pin) x1
 &i2c6 {
     status = "okay";
     clock-frequency = <400000>;
     i2c-tck-thddat-config = <0x0099EC00>;
 
-	i2c-mux@70 {
-		compatible = "nxp,pca9546";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-		i2c-mux-idle-disconnect;
+    i2c-mux@70 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x70>;
+        i2c-mux-idle-disconnect;
 
-		i2c_usbhub: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
+        i2c_usbhub: i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+        };
 
-		i2c_tpm: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
+        i2c_tpm: i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+        };
 
-		i2c_dp: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_rtc: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-	};
+        i2c_dp: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+        };
+    };
 };
 
 // I2C8
@@ -626,15 +641,20 @@
 &i2c8 {
     status = "okay";
     clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
 };
 
 // I2C10
+// Hotswap Controller
 &i2c9 {
     status = "okay";
     clock-frequency = <400000>;
     i2c-tck-thddat-config = <0x0099EC00>;
+
+    hsc@45 {
+        compatible = "ti,lm5066i";
+        reg = <0x45>;
+        shunt-resistor-micro-ohms = <190>;
+    };
 };
 
 // I2C11
@@ -654,25 +674,23 @@
 
 // I2C12
 &i2c11 {
-    status = "ok";
+    status = "okay";
     clock-frequency = <400000>;
 };
 
 // I2C13
 &i2c12 {
-    status = "ok";
+    status = "okay";
     clock-frequency = <400000>;
 };
 
 // I2C14
-// Module 0 UPHY3 SMBus
 &i2c13 {
-    status = "ok";
+    status = "okay";
     clock-frequency = <400000>;
 };
 
 // I2C15
-// Module 1 UPHY3 SMBus
 &i2c14 {
     status = "okay";
     clock-frequency = <400000>;
@@ -683,33 +701,6 @@
     status = "okay";
     clock-frequency = <400000>;
 };
-
-
-// E1S Backplane GPIO Expander
-&i2c_mcio_c0c1_north6 {
-    // E1S Backplane, Expander @0x20
-    exp22: pca6408@20 {
-        compatible = "nxp,pca6408";
-        reg = <0x20>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "E1S_MCU_RESET_L-O",
-            "E1S_MCU_RECOVERY_L-O",
-            "",
-            "",
-            "",
-            "",
-            "E1S_LOWER_PERST-O",
-            "E1S_UPPER_PERST-O";
-    };
-};
-
-
 
 // PCIe RC
 &pcie0 {

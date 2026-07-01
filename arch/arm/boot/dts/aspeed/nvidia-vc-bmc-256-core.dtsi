@@ -145,80 +145,29 @@
 
 // I2C2 GPIO Expander
 &i2c1 {
-    // MGMT1 BOARD0, Expander @0x20
-    exp0: pca9555@20 {
-        compatible = "nxp,pca9555";
+    // E1.S BOARD, Expander @0x20
+    exp0: pca6408@20 {
+        compatible = "nxp,pca6408";
         reg = <0x20>;
         gpio-controller;
         #gpio-cells = <2>;
 
-        #address-cells = <1>;
-        #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        vcc-supply = <&standby_power_regulator>;
-        startup-delay-ms = <2000>;
         gpio-line-names =
-            "B0_M1_MCU_RESET_L-O",
-            "B0_M1_MCU_RECOVERY_L-O",
-            "B0_M1_I2C_SOCAMM_UPHY_SEL-O",
-            "B0_M1_SNN_GPU0_MCU_REC_L",
-            "B0_M1_THERM_OVERT_L-I",
-            "B0_M1_THERM_WARN_L-I",
-            "B0_M1_HMC_IST_PRE_RST_L-O",
-            "B0_M1_CPLD_READY-I",
-            "B0_M1_MODULE_PWR_GOOD-I",
-            "B0_M1_MCU_HMC_ALERT_L-I",
-            "B0_M1_USB1_HUB_RST_L-O",
-            "B0_M1_HPM_MCU_OK-I",
-            "B0_M1_CPU_SHDN_OK_L_3V3-I",
-            "B0_M1_SNN_BOARD_LOC_STRAP",
-            "B0_M1_IST_SYS_RST_L-O",
-            "B0_M1_PWR_BRAKE_L_STATUS-I";
-    };
-
-    // MGMT1 BOARD0, Expander @0x21
-    exp1: pca9555@21 {
-        compatible = "nxp,pca9555";
-        reg = <0x21>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        vcc-supply = <&standby_power_regulator>;
-        startup-delay-ms = <2000>;
-        gpio-line-names =
-            "B0_M1_CPU_FORCED_RECOVERY_L-O",
-            "B0_M1_CPU_BOOT_DEV_SEL0-O",
-            "B0_M1_CPU_BOOT_DEV_SEL1-O",
-            "B0_M1_CPU_BOOT_DEV_SEL2-O",
-            "B0_M1_HMC_BRD_ID0",
-            "B0_M1_CPU_RECOVERY_TYPE0-O",
-            "B0_M1_CPU_RECOVERY_TYPE1-O",
-            "B0_M1_CPU_IST_BOOT_HMC-O",
-            "B0_M1_CPU_PREBOOT_DIAG-O",
-            "B0_M1_HMC_BRD_ID1",
-            "B0_M1_HPM_MCU_I2C_ENABLE-O",
-            "B0_M1_CPU_DIE_SEL0-O",
-            "B0_M1_CPU_DIE_SEL1-O",
-            "B0_M1_CPU_DIE_SEL2-O",
-            "B0_M1_CPU_BOOT_COMPLETE-O",
-            "B0_M1_IOX_JTAG_NVSEL-O";
+            "MCU_RESET",
+            "MCU_RECOVERY",
+            "P12V_P3V3_EXP_PG",
+            "HSBP_TEMP_ALERT_N",
+            "MCU_I2C_ISO_EN_N",
+            "",
+            "LOWER_PERST",
+            "UPPER_PERST";
     };
 };
 
-
 // I2C3 GPIO Expander
 &i2c2 {
-    // MGMT0 BOARD0, Expander @0x20
-    exp2: pca9555@20 {
+    // MGMT0 BOARD, Expander @0x20
+    exp1: pca9555@20 {
         compatible = "nxp,pca9555";
         reg = <0x20>;
         gpio-controller;
@@ -233,26 +182,26 @@
         vcc-supply = <&standby_power_regulator>;
 
         gpio-line-names =
-            "B0_M0_SHDN_FORCE_L-O",
-            "B0_M0_STBY_PWR_PG-I",
-            "B0_M0_THERM_OVERT_L-I",
-            "B0_M0_THERM_WARN_L-I",
-            "B0_M0_GLOBAL_WP-O",
-            "B0_M0_USB0_HUB_RST_L-O",
-            "B0_M0_IOX_PRE_SYS_RST_N-O",
-            "B0_M0_LEAK_DETECT_ALERT_L-I",
-            "B0_M0_RUN_PWR_EN-O",
-            "B0_M0_MODULE_PWR_GOOD-I",
-            "B0_M0_CPU_CHIPTHROT_L_3V3-I",
-            "B0_M0_SHDN_REQ_L_3V3-O",
-            "B0_M0_CPU_SHDN_OK_L_3V3-I",
-            "B0_M0_CPLD_READY-I",
-            "B0_M0_PWR_BRAKE_L_3V3-O",
-            "B0_M0_PWR_BRAKE_L_STATUS-I";
+            "SHDN_FORCE_L",
+            "STBY_PWR_PG",
+            "THERM_OVERT_L",
+            "THERM_WARN_L",
+            "GLOBAL_WP",
+            "USB0_HUB_RST_L",
+            "IOX_PRE_SYS_RST_N",
+            "LEAK_DETECT_ALERT_L",
+            "RUN_PWR_EN",
+            "MODULE_PWR_GOOD",
+            "CPU_CHIPTHROT_L_3V3",
+            "SHDN_REQ_L_3V3",
+            "CPU_SHDN_OK_L_3V3",
+            "CPLD_READY",
+            "PWR_BRAKE_L_3V3",
+            "PWR_BRAKE_L_STATUS";
     };
 
-    // MGMT0 BOARD0, Expander @0x21
-    exp3: pca9555@21 {
+    // MGMT0 BOARD, Expander @0x21
+    exp2: pca9555@21 {
         compatible = "nxp,pca9555";
         reg = <0x21>;
         gpio-controller;
@@ -267,26 +216,26 @@
         vcc-supply = <&standby_power_regulator>;
 
         gpio-line-names =
-            "B0_M0_I2C_BUS_MUX_RST_L-O",
-            "B0_M0_HPM_MCU_OK-I",
-            "B0_M0_CPU_SYS_RST_N_3V3-I",
-            "B0_M0_C0_SOCAMM_DAC_I2C_SEL_R-O",
-            "B0_M0_C1_SOCAMM_DAC_I2C_SEL_R-O",
-            "B0_M0_C0_SOCAMM_I2C_SEL-O",
-            "B0_M0_C1_SOCAMM_I2C_SEL-O",
-            "B0_M0_EEPROM_POWER_DISABLE-O",
-            "B0_M0_CPU_L0L1_RST_L_3V3-I",
-            "B0_M0_CPU_L2_RST_L_3V3-I",
-            "B0_M0_BRD_ID_0",
-            "B0_M0_BRD_ID_1",
-            "B0_M0_BMC_LEAK_TEST_L-O",
-            "B0_M0_MCU_BMC_ALERT_L-I",
-            "B0_M0_CPU_BOOT_COMPLETE_3V3-I",
-            "B0_M0_SNN_GPU_MCU_I2C_ENABLE";
+            "I2C_BUS_MUX_RST_L",
+            "HPM_MCU_OK",
+            "CPU_SYS_RST_N_3V3",
+            "C0_SOCAMM_DAC_I2C_SEL_R",
+            "C1_SOCAMM_DAC_I2C_SEL_R",
+            "C0_SOCAMM_I2C_SEL",
+            "C1_SOCAMM_I2C_SEL",
+            "EEPROM_POWER_DISABLE",
+            "CPU_L0L1_RST_L_3V3",
+            "CPU_L2_RST_L_3V3",
+            "BRD_ID_0",
+            "BRD_ID_1",
+            "BMC_LEAK_TEST_L",
+            "MCU_BMC_ALERT_L",
+            "CPU_BOOT_COMPLETE_3V3",
+            "";
     };
 
-    // MGMT0 BOARD0, Expander @0x22
-    exp4: pca9555@22 {
+    // MGMT0 BOARD, Expander @0x22
+    exp3: pca9555@22 {
         compatible = "nxp,pca9555";
         reg = <0x22>;
         gpio-controller;
@@ -300,26 +249,26 @@
         interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         vcc-supply = <&standby_power_regulator>;
         gpio-line-names =
-            "B0_M0_C0_UPHY0_PRSNT0_L-I",
-            "B0_M0_C0_UPHY0_PRSNT1_L-I",
-            "B0_M0_C0_UPHY0_PRSNT2_L-I",
-            "B0_M0_C0_UPHY0_PRSNT3_L-I",
-            "B0_M0_C0_UPHY1_PRSNT0_L-I",
-            "B0_M0_C0_UPHY1_PRSNT1_L-I",
-            "B0_M0_RSVD_C0_UPHY1_PRSNT2_L",
-            "B0_M0_RSVD_C0_UPHY1_PRSNT3_L",
-            "B0_M0_C0_UPHY2_PRSNT0_L-I",
-            "B0_M0_C0_UPHY2_PRSNT1_L-I",
-            "B0_M0_C0_UPHY2_PRSNT2_L-I",
-            "B0_M0_C0_UPHY2_PRSNT3_L-I",
-            "B0_M0_C0_UPHY3_PRSNT0_L-I",
-            "B0_M0_C0_UPHY3_PRSNT1_L-I",
-            "B0_M0_RSVD_C0_UPHY3_PRSNT2_L",
-            "B0_M0_RSVD_C0_UPHY3_PRSNT3_L";
+            "MCU_RESET_L",
+            "MCU_RECOVERY_L",
+            "I2C_SOCAMM_UPHY_SEL",
+            "SNN_GPU0_MCU_REC_L",
+            "",
+            "",
+            "HMC_IST_PRE_RST_L",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "SNN_BOARD_LOC_STRAP",
+            "IST_SYS_RST_L",
+            "";
     };
 
-    // MGMT0 BOARD0, Expander @0x23
-    exp5: pca9555@23 {
+    // MGMT0 BOARD, Expander @0x23
+    exp4: pca9555@23 {
         compatible = "nxp,pca9555";
         reg = <0x23>;
         gpio-controller;
@@ -333,98 +282,26 @@
         interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         vcc-supply = <&standby_power_regulator>;
         gpio-line-names =
-            "B0_M0_C1_UPHY0_PRSNT0_L-I",
-            "B0_M0_C1_UPHY0_PRSNT1_L-I",
-            "B0_M0_C1_UPHY0_PRSNT2_L-I",
-            "B0_M0_C1_UPHY0_PRSNT3_L-I",
-            "B0_M0_RSVD_C1_UPHY1_PRSNT0_L",
-            "B0_M0_C1_UPHY1_PRSNT1_L-I",
-            "B0_M0_RSVD_C1_UPHY1_PRSNT2_L",
-            "B0_M0_RSVD_C1_UPHY1_PRSNT3_L",
-            "B0_M0_C1_UPHY2_PRSNT0_L-I",
-            "B0_M0_C1_UPHY2_PRSNT1_L-I",
-            "B0_M0_C1_UPHY2_PRSNT2_L-I",
-            "B0_M0_C1_UPHY2_PRSNT3_L-I",
-            "B0_M0_C1_UPHY3_PRSNT0_L-I",
-            "B0_M0_C1_UPHY3_PRSNT1_L-I",
-            "B0_M0_RSVD_C1_UPHY3_PRSNT2_L",
-            "B0_M0_RSVD_C1_UPHY3_PRSNT3_L";
-    };
-};
-
-// I2C5 SMM Carrier GPIO Expander
-&i2c5 {
-    // SMM Carrier, Expander @0x20
-    exp7: pca9555@20 {
-        compatible = "nxp,pca9555";
-        reg = <0x20>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "HMC_RST_R_L-O",
-            "HMC_RECOVERY_R-O",
-            "HMC_SPI_MUX_R_SEL-O",
-            "GLOBAL_WP-O",
-            "HMC_READY-I",
-            "HMC_PRSNT_R-I",
-            "BMC_SELF_PWR_CYCLE-O",
-            "EEDO_LED2-O",
-            "PWR_LED_L-O",
-            "PWR_BTN_L-I",
-            "UID_LED_L-O",
-            "UID_BTN_L-I",
-            "FAULT_LED_L-O",
-            "USB2_HUB_RST_L-O",
-            "IOX_GPIO_P16_TP",
-            "WARN_LED_L-O";
+            "CPU_FORCED_RECOVERY_L",
+            "CPU_BOOT_DEV_SEL0",
+            "CPU_BOOT_DEV_SEL1",
+            "CPU_BOOT_DEV_SEL2",
+            "HMC_BRD_ID0",
+            "CPU_RECOVERY_TYPE0",
+            "CPU_RECOVERY_TYPE1",
+            "CPU_IST_BOOT_HMC",
+            "CPU_BOOT_CHAIN0",
+            "HMC_BRD_ID1",
+            "HPM_MCU_I2C_ENABLE",
+            "CPU_DIE_SEL0",
+            "CPU_DIE_SEL1",
+            "CPU_DIE_SEL2",
+            "",
+            "IOX_JTAG_NVSEL";
     };
 
-    // SMM Carrier, Expander @0x21
-    exp8: pca9555@21 {
-        compatible = "nxp,pca9555";
-        reg = <0x21>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "BMC_HMC_MUX_SEL-O",
-            "BMC_TPM_MUX_SEL-O",
-            "BMC_USB2_MUX_SEL-O",
-            "HMC_PGOOD_3V3-I",
-            "BF3_AOC_NCSI_PRSNT_L-I",
-            "HDR_SPI_PRSNT_L-I",
-            "SW_NRESET_R_L-O",
-            "MUX_I2C_ESPI_SEL-O",
-            "I2C_BUS_MUX_RESET_L-O",
-            "USB_MUX_EN-O",
-            "PDB_TRAY_RST-O",
-            "USB_PWR_EN-O",
-            "RTC_CLR_L-O",
-            "I2C_RTC_ALERT_L-I",
-            "I2C_PDB_ALERT_L-I",
-            "BMC_MUX_PI3DP_SEL-O";
-    };
-};
-
-// PDB GPIO Expander
-&i2c9 {
-    // PDB, Expander @0x24
-    exp21: pca9555@24 {
+    // MGMT0 BOARD, Expander @0x24
+    exp5: pca9555@24 {
         compatible = "nxp,pca9555";
         reg = <0x24>;
         gpio-controller;
@@ -438,22 +315,108 @@
         interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         vcc-supply = <&standby_power_regulator>;
         gpio-line-names =
-            "PDB_TYPE-I",
-            "PDB_STBY_PWR_EN-O",
-            "PDB_STBY_PWR_OK-I",
-            "PDB_MCU_RECOVERY_L-O",
-            "PDB_MCU_RST_L-O",
-            "PDB_MAIN_PWR_EN-O",
-            "PDB_MAIN_PWR_OK-I",
-            "PDB_GLB_WP-O",
-            "PDB_PWR_BRK_L-I",
-            "PDB_FAN_CTL_PRSNT_L-I",
-            "PDB_P12V_HPM_EN-O",
-            "PDB_MUX_SEL-O",
-            "PDB_P12V_GPU1_EN-O",
-            "PDB_P12V_GPU2_EN-O",
-            "PDB_PSU_PWOK-I",
-            "PDB_PS_ON_L-O";
+            "C0_UPHY0_PRSNT0_L",
+            "C0_UPHY0_PRSNT1_L",
+            "C0_UPHY2_PRSNT0_L",
+            "C0_UPHY2_PRSNT1_L",
+            "C0_UPHY3_PRSNT0_L",
+            "C1_UPHY0_PRSNT0_L",
+            "C1_UPHY0_PRSNT1_L",
+            "C1_UPHY2_PRSNT0_L",
+            "C1_UPHY2_PRSNT1_L",
+            "C1_UPHY3_PRSNT0_L",
+            "PU_NOTUSED_Cx_PRSNT_P10_L",
+            "PU_NOTUSED_Cx_PRSNT_P11_L",
+            "PU_NOTUSED_Cx_PRSNT_P12_L",
+            "PU_NOTUSED_Cx_PRSNT_P13_L",
+            "PU_NOTUSED_Cx_PRSNT_P14_L",
+            "PU_NOTUSED_Cx_PRSNT_P15_L";
+    };
+};
+
+// I2C6 GPIO Expander
+&i2c5 {
+    // SMM Carrier, Expander @0x20
+    exp6: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "",
+            "",
+            "",
+            "GLOBAL_WP",
+            "",
+            "",
+            "BMC_SELF_PWR_CYCLE",
+            "EEDO_LED2",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "USB2_HUB_RST_L",
+            "USB2_BMC_HUB2_RST_L",
+            "";
+    };
+
+    // SMM Carrier, Expander @0x21
+    exp7: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+        vcc-supply = <&standby_power_regulator>;
+        gpio-line-names =
+            "",
+            "BMC_TPM_MUX_SEL",
+            "BMC_USB2_MUX_SEL",
+            "",
+            "",
+            "HDR_SPI_PRSNT_L",
+            "SW_NRESET_R_L",
+            "",
+            "I2C_BUS_MUX_RESET_L",
+            "USB_MUX_EN_L",
+            "PDB_TRAY_RST",
+            "HOST_RDY_PWR_EN",
+            "RTC_CLR_L",
+            "I2C_RTC_ALERT_L",
+            "X86_MUX_TPM_RST_SEL",
+            "BMC_MUX_PI3DP_SEL";
+    };
+};
+
+// I2C7 GPIO Expander
+&i2c6 {
+    // BMC IO Expander @0x20
+    exp8: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+
+        gpio-line-names =
+            "",
+            "",
+            "EROT_FATAL_ERROR_N",
+            "",
+            "",
+            "EROT_RECOV_N",
+            "NRESET_IN_IOX_N",
+            "";
     };
 };
 
