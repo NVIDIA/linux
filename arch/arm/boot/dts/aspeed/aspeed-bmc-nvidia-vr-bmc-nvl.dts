@@ -279,11 +279,142 @@
                 reg = <4>;
                 device@1 {
                     reg = <1>;
-                    interface@1 {
+                    cp2112l: interface@1 {
                         reg = <1 1>;
+
+                        gpio-controller;
+                        interrupt-controller;
+                        #gpio-cells = <2>;
+                        #interrupt-cells = <2>;
+
                         i2c77: i2c {
                             #address-cells = <1>;
                             #size-cells = <0>;
+                            exp18: pca9555@50 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x50>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112l>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "BF4_MCU_RECOVERY_N-O",
+                                    "BF4_S_BMC_IO0_MCU-O",
+                                    "BF4_S_BMC_IO1_MCU-O",
+                                    "BF4_MCU_BOARD_ID0-I",
+                                    "BF4_S_SPI_MCU_CS0_L-O",
+                                    "BF4_S_WP_FRU_STBY-O",
+                                    "BF4_S_EXP_ENABLE_INBAND_RECOVERY-O",
+                                    "BF4_S_BMC_EROT_FATAL_ERROR_L-I",
+                                    "BF4_S_BMC_BOOT_DONE_L-I",
+                                    "BF4_S_EROT_CPU_FATAL_ERROR_N-I",
+                                    "BF4_S_EROT_RECOV_N-O",
+                                    "BF4_S_EXP_GRACE_EROT_RST_L-O",
+                                    "BF4_S_BOARD_THERM_WARN_R-I",
+                                    "BF4_S_DPU_BMC_PWR_OFF_R-O",
+                                    "BF4_S_GRACE_EROT_I2C_MUX_CNTRL-O",
+                                    "BF4_S_SPI_MUX_CTRL-O";
+                            };
+                            exp19: pca9555@51 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x51>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112l>;
+                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "BF4_S_INT_CEC_I2C_ADDR1_STRAP_MUX-I",
+                                    "BF4_S_NCSI_MUX_SMBUS-O",
+                                    "BF4_S_CX9_BOOT_DONE_L-I",
+                                    "BF4_S_P_ON_COUNTER_EXPIRED-I",
+                                    "BF4_S_GPIO2_MCU_CPLD-I",
+                                    "BF4_S_GPIO0_MCU_CX9-I",
+                                    "BF4_S_GPIO1_MCU_CX9-I",
+                                    "BF4_S_GPIO0_MCU_GRACE-I",
+                                    "BF4_S_GPIO1_MCU_GRACE-I",
+                                    "BF4_S_GPIO0_MCU_BMC-I",
+                                    "BF4_S_GPIO1_MCU_BMC-I",
+                                    "BF4_S_NIC_MOD_INDICATION-I",
+                                    "BF4_S_NIC_MODE_LATCHED_INDICATION-I",
+                                    "BF4_vLeakDetect1Status0-I",
+                                    "BF4_vLeakDetect1Status1-I",
+                                    "",
+                                    "";
+                            };
+                            exp20: pca9555@60 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x60>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112l>;
+                                interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "BF4_PGOOD_12V-I",
+                                    "BF4_MCU_RECOVERY_N-O",
+                                    "BF4_PGOOD_VDD-I",
+                                    "BF4_PGOOD_VDDP-I",
+                                    "BF4_PGOOD_DVDD-I",
+                                    "BF4_PGOOD_HVDD-I",
+                                    "BF4_PGOOD_3V3-I",
+                                    "BF4_PGOOD_5V-I",
+                                    "BF4_PGOOD_1V8-I",
+                                    "BF4_S_CX9_PERST_BIF_BUF_L-I",
+                                    "BF4_S_CX9_PERST_PRI_BUF_L-I",
+                                    "BF4_MCU_BOARD_ID0-I",
+                                    "BF4_MCU_BOARD_ID1-I",
+                                    "BF4_MCU_BOARD_ID2-I",
+                                    "BF4_S_GLOBAL_WP_MCU_L-I",
+                                    "BF4_S_EXP_ENABLE_INBAND_RECOVERY-O";
+                            };
+                            exp21: pca9555@61 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x61>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&cp2112l>;
+                                interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
+
+                                gpio-line-names =
+                                    "BF4_S_NCSI_MUX_SMBUS-O",
+                                    "BF4_CX0_RST_L-O",
+                                    "BF4_CX0_BOOT_COMPLT-I",
+                                    "BF4_CX0_TMP_WARNING-I",
+                                    "BF4_CX0_OVT_SHTDN-I",
+                                    "BF4_CX0_FNP_L-O",
+                                    "BF4_S_PWR_EN_IO-I",
+                                    "BF4_LEAK_DETECT_VR_PIN_0-I",
+                                    "BF4_LEAK_DETECT_VR_PIN_1-I",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "";
+                            };
                         };
                     };
                 };
