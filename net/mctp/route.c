@@ -936,7 +936,7 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			unsigned long lifetime;
 
 			mdev = __mctp_dev_get(skb->dev);
-			lifetime = mctp_effective_key_lifetime(msk, mdev);
+			lifetime = mctp_effective_key_lifetime(msk, mdev, 0);
 			if (mdev)
 				mctp_dev_put(mdev);
 
@@ -1902,7 +1902,8 @@ static int mctp_do_fragment_route(struct mctp_dst *dst, struct sk_buff *skb,
 }
 
 int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
-		      struct sk_buff *skb, mctp_eid_t daddr, u8 req_tag)
+		      struct sk_buff *skb, mctp_eid_t daddr, u8 req_tag,
+		      unsigned int tag_timeout_ms)
 {
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
 	struct mctp_sk_key *key;
@@ -1916,7 +1917,7 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	u8 tag;
 
 	KUNIT_STATIC_STUB_REDIRECT(mctp_local_output, sk, dst, skb, daddr,
-				   req_tag);
+				   req_tag, tag_timeout_ms);
 
 	rc = -ENODEV;
 
@@ -1952,7 +1953,8 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 						       req_tag, &tag);
 		else {
 			unsigned long lifetime = mctp_effective_key_lifetime(msk,
-									     dst->dev);
+									     dst->dev,
+									     tag_timeout_ms);
 
 			key = mctp_alloc_local_tag(msk, netid, saddr, daddr,
 						   false, &tag, lifetime);

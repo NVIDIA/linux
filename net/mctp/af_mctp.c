@@ -25,9 +25,12 @@
 /* socket implementation */
 
 unsigned long mctp_effective_key_lifetime(struct mctp_sock *msk,
-					  struct mctp_dev *mdev)
+					  struct mctp_dev *mdev,
+					  unsigned int msg_timeout_ms)
 {
-	if (msk->tag_timeout_ms)
+	if (msg_timeout_ms)			/* per-message cmsg */
+		return msecs_to_jiffies(msg_timeout_ms);
+	if (msk->tag_timeout_ms)		/* per-socket sockopt */
 		return msecs_to_jiffies(msk->tag_timeout_ms);
 	if (mdev)
 		return mdev->key_lifetime;
@@ -102,12 +105,47 @@ out_release:
 	return rc;
 }
 
+/* Parse SOL_MCTP ancillary data from a sendmsg() control buffer. On success
+ * *timeout_ms holds the per-message tag timeout, or 0 if none was supplied.
+ */
+static int mctp_sendmsg_parse_cmsg(struct msghdr *msg, unsigned int *timeout_ms)
+{
+	struct cmsghdr *cmsg;
+
+	*timeout_ms = 0;
+
+	for_each_cmsghdr(cmsg, msg) {
+		int val;
+
+		if (!CMSG_OK(msg, cmsg))
+			return -EINVAL;
+		if (cmsg->cmsg_level != SOL_MCTP)
+			continue;
+
+		switch (cmsg->cmsg_type) {
+		case MCTP_CMSG_TAG_TIMEOUT_MS:
+			if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
+				return -EINVAL;
+			val = *(int *)CMSG_DATA(cmsg);
+			if (val < 0)
+				return -EINVAL;
+			*timeout_ms = val;
+			break;
+		default:
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 {
 	DECLARE_SOCKADDR(struct sockaddr_mctp *, addr, msg->msg_name);
 	int rc, addrlen = msg->msg_namelen;
 	struct sock *sk = sock->sk;
 	struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+	unsigned int tag_timeout_ms;
 	struct mctp_skb_cb *cb;
 	struct sk_buff *skb = NULL;
 	struct mctp_dst dst;
@@ -134,6 +172,10 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		/* TODO: connect()ed sockets */
 		return -EDESTADDRREQ;
 	}
+
+	rc = mctp_sendmsg_parse_cmsg(msg, &tag_timeout_ms);
+	if (rc)
+		return rc;
 
 	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_RAW))
 		return -EACCES;
@@ -228,7 +270,7 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 
 	trace_mctp_tx_packet(skb);
 	rc = mctp_local_output(sk, &dst, skb, addr->smctp_addr.s_addr,
-			       addr->smctp_tag);
+			       addr->smctp_tag, tag_timeout_ms);
 
 	mctp_dst_release(&dst);
 	return rc ? : len;
@@ -756,7 +798,7 @@ static int mctp_ioctl_alloctag(struct mctp_sock *msk, bool tagv2,
 
 	key = mctp_alloc_local_tag(msk, ctl.net, MCTP_ADDR_ANY,
 				   ctl.peer_addr, true, &tag,
-				   mctp_effective_key_lifetime(msk, NULL));
+				   mctp_effective_key_lifetime(msk, NULL, 0));
 	if (IS_ERR(key))
 		return PTR_ERR(key);
 

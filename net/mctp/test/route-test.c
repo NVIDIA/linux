@@ -985,7 +985,7 @@ static void mctp_test_packet_flow(struct kunit *test)
 
 	mctp_test_flow_init(test, &dev, &dst, &tpq, &sock, &skb, 30);
 
-	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER);
+	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER, 0);
 	KUNIT_ASSERT_EQ(test, rc, 0);
 
 	n = tpq.pkts.qlen;
@@ -1020,7 +1020,7 @@ static void mctp_test_fragment_flow(struct kunit *test)
 
 	mctp_test_flow_init(test, &dev, &dst, &tpq, &sock, &skb, 100);
 
-	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER);
+	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER, 0);
 	KUNIT_ASSERT_EQ(test, rc, 0);
 
 	n = tpq.pkts.qlen;
@@ -1105,7 +1105,7 @@ static void mctp_test_route_output_key_create(struct kunit *test)
 	spin_unlock_irqrestore(&mns->keys_lock, flags);
 	KUNIT_ASSERT_TRUE(test, empty);
 
-	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER);
+	rc = mctp_local_output(sock->sk, &dst, skb, dst_eid, MCTP_TAG_OWNER, 0);
 	KUNIT_ASSERT_EQ(test, rc, 0);
 
 	key = NULL;

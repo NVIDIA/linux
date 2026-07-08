@@ -62,6 +62,16 @@ struct mctp_fq_addr {
  */
 #define MCTP_OPT_TAG_TIMEOUT_MS	3
 
+/* Ancillary data (cmsg) for sendmsg(), with cmsg_level == SOL_MCTP.
+ *
+ * MCTP_CMSG_TAG_TIMEOUT_MS: int, tag/key lifetime in milliseconds applied to
+ * THIS message's tag allocation only. Overrides MCTP_OPT_TAG_TIMEOUT_MS for
+ * this send; a value of 0 defers to the socket option (then the per-device
+ * default, then the kernel default). Ignored for preallocated tags
+ * (MCTP_TAG_PREALLOC) and for non tag-owner sends.
+ */
+#define MCTP_CMSG_TAG_TIMEOUT_MS	1
+
 #define SIOCMCTPALLOCTAG	(SIOCPROTOPRIVATE + 0)
 #define SIOCMCTPDROPTAG		(SIOCPROTOPRIVATE + 1)
 #define SIOCMCTPALLOCTAG2	(SIOCPROTOPRIVATE + 2)

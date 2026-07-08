@@ -72,7 +72,8 @@ struct mctp_test_sock_local_output_config {
 static int mctp_test_sock_local_output(struct sock *sk,
 				       struct mctp_dst *dst,
 				       struct sk_buff *skb,
-				       mctp_eid_t daddr, u8 req_tag)
+				       mctp_eid_t daddr, u8 req_tag,
+				       unsigned int tag_timeout_ms)
 {
 	struct kunit *test = kunit_get_current_test();
 	struct mctp_test_sock_local_output_config *cfg = test->priv;

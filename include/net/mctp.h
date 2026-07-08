@@ -160,7 +160,8 @@ struct mctp_sock {
 };
 
 unsigned long mctp_effective_key_lifetime(struct mctp_sock *msk,
-					  struct mctp_dev *mdev);
+					  struct mctp_dev *mdev,
+					  unsigned int msg_timeout_ms);
 
 /* Key for matching incoming packets to sockets or reassembly contexts.
  * Packets are matched on (peer EID, local EID, tag).
@@ -370,7 +371,8 @@ void mctp_dst_release(struct mctp_dst *dst);
 
 /* always takes ownership of skb */
 int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
-		      struct sk_buff *skb, mctp_eid_t daddr, u8 req_tag);
+		      struct sk_buff *skb, mctp_eid_t daddr, u8 req_tag,
+		      unsigned int tag_timeout_ms);
 
 void mctp_key_unref(struct mctp_sk_key *key);
 struct mctp_sk_key *mctp_alloc_local_tag(struct mctp_sock *msk,
