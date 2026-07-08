@@ -290,7 +290,7 @@
                         i2c77: i2c {
                             #address-cells = <1>;
                             #size-cells = <0>;
-                            exp18: pca9555@50 {
+                            exp22: pca9555@50 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x50>;
                                 gpio-controller;
@@ -321,7 +321,7 @@
                                     "BF4_S_GRACE_EROT_I2C_MUX_CNTRL-O",
                                     "BF4_S_SPI_MUX_CTRL-O";
                             };
-                            exp19: pca9555@51 {
+                            exp23: pca9555@51 {
                                 compatible = "nxp,pca9555";
                                 reg = <0x51>;
                                 gpio-controller;
