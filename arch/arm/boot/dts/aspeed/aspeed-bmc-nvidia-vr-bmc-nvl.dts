@@ -538,7 +538,7 @@
 
                                     gpio-line-names =
                                         "",
-                                        "",
+                                        "IOB1_SSD_PRSNT_L-I",
                                         "",
                                         "",
                                         "",
@@ -673,7 +673,7 @@
 
                                     gpio-line-names =
                                         "",
-                                        "",
+                                        "IOB0_SSD_PRSNT_L-I",
                                         "",
                                         "",
                                         "",
@@ -983,7 +983,7 @@
 
                                     gpio-line-names =
                                         "",
-                                        "",
+                                        "IOB2_SSD_PRSNT_L-I",
                                         "",
                                         "",
                                         "",
@@ -1118,7 +1118,7 @@
 
                                     gpio-line-names =
                                         "",
-                                        "",
+                                        "IOB3_SSD_PRSNT_L-I",
                                         "",
                                         "",
                                         "",
