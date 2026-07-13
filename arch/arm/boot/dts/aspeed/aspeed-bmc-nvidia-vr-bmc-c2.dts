@@ -48,6 +48,9 @@
 		i2c56   = &i2c_mcio_c1_south6;
 		i2c57   = &i2c_mcio_c1_south7;
 
+		i2c58	= &i2c_pdb_mux0;
+		i2c59	= &i2c_pdb_mux1;
+
 		i2c60	= &e1s_ssd0_i2c;
 		i2c61	= &e1s_ssd1_i2c;
 		i2c62	= &e1s_ssd2_i2c;
@@ -953,36 +956,64 @@
     status = "okay";
     clock-frequency = <400000>;
     i2c-tck-thddat-config = <0x0099EC00>;
+};
 
-	i2c-mux@76 {
-		compatible = "nxp,pca9546";
+// PDB GPIO-selected I2C mux on I2C10 (&i2c9).
+// SEL pin is driven by PDB_MUX_SEL-O (exp21, bit11), which itself sits on &i2c9
+/ {
+	i2c-mux-pdb {
+		compatible = "i2c-mux-gpio";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg = <0x76>;
-		i2c-mux-idle-disconnect;
 
-		i2c_fan_ctrl0: i2c@0 {
+		i2c-parent = <&i2c9>;
+		mux-gpios = <&exp21 11 GPIO_ACTIVE_HIGH>;
+		idle-state = <0>;
+
+		// PSU devices
+		i2c_pdb_mux0: i2c@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 		};
 
-		i2c_fan_ctrl1: i2c@1 {
+		// Fan Board devices
+		i2c_pdb_mux1: i2c@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
-		};
 
-		i2c_fan_iox: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
+			i2c-mux@76 {
+				compatible = "nxp,pca9546";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x76>;
+				i2c-mux-idle-disconnect;
 
-		i2c_fan_hsc: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
+				i2c_fan_ctrl0: i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+				};
+
+				i2c_fan_ctrl1: i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+				};
+
+				i2c_fan_iox: i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+				};
+
+				i2c_fan_hsc: i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+				};
+			};
 		};
 	};
 };
