@@ -241,8 +241,8 @@
         // BF4 physical CP2112
         hub@1 {
             reg = <1>;
-            hub@1 {
-                reg = <1>;
+            hub@4 {
+                reg = <4>;
                 device@1 {
                     reg = <1>;
                     interface@1 {
@@ -282,8 +282,8 @@
         // HPM MCU virtual CP2112
         hub@2 {
             reg = <2>;
-            hub@1 {
-                reg = <1>;
+            hub@4 {
+                reg = <4>;
                 device@1 {
                     reg = <1>;
                     cp2112: interface@1 {
