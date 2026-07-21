@@ -515,7 +515,7 @@
 
 // I2C2
 // MGMT1 to E1.S MCU
-// I2C MUX (8 pin) x1
+// IOEXP (8-pin) x1
 // E1.S MCU FRU EEPROM
 // E1.S MCU Temp Sensor
 &i2c1 {
@@ -534,7 +534,7 @@
 
 // I2C3
 // MGMT0 to HPM MCU
-// I2C MUX (16 pin) x5
+// IOEXP (16-pin) x3
 // HPM FRU EEPROM
 &i2c2 {
     status = "okay";
@@ -564,7 +564,7 @@
 
 // I2C6
 // RTC
-// I2C MUX (16 pin) x2
+// IOEXP (16-pin) x2
 // SMM FRU EEPROM
 // SMM Temp Sensor
 &i2c5 {
@@ -577,7 +577,7 @@
 // I2C7
 // Module Leak Sensors
 // TPM
-// I2C MUX (8 pin) x1
+// IOEXP (8-pin) x1
 &i2c6 {
     status = "okay";
     clock-frequency = <400000>;
