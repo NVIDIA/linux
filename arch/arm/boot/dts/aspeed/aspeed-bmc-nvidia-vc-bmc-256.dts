@@ -17,7 +17,6 @@
 		i2c60	= &e1s_ssd0_i2c;
 		i2c61	= &e1s_ssd1_i2c;
 		i2c70	= &i2c70;
-		i2c71	= &i2c71;
 		i2c72	= &i2c72;
 		i2c73	= &i2c73;
 	};
@@ -462,22 +461,13 @@
             };
         };
 
-        // E1.S MCU
+        // E1.S MCU (LSTP only; CP2112 enumeration dropped in MCU FW)
         device@3 {
             compatible = "usb0955,cf11";
             reg = <3>;
 
-            e1s_sma_cp2112: interface@1 {
+            lstp_mcu: interface@1 {
                 reg = <1 1>;
-
-                i2c71: i2c {
-                    #address-cells = <1>;
-                    #size-cells = <0>;
-                };
-            };
-
-            lstp_mcu: interface@2 {
-                reg = <2 1>;
                 #address-cells = <1>;
                 #size-cells = <0>;
 
