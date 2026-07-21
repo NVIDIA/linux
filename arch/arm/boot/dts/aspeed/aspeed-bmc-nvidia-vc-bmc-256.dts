@@ -632,7 +632,6 @@
     hsc@45 {
         compatible = "ti,lm5066i";
         reg = <0x45>;
-        shunt-resistor-micro-ohms = <190>;
     };
 };
 
