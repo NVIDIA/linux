@@ -690,7 +690,13 @@ static int lstp_i2c_init(struct lstp_channel *ch, const struct lstp_channel_init
 
 	/* Initialize I2C adapter */
 	adap->owner = THIS_MODULE;
-	adap->class = I2C_CLASS_HWMON;
+	/*
+	 * Keep the class bitmask empty to avoid legacy class-based probing.
+	 * LSTP devices should be instantiated explicitly from firmware nodes;
+	 * generic hwmon detection can issue non-PMBus reads to VR devices and
+	 * latch CML/SMBALERT faults.
+	 */
+	adap->class = 0;
 	adap->algo = &lstp_i2c_algorithm;
 	adap->algo_data = ch;
 	adap->dev.parent = ch->dev;
