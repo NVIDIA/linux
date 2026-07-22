@@ -2,7 +2,16 @@
 /*
  * IPMI postcodes support for LSTP USB interface.
  *
- * Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
 
 #ifndef __LSTP_IPMI_POSTCODES_H
@@ -342,8 +351,7 @@ struct lstp_ipmi_postcodes {
 };
 
 static inline int lstp_ipmi_postcodes_init(struct lstp_ipmi_postcodes *, struct device *,
-					   const char *, void *, void (*)(void *),
-					   void (*)(void *))
+					   const char *, void *, void (*)(void *), void (*)(void *))
 {
 	return 0;
 }

@@ -2,7 +2,16 @@
 /*
  * UART driver for LSTP USB interface.
  *
- * Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
 
 #include <linux/cleanup.h>
@@ -96,6 +105,7 @@ struct lstp_uart_ctx {
 
 	spinlock_t write_lock; /* protects all fields below */
 	u8 *coal_buf;
+	u8 *tx_snapshot; /* stable copy handed to lstp_request() */
 	size_t coal_len;
 	size_t tx_inflight_len;
 	bool tx_in_flight;
@@ -134,7 +144,7 @@ static struct lstp_channel *lstp_get_by_minor(unsigned int minor)
 		return NULL;
 
 	ctx = ch->priv;
-	if (!ctx || lstp_ch_disconnected(ch))
+	if (!ctx || lstp_channel_disconnected(ch))
 		return NULL;
 
 	tty_port_get(&ctx->port);
@@ -152,16 +162,16 @@ static speed_t lstp_baud_to_speed(u32 baud)
 		u32     baud;
 		speed_t speed;
 	} map[] = {
-		{     50, B50      }, {     75, B75      }, {    110, B110     },
-		{    134, B134     }, {    150, B150     }, {    200, B200     },
-		{    300, B300     }, {    600, B600     }, {   1200, B1200    },
-		{   1800, B1800    }, {   2400, B2400    }, {   4800, B4800    },
-		{   9600, B9600    }, {  19200, B19200   }, {  38400, B38400   },
-		{  57600, B57600   }, { 115200, B115200  }, { 230400, B230400  },
-		{ 460800, B460800  }, { 500000, B500000  }, { 576000, B576000  },
-		{ 921600, B921600  }, {1000000, B1000000 }, {1152000, B1152000 },
-		{1500000, B1500000 }, {2000000, B2000000 }, {2500000, B2500000 },
-		{3000000, B3000000 }, {3500000, B3500000 }, {4000000, B4000000 },
+		{      50, B50      }, {      75, B75      }, {     110, B110     },
+		{     134, B134     }, {     150, B150     }, {     200, B200     },
+		{     300, B300     }, {     600, B600     }, {    1200, B1200    },
+		{    1800, B1800    }, {    2400, B2400    }, {    4800, B4800    },
+		{    9600, B9600    }, {   19200, B19200   }, {   38400, B38400   },
+		{   57600, B57600   }, {  115200, B115200  }, {  230400, B230400  },
+		{  460800, B460800  }, {  500000, B500000  }, {  576000, B576000  },
+		{  921600, B921600  }, { 1000000, B1000000 }, { 1152000, B1152000 },
+		{ 1500000, B1500000 }, { 2000000, B2000000 }, { 2500000, B2500000 },
+		{ 3000000, B3000000 }, { 3500000, B3500000 }, { 4000000, B4000000 },
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(map); i++)
@@ -227,26 +237,9 @@ static tcflag_t lstp_build_iflag(const struct lstp_uart_config *cfg)
 	return 0;
 }
 
-static int lstp_uart_parse_config(struct lstp_uart_ctx *ctx, struct lstp_channel *ch)
+static int lstp_uart_parse_config(struct lstp_uart_ctx *ctx, struct lstp_channel *ch,
+				  const struct lstp_uart_config *cfg)
 {
-	struct lstp_channel *ch0 = ch->usb->channels[0];
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch0->resp_buf;
-	union lstp_ch0_resp_payload *ch0_resp;
-	struct lstp_uart_config *cfg;
-	size_t payload_len;
-
-	ch0_resp = (union lstp_ch0_resp_payload *)rx_pkt->payload;
-	payload_len = le16_to_cpu(rx_pkt->hdr.length);
-
-	if (payload_len < sizeof(struct lstp_ch0_resp_read) + sizeof(*cfg)) {
-		dev_err(&ch->usb->intf->dev,
-			"%s: ch_%d: UART config truncated in ch0 data (got %zu bytes, need %zu)\n",
-			__func__, ch->ch_id, payload_len,
-			sizeof(struct lstp_ch0_resp_read) + sizeof(*cfg));
-		return -EINVAL;
-	}
-
-	cfg = (struct lstp_uart_config *)ch0_resp->read.ch_config;
 	ctx->hw_cflag = lstp_build_cflag(cfg);
 	ctx->hw_iflag = lstp_build_iflag(cfg);
 
@@ -254,8 +247,8 @@ static int lstp_uart_parse_config(struct lstp_uart_ctx *ctx, struct lstp_channel
 		static const char parity_ch[] = "NOEMS";
 		u8 p = LSTP_UART_CFG_PARITY(cfg->parity_flow);
 
-		dev_info(&ch->usb->intf->dev, "%s: ch_%d: %u baud, %u%c%c, parity %u, flow %u\n",
-			 __func__, ch->ch_id, le32_to_cpu(cfg->speed), cfg->data_bits,
+		dev_info(ch->dev, "%s: ch_%d: %u baud, %u%c%c, parity %u, flow %u\n", __func__,
+			 ch->ch_id, le32_to_cpu(cfg->speed), cfg->data_bits,
 			 cfg->stop_bits == 2 ? '2' : '1',
 			 p < sizeof(parity_ch) - 1 ? parity_ch[p] : '?', p,
 			 LSTP_UART_CFG_FLOW(cfg->parity_flow));
@@ -268,49 +261,46 @@ static int lstp_uart_parse_config(struct lstp_uart_ctx *ctx, struct lstp_channel
  * TX path
  *****************************************************************************/
 
-static int lstp_uart_send_with_retry(struct lstp_uart_ctx *ctx, u8 cmd, size_t len)
+static int lstp_uart_send_with_retry(struct lstp_uart_ctx *ctx, u8 cmd, const void *payload,
+				     size_t len)
 {
 	struct lstp_channel *ch = ctx->ch;
-	int ret = -ENXIO;
+	int lstp_status = LSTP_NACK;
+	int ret = 0;
 	int attempt;
 
-	for (attempt = 0; ret == -ENXIO && attempt < LSTP_UART_NAK_MAX_RETRIES; attempt++) {
+	for (attempt = 0; lstp_status == LSTP_NACK && attempt < LSTP_UART_NAK_MAX_RETRIES;
+	     attempt++) {
 		if (attempt)
 			fsleep(LSTP_UART_NAK_RETRY_DELAY_MS * USEC_PER_MSEC);
 
-		ret = lstp_recv_resp_helper(ch, cmd, len, 0);
-		if (!ret)
-			lstp_unlock_resp_buffer(ch);
+		ret = lstp_request(ch, cmd, payload, len, NULL, 0, NULL, &lstp_status);
 	}
 
 	if (ret)
-		dev_warn(&ch->usb->intf->dev,
-			 "%s: ch_%d: Failed to write after %d attempt(s) (%pe)\n", __func__,
-			 ch->ch_id, attempt, ERR_PTR(ret));
+		dev_warn(ch->dev, "%s: ch_%d: Failed to write after %d attempt(s) (%pe)\n",
+			 __func__, ch->ch_id, attempt, ERR_PTR(ret));
 
 	return ret;
 }
 
 /*
  * Drain coal_buf into one LSTP WRITE, send over USB, reschedule if
- * new data arrived during the round-trip. ch->tx_mutex serializes
- * tx_buf access with break_ctl.
+ * new data arrived during the round-trip. tx_snapshot is a private,
+ * single-writer buffer (write_work only) so it stays stable across
+ * the retry loop while lstp_tty_write() keeps appending to coal_buf.
  */
 static void lstp_uart_write_work(struct work_struct *work)
 {
 	struct lstp_uart_ctx *ctx = container_of(work, struct lstp_uart_ctx, write_work);
-	struct lstp_packet *tx_pkt = (struct lstp_packet *)ctx->ch->tx_buf;
 	size_t len;
 	int ret;
-
-	guard(mutex)(&ctx->ch->tx_mutex);
 
 	scoped_guard(spinlock_irqsave, &ctx->write_lock) {
 		len = ctx->coal_len;
 		if (len == 0)
 			return;
-		memcpy(tx_pkt->payload, ctx->coal_buf, len);
-		tx_pkt->hdr.length = cpu_to_le16(len);
+		memcpy(ctx->tx_snapshot, ctx->coal_buf, len);
 		ctx->coal_len = 0;
 		ctx->tx_in_flight = true;
 		ctx->tx_inflight_len = len;
@@ -318,7 +308,7 @@ static void lstp_uart_write_work(struct work_struct *work)
 
 	tty_port_tty_wakeup(&ctx->port);
 
-	ret = lstp_uart_send_with_retry(ctx, LSTP_UART_CMD_WRITE, len);
+	ret = lstp_uart_send_with_retry(ctx, LSTP_UART_CMD_WRITE, ctx->tx_snapshot, len);
 
 	scoped_guard(spinlock_irqsave, &ctx->write_lock) {
 		ctx->tx_in_flight = false;
@@ -335,17 +325,20 @@ static void lstp_uart_write_work(struct work_struct *work)
  * RX path
  *****************************************************************************/
 
-/*
+/**
+ * lstp_uart_irq_callback() - Push unsolicited UART RX bytes into the TTY layer.
+ * @ch:  LSTP channel that received the request.
+ * @pkt: Received LSTP packet (header + payload).
+ *
  * Push RX bytes into the TTY flip buffer. NACK if the buffer is full
  * so firmware retries. Serialized by irq_buffer_lock in the USB RX
  * callback — no local locking needed.
  */
-static void lstp_uart_irq_callback(struct lstp_channel *ch)
+static void lstp_uart_irq_callback(struct lstp_channel *ch, struct lstp_packet *pkt)
 {
 	struct lstp_uart_ctx *ctx = ch->priv;
-	struct lstp_packet *rx_pkt = (struct lstp_packet *)ch->irq_buf;
-	u16 rx_len = le16_to_cpu(rx_pkt->hdr.length);
-	u8 cmd = rx_pkt->hdr.cmd;
+	u16 rx_len = le16_to_cpu(pkt->hdr.length);
+	u8 cmd = pkt->hdr.cmd;
 	bool have_break = cmd & LSTP_UART_TAG_BREAK_DET;
 	bool carrier_down = cmd & LSTP_UART_TAG_CARRIER_DOWN;
 	bool tx_overrun = cmd & LSTP_UART_TAG_TX_OVERRUN;
@@ -354,9 +347,8 @@ static void lstp_uart_irq_callback(struct lstp_channel *ch)
 	size_t room;
 
 	if ((cmd & LSTP_UART_CMD_MASK) != LSTP_UART_CMD_WRITE) {
-		dev_warn_ratelimited(&ch->usb->intf->dev,
-				     "%s: ch_%d: unexpected UART command 0x%02x\n", __func__,
-				     ch->ch_id, cmd);
+		dev_warn_ratelimited(ch->dev, "%s: ch_%d: unexpected UART command 0x%02x\n",
+				     __func__, ch->ch_id, cmd);
 		lstp_send_irq_resp(ch, LSTP_NOT_SUPP);
 		return;
 	}
@@ -371,7 +363,7 @@ static void lstp_uart_irq_callback(struct lstp_channel *ch)
 			tty_insert_flip_char(&ctx->port, 0, TTY_BREAK);
 		}
 		if (rx_len) {
-			tty_insert_flip_string(&ctx->port, rx_pkt->payload, rx_len);
+			tty_insert_flip_string(&ctx->port, pkt->payload, rx_len);
 			ctx->iocount.rx += rx_len;
 		}
 		tty_flip_buffer_push(&ctx->port);
@@ -379,7 +371,7 @@ static void lstp_uart_irq_callback(struct lstp_channel *ch)
 
 	if (tx_overrun) {
 		ctx->iocount.overrun++;
-		dev_warn_ratelimited(&ch->usb->intf->dev,
+		dev_warn_ratelimited(ch->dev,
 				     "%s: ch_%d: RX overrun on link (firmware dropped bytes)\n",
 				     __func__, ch->ch_id);
 	}
@@ -420,8 +412,11 @@ static void lstp_port_destruct(struct tty_port *port)
 {
 	struct lstp_uart_ctx *ctx = container_of(port, struct lstp_uart_ctx, port);
 
-	scoped_guard(mutex, &lstp_minors_lock)
-		idr_remove(&lstp_minors, ctx->minor);
+	if (ctx->minor >= 0) {
+		scoped_guard(mutex, &lstp_minors_lock)
+			idr_remove(&lstp_minors, ctx->minor);
+	}
+	kfree(ctx->tx_snapshot);
 	kfree(ctx->coal_buf);
 	kfree(ctx);
 }
@@ -487,7 +482,7 @@ static ssize_t lstp_tty_write(struct tty_struct *tty, const unsigned char *buf, 
 
 	guard(spinlock_irqsave)(&ctx->write_lock);
 
-	if (lstp_ch_disconnected(ch))
+	if (lstp_channel_disconnected(ch))
 		return -EIO;
 
 	room = ctx->max_payload - ctx->coal_len;
@@ -510,7 +505,7 @@ static unsigned int lstp_tty_write_room(struct tty_struct *tty)
 
 	guard(spinlock_irqsave)(&ctx->write_lock);
 
-	if (lstp_ch_disconnected(ch))
+	if (lstp_channel_disconnected(ch))
 		return 0;
 	return ctx->max_payload - ctx->coal_len;
 }
@@ -523,6 +518,8 @@ static unsigned int lstp_tty_chars_in_buffer(struct tty_struct *tty)
 
 	guard(spinlock_irqsave)(&ctx->write_lock);
 
+	if (lstp_channel_disconnected(ch))
+		return 0;
 	count = ctx->coal_len;
 	if (ctx->tx_in_flight)
 		count += ctx->tx_inflight_len;
@@ -570,9 +567,8 @@ static int lstp_tty_break_ctl(struct tty_struct *tty, int state)
 	if (!state)
 		return 0;
 
-	guard(mutex)(&ch->tx_mutex);
-
-	return lstp_uart_send_with_retry(ctx, LSTP_UART_CMD_WRITE | LSTP_UART_TAG_GEN_BREAK, 0);
+	return lstp_uart_send_with_retry(ctx, LSTP_UART_CMD_WRITE | LSTP_UART_TAG_GEN_BREAK, NULL,
+					 0);
 }
 
 static int lstp_tty_get_icount(struct tty_struct *tty, struct serial_icounter_struct *icount)
@@ -610,19 +606,24 @@ static void lstp_uart_port_put(void *data)
 
 /**
  * lstp_uart_init() - Initialize an LSTP UART channel.
- * @ch: LSTP channel to initialize as UART
+ * @ch:   LSTP channel to initialize as UART
+ * @info: config blob (struct lstp_uart_config)
  *
- * Parses firmware UART configuration from the ch0 discovery response
- * (already in ch0->resp_buf) and sets up the tty_port, coalescing
- * buffer, and minor number.
+ * Sets up the tty_port, coalescing buffer, and minor number.
  *
  * Context: Process context. Called during probe before RX URB is active.
- * Return: 0 on success, negative errno on failure
+ * Return: 0 on success, negative errno on failure.
  */
-static int lstp_uart_init(struct lstp_channel *ch)
+static int lstp_uart_init(struct lstp_channel *ch, const struct lstp_channel_init_info *info)
 {
 	struct lstp_uart_ctx *ctx;
 	int ret;
+
+	if (info->config_len < sizeof(struct lstp_uart_config)) {
+		dev_err(ch->dev, "%s: ch_%d: UART config too short: %zu < %zu\n", __func__,
+			ch->ch_id, info->config_len, sizeof(struct lstp_uart_config));
+		return -EINVAL;
+	}
 
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
@@ -631,14 +632,14 @@ static int lstp_uart_init(struct lstp_channel *ch)
 	tty_port_init(&ctx->port);
 	ctx->port.ops = &lstp_port_ops;
 	ctx->minor = -1;
-	ctx->max_payload = ch->usb->bulk_tx_size - sizeof(struct lstp_header);
+	ctx->max_payload = ch->max_tx_payload;
 	spin_lock_init(&ctx->write_lock);
 
-	ret = devm_add_action_or_reset(&ch->usb->intf->dev, lstp_uart_port_put, &ctx->port);
+	ret = devm_add_action_or_reset(ch->dev, lstp_uart_port_put, &ctx->port);
 	if (ret)
 		return ret;
 
-	ret = lstp_uart_parse_config(ctx, ch);
+	ret = lstp_uart_parse_config(ctx, ch, info->config);
 	if (ret)
 		return ret;
 
@@ -646,22 +647,14 @@ static int lstp_uart_init(struct lstp_channel *ch)
 	if (!ctx->coal_buf)
 		return -ENOMEM;
 
-	ch->resp_buf = devm_kzalloc(&ch->usb->intf->dev, ch->usb->bulk_rx_size, GFP_KERNEL);
-	if (!ch->resp_buf)
+	ctx->tx_snapshot = kzalloc(ctx->max_payload, GFP_KERNEL);
+	if (!ctx->tx_snapshot)
 		return -ENOMEM;
-
-	ch->irq_buf = devm_kzalloc(&ch->usb->intf->dev, ch->usb->bulk_rx_size, GFP_KERNEL);
-	if (!ch->irq_buf)
-		return -ENOMEM;
-
-	ret = lstp_alloc_irq_resp(ch);
-	if (ret)
-		return ret;
 
 	ret = lstp_alloc_minor(ch);
 	if (ret < 0) {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Failed to allocate minor (%pe)\n",
-			__func__, ch->ch_id, ERR_PTR(ret));
+		dev_err(ch->dev, "%s: ch_%d: Failed to allocate minor (%pe)\n", __func__, ch->ch_id,
+			ERR_PTR(ret));
 		return ret;
 	}
 	ctx->minor = ret;
@@ -669,9 +662,8 @@ static int lstp_uart_init(struct lstp_channel *ch)
 	INIT_WORK(&ctx->write_work, lstp_uart_write_work);
 	ctx->ch = ch;
 	ch->priv = ctx;
-	ch->irq_callback = lstp_uart_irq_callback;
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Initialized\n", __func__, ch->ch_id);
+	dev_info(ch->dev, "%s: ch_%d: Initialized\n", __func__, ch->ch_id);
 	return 0;
 }
 
@@ -680,28 +672,26 @@ static int lstp_uart_init(struct lstp_channel *ch)
  * @ch: LSTP channel (must have been successfully initialized)
  *
  * Context: Process context. Called during probe after RX URB is active.
- * Return: 0 on success, negative errno on failure
+ * Return: 0 on success, negative errno on failure.
  */
 static int lstp_uart_start(struct lstp_channel *ch)
 {
 	struct lstp_uart_ctx *ctx = ch->priv;
 	struct device *tty_dev;
 
-	tty_dev = tty_port_register_device(&ctx->port, lstp_tty_driver, ctx->minor,
-					   &ch->usb->intf->dev);
+	tty_dev = tty_port_register_device(&ctx->port, lstp_tty_driver, ctx->minor, ch->dev);
 	if (IS_ERR(tty_dev)) {
-		dev_err(&ch->usb->intf->dev, "%s: ch_%d: Failed to register TTY (%pe)\n", __func__,
-			ch->ch_id, tty_dev);
+		dev_err(ch->dev, "%s: ch_%d: Failed to register TTY (%pe)\n", __func__, ch->ch_id,
+			tty_dev);
 		return PTR_ERR(tty_dev);
 	}
 
 	if (ch->fwnode)
 		device_set_node(tty_dev, ch->fwnode);
 
-	ch->child_dev = tty_dev;
+	deprecated_lstp_channel_publish_child_dev(ch, tty_dev);
 
-	dev_info(&ch->usb->intf->dev, "%s: ch_%d: Started as %s\n", __func__, ch->ch_id,
-		 ch->display_name);
+	dev_info(ch->dev, "%s: ch_%d: Started as %s\n", __func__, ch->ch_id, ch->display_name);
 	return 0;
 }
 
@@ -775,6 +765,7 @@ static void lstp_uart_driver_exit(void)
 /* clang-format off */
 LSTP_SUBSYS(uart, LSTP_CHANNEL_TYPE_UART, lstp_uart_init, lstp_uart_start,
 	    .fwnode_compatible = "nvidia,lstp-uart",
+	    .irq_callback = lstp_uart_irq_callback,
 	    .channel_stop = lstp_uart_stop,
 	    .init = lstp_uart_driver_init,
 	    .exit = lstp_uart_driver_exit,

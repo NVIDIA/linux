@@ -2,7 +2,16 @@
 /*
  * LSTP USB interface driver.
  *
- * Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  */
 
 #ifndef __LSTP_MAIN_H
@@ -11,6 +20,7 @@
 #include <linux/build_bug.h>
 #include <linux/mutex.h>
 #include <linux/property.h>
+#include <linux/uio.h>
 #include <linux/usb.h>
 #include <linux/workqueue.h>
 
@@ -21,7 +31,8 @@
 #define LSTP_USB_EP_MAX_SIZE 512
 #define LSTP_MAX_CHANNELS 256 /* Includes channel 0 */
 #define LSTP_ANY_RX_LEN 0 /* "no minimum" -- callers without a known min payload length */
-#define LSTP_READ_LEN_ALL 0
+#define LSTP_READ_CONFIG_MAX U16_MAX /* sentinel: max ch_config bytes per USB RX packet */
+#define DEPRECATED_LSTP_READ_CONFIG_MAX 0 /* Noncompliant firmware workaround TODO: remove */
 #define LSTP_CH_NAME_LEN 16
 #define LSTP_INTF_NAME_LEN (LSTP_CH_NAME_LEN + 1) /* ch0_name + '\0' */
 #define LSTP_DISPLAY_NAME_LEN (LSTP_CH_NAME_LEN * 2 + 2) /* intf_name + '_' + ch_name + '\0' */
@@ -53,6 +64,7 @@ enum lstp_channel_type {
 	LSTP_CHANNEL_TYPE_I2C = 0x03,
 	LSTP_CHANNEL_TYPE_UART = 0x04,
 	LSTP_CHANNEL_TYPE_IPMI = 0x05,
+	LSTP_CHANNEL_TYPE_MMIO = 0x06,
 	LSTP_CHANNEL_TYPE_MAX, /* sentinel, not a wire value; keep last */
 };
 
@@ -67,36 +79,44 @@ enum lstp_status {
 	LSTP_TOO_LARGE = 0x07,
 };
 
-struct lstp_ch0_req_read {
+/*
+ * lstp_status out-param sentinel: the request result is not associated
+ * with an LSTP response status byte (transport/local error, or no response).
+ * Distinct from any valid status (0x00..0x7f from GET_BIT_0_6()).
+ */
+#define LSTP_NO_RESPONSE_STATUS (-1)
+
+struct lstp_ch0_read_req {
 	u8 ch_id;
-	u16 offset;
-	u16 length;
+	__le16 offset;
+	__le16 length;
 } __packed;
 
-struct lstp_ch0_req_write {
-	u8 ch_id;
-	u16 offset;
+/*
+ * Channel descriptor block: the firmware-controlled identity triple
+ * (type, flags, name) carried by every ch0 config exchange. Appears
+ * as a leading prefix inside lstp_ch0_write_req and as the fixed head
+ * of lstp_ch0_read_resp; extracted so callers can stack-allocate just
+ * this fixed-size piece (the flex-array trailer cannot live in
+ * automatic storage).
+ */
+struct lstp_ch_desc {
 	u8 ch_type;
 	u8 ch_flags;
 	char ch_name[LSTP_CH_NAME_LEN];
+} __packed;
+
+struct lstp_ch0_write_req {
+	u8 ch_id;
+	__le16 offset;
+	struct lstp_ch_desc desc;
 	u8 ch_config[];
 } __packed;
 
-struct lstp_ch0_resp_read {
-	u8 ch_type;
-	u8 ch_flags;
-	char ch_name[LSTP_CH_NAME_LEN];
+struct lstp_ch0_read_resp {
+	struct lstp_ch_desc desc;
 	u8 ch_config[];
 } __packed;
-
-union lstp_ch0_req_payload {
-	struct lstp_ch0_req_read read;
-	struct lstp_ch0_req_write write;
-};
-
-union lstp_ch0_resp_payload {
-	struct lstp_ch0_resp_read read;
-};
 
 struct lstp_header {
 	u8 ch_id;
@@ -104,7 +124,7 @@ struct lstp_header {
 		u8 cmd;
 		u8 status;
 	};
-	u16 length;
+	__le16 length;
 } __packed;
 
 struct lstp_packet {
@@ -140,36 +160,73 @@ struct lstp_usb {
 	struct kobject *channel_kobj; /* /sys/.../lstp/channel */
 };
 
-/* Callback for unsolicited packets. Called in atomic context - must not sleep. */
-typedef void (*lstp_irq_callback)(struct lstp_channel *ch);
+/**
+ * typedef lstp_irq_callback - Callback for unsolicited packets.
+ * @ch:  Channel that received the unsolicited request.
+ * @pkt: Received LSTP packet. The framework guarantees that pkt->hdr and
+ *       le16_to_cpu(pkt->hdr.length) bytes of pkt->payload are valid, so
+ *       the callback can read them without rechecking. Valid only for the
+ *       duration of the call; the same buffer is reused for the next
+ *       unsolicited packet on this channel. The callback must not retain
+ *       the pointer and must not modify packet contents.
+ *
+ * Called in atomic context - must not sleep.
+ */
+typedef void (*lstp_irq_callback)(struct lstp_channel *ch, struct lstp_packet *pkt);
 
 struct lstp_subsys;
 
+/**
+ * struct lstp_channel - Per-channel state visible to LSTP subsystems.
+ * @ch_id:          LSTP channel id assigned by the device. ch0 is the
+ *                  management channel; subsystem channels run 1..max_ch_id.
+ * @display_name:   Human-readable channel name built by the framework from
+ *                  the interface and channel names. Suitable as a
+ *                  Linux-subsystem display string (i2c_adapter.name,
+ *                  gpio_chip.label, ...). NUL-terminated; valid for the
+ *                  channel's full lifetime.
+ * @fwnode:         Firmware node describing this channel (i2c-adapter,
+ *                  gpio-chip, spi-controller, ipmi label, ...). NULL if no
+ *                  firmware match.
+ * @dev:            Stable struct device pointer for dev_*() / devm_*();
+ *                  points at the underlying USB interface device.
+ * @max_tx_payload: Largest LSTP request payload (excluding the header)
+ *                  that fits in one bulk-out URB on this channel.
+ *                  Per-channel constant.
+ * @max_rx_payload: Largest LSTP response payload (excluding the header)
+ *                  that fits in one bulk-in URB on this channel.
+ *                  Per-channel constant.
+ * @priv:           Subsystem-owned private data, allocated by the subsystem
+ *                  in its channel_init(). Opaque to the framework
+ *                  (e.g. i2c_adapter, gpio_chip).
+ *
+ * Framework-private state lives in the container that wraps this struct;
+ * subsystems see only the fields documented above.
+ */
 struct lstp_channel {
 	u8 ch_id;
-	u8 ch_type;
 	char display_name[LSTP_DISPLAY_NAME_LEN];
-	const struct lstp_subsys *subsys;
 	struct fwnode_handle *fwnode;
-	struct lstp_usb *usb;
-	struct mutex tx_mutex; /* One request at a time per channel */
-	unsigned long resp_buffer_lock;
-	unsigned long irq_buffer_lock;
-	unsigned long irq_resp_buffer_lock;
-	bool rx_ready; /* Response received from callback */
-	bool disconnected; /* USB device disconnected */
-	bool started; /* channel_start() succeeded; gates channel_stop() */
-	u8 *tx_buf;
-	u8 *tx_resp_buf;
-	u8 *resp_buf; /* Buffer for solicited responses */
-	u8 *irq_buf; /* Buffer for unsolicited requests/IRQs */
-	struct urb *bulk_tx_urb;
-	struct urb *bulk_tx_resp_urb;
-	wait_queue_head_t rx_wq;
-	lstp_irq_callback irq_callback;
-	void *priv; /* Channel-specific private data (e.g., i2c_adapter) */
-	struct kobject kobj; /* /sys/.../lstp/channel/%d */
-	struct device *child_dev; /* Child device for sysfs link */
+	struct device *dev;
+	size_t max_tx_payload;
+	size_t max_rx_payload;
+	void *priv;
+};
+
+/**
+ * struct lstp_channel_init_info - Per-call data passed to channel_init().
+ * @config:     Subsystem-specific config blob (e.g. struct lstp_spi_config),
+ *              pointing into the framework's ch0 READ_CONFIG scratch.
+ *              The framework does not validate its contents; subsystems
+ *              MUST gate any access on @config_len before dereferencing.
+ * @config_len: On-wire blob length in bytes (may be 0).
+ *
+ * Both fields are valid only for the duration of channel_init();
+ * subsystems that need to retain data must copy.
+ */
+struct lstp_channel_init_info {
+	const void *config;
+	size_t config_len;
 };
 
 /*
@@ -183,6 +240,9 @@ struct lstp_channel {
  *                         Per-channel dispatch for LSTP_CHANNEL_TYPE_*.
  * Optional (designated initializers in ...):
  *   .fwnode_compatible    Firmware node matching.
+ *   .irq_callback         Handler for unsolicited LSTP requests on this
+ *                         subsystem's channels, invoked from the USB RX
+ *                         completion path (atomic context).
  *   .channel_stop         Undoes channel_start(); invoked only after
  *                         channel_start() returned success. Use it to
  *                         quiesce activity that depends on the LSTP device
@@ -203,7 +263,10 @@ struct lstp_subsys {
 
 	u8 channel_type;
 	const char *fwnode_compatible;
-	int (*channel_init)(struct lstp_channel *ch);
+
+	lstp_irq_callback irq_callback;
+
+	int (*channel_init)(struct lstp_channel *ch, const struct lstp_channel_init_info *info);
 	int (*channel_start)(struct lstp_channel *ch);
 	void (*channel_stop)(struct lstp_channel *ch);
 
@@ -237,36 +300,38 @@ struct lstp_subsys {
 #define LSTP_SUBSYS_DECLARE(_tag) extern const struct lstp_subsys lstp_##_tag##_subsys
 #define LSTP_SUBSYS_REF(_tag) (&lstp_##_tag##_subsys)
 
-/* Look up a registered subsystem that dispatches the given channel type. */
+/* Subsystem dispatch */
 const struct lstp_subsys *lstp_subsys_by_channel_type(u8 channel_type);
-
-/* Internal LSTP helper functions */
-int lstp_status_to_errno(u8 status);
-int lstp_validate_rx_pkt(struct lstp_usb *dev, struct lstp_packet *rx_pkt, size_t actual_length);
-int lstp_validate_resp(struct lstp_usb *dev, struct lstp_packet *rx_pkt, size_t min_payload_len);
-int lstp_ch0_read_helper(struct lstp_usb *dev, u8 ch_id, u16 offset, u16 length);
 
 /* Module parameters */
 extern bool lstp_auto_bind_spidev;
 
-/* USB Helper Functions */
-int lstp_recv_resp_helper(struct lstp_channel *ch, u8 cmd, u16 request_len, u16 min_response_len);
-int lstp_alloc_irq_resp(struct lstp_channel *ch);
-void lstp_send_irq_resp(struct lstp_channel *ch, u8 status);
-void lstp_unlock_resp_buffer(struct lstp_channel *ch);
+/* Channel state probe */
+bool lstp_channel_disconnected(const struct lstp_channel *ch);
 
-/**
- * lstp_ch_disconnected() - Check if the channel's USB device has been disconnected.
- * @ch: LSTP channel to check
- *
- * Pairs with smp_store_release() in lstp_signal_disconnect().
- *
- * Return: true if the USB device has been disconnected.
- */
-static inline bool lstp_ch_disconnected(struct lstp_channel *ch)
-{
-	/* Pairs with smp_store_release() in lstp_signal_disconnect() */
-	return smp_load_acquire(&ch->disconnected);
-}
+/* USB I/O helpers: bulk-out send and request/response exchanges */
+int lstp_send(struct lstp_channel *ch, u8 cmd, const void *payload, size_t len);
+
+int lstp_request(struct lstp_channel *ch, u8 cmd, const void *req, size_t req_len, void *resp,
+		 size_t resp_cap, size_t *resp_len, int *lstp_status);
+
+int lstp_requestv(struct lstp_channel *ch, u8 cmd, const struct kvec *vecs, size_t nvecs,
+		  void *resp, size_t resp_cap, size_t *resp_len, int *lstp_status);
+
+/* Unsolicited-request response (atomic context, called from irq_callback) */
+void lstp_send_irq_resp(struct lstp_channel *ch, u8 status);
+
+/* ch0 READ_CONFIG helpers (lstp_request-based) */
+int lstp_ch0_read_config(struct lstp_channel *ch, u16 offset, u16 length,
+			 struct lstp_ch0_read_resp **resp_out, size_t *len_out, int *lstp_status);
+
+typedef int (*lstp_config_entry_fn)(struct lstp_channel *ch, unsigned int entry_idx,
+				    const void *entry, void *entry_ctx);
+int lstp_read_config_table(struct lstp_channel *ch, size_t config_head_size,
+			   size_t config_entry_size, unsigned int total_entries,
+			   lstp_config_entry_fn entry_fn, void *entry_ctx);
+
+/* Subsystem-side device pin (compat scaffolding; see definition) */
+void deprecated_lstp_channel_publish_child_dev(struct lstp_channel *ch, struct device *child_dev);
 
 #endif
