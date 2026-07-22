@@ -399,15 +399,19 @@ static int invoke_ta_function(struct nvidia_ta_mctp_driver *driver,
 	params[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT;
 	params[0].u.memref.shm = driver->tee_pool;
 	params[0].u.memref.shm_offs = 0;
-	params[0].u.memref.size = count;
+	params[0].u.memref.size = driver->config.mtu;
 
 	// second parameter will be used to get bool indicating whether the TA is handling a non-atomic operation, and a delay for invoking the TA again
 	params[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
 	params[1].u.value.a = 0;
 	params[1].u.value.b = 0;
 
-	// Setup parameters 2-3: TYPE_NONE for now
-	params[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+	// third parameter carries input/output sizes
+	params[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
+	params[2].u.value.a = count;
+	params[2].u.value.b = 0;
+
+	// fourth parameter unused for now
 	params[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
 
 	LOG_INF("Sending param types: p0=0x%llx, p1=0x%llx, p2=0x%llx, p3=0x%llx",
@@ -435,7 +439,13 @@ static int invoke_ta_function(struct nvidia_ta_mctp_driver *driver,
 	}
 
 	LOG_INF("TA invocation completed");
-	*out_size = params[0].u.memref.size;
+	*out_size = params[2].u.value.b;
+	if (*out_size > driver->config.mtu) {
+		LOG_ERR("TA output size (%zu) exceeds shared memory size (%u)",
+			*out_size, driver->config.mtu);
+		*out_size = 0;
+		return -EIO;
+	}
 	driver->non_atomic = (bool)params[1].u.value.a;
 	const u32 delay = params[1].u.value.b;
 	if (driver->non_atomic) {
