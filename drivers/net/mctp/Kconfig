@@ -3,6 +3,13 @@ if MCTP
 
 menu "MCTP Device Drivers"
 
+config MCTP_ERROR_INJECT_COMMON
+	tristate
+	help
+	  Internal symbol selected by MCTP transport bindings that use the
+	  shared downstream error-injection helpers
+	  (mctp-error-inject-common). Not user-selectable.
+
 config MCTP_SERIAL
 	tristate "MCTP serial transport"
 	depends on TTY
@@ -33,6 +40,7 @@ config MCTP_TRANSPORT_I2C
 	depends on I2C
 	depends on I2C_SLAVE
 	select MCTP_FLOWS
+	select MCTP_ERROR_INJECT_COMMON
 	help
 	  Provides a driver to access MCTP devices over SMBus/I2C transport,
 	  from DMTF specification DSP0237. A MCTP protocol network device is
@@ -55,6 +63,7 @@ config MCTP_TRANSPORT_I3C
 config MCTP_TRANSPORT_USB
 	tristate "MCTP USB transport"
 	depends on USB
+	select MCTP_ERROR_INJECT_COMMON
 	help
 	  Provides a driver to access MCTP devices over USB transport,
 	  defined by DMTF specification DSP0283.
@@ -77,6 +86,7 @@ config MCTP_TRANSPORT_PCIE_VDM
 
 config MCTP_TRANSPORT_SPI
 	tristate "MCTP Over SPI Transprt"
+	select MCTP_ERROR_INJECT_COMMON
 	help
 	  This is in Kernel mode Mctp Over Spi Driver.
 

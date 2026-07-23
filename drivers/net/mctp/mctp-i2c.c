@@ -26,6 +26,10 @@
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
+#include "mctp-i2c-error-inject.h"
+#include "mctp-i2c-internal.h"
+#include <net/mctp-stats.h>
+
 /* byte_count is limited to u8 */
 #define MCTP_I2C_MAXBLOCK 255
 /* One byte is taken by source_slave */
@@ -55,36 +59,6 @@ static DEFINE_MUTEX(driver_clients_lock);
 static LIST_HEAD(driver_clients);
 
 struct mctp_i2c_client;
-
-/* The netdev structure. One of these per I2C adapter. */
-struct mctp_i2c_dev {
-	struct net_device *ndev;
-	struct i2c_adapter *adapter;
-	struct mctp_i2c_client *client;
-	struct list_head list; /* For mctp_i2c_client.devs */
-
-	size_t rx_pos;
-	bool rx_overflow;
-	u8 rx_buffer[MCTP_I2C_BUFSZ];
-	struct completion rx_done;
-
-	struct task_struct *tx_thread;
-	wait_queue_head_t tx_wq;
-	struct sk_buff_head tx_queue;
-	u8 tx_scratch[MCTP_I2C_BUFSZ];
-
-	/* A fake entry in our tx queue to perform an unlock operation */
-	struct sk_buff unlock_marker;
-
-	/* Spinlock protects i2c_lock_count, release_count, allow_rx */
-	spinlock_t lock;
-	int i2c_lock_count;
-	int release_count;
-	/* Indicates that the netif is ready to receive incoming packets */
-	bool allow_rx;
-	bool flows_enabled;
-
-};
 
 /* The i2c client structure. One per hardware i2c bus at the top of the
  * mux tree, shared by multiple netdevs
@@ -237,8 +211,12 @@ static int mctp_i2c_slave_cb(struct i2c_client *client,
 
 	spin_lock_irqsave(&mcli->sel_lock, flags);
 	midev = mcli->sel;
-	if (midev)
+	if (midev) {
 		dev_hold(midev->ndev);
+		/* Track early exit if RX not allowed */
+		if (!midev->allow_rx)
+			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_early_exit_no_rx);
+	}
 	spin_unlock_irqrestore(&mcli->sel_lock, flags);
 
 	if (!midev)
@@ -307,6 +285,8 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	hdr = (void *)midev->rx_buffer;
 	if (hdr->command != MCTP_I2C_COMMANDCODE) {
 		ndev->stats.rx_dropped++;
+		/* UNKNOWN: Command byte checked before MCTP header can be read */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_cmd);
 		return -EINVAL;
 	}
 
@@ -319,12 +299,18 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	calc_pec = i2c_smbus_pec(0, midev->rx_buffer, recvlen);
 	if (pec != calc_pec) {
 		ndev->stats.rx_crc_errors++;
+		/* PEC validation failed - cannot trust header, track as UNKNOWN */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_pec);
 		return -EINVAL;
 	}
 
 	skb = netdev_alloc_skb(ndev, recvlen);
 	if (!skb) {
+		struct mctp_hdr *mh = (void *)(midev->rx_buffer + sizeof(struct mctp_i2c_hdr));
+		u8 src_eid = mh->src;
+
 		ndev->stats.rx_dropped++;
+		MCTP_STAT_INC(midev, src_eid, rx_drop_no_memory);
 		return -ENOMEM;
 	}
 
@@ -338,27 +324,52 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	cb->halen = 1;
 	cb->haddr[0] = hdr->source_slave >> 1;
 
-	/* We need to ensure that the netif is not used once netdev
-	 * unregister occurs
+	/* ERROR INJECTION POINT: Fragment drop/corruption
+	 * At this point:
+	 * - I2C header has been removed
+	 * - skb->data points to MCTP header
+	 * - Before packet sent to network stack
+	 * This is the ideal location to inject fragment errors
 	 */
-	spin_lock_irqsave(&midev->lock, flags);
-	if (midev->allow_rx) {
-		reinit_completion(&midev->rx_done);
-		spin_unlock_irqrestore(&midev->lock, flags);
+	if (mctp_i2c_error_inject_fragment(midev, skb)) {
+		struct mctp_hdr *mh = mctp_hdr(skb);
+		u8 src_eid = mh->src;
 
-		status = netif_rx(skb);
-		complete(&midev->rx_done);
-	} else {
-		status = NET_RX_DROP;
-		spin_unlock_irqrestore(&midev->lock, flags);
+		/* Drop this fragment */
+		ndev->stats.rx_dropped++;
+		MCTP_STAT_INC(midev, src_eid, rx_drop_fragment_error);
 		kfree_skb(skb);
+		return 0;
 	}
 
-	if (status == NET_RX_SUCCESS) {
-		ndev->stats.rx_packets++;
-		ndev->stats.rx_bytes += recvlen;
-	} else {
-		ndev->stats.rx_dropped++;
+	/* Capture source EID before skb is consumed by netif_rx */
+	{
+		struct mctp_hdr *mh = mctp_hdr(skb);
+		u8 src_eid = mh->src;
+
+		/* We need to ensure that the netif is not used once netdev
+		 * unregister occurs
+		 */
+		spin_lock_irqsave(&midev->lock, flags);
+		if (midev->allow_rx) {
+			reinit_completion(&midev->rx_done);
+			spin_unlock_irqrestore(&midev->lock, flags);
+
+			status = netif_rx(skb);
+			complete(&midev->rx_done);
+		} else {
+			status = NET_RX_DROP;
+			spin_unlock_irqrestore(&midev->lock, flags);
+			kfree_skb(skb);
+		}
+
+		if (status == NET_RX_SUCCESS) {
+			ndev->stats.rx_packets++;
+			ndev->stats.rx_bytes += recvlen;
+		} else {
+			ndev->stats.rx_dropped++;
+			MCTP_STAT_INC(midev, src_eid, rx_drop_not_ready);
+		}
 	}
 	return 0;
 }
@@ -500,11 +511,16 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	struct net_device_stats *stats = &midev->ndev->stats;
 	enum mctp_i2c_flow_state fs;
 	struct mctp_i2c_hdr *hdr;
+	struct mctp_hdr *mh;
 	struct i2c_msg msg = {0};
+	u8 dest_eid;
 	u8 *pecp;
 	int rc;
 
 	hdr = (void *)skb_mac_header(skb);
+	mh = mctp_hdr(skb);
+	dest_eid = mh->dest;
+
 	/* Sanity check that packet contents matches skb length,
 	 * and can't exceed MCTP_I2C_BUFSZ
 	 */
@@ -512,6 +528,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		dev_warn_ratelimited(&midev->adapter->dev,
 				     "Bad tx length %d vs skb %u\n",
 				     hdr->byte_count + 3, skb->len);
+		MCTP_STAT_INC(midev, dest_eid, tx_drop_invalid_len);
 		return;
 	}
 
@@ -541,7 +558,12 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 		/* no flow: full lock & unlock */
 		mctp_i2c_lock_nest(midev);
 		mctp_i2c_device_select(midev->client, midev);
-		rc = __i2c_transfer(midev->adapter, &msg, 1);
+
+		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
+		rc = mctp_i2c_error_inject_tx(midev, skb);
+		if (rc == 0)
+			rc = __i2c_transfer(midev->adapter, &msg, 1);
+
 		mctp_i2c_unlock_nest(midev);
 		break;
 
@@ -555,7 +577,11 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 
 	case MCTP_I2C_TX_FLOW_EXISTING:
 		/* existing flow: we already have the lock; just tx */
-		rc = __i2c_transfer(midev->adapter, &msg, 1);
+
+		/* ERROR INJECTION POINT: TX transfer (synchronous error) */
+		rc = mctp_i2c_error_inject_tx(midev, skb);
+		if (rc == 0)
+			rc = __i2c_transfer(midev->adapter, &msg, 1);
 
 		/* on tx errors, the flow can no longer be considered valid */
 		if (rc < 0)
@@ -569,6 +595,39 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 
 	if (rc < 0) {
 		stats->tx_errors++;
+
+		/* Track specific error types per-EID */
+		if (rc == -ENOMEM) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_no_memory);
+		} else if (rc == -EBUSY) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_busy);
+		} else if (rc == -ENXIO) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_no_device);
+		} else if (rc == -ENODEV) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_enodev);
+		} else if (rc == -EAGAIN) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_arbitration_lost);
+		} else if (rc == -EPROTO) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_proto_error);
+		} else if (rc == -ETIMEDOUT) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_timeout);
+		} else if (rc == -EOPNOTSUPP) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eopnotsupp);
+		} else if (rc == -EINVAL) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
+		} else if (rc == -EAFNOSUPPORT) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eafnosupport);
+		} else if (rc == -EBADMSG) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_ebadmsg);
+		} else if (rc == -ESHUTDOWN) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eshutdown);
+		} else if (rc == -EIO) {
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+		} else {
+			/* Unexpected error - shouldn't happen with comprehensive I2C error coverage */
+			netdev_warn(midev->ndev, "MCTP I2C: Unhandled TX error code %d\n", rc);
+			MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+		}
 	} else {
 		stats->tx_bytes += skb->len;
 		stats->tx_packets++;
@@ -637,8 +696,10 @@ static int mctp_i2c_tx_thread(void *data)
 	unsigned long flags;
 
 	for (;;) {
-		if (kthread_should_stop())
+		if (kthread_should_stop()) {
+			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, tx_early_exit_stopped);
 			break;
+		}
 
 		spin_lock_irqsave(&midev->tx_queue.lock, flags);
 		skb = __skb_dequeue(&midev->tx_queue);
@@ -718,6 +779,65 @@ static void mctp_i2c_release_flow(struct mctp_dev *mdev,
 	}
 }
 
+/* Ethtool statistics support */
+/* Per-EID stat descriptors with abbreviated names */
+struct mctp_i2c_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define MCTP_I2C_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct mctp_i2c_eid_stats, field) \
+}
+
+static const struct mctp_i2c_eid_stat_desc mctp_i2c_eid_stat_descs[] = {
+	/* RX stats */
+	MCTP_I2C_EID_STAT("rx_drop_invalid_cmd",        rx_drop_invalid_cmd),
+	MCTP_I2C_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
+	MCTP_I2C_EID_STAT("rx_drop_invalid_pec",        rx_drop_invalid_pec),
+	MCTP_I2C_EID_STAT("rx_drop_fragment_error",     rx_drop_fragment_error),
+	MCTP_I2C_EID_STAT("rx_drop_not_ready",          rx_drop_not_ready),
+	MCTP_I2C_EID_STAT("rx_early_exit_no_rx",        rx_early_exit_no_rx),
+
+	/* TX stats - I2C-specific error codes */
+	MCTP_I2C_EID_STAT("tx_drop_no_memory",          tx_drop_no_memory),
+	MCTP_I2C_EID_STAT("tx_drop_busy",               tx_drop_busy),
+	MCTP_I2C_EID_STAT("tx_drop_no_device",          tx_drop_no_device),
+	MCTP_I2C_EID_STAT("tx_drop_enodev",             tx_drop_enodev),
+	MCTP_I2C_EID_STAT("tx_drop_arbitration_lost",   tx_drop_arbitration_lost),
+	MCTP_I2C_EID_STAT("tx_drop_proto_error",        tx_drop_proto_error),
+	MCTP_I2C_EID_STAT("tx_drop_timeout",            tx_drop_timeout),
+	MCTP_I2C_EID_STAT("tx_drop_eopnotsupp",         tx_drop_eopnotsupp),
+	MCTP_I2C_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_I2C_EID_STAT("tx_drop_eafnosupport",       tx_drop_eafnosupport),
+	MCTP_I2C_EID_STAT("tx_drop_ebadmsg",            tx_drop_ebadmsg),
+	MCTP_I2C_EID_STAT("tx_drop_eshutdown",          tx_drop_eshutdown),
+	MCTP_I2C_EID_STAT("tx_drop_eio",                tx_drop_eio),
+
+	/* TX stats - General */
+	MCTP_I2C_EID_STAT("tx_drop_invalid_len",        tx_drop_invalid_len),
+	MCTP_I2C_EID_STAT("tx_drop_queue_full",         tx_drop_queue_full),
+	MCTP_I2C_EID_STAT("tx_drop_flow_invalid",       tx_drop_flow_invalid),
+	MCTP_I2C_EID_STAT("tx_early_exit_stopped",      tx_early_exit_stopped),
+
+	/* Retry/requeue stats */
+	MCTP_I2C_EID_STAT("tx_retries_attempted",       tx_retries_attempted),
+	MCTP_I2C_EID_STAT("tx_retry_success",           tx_retry_success),
+	MCTP_I2C_EID_STAT("tx_retry_exhausted",         tx_retry_exhausted),
+	MCTP_I2C_EID_STAT("tx_requeued",                tx_requeued),
+	MCTP_I2C_EID_STAT("tx_nack",                    tx_nack),
+	MCTP_I2C_EID_STAT("tx_nack_retries",            tx_nack_retries),
+	MCTP_I2C_EID_STAT("tx_nack_retry_depth",        tx_nack_retry_depth),
+};
+
+#define MCTP_I2C_EID_NUM_STATS ARRAY_SIZE(mctp_i2c_eid_stat_descs)
+
+/* Generate the per-EID ethtool callbacks and mctp_i2c_ethtool_ops */
+MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_i2c, struct mctp_i2c_dev,
+			    struct mctp_i2c_eid_stats, mctp_i2c_eid_stat_descs,
+			    "UNKNOWN: corrupted/invalid pkt");
+
 static const struct net_device_ops mctp_i2c_ops = {
 	.ndo_start_xmit = mctp_i2c_start_xmit,
 	.ndo_uninit = mctp_i2c_ndo_uninit,
@@ -746,6 +866,7 @@ static void mctp_i2c_net_setup(struct net_device *dev)
 
 	dev->netdev_ops		= &mctp_i2c_ops;
 	dev->header_ops		= &mctp_i2c_headops;
+	dev->ethtool_ops	= &mctp_i2c_ethtool_ops;
 }
 
 /* Populates the mctp_i2c_dev priv struct for a netdev.
@@ -826,6 +947,9 @@ static void mctp_i2c_midev_free(struct mctp_i2c_dev *midev)
 static void mctp_i2c_unregister(struct mctp_i2c_dev *midev)
 {
 	unsigned long flags;
+
+	/* Cleanup error injection */
+	mctp_i2c_error_inject_cleanup(midev);
 
 	/* Stop tx thread prior to unregister, it uses netif_() functions */
 	kthread_stop(midev->tx_thread);
@@ -927,6 +1051,9 @@ static int mctp_i2c_add_netdev(struct mctp_i2c_client *mcli,
 				 "MCTP flows disabled by DTS\n");
 		}
 	}
+
+	/* Setup error injection after netdev registration (debugfs needs the netdev name) */
+	mctp_i2c_error_inject_init(midev);
 
 	spin_lock_irqsave(&midev->lock, flags);
 	midev->allow_rx = false;
@@ -1185,18 +1312,28 @@ static __init int mctp_i2c_mod_init(void)
 	int rc;
 
 	pr_info("MCTP I2C interface driver\n");
+
+	/* Initialize error injection infrastructure */
+	rc = mctp_i2c_error_inject_module_init();
+	if (rc)
+		pr_warn("MCTP I2C: Error injection initialization failed, continuing without it\n");
+
 	rc = i2c_add_driver(&mctp_i2c_driver);
-	if (rc < 0)
+	if (rc < 0) {
+		mctp_i2c_error_inject_module_exit();
 		return rc;
+	}
 	rc = bus_register_notifier(&i2c_bus_type, &mctp_i2c_notifier);
 	if (rc < 0) {
 		i2c_del_driver(&mctp_i2c_driver);
+		mctp_i2c_error_inject_module_exit();
 		return rc;
 	}
 	rc = register_netdevice_notifier(&mctp_i2c_netdev_nb);
 	if (rc < 0) {
 		bus_unregister_notifier(&i2c_bus_type, &mctp_i2c_notifier);
 		i2c_del_driver(&mctp_i2c_driver);
+		mctp_i2c_error_inject_module_exit();
 		return rc;
 	}
 	return 0;
@@ -1211,6 +1348,7 @@ static __exit void mctp_i2c_mod_exit(void)
 	if (rc < 0)
 		pr_warn("MCTP I2C could not unregister notifier, %d\n", rc);
 	i2c_del_driver(&mctp_i2c_driver);
+	mctp_i2c_error_inject_module_exit();
 }
 
 module_init(mctp_i2c_mod_init);

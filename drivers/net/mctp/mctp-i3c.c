@@ -17,6 +17,8 @@
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
+#include <net/mctp-stats.h>
+
 #define MCTP_I3C_MAXBUF 65536
 /* 48 bit Provisioned Id */
 #define PID_SIZE 6
@@ -67,6 +69,45 @@ struct mctp_i3c_bus {
 	struct i3c_bus *bus;
 	/* Head of mctp_i3c_device.list. Protected by busdevs_lock */
 	struct list_head devs;
+
+	/* Per-EID statistics tracking - SINGLE source of truth
+	 *
+	 * All statistics are tracked per-endpoint-ID (EID). Two special EIDs:
+	 * - EID 0: "null endpoint" - valid packets with EID=0 (unallocated endpoint)
+	 * - EID 256 (MCTP_EID_UNKNOWN): errors where EID could not be determined
+	 *   (IBI events, device hotplug, allocation failures, pre-parse errors)
+	 */
+	struct {
+		DECLARE_BITMAP(active, 257);  /* Which EIDs have activity */
+		struct mctp_i3c_eid_stats {
+			/* RX stats */
+			u64 rx_drop_no_memory;
+			u64 rx_drop_length_error;    /* Tracked as UNKNOWN (before EID parsed) */
+			u64 rx_drop_pec_error;       /* Tracked as UNKNOWN */
+			u64 rx_ibi_received;         /* Total IBIs received */
+			u64 rx_ibi_missing_mdb;      /* IBI without MDB (UNKNOWN) */
+			u64 rx_early_exit_warn_once; /* IBI warning triggered (UNKNOWN) */
+
+			/* TX stats */
+			u64 tx_drop_no_device;       /* Device lookup failed */
+			u64 tx_drop_mwl_exceeded;    /* Exceeds device MWL */
+			u64 tx_drop_io_error;        /* I3C transfer failed (EIO) */
+			u64 tx_drop_enomem;
+			u64 tx_drop_eagain;
+			u64 tx_drop_einval;
+			u64 tx_drop_eio;
+			u64 tx_drop_enxio;
+			u64 tx_drop_ebusy;
+			u64 tx_drop_enotsupp;
+			u64 tx_drop_emsgsize;
+			u64 tx_early_exit_queue_stopped;  /* Queue already stopped */
+
+			/* Device management (global, tracked under UNKNOWN) */
+			u64 devices_active;          /* Current active devices */
+			u64 devices_added;           /* Total devices added */
+			u64 devices_removed;         /* Total devices removed */
+		} eid[257];
+	} eid_stats;
 };
 
 struct mctp_i3c_device {
@@ -111,6 +152,8 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 			       mi->mrl + sizeof(struct mctp_i3c_internal_hdr));
 	if (!skb) {
 		stats->rx_dropped++;
+		/* Can't extract EID - no packet data received yet */
+		MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_no_memory);
 		rc = -ENOMEM;
 		goto err;
 	}
@@ -138,6 +181,13 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 	}
 	if (xfer.len < MCTP_I3C_MINLEN) {
 		stats->rx_length_errors++;
+		/* Try to extract EID if we have at least MCTP header */
+		if (xfer.len >= sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)xfer.data.in;
+			MCTP_STAT_INC(mi->mbus, mh->src, rx_drop_length_error);
+		} else {
+			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_length_error);
+		}
 		rc = -EIO;
 		goto err;
 	}
@@ -148,6 +198,13 @@ static int mctp_i3c_read(struct mctp_i3c_device *mi)
 	pec = i2c_smbus_pec(pec, xfer.data.in, xfer.len - 1);
 	if (pec != ((u8 *)xfer.data.in)[xfer.len - 1]) {
 		stats->rx_crc_errors++;
+		/* Extract EID for per-EID tracking (we have valid length, attempt EID extraction) */
+		if (xfer.len >= sizeof(struct mctp_hdr) + 1) { /* +1 for PEC */
+			struct mctp_hdr *mh = (struct mctp_hdr *)xfer.data.in;
+			MCTP_STAT_INC(mi->mbus, mh->src, rx_drop_pec_error);
+		} else {
+			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_drop_pec_error);
+		}
 		rc = -EINVAL;
 		goto err;
 	}
@@ -181,8 +238,15 @@ static void mctp_i3c_ibi_handler(struct i3c_device *i3c,
 {
 	struct mctp_i3c_device *mi = i3cdev_get_drvdata(i3c);
 
-	if (WARN_ON_ONCE(!mi))
+	if (WARN_ON_ONCE(!mi)) {
+		/* Track early exit due to missing device data - no EID context */
+		if (mi && mi->mbus)
+			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_early_exit_warn_once);
 		return;
+	}
+
+	/* IBI received - tracked as UNKNOWN (no EID context at IBI time) */
+	MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_ibi_received);
 
 	if (mi->have_mdb) {
 		if (payload->len > 0) {
@@ -195,6 +259,7 @@ static void mctp_i3c_ibi_handler(struct i3c_device *i3c,
 			 * device didn't send one.
 			 */
 			dev_warn_once(i3cdev_to_dev(i3c), "IBI with missing MDB");
+			MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, rx_ibi_missing_mdb);
 		}
 	}
 
@@ -268,6 +333,9 @@ __must_hold(&busdevs_lock)
 	mi->i3c = i3c;
 	mutex_init(&mi->lock);
 	list_add(&mi->list, &mbus->devs);
+	/* Device management stats tracked as UNKNOWN (no EID context) */
+	MCTP_STAT_INC(mbus, MCTP_EID_UNKNOWN, devices_added);
+	MCTP_STAT_INC(mbus, MCTP_EID_UNKNOWN, devices_active);
 
 	i3cdev_set_drvdata(i3c, mi);
 	rc = mctp_i3c_setup(mi);
@@ -319,6 +387,10 @@ __must_hold(&busdevs_lock)
 	/* Counterpart of mctp_i3c_add_device */
 	i3cdev_set_drvdata(mi->i3c, NULL);
 	list_del(&mi->list);
+	/* Device management stats tracked as UNKNOWN (no EID context) */
+	MCTP_STAT_INC(mi->mbus, MCTP_EID_UNKNOWN, devices_removed);
+	mi->mbus->eid_stats.eid[MCTP_EID_UNKNOWN].devices_active--;
+	set_bit(MCTP_EID_UNKNOWN, mi->mbus->eid_stats.active);
 
 	/* Safe to unlock after removing from the list */
 	mutex_unlock(&mi->lock);
@@ -363,14 +435,20 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 	struct i3c_priv_xfer xfer = { .rnw = false };
 	struct mctp_i3c_internal_hdr *ihdr = NULL;
 	struct mctp_i3c_device *mi = NULL;
+	struct mctp_hdr *mh;
 	unsigned int data_len;
 	u8 *data = NULL;
 	u8 addr, pec;
+	u8 dest_eid;
 	int rc = 0;
 	u64 pid;
 
 	skb_pull(skb, sizeof(struct mctp_i3c_internal_hdr));
 	data_len = skb->len;
+
+	/* Extract destination EID for per-EID tracking */
+	mh = mctp_hdr(skb);
+	dest_eid = mh->dest;
 
 	ihdr = (void *)skb_mac_header(skb);
 
@@ -379,6 +457,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 	if (!mi) {
 		/* I3C endpoint went away after the packet was enqueued? */
 		stats->tx_dropped++;
+		MCTP_STAT_INC(mbus, dest_eid, tx_drop_no_device);
 		goto out;
 	}
 
@@ -388,6 +467,7 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 	if (data_len + 1 > (unsigned int)mi->mwl) {
 		/* Route MTU was larger than supported by the endpoint */
 		stats->tx_dropped++;
+		MCTP_STAT_INC(mbus, dest_eid, tx_drop_mwl_exceeded);
 		goto out;
 	}
 
@@ -415,6 +495,25 @@ static void mctp_i3c_xmit(struct mctp_i3c_bus *mbus, struct sk_buff *skb)
 		stats->tx_packets++;
 	} else {
 		stats->tx_errors++;
+		if (rc == -ENXIO) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_enxio);
+		} else if (rc == -EAGAIN) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_eagain);
+		} else if (rc == -EBUSY) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_ebusy);
+		} else if (rc == -ENOTSUPP || rc == -EOPNOTSUPP) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_enotsupp);
+		} else if (rc == -EINVAL) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_einval);
+		} else if (rc == -ENOMEM) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_enomem);
+		} else if (rc == -EMSGSIZE) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_emsgsize);
+		} else if (rc == -EIO) {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_eio);
+		} else {
+			MCTP_STAT_INC(mbus, dest_eid, tx_drop_io_error);
+		}
 	}
 
 out:
@@ -461,6 +560,13 @@ static netdev_tx_t mctp_i3c_start_xmit(struct sk_buff *skb,
 	netif_stop_queue(ndev);
 	if (mbus->tx_skb) {
 		dev_warn_ratelimited(&ndev->dev, "TX with queue stopped");
+		/* Extract dest EID for tracking */
+		struct mctp_i3c_internal_hdr *ihdr = (void *)skb_mac_header(skb);
+		struct mctp_hdr *mh;
+		skb_pull(skb, sizeof(struct mctp_i3c_internal_hdr));
+		mh = mctp_hdr(skb);
+		MCTP_STAT_INC(mbus, mh->dest, tx_early_exit_queue_stopped);
+		skb_push(skb, sizeof(struct mctp_i3c_internal_hdr));
 		ret = NETDEV_TX_BUSY;
 	} else {
 		mbus->tx_skb = skb;
@@ -523,6 +629,48 @@ static int mctp_i3c_header_create(struct sk_buff *skb, struct net_device *dev,
 	return 0;
 }
 
+/* Ethtool statistics support - Per-EID stat descriptors with abbreviated names */
+struct mctp_i3c_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define MCTP_I3C_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct mctp_i3c_eid_stats, field) \
+}
+
+static const struct mctp_i3c_eid_stat_desc mctp_i3c_eid_stat_descs[] = {
+	MCTP_I3C_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
+	MCTP_I3C_EID_STAT("rx_drop_length_error",       rx_drop_length_error),
+	MCTP_I3C_EID_STAT("rx_drop_pec_error",          rx_drop_pec_error),
+	MCTP_I3C_EID_STAT("rx_ibi_received",            rx_ibi_received),
+	MCTP_I3C_EID_STAT("rx_ibi_missing_mdb",         rx_ibi_missing_mdb),
+	MCTP_I3C_EID_STAT("rx_early_exit_warn_once",    rx_early_exit_warn_once),
+	MCTP_I3C_EID_STAT("tx_drop_no_device",          tx_drop_no_device),
+	MCTP_I3C_EID_STAT("tx_drop_mwl_exceeded",       tx_drop_mwl_exceeded),
+	MCTP_I3C_EID_STAT("tx_drop_io_error",           tx_drop_io_error),
+	MCTP_I3C_EID_STAT("tx_drop_enomem",             tx_drop_enomem),
+	MCTP_I3C_EID_STAT("tx_drop_eagain",             tx_drop_eagain),
+	MCTP_I3C_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_I3C_EID_STAT("tx_drop_eio",                tx_drop_eio),
+	MCTP_I3C_EID_STAT("tx_drop_enxio",              tx_drop_enxio),
+	MCTP_I3C_EID_STAT("tx_drop_ebusy",              tx_drop_ebusy),
+	MCTP_I3C_EID_STAT("tx_drop_enotsupp",           tx_drop_enotsupp),
+	MCTP_I3C_EID_STAT("tx_drop_emsgsize",           tx_drop_emsgsize),
+	MCTP_I3C_EID_STAT("tx_early_exit_queue_stopped", tx_early_exit_queue_stopped),
+	MCTP_I3C_EID_STAT("devices_active",             devices_active),
+	MCTP_I3C_EID_STAT("devices_added",              devices_added),
+	MCTP_I3C_EID_STAT("devices_removed",            devices_removed),
+};
+
+#define MCTP_I3C_EID_NUM_STATS ARRAY_SIZE(mctp_i3c_eid_stat_descs)
+
+/* Generate the per-EID ethtool callbacks and mctp_i3c_ethtool_ops */
+MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_i3c, struct mctp_i3c_bus,
+			    struct mctp_i3c_eid_stats, mctp_i3c_eid_stat_descs,
+			    "UNKNOWN: IBI/device events    ");
+
 static const struct net_device_ops mctp_i3c_ops = {
 	.ndo_start_xmit = mctp_i3c_start_xmit,
 	.ndo_uninit = mctp_i3c_ndo_uninit,
@@ -546,6 +694,7 @@ static void mctp_i3c_net_setup(struct net_device *dev)
 
 	dev->netdev_ops	= &mctp_i3c_ops;
 	dev->header_ops	= &mctp_i3c_headops;
+	dev->ethtool_ops = &mctp_i3c_ethtool_ops;
 }
 
 static bool mctp_i3c_is_mctp_controller(struct i3c_bus *bus)

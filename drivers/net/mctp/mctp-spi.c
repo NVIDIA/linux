@@ -24,6 +24,9 @@
 #include <net/mctpdevice.h>
 
 #include "glacier-spb-ap.h"
+#include <net/mctp-stats.h>
+#include "mctp-spi-error-inject.h"
+#include "mctp-spi-internal.h"
 
 static DEFINE_IDA(mctp_spi_ida);
 
@@ -53,32 +56,31 @@ struct spidev_data {
 	u32			speed_hz;
 };
 
-struct mctp_spi {
-	struct net_device	*ndev;
-	struct spidev_data *spidev;
-
-	struct task_struct *tx_thread;
-	wait_queue_head_t main_thread_wq;
-	struct sk_buff_head tx_queue;
-	spinlock_t lock;
-	bool allow_rx;
-	struct completion rx_done;
-
-	struct gpio_desc *rx_alert; //Input gpio to alert about the incoming package from SPI
-	int	rx_alert_irq;
-	int	idx;		/* mctp_spi_ida index, freed on remove */
-
-	SpbAp *ap;
-	wait_queue_head_t gpio_intr_wq;
-	bool gpio_intr_cond;
-	spinlock_t gpio_intr_cond_lock;
-};
-
-struct mctp_spi_hdr {
-	u8 command_code;
-	u8 byte_count;
-	u8 resrv[2];
-};
+/**
+ * spb_ap_status_to_errno - Convert SPB AP status codes to Linux error codes
+ * @status: SPB AP status code from spb_ap_send() or other SPB AP functions
+ *
+ * Translates positive SPB AP status codes to negative Linux errno values
+ * for consistent error handling throughout the driver.
+ *
+ * Note: SPB_AP_MESSAGE_AVAILABLE is a success status (not an error) that
+ * indicates a message is available to read after a successful send.
+ */
+static inline int spb_ap_status_to_errno(SpbApStatus status)
+{
+	switch (status) {
+	case SPB_AP_OK:
+	case SPB_AP_MESSAGE_AVAILABLE:
+		return 0;
+	case SPB_AP_ERROR_TIMEOUT:
+		return -ETIMEDOUT;
+	case SPB_AP_ERROR_INVALID_ARGUMENT:
+		return -EINVAL;
+	case SPB_AP_ERROR_UNKNOWN:
+	default:
+		return -EIO;
+	}
+}
 
 static unsigned bufsiz = 4096;
 module_param(bufsiz, uint, S_IRUGO);
@@ -134,6 +136,8 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 	skb = netdev_alloc_skb(ndev, recvlen);
 	if (!skb) {
 		ndev->stats.rx_dropped++;
+		/* Can't extract EID - no packet data available yet */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_no_memory);
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
@@ -163,6 +167,13 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		ndev->stats.rx_bytes += recvlen;
 	} else {
 		ndev->stats.rx_dropped++;
+		/* Extract EID for per-EID tracking (SKB has packet data) */
+		if (skb->len >= sizeof(struct mctp_spi_hdr) + sizeof(struct mctp_hdr)) {
+			struct mctp_hdr *mh = (struct mctp_hdr *)(skb->data + sizeof(struct mctp_spi_hdr));
+			MCTP_STAT_INC(midev, mh->src, rx_drop_not_ready);
+		} else {
+			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_not_ready);
+		}
 	}
 
 	return 0;
@@ -180,8 +191,12 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 	spi_hdr_rx = (struct mctp_spi_hdr *)tmp_rx_buffer;
 
 	status = spb_ap_recv(midev->ap, RX_BUFFER_SIZE, tmp_rx_buffer);
-	if(status != SPB_AP_OK)
+	if(status != SPB_AP_OK) {
+		midev->ndev->stats.rx_dropped++;
+		/* Can't extract EID - SPI receive failed, no data */
+		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_spi_error);
 		return ERR_SPI_RX_NO_DATA;
+	}
 
 	payload_len = spi_hdr_rx->byte_count;
 	len = payload_len + hdr_size;
@@ -230,6 +245,36 @@ static int mctp_spi_header_create(struct sk_buff *skb, struct net_device *dev,
 	return sizeof(struct mctp_spi_hdr);
 }
 
+/* Ethtool statistics support */
+/* Per-EID stat descriptors with abbreviated names */
+struct mctp_spi_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define MCTP_SPI_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct mctp_spi_eid_stats, field) \
+}
+
+static const struct mctp_spi_eid_stat_desc mctp_spi_eid_stat_descs[] = {
+	MCTP_SPI_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
+	MCTP_SPI_EID_STAT("rx_drop_not_ready",          rx_drop_not_ready),
+	MCTP_SPI_EID_STAT("rx_drop_spi_error",          rx_drop_spi_error),
+	MCTP_SPI_EID_STAT("tx_drop_etimedout",          tx_drop_etimedout),
+	MCTP_SPI_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_SPI_EID_STAT("tx_drop_eio",                tx_drop_eio),
+	MCTP_SPI_EID_STAT("tx_drop_spi_error",          tx_drop_spi_error),
+	MCTP_SPI_EID_STAT("gpio_interrupts",            gpio_interrupts),
+};
+
+#define MCTP_SPI_EID_NUM_STATS ARRAY_SIZE(mctp_spi_eid_stat_descs)
+
+/* Generate the per-EID ethtool callbacks and mctp_spi_ethtool_ops */
+MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_spi, struct mctp_spi,
+			    struct mctp_spi_eid_stats, mctp_spi_eid_stat_descs,
+			    "UNKNOWN: SPI/GPIO errors      ");
+
 static const struct net_device_ops mctp_spi_ops = {
 	.ndo_start_xmit = mctp_spi_net_xmit,
 	.ndo_uninit = mctp_spi_ndo_uninit,
@@ -254,6 +299,7 @@ static void mctp_spi_net_setup(struct net_device *dev)
 
 	dev->netdev_ops		= &mctp_spi_ops;
 	dev->header_ops		= &mctp_spi_headops;
+	dev->ethtool_ops	= &mctp_spi_ethtool_ops;
 }
 
 static irqreturn_t mctp_pkg_rec_wake(int irq, void *data)
@@ -261,6 +307,8 @@ static irqreturn_t mctp_pkg_rec_wake(int irq, void *data)
 	struct mctp_spi *midev = data;
 	spin_lock(&midev->gpio_intr_cond_lock);
 	midev->gpio_intr_cond = true;
+	/* GPIO interrupts have no EID context */
+	MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, gpio_interrupts);
 	spin_unlock(&midev->gpio_intr_cond_lock);
 
 	wake_up(&midev->main_thread_wq); // Wake up the consumer waiting on the condition
@@ -332,15 +380,41 @@ static int mctp_spi_tx_thread(void *data)
 		}
 
 		if (skb) {
+			int injected_status = 0;
+			/* Extract destination EID for per-EID tracking */
+			struct mctp_hdr *mh = (void *)(skb->data + sizeof(struct mctp_spi_hdr));
+			u8 dest_eid = mh->dest;
+
 			skb_copy_bits(skb, 0, txbuf, skb->len);
-			//Send SPI package
-			status = spb_ap_send(midev->ap, skb->len, txbuf);
+
+			/* ERROR INJECTION POINT: Check if we should inject error */
+			if (mctp_spi_error_inject_tx(midev, skb, &injected_status)) {
+				/* Inject the configured SPB_AP error */
+				status = injected_status;
+			} else {
+				//Send SPI package
+				status = spb_ap_send(midev->ap, skb->len, txbuf);
+			}
+
 			if(status == SPB_AP_OK) {
 				midev->ndev->stats.tx_packets++;
 				midev->ndev->stats.tx_bytes += skb->len;
+			} else {
+				int err = spb_ap_status_to_errno(status);
+
+				midev->ndev->stats.tx_dropped++;
+				/* SPB AP only returns: TIMEOUT, INVALID_ARGUMENT, or UNKNOWN */
+				if (err == -ETIMEDOUT) {
+					MCTP_STAT_INC(midev, dest_eid, tx_drop_etimedout);
+				} else if (err == -EINVAL) {
+					MCTP_STAT_INC(midev, dest_eid, tx_drop_einval);
+				} else if (err == -EIO) {
+					MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
+				} else {
+					/* Catch-all for any unmapped errors */
+					MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
+				}
 			}
-			else
-				midev->ndev->stats.rx_dropped++;
 			kfree_skb(skb);
 			while (midev->ap->msgs_available > 0) {
 				status = mctp_spi_rx(midev);
@@ -472,6 +546,9 @@ static int mctp_spi_probe(struct spi_device *spi)
 	ap->gpio_intr_cond_lock = &mctp_spi_dev->gpio_intr_cond_lock;
 	mctp_spi_dev->ap = ap;
 
+	/* Setup error injection after netdev registration (debugfs needs the netdev name) */
+	mctp_spi_error_inject_init(mctp_spi_dev);
+
 	/* Start the mctp tx worker thread */
 	wake_up_process(mctp_spi_dev->tx_thread);
 	return status;
@@ -506,6 +583,7 @@ static void mctp_spi_remove(struct spi_device *spi)
 	 * away with free_netdev().
 	 */
 	free_irq(midev->rx_alert_irq, midev);
+	mctp_spi_error_inject_cleanup(midev);
 
 	/* Drop the MCTP core's reference and unregister */
 	mctp_unregister_netdev(ndev);
@@ -531,13 +609,29 @@ static struct spi_driver mctp_spi_driver = {
 
 static int __init mctp_spi_mod_init(void)
 {
-	return spi_register_driver(&mctp_spi_driver);
+	int rc;
+
+	pr_info("MCTP SPI interface driver\n");
+
+	/* Initialize error injection infrastructure */
+	rc = mctp_spi_error_inject_module_init();
+	if (rc)
+		pr_warn("MCTP SPI: Error injection initialization failed, continuing without it\n");
+
+	rc = spi_register_driver(&mctp_spi_driver);
+	if (rc) {
+		mctp_spi_error_inject_module_exit();
+		return rc;
+	}
+
+	return 0;
 }
 module_init(mctp_spi_mod_init);
 
 static void __exit mctp_spi_mod_exit(void)
 {
 	spi_unregister_driver(&mctp_spi_driver);
+	mctp_spi_error_inject_module_exit();
 }
 module_exit(mctp_spi_mod_exit);
 

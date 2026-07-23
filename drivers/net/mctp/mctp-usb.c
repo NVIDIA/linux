@@ -12,6 +12,7 @@
 #include <linux/netdevice.h>
 #include <linux/usb.h>
 #include <linux/usb/mctp-usb.h>
+#include <linux/ethtool.h>
 
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
@@ -19,35 +20,188 @@
 
 #include <uapi/linux/if_arp.h>
 
+#include "mctp-usb-error-inject.h"
+#include "mctp-usb-internal.h"
+#include <net/mctp-stats.h>
+
 static const unsigned int n_rx_queue = 8;
 static const unsigned int n_tx_queue = 8;
-
-struct mctp_usb {
-	struct usb_device *usbdev;
-	struct usb_interface *intf;
-
-	struct net_device *netdev;
-
-	u8 ep_in;
-	u8 ep_out;
-
-	struct usb_anchor rx_anchor;
-	struct usb_anchor tx_anchor;
-	atomic_t rx_qlen, tx_qlen;
-
-	/* enforces atomic access to rx_stopped and requeuing the retry work */
-	spinlock_t rx_lock;
-	bool rx_stopped;
-	struct delayed_work rx_retry_work;
-
-	bool tx_batching_enabled;
-};
 
 struct mctp_usb_batch_ctx {
 	struct net_device *netdev;
 	struct sk_buff_head skbs;
 	unsigned int num_packets;
 };
+
+/**
+ * mctp_usb_handle_tx_urb_status - Handle TX URB completion status
+ * @mctp_usb: MCTP USB device
+ * @netdev: Network device
+ * @status: URB completion status code
+ * @num_packets: Number of packets in the batch
+ *
+ * Processes TX URB completion status and updates statistics accordingly.
+ * All async URB errors are tracked under MCTP_EID_UNKNOWN since batch
+ * completion cannot determine individual packet EIDs.
+ */
+static void mctp_usb_handle_tx_urb_status(struct mctp_usb *mctp_usb,
+					   struct net_device *netdev,
+					   int status,
+					   unsigned int num_packets)
+{
+	switch (status) {
+	/* Valid USB error codes only */
+	case -EBUSY:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_ebusy += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ENODEV:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enodev += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ENOENT:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enoent += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ENXIO:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enxio += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EINVAL:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_einval += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EXDEV:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_exdev += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EFBIG:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_efbig += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EPIPE:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_epipe += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EMSGSIZE:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_emsgsize += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ENOSPC:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enospc += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ESHUTDOWN:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_eshutdown += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EPERM:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_eperm += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -EHOSTUNREACH:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_ehostunreach += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case -ENOEXEC:
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_enoexec += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+		break;
+	case 0:
+		netdev->stats.tx_packets += num_packets;
+		/* tx_bytes already updated per packet during batching */
+		break;
+	default:
+		if (net_ratelimit())
+			netdev_warn(netdev, "unexpected tx urb status: %d\n",
+				    status);
+		netdev->stats.tx_dropped += num_packets;
+		mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_urb_error += num_packets;
+		set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
+	}
+}
+
+/**
+ * mctp_usb_handle_tx_sync_error - Handle synchronous TX error statistics
+ * @mctp_usb: MCTP USB device
+ * @dest_eid: Destination EID from MCTP header
+ * @error_code: Error code from URB submission
+ *
+ * Maps synchronous TX errors (URB submission failures) to per-EID statistics.
+ * Unlike async URB completion errors, these can be attributed to a specific
+ * destination EID since the packet header is still available.
+ * Only handles valid USB error codes per USB subsystem specification.
+ */
+static void mctp_usb_handle_tx_sync_error(struct mctp_usb *mctp_usb,
+					   u8 dest_eid,
+					   int error_code)
+{
+	switch (error_code) {
+	/* Valid USB error codes only */
+	case -ENOMEM:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_no_memory);
+		break;
+	case -EBUSY:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_ebusy);
+		break;
+	case -ENODEV:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_enodev);
+		break;
+	case -ENOENT:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_enoent);
+		break;
+	case -ENXIO:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_enxio);
+		break;
+	case -EINVAL:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_einval);
+		break;
+	case -EXDEV:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_exdev);
+		break;
+	case -EFBIG:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_efbig);
+		break;
+	case -EPIPE:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_epipe);
+		break;
+	case -EMSGSIZE:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_emsgsize);
+		break;
+	case -ENOSPC:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_enospc);
+		break;
+	case -ESHUTDOWN:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_eshutdown);
+		break;
+	case -EPERM:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_eperm);
+		break;
+	case -EHOSTUNREACH:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_ehostunreach);
+		break;
+	case -ENOEXEC:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_enoexec);
+		break;
+	default:
+		MCTP_STAT_INC(mctp_usb, dest_eid, tx_drop_urb_error);
+		break;
+	}
+}
 
 static void mctp_usb_out_complete(struct urb *urb)
 {
@@ -63,20 +217,18 @@ static void mctp_usb_out_complete(struct urb *urb)
 
 	status = urb->status;
 
-	switch (status) {
-	case -ENOENT:
-	case -ECONNRESET:
-	case -ESHUTDOWN:
-	case -EPROTO:
-		netdev->stats.tx_dropped += ctx->num_packets;
-		break;
-	case 0:
-		netdev->stats.tx_packets += ctx->num_packets;
-		break;
-	default:
-		netdev_dbg(netdev, "unexpected tx urb status: %d\n", status);
-		netdev->stats.tx_dropped += ctx->num_packets;
-	}
+	/* ERROR INJECTION POINT: TX URB completion (asynchronous error)
+	 * Note: Injection happens at URB level (may affect multiple batched
+	 * packets). Pass urb so async path can apply EID filter from first
+	 * packet.
+	 */
+	status = mctp_usb_error_inject_tx_async(mctp_usb, urb);
+
+	/* Handle TX URB status and update netdev + per-EID statistics.
+	 * Batched URBs increment counters by ctx->num_packets.
+	 */
+	mctp_usb_handle_tx_urb_status(mctp_usb, netdev, status,
+				      ctx->num_packets);
 
 	while ((skb = skb_dequeue(&ctx->skbs)) != NULL) {
 		if (status == 0)
@@ -97,7 +249,8 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 	unsigned int pkt_len = skb->len;
 	struct urb *urb;
 	u8 *buf;
-	int rc;
+	/* Default to -ENOMEM so alloc-failure gotos attribute correctly */
+	int rc = -ENOMEM;
 
 	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
 	if (!ctx)
@@ -119,6 +272,14 @@ static netdev_tx_t mctp_usb_send_single(struct mctp_usb *mctp_usb,
 	skb_queue_tail(&ctx->skbs, skb);
 
 	netdev->stats.tx_bytes += pkt_len - sizeof(struct mctp_usb_hdr);
+
+	/* ERROR INJECTION POINT: TX URB submission (synchronous error) */
+	rc = mctp_usb_error_inject_tx_sync(mctp_usb, skb);
+	if (rc) {
+		/* buf is not yet owned by the urb (URB_FREE_BUFFER unset) */
+		kfree(buf);
+		goto err_free_urb;
+	}
 
 	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
 			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
@@ -146,6 +307,21 @@ err_free_ctx:
 	kfree(ctx);
 err_drop:
 	netdev->stats.tx_dropped++;
+
+	/* Track per-EID sync TX error: pull the USB header (still present from
+	 * mctp_usb_start_xmit) to expose the MCTP header for EID attribution.
+	 */
+	if (skb->len >= sizeof(struct mctp_usb_hdr)) {
+		struct mctp_hdr *mh;
+
+		skb_pull(skb, sizeof(struct mctp_usb_hdr));
+		skb_reset_network_header(skb);
+		mh = mctp_hdr(skb);
+		mctp_usb_handle_tx_sync_error(mctp_usb, mh->dest, rc);
+	} else {
+		mctp_usb_handle_tx_sync_error(mctp_usb, MCTP_EID_UNKNOWN, rc);
+	}
+
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
@@ -169,7 +345,8 @@ static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
 	struct net_device *netdev = mctp_usb->netdev;
 	struct mctp_usb_batch_ctx *ctx;
 	struct urb *urb;
-	int rc;
+	/* Default to -ENOMEM so alloc-failure gotos attribute correctly */
+	int rc = -ENOMEM;
 
 	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
 		netif_stop_queue(netdev);
@@ -191,6 +368,11 @@ static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
 		goto err_free_ctx;
 
 	skb_queue_tail(&ctx->skbs, skb);
+
+	/* ERROR INJECTION POINT: TX URB submission (synchronous error) */
+	rc = mctp_usb_error_inject_tx_sync(mctp_usb, skb);
+	if (rc)
+		goto err_free_urb;
 
 	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
 			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
@@ -216,7 +398,11 @@ err_free_ctx:
 	skb_dequeue(&ctx->skbs);
 	kfree(ctx);
 err_drop:
+	/* Batch TX errors are tracked as UNKNOWN (individual EIDs in the
+	 * batch cannot be determined at this point).
+	 */
 	netdev->stats.tx_dropped++;
+	mctp_usb_handle_tx_sync_error(mctp_usb, MCTP_EID_UNKNOWN, rc);
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
@@ -236,8 +422,13 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	plen = skb->len;
 	pkt_len = plen + sizeof(*hdr);
 
-	if (pkt_len > MCTP_USB_XFER_SIZE)
+	if (pkt_len > MCTP_USB_XFER_SIZE) {
+		/* Extract EID for tracking before dropping */
+		struct mctp_hdr *mh = mctp_hdr(skb);
+
+		MCTP_STAT_INC(mctp_usb, mh->dest, tx_drop_emsgsize);
 		goto err_drop;
+	}
 
 	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
 		netif_stop_queue(dev);
@@ -309,21 +500,43 @@ static void mctp_usb_in_complete(struct urb *urb)
 	status = urb->status;
 	atomic_dec(&mctp_usb->rx_qlen);
 
+	/* ERROR INJECTION POINT: RX URB completion error */
+	status = mctp_usb_error_inject_rx(mctp_usb, status);
+
 	switch (status) {
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
 	case -EPROTO:
+		if (mctp_usb->error_inject.common.enable_rx)
+			netdev_info(netdev,
+				    "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
+				    status);
+		else
+			netdev_dbg(netdev,
+				   "RX packet DROPPED (error %d) - expected shutdown/reset\n",
+				   status);
 		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
+		netdev->stats.rx_dropped++;
+		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
 		kfree_skb(skb);
 		return;
 	case 0:
 		break;
 	default:
-		netdev_dbg(netdev, "unexpected rx urb status: %d\n", status);
+		if (mctp_usb->error_inject.common.enable_rx)
+			netdev_info(netdev,
+				    "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
+				    status);
+		else
+			netdev_dbg(netdev, "unexpected rx urb status: %d\n",
+				   status);
 		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
 		kfree_skb(skb);
 		return;
 	}
@@ -343,6 +556,18 @@ static void mctp_usb_in_complete(struct urb *urb)
 		if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
 			netdev_dbg(netdev, "rx: invalid id %04x\n",
 				   be16_to_cpu(hdr->id));
+			netdev->stats.rx_errors++;
+			netdev->stats.rx_dropped++;
+			/* Try to extract EID for per-EID tracking (USB hdr was
+			 * pulled, MCTP hdr should be accessible)
+			 */
+			if (skb->len >= sizeof(struct mctp_hdr)) {
+				struct mctp_hdr *mh = (struct mctp_hdr *)skb->data;
+
+				MCTP_STAT_INC(mctp_usb, mh->src, rx_drop_parse_error);
+			} else {
+				MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_parse_error);
+			}
 			break;
 		}
 
@@ -350,6 +575,8 @@ static void mctp_usb_in_complete(struct urb *urb)
 		    sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
 			netdev_dbg(netdev, "rx: short packet (hdr) %d\n",
 				   hdr->len);
+			netdev->stats.rx_dropped++;
+			MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
 			break;
 		}
 
@@ -358,6 +585,8 @@ static void mctp_usb_in_complete(struct urb *urb)
 			netdev_dbg(netdev,
 				   "rx: short packet (xfer) %d, actual %d\n",
 				   hdr->len, skb->len);
+			netdev->stats.rx_dropped++;
+			MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
 			break;
 		}
 
@@ -379,6 +608,37 @@ static void mctp_usb_in_complete(struct urb *urb)
 		skb_reset_network_header(skb);
 		cb = __mctp_cb(skb);
 		cb->halen = 0;
+
+		/* ERROR INJECTION POINT: Fragment drop/corruption
+		 * At this point:
+		 * - USB header has been removed
+		 * - skb->data points to MCTP header
+		 * - Before packet sent to network stack
+		 * This is the ideal location to inject fragment errors.
+		 */
+		if (mctp_usb->error_inject.common.enable_fragment_drop ||
+		    mctp_usb->error_inject.common.enable_seq_corrupt ||
+		    mctp_usb->error_inject.common.enable_som_clear ||
+		    mctp_usb->error_inject.common.enable_rx) {
+			int inject_action =
+				mctp_usb_error_inject_fragment(mctp_usb, skb);
+
+			if (inject_action == 1) {
+				struct mctp_hdr *mh = mctp_hdr(skb);
+				u8 src_eid = mh->src;
+
+				/* Drop this fragment */
+				netdev->stats.rx_dropped++;
+				MCTP_STAT_INC(mctp_usb, src_eid, rx_drop_fragment_error);
+				kfree_skb(skb);
+				skb = skb2;
+				continue;
+			}
+			/* inject_action == 0: pass through (normally or with
+			 * corruption)
+			 */
+		}
+
 		netif_rx(skb);
 
 		skb = skb2;
@@ -524,6 +784,57 @@ static const struct attribute_group mctp_usb_attr_group = {
 	.attrs = mctp_usb_attrs,
 };
 
+/* Ethtool statistics support */
+/* Per-EID stat descriptors with abbreviated names */
+struct mctp_usb_eid_stat_desc {
+	const char *name;
+	size_t offset;
+};
+
+#define MCTP_USB_EID_STAT(abbrev, field) { \
+	.name = abbrev, \
+	.offset = offsetof(struct mctp_usb_eid_stats, field) \
+}
+
+static const struct mctp_usb_eid_stat_desc mctp_usb_eid_stat_descs[] = {
+	/* RX statistics */
+	MCTP_USB_EID_STAT("rx_drop_no_memory",          rx_drop_no_memory),
+	MCTP_USB_EID_STAT("rx_drop_urb_error",          rx_drop_urb_error),
+	MCTP_USB_EID_STAT("rx_drop_invalid_len",        rx_drop_invalid_len),
+	MCTP_USB_EID_STAT("rx_drop_parse_error",        rx_drop_parse_error),
+	MCTP_USB_EID_STAT("rx_drop_fragment_error",     rx_drop_fragment_error),
+	/* TX statistics - Valid USB error codes only */
+	MCTP_USB_EID_STAT("tx_drop_no_memory",          tx_drop_no_memory),
+	MCTP_USB_EID_STAT("tx_drop_urb_error",          tx_drop_urb_error),
+	MCTP_USB_EID_STAT("tx_drop_ebusy",              tx_drop_ebusy),
+	MCTP_USB_EID_STAT("tx_drop_enodev",             tx_drop_enodev),
+	MCTP_USB_EID_STAT("tx_drop_enoent",             tx_drop_enoent),
+	MCTP_USB_EID_STAT("tx_drop_enxio",              tx_drop_enxio),
+	MCTP_USB_EID_STAT("tx_drop_einval",             tx_drop_einval),
+	MCTP_USB_EID_STAT("tx_drop_exdev",              tx_drop_exdev),
+	MCTP_USB_EID_STAT("tx_drop_efbig",              tx_drop_efbig),
+	MCTP_USB_EID_STAT("tx_drop_epipe",              tx_drop_epipe),
+	MCTP_USB_EID_STAT("tx_drop_emsgsize",           tx_drop_emsgsize),
+	MCTP_USB_EID_STAT("tx_drop_enospc",             tx_drop_enospc),
+	MCTP_USB_EID_STAT("tx_drop_eshutdown",          tx_drop_eshutdown),
+	MCTP_USB_EID_STAT("tx_drop_eperm",              tx_drop_eperm),
+	MCTP_USB_EID_STAT("tx_drop_ehostunreach",       tx_drop_ehostunreach),
+	MCTP_USB_EID_STAT("tx_drop_enoexec",            tx_drop_enoexec),
+	MCTP_USB_EID_STAT("tx_drop_queue_full",         tx_drop_queue_full),
+	/* General statistics */
+	MCTP_USB_EID_STAT("tx_requeued",                tx_requeued),
+	MCTP_USB_EID_STAT("rx_requeued",                rx_requeued),
+	MCTP_USB_EID_STAT("rx_urb_submitted",           rx_urb_submitted),
+	MCTP_USB_EID_STAT("tx_urb_submitted",           tx_urb_submitted),
+};
+
+#define MCTP_USB_EID_NUM_STATS ARRAY_SIZE(mctp_usb_eid_stat_descs)
+
+/* Generate the per-EID ethtool callbacks and mctp_usb_ethtool_ops */
+MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_usb, struct mctp_usb,
+			    struct mctp_usb_eid_stats, mctp_usb_eid_stat_descs,
+			    "UNKNOWN: URB/pre-parse errors ");
+
 static const struct net_device_ops mctp_usb_netdev_ops = {
 	.ndo_start_xmit = mctp_usb_start_xmit,
 	.ndo_open = mctp_usb_open,
@@ -535,6 +846,7 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->type = ARPHRD_MCTP;
 
 	dev->mtu = MCTP_USB_MTU_MIN;
+	dev->ethtool_ops = &mctp_usb_ethtool_ops;
 	dev->min_mtu = MCTP_USB_MTU_MIN;
 	dev->max_mtu = MCTP_USB_MTU_MAX;
 
@@ -609,6 +921,11 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		goto err_unregister_netdev;
 	}
 
+	/* Setup error injection after netdev registration (debugfs needs the
+	 * netdev name)
+	 */
+	mctp_usb_error_inject_init(dev);
+
 	return 0;
 
 err_unregister_netdev:
@@ -623,6 +940,10 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 	struct mctp_usb *dev = usb_get_intfdata(intf);
 
 	sysfs_remove_group(&dev->netdev->dev.kobj, &mctp_usb_attr_group);
+
+	/* Cleanup error injection */
+	mctp_usb_error_inject_cleanup(dev);
+
 	mctp_unregister_netdev(dev->netdev);
 	free_netdev(dev->netdev);
 }
@@ -642,7 +963,30 @@ static struct usb_driver mctp_usb_driver = {
 	.disconnect	= mctp_usb_disconnect,
 };
 
-module_usb_driver(mctp_usb_driver)
+static int __init mctp_usb_init(void)
+{
+	int rc;
+
+	/* Initialize error injection infrastructure */
+	rc = mctp_usb_error_inject_module_init();
+	if (rc)
+		pr_warn("MCTP USB: Error injection initialization failed, continuing without it\n");
+
+	rc = usb_register(&mctp_usb_driver);
+	if (rc)
+		mctp_usb_error_inject_module_exit();
+
+	return rc;
+}
+
+static void __exit mctp_usb_exit(void)
+{
+	usb_deregister(&mctp_usb_driver);
+	mctp_usb_error_inject_module_exit();
+}
+
+module_init(mctp_usb_init);
+module_exit(mctp_usb_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jeremy Kerr <jk@codeconstruct.com.au>");
