@@ -595,6 +595,7 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
 
 		key->reasm_tailp = &(skb_shinfo(key->reasm_head)->frag_list);
 		key->last_seq = this_seq;
+		trace_mctp_reassemble_start(hdr->src, hdr->dest, this_seq);
 		return 0;
 	}
 
@@ -693,8 +694,10 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		skb->pkt_type = PACKET_LOOPBACK;
 
 	/* ensure we have enough data for a header and a type */
-	if (skb->len < sizeof(struct mctp_hdr) + 1)
+	if (skb->len < sizeof(struct mctp_hdr) + 1) {
+		trace_mctp_drop_packet(skb, "packet_too_short");
 		goto out;
+	}
 
 	/* grab header, advance data ptr */
 	mh = mctp_hdr(skb);
@@ -740,6 +743,7 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			msk = mctp_lookup_bind(net, skb);
 
 		if (!msk) {
+			trace_mctp_drop_packet(skb, "no_socket_bound");
 			rc = -ENOENT;
 			goto out_unlock;
 		}
@@ -748,9 +752,13 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		 * pending key.
 		 */
 		if (flags & MCTP_HDR_FLAG_EOM) {
+			trace_mctp_rx_packet(skb);
 			rc = sock_queue_rcv_skb(&msk->sk, skb);
+			trace_mctp_rx_socket(skb, rc);
 			if (!rc)
 				skb = NULL;
+			else
+				trace_mctp_drop_packet(skb, "sock_queue_failed");
 			if (key) {
 				/* we've hit a pending reassembly; not much we
 				 * can do but drop it
@@ -842,7 +850,14 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 		 * the reassembly/response key
 		 */
 		if (flags & MCTP_HDR_FLAG_EOM) {
+			if (key->reasm_head) {
+				trace_mctp_reassemble_finish(mh->src, mh->dest,
+							     key->reasm_head->len);
+				trace_mctp_rx_packet(key->reasm_head);
+			}
 			rc = sock_queue_rcv_skb(key->sk, key->reasm_head);
+			if (key->reasm_head)
+				trace_mctp_rx_socket(key->reasm_head, rc);
 			if (!rc)
 				key->reasm_head = NULL;
 			__mctp_key_done_in(key, net, f, MCTP_TRACE_KEY_REPLIED);
@@ -924,6 +939,7 @@ static int mctp_dst_output(struct mctp_dst *dst, struct sk_buff *skb)
 			return rc;
 	}
 
+	trace_mctp_route_output(skb, skb->dev);
 	rc = dev_queue_xmit(skb);
 	if (rc)
 		rc = net_xmit_errno(rc);
@@ -1600,6 +1616,7 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 
 	mtu = dst->mtu;
 
+	trace_mctp_local_output(saddr, daddr, tag, skb->len);
 	if (skb->len + sizeof(struct mctp_hdr) <= mtu) {
 		hdr->flags_seq_tag = MCTP_HDR_FLAG_SOM |
 			MCTP_HDR_FLAG_EOM | tag;
@@ -1662,6 +1679,9 @@ static int mctp_route_add(struct net *net, struct mctp_route *rt)
 
 	list_add_rcu(&rt->list, &net->mctp.routes);
 
+	if (rt->dev)
+		trace_mctp_route_add(rt->dev->dev, rt->min, rt->max - rt->min,
+				     rt->mtu);
 	return 0;
 }
 
@@ -1685,6 +1705,9 @@ static int mctp_route_remove(struct net *net, unsigned int netid,
 		if (mctp_route_netid(rt) == netid &&
 		    rt->min == daddr_start && rt->max == daddr_end &&
 		    rt->type == type) {
+			if (rt->dev)
+				trace_mctp_route_del(rt->dev->dev, rt->min,
+						     rt->max - rt->min);
 			list_del_rcu(&rt->list);
 			/* TODO: immediate RTM_DELROUTE */
 			mctp_route_release(rt);
@@ -1849,8 +1872,10 @@ static int mctp_pkttype_receive(struct sk_buff *skb, struct net_device *dev,
 		}
 	}
 
-	if (rc)
+	if (rc) {
+		trace_mctp_drop_packet(skb, "no_route_found");
 		goto err_drop;
+	}
 
 	dst.output(&dst, skb);
 	mctp_dst_release(&dst);

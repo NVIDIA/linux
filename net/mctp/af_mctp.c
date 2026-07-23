@@ -282,6 +282,7 @@ static int mctp_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	cb = __mctp_cb(skb);
 	cb->net = addr->smctp_network;
 
+	trace_mctp_tx_packet(skb);
 	rc = mctp_local_output(sk, &dst, skb, addr->smctp_addr.s_addr,
 			       addr->smctp_tag);
 

@@ -28,6 +28,8 @@
 #include "mctp-spi-error-inject.h"
 #include "mctp-spi-internal.h"
 
+#include <trace/events/mctp.h>
+
 static DEFINE_IDA(mctp_spi_ida);
 
 #define MCTP_SPI_MAXMTU (64 + 4)
@@ -138,6 +140,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		ndev->stats.rx_dropped++;
 		/* Can't extract EID - no packet data available yet */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_no_memory);
+		trace_mctp_transport_error("spi", ndev, "rx_drop_no_memory", recvlen);
 		return -ENOMEM;
 	}
 	skb->protocol = htons(ETH_P_MCTP);
@@ -165,6 +168,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 	if (status == NET_RX_SUCCESS) {
 		ndev->stats.rx_packets++;
 		ndev->stats.rx_bytes += recvlen;
+		trace_mctp_transport_rx("spi", ndev, 0, recvlen);
 	} else {
 		ndev->stats.rx_dropped++;
 		/* Extract EID for per-EID tracking (SKB has packet data) */
@@ -174,6 +178,7 @@ static int mctp_spi_net_recv(struct mctp_spi *midev, uint8_t *rx_buffer)
 		} else {
 			MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_not_ready);
 		}
+		trace_mctp_transport_error("spi", ndev, "rx_dropped", status);
 	}
 
 	return 0;
@@ -192,9 +197,12 @@ static int mctp_spi_rx(struct mctp_spi *midev)
 
 	status = spb_ap_recv(midev->ap, RX_BUFFER_SIZE, tmp_rx_buffer);
 	if(status != SPB_AP_OK) {
+		int err = spb_ap_status_to_errno(status);
+
 		midev->ndev->stats.rx_dropped++;
 		/* Can't extract EID - SPI receive failed, no data */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_spi_error);
+		trace_mctp_transport_error("spi", midev->ndev, "rx_spi_error", err);
 		return ERR_SPI_RX_NO_DATA;
 	}
 
@@ -399,6 +407,7 @@ static int mctp_spi_tx_thread(void *data)
 			if(status == SPB_AP_OK) {
 				midev->ndev->stats.tx_packets++;
 				midev->ndev->stats.tx_bytes += skb->len;
+				trace_mctp_transport_tx("spi", midev->ndev, 0, skb->len);
 			} else {
 				int err = spb_ap_status_to_errno(status);
 
@@ -414,6 +423,7 @@ static int mctp_spi_tx_thread(void *data)
 					/* Catch-all for any unmapped errors */
 					MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
 				}
+				trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", err);
 			}
 			kfree_skb(skb);
 			while (midev->ap->msgs_available > 0) {

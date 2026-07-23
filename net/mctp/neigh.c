@@ -21,6 +21,8 @@
 #include <net/netlink.h>
 #include <net/sock.h>
 
+#include <trace/events/mctp.h>
+
 static int mctp_neigh_add(struct mctp_dev *mdev, mctp_eid_t eid,
 			  enum mctp_neigh_source source,
 			  size_t lladdr_len, const void *lladdr)
@@ -53,6 +55,7 @@ static int mctp_neigh_add(struct mctp_dev *mdev, mctp_eid_t eid,
 	memcpy(neigh->ha, lladdr, lladdr_len);
 
 	list_add_rcu(&neigh->list, &net->mctp.neighbours);
+	trace_mctp_neighbor_add(mdev->dev, eid, lladdr, lladdr_len);
 	rc = 0;
 out:
 	mutex_unlock(&net->mctp.neigh_lock);
@@ -96,6 +99,7 @@ static int mctp_neigh_remove(struct mctp_dev *mdev, mctp_eid_t eid,
 	list_for_each_entry_safe(neigh, tmp, &net->mctp.neighbours, list) {
 		if (neigh->dev == mdev && neigh->eid == eid &&
 		    neigh->source == source) {
+			trace_mctp_neighbor_del(mdev->dev, eid);
 			list_del_rcu(&neigh->list);
 			/* TODO: immediate RTM_DELNEIGH */
 			call_rcu(&neigh->rcu, __mctp_neigh_free);
@@ -297,6 +301,7 @@ int mctp_neigh_lookup(struct mctp_dev *mdev, mctp_eid_t eid, void *ret_hwaddr)
 		}
 	}
 	rcu_read_unlock();
+	trace_mctp_neighbor_lookup(mdev->dev, eid, rc);
 	return rc;
 }
 

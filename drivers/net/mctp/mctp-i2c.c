@@ -30,6 +30,8 @@
 #include "mctp-i2c-internal.h"
 #include <net/mctp-stats.h>
 
+#include <trace/events/mctp.h>
+
 /* byte_count is limited to u8 */
 #define MCTP_I2C_MAXBLOCK 255
 /* One byte is taken by source_slave */
@@ -236,6 +238,7 @@ static int mctp_i2c_slave_cb(struct i2c_client *client,
 		} else if (!midev->rx_overflow) {
 			midev->ndev->stats.rx_over_errors++;
 			midev->rx_overflow = true;
+			trace_mctp_transport_error("i2c", midev->ndev, "rx_over_errors", midev->rx_pos);
 		}
 
 		break;
@@ -277,6 +280,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 	/* + 1 for the PEC */
 	if (midev->rx_pos < MCTP_I2C_MINLEN + 1) {
 		ndev->stats.rx_length_errors++;
+		trace_mctp_transport_error("i2c", ndev, "rx_short_packet", midev->rx_pos);
 		return -EINVAL;
 	}
 	/* recvlen excludes PEC */
@@ -287,11 +291,13 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		ndev->stats.rx_dropped++;
 		/* UNKNOWN: Command byte checked before MCTP header can be read */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_cmd);
+		trace_mctp_transport_error("i2c", ndev, "invalid_command_code", hdr->command);
 		return -EINVAL;
 	}
 
 	if (hdr->byte_count + offsetof(struct mctp_i2c_hdr, source_slave) != recvlen) {
 		ndev->stats.rx_length_errors++;
+		trace_mctp_transport_error("i2c", ndev, "length_mismatch", hdr->byte_count);
 		return -EINVAL;
 	}
 
@@ -301,6 +307,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		ndev->stats.rx_crc_errors++;
 		/* PEC validation failed - cannot trust header, track as UNKNOWN */
 		MCTP_STAT_INC(midev, MCTP_EID_UNKNOWN, rx_drop_invalid_pec);
+		trace_mctp_transport_error("i2c", ndev, "pec_error", pec);
 		return -EINVAL;
 	}
 
@@ -311,6 +318,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 
 		ndev->stats.rx_dropped++;
 		MCTP_STAT_INC(midev, src_eid, rx_drop_no_memory);
+		trace_mctp_transport_error("i2c", ndev, "rx_drop_no_memory", recvlen);
 		return -ENOMEM;
 	}
 
@@ -338,6 +346,7 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		/* Drop this fragment */
 		ndev->stats.rx_dropped++;
 		MCTP_STAT_INC(midev, src_eid, rx_drop_fragment_error);
+		trace_mctp_transport_error("i2c", ndev, "rx_drop_fragment_error", 0);
 		kfree_skb(skb);
 		return 0;
 	}
@@ -366,9 +375,11 @@ static int mctp_i2c_recv(struct mctp_i2c_dev *midev)
 		if (status == NET_RX_SUCCESS) {
 			ndev->stats.rx_packets++;
 			ndev->stats.rx_bytes += recvlen;
+			trace_mctp_transport_rx("i2c", ndev, hdr->source_slave >> 1, recvlen);
 		} else {
 			ndev->stats.rx_dropped++;
 			MCTP_STAT_INC(midev, src_eid, rx_drop_not_ready);
+			trace_mctp_transport_error("i2c", ndev, "rx_dropped", status);
 		}
 	}
 	return 0;
@@ -529,6 +540,7 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 				     "Bad tx length %d vs skb %u\n",
 				     hdr->byte_count + 3, skb->len);
 		MCTP_STAT_INC(midev, dest_eid, tx_drop_invalid_len);
+		trace_mctp_transport_error("i2c", midev->ndev, "tx_invalid_len", skb->len);
 		return;
 	}
 
@@ -628,9 +640,11 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 			netdev_warn(midev->ndev, "MCTP I2C: Unhandled TX error code %d\n", rc);
 			MCTP_STAT_INC(midev, dest_eid, tx_drop_eio);
 		}
+		trace_mctp_transport_error("i2c", midev->ndev, "i2c_transfer_failed", rc);
 	} else {
 		stats->tx_bytes += skb->len;
 		stats->tx_packets++;
+		trace_mctp_transport_tx("i2c", midev->ndev, hdr->dest_slave >> 1, skb->len);
 	}
 }
 
