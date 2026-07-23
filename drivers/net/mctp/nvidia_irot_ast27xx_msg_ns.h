@@ -150,11 +150,11 @@ struct nvidia_irot_message {
 	}
 
 #if defined(__cplusplus)
-#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) static_assert(expr);
+#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) static_assert(expr)
 #elif __STDC_VERSION__ >= 202311L
-#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) static_assert(expr);
+#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) static_assert(expr)
 #elif __STDC_VERSION__ >= 201112L
-#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) _Static_assert(expr, #expr);
+#define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr) _Static_assert(expr, #expr)
 #else
 #define NVIDIA_IROT_MESSAGE_STATIC_ASSERT(expr)
 #endif
@@ -164,7 +164,7 @@ struct nvidia_irot_message {
  * copy the max 32-byte size so both undersized and oversized types would be
  * a problem.
  */
-NVIDIA_IROT_MESSAGE_STATIC_ASSERT(sizeof(struct nvidia_irot_message) == 32)
+NVIDIA_IROT_MESSAGE_STATIC_ASSERT(sizeof(struct nvidia_irot_message) == 32);
 
 #undef NVIDIA_IROT_MESSAGE_STATIC_ASSERT
 
