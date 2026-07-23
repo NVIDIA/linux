@@ -68,6 +68,7 @@ Hardware Monitoring Kernel Drivers
    drivetemp
    ds1621
    ds620
+   e50sn12051
    emc1403
    emc2103
    emc2305
@@ -177,6 +178,7 @@ Hardware Monitoring Kernel Drivers
    mp2869
    mp2888
    mp2891
+   mp2925
    mp29502
    mp2975
    mp2993
@@ -185,6 +187,7 @@ Hardware Monitoring Kernel Drivers
    mp5926
    mp5990
    mp9941
+   mp9945
    mpq8785
    nct6683
    nct6775

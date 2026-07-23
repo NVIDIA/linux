@@ -25,7 +25,6 @@ static const unsigned int n_tx_queue = 8;
 struct mctp_usb {
 	struct usb_device *usbdev;
 	struct usb_interface *intf;
-	bool stopped;
 
 	struct net_device *netdev;
 
@@ -36,6 +35,9 @@ struct mctp_usb {
 	struct usb_anchor tx_anchor;
 	atomic_t rx_qlen, tx_qlen;
 
+	/* enforces atomic access to rx_stopped and requeuing the retry work */
+	spinlock_t rx_lock;
+	bool rx_stopped;
 	struct delayed_work rx_retry_work;
 
 	bool tx_batching_enabled;
@@ -272,7 +274,7 @@ static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, struct urb *urb,
 	struct sk_buff *skb;
 	int rc;
 
-	if (READ_ONCE(mctp_usb->stopped))
+	if (READ_ONCE(mctp_usb->rx_stopped))
 		return 0;
 
 	skb = __netdev_alloc_skb(mctp_usb->netdev, MCTP_USB_XFER_SIZE, gfp);
@@ -302,6 +304,7 @@ static void mctp_usb_in_complete(struct urb *urb)
 	struct mctp_skb_cb *cb;
 	unsigned int len;
 	int status, rc;
+	unsigned long flags;
 
 	status = urb->status;
 	atomic_dec(&mctp_usb->rx_qlen);
@@ -387,7 +390,10 @@ static void mctp_usb_in_complete(struct urb *urb)
 	rc = mctp_usb_rx_queue(mctp_usb, urb, GFP_ATOMIC);
 	if (rc) {
 		usb_free_urb(urb);
-		schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
+		spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+		if (!mctp_usb->rx_stopped)
+			schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
+		spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
 	}
 }
 
@@ -424,21 +430,27 @@ static void mctp_usb_rx_retry_work(struct work_struct *work)
 {
 	struct mctp_usb *mctp_usb = container_of(work, struct mctp_usb,
 						 rx_retry_work.work);
+	unsigned long flags;
 	int rc;
 
-	if (READ_ONCE(mctp_usb->stopped))
+	if (READ_ONCE(mctp_usb->rx_stopped))
 		return;
 
 	rc = mctp_usb_rx_queue_fill(mctp_usb);
-	if (rc)
-		schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
+	if (rc) {
+		spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+		if (!mctp_usb->rx_stopped)
+			schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
+		spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
+	}
 }
 
 static int mctp_usb_open(struct net_device *dev)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
 
-	WRITE_ONCE(mctp_usb->stopped, false);
+	WRITE_ONCE(mctp_usb->rx_stopped, false);
+
 	netif_start_queue(dev);
 
 	return mctp_usb_rx_queue_fill(mctp_usb);
@@ -447,13 +459,20 @@ static int mctp_usb_open(struct net_device *dev)
 static int mctp_usb_stop(struct net_device *dev)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
+	unsigned long flags;
 
 	netif_stop_queue(dev);
-	WRITE_ONCE(mctp_usb->stopped, true);
+
+	/* prevent RX submission retry */
+	spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+	mctp_usb->rx_stopped = true;
+	cancel_delayed_work(&mctp_usb->rx_retry_work);
+	spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
+
+	flush_delayed_work(&mctp_usb->rx_retry_work);
 
 	usb_kill_anchored_urbs(&mctp_usb->rx_anchor);
 	usb_kill_anchored_urbs(&mctp_usb->tx_anchor);
-	cancel_delayed_work_sync(&mctp_usb->rx_retry_work);
 
 	return 0;
 }
@@ -550,8 +569,9 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	SET_NETDEV_DEV(netdev, &intf->dev);
 	dev = netdev_priv(netdev);
 	dev->netdev = netdev;
-	dev->usbdev = usb_get_dev(interface_to_usbdev(intf));
+	dev->usbdev = interface_to_usbdev(intf);
 	dev->intf = intf;
+	spin_lock_init(&dev->rx_lock);
 	usb_set_intfdata(intf, dev);
 
 	dev->ep_in = ep_in->bEndpointAddress;
@@ -604,7 +624,6 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 
 	sysfs_remove_group(&dev->netdev->dev.kobj, &mctp_usb_attr_group);
 	mctp_unregister_netdev(dev->netdev);
-	usb_put_dev(dev->usbdev);
 	free_netdev(dev->netdev);
 }
 
