@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/nvidia,ast27xx-irot.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: NVIDIA IRoT MCTP interface for ASPEED AST27xx BMCs
+
+maintainers:
+  - afickle@nvidia.com
+
+description: |
+  The NVIDIA IRoT MCTP interface uses the ASPEED AST2700 mailbox controller
+  for IPC notifications and firmware-provided shared memory for packet data.
+  The driver registers an MCTP netdev so the kernel MCTP stack can route
+  packets to the IRoT firmware.
+
+properties:
+  compatible:
+    const: nvidia,ast27xx,irot
+
+  mboxes:
+    maxItems: 1
+    description: Mailbox channel used for IRoT IPC notifications.
+
+  mbox-names:
+    items:
+      - const: irot
+
+required:
+  - compatible
+  - mboxes
+  - mbox-names
+
+additionalProperties: false
+
+examples:
+  - |
+    mctp-irot {
+        compatible = "nvidia,ast27xx,irot";
+        mboxes = <&mbox0 0>;
+        mbox-names = "irot";
+    };

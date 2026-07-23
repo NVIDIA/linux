@@ -82,11 +82,18 @@ config MCTP_TRANSPORT_SPI
 
 config NVIDIA_AST27XX_IROT
 	tristate "NVIDIA AST27XX IROT support"
-	depends on ARCH_ASPEED
+	depends on AST2700_MBOX
+	depends on 64BIT
 	help
-	  Enable support for NVIDIA AST27XX IRoT. Select this option if you want
-	  to use the NVIDIA IRoT functionality on systems based on the ASPEED
-	  architecture.
+	  Enable the MCTP network driver used to communicate with NVIDIA
+	  IRoT firmware on ASPEED AST27xx BMC platforms.
+
+	  The driver uses the AST2700 mailbox controller for IPC signaling
+	  and shared memory for MCTP packet transfer. It registers an MCTP
+	  netdev so the kernel MCTP stack can route traffic to the IRoT.
+
+	  To compile this driver as a module, choose M here. The module will
+	  be called nvidia-ast27xx-irot.
 
 config NVIDIA_OPTEE_VROT
 	tristate "NVIDIA OPTEE VROT support"

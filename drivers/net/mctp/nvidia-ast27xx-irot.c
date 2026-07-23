@@ -23,6 +23,7 @@
  *   };
  */
 
+#include <linux/completion.h>
 #include <linux/io.h>
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
@@ -33,13 +34,14 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/rtnetlink.h>
-#include <linux/semaphore.h>
 #include <linux/wait.h>
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 #include <uapi/linux/if_arp.h>
 
 #include "nvidia_irot_ast27xx_msg_ns.h"
+
+#define NVIDIA_IROT_MIN_MTU 68
 
 /*
  * Maximum number of MCTP packets queued between the netdev TX path and the
@@ -68,6 +70,12 @@ struct nvidia_irot_driver_shared_state {
 	 * here instead of re-processing the command.  command == 0 if none.
 	 */
 	struct nvidia_irot_message duplicate_response;
+
+	/* Last MCTP read completed locally, used for retransmit handling */
+	u32 completed_rx_counter;
+
+	/* True when completed_rx_counter contains a valid RX counter */
+	bool has_completed_rx_counter;
 };
 
 /* State private to worker threads */
@@ -82,12 +90,6 @@ struct nvidia_irot_driver_worker_state {
 	u32 next_tx_counter;
 };
 
-/* State private to the mailbox callback (no locking needed) */
-struct nvidia_irot_driver_mailbox_state {
-	u32 prev_rx_counter;
-	bool has_prev_rx_counter;
-};
-
 /**
  * struct nvidia_irot_driver - main driver state
  * @dev: back-pointer to the platform device (set once during probe)
@@ -95,8 +97,7 @@ struct nvidia_irot_driver_mailbox_state {
  * @shared_state: state shared between mailbox callback and workers
  * @worker_mutex: mutex protecting @worker_state
  * @worker_state: state used only by worker functions
- * @mailbox_state: state private to the mailbox RX callback
- * @probe_sem: signals probe that shared memory info has arrived
+ * @buffers_ready: signals probe that shared memory info has arrived
  * @rx_worker_wq: RX worker wait queue
  * @rx_work_ready: set to 1 when the RX worker has work
  * @tx_queue_ready_wq: woken when tx_queue is pushed to
@@ -118,9 +119,7 @@ struct nvidia_irot_driver {
 	struct mutex worker_mutex;
 	struct nvidia_irot_driver_worker_state worker_state;
 
-	struct nvidia_irot_driver_mailbox_state mailbox_state;
-
-	struct semaphore probe_sem;
+	struct completion buffers_ready;
 
 	wait_queue_head_t rx_worker_wq;
 	atomic_t rx_work_ready;
@@ -201,10 +200,96 @@ static resource_size_t addr_from_span(struct nvidia_irot_message_span shmem)
 	       shmem.address.low;
 }
 
+static int nvidia_irot_validate_shmem_span(struct nvidia_irot_driver *driver,
+					   const char *name,
+					   struct nvidia_irot_message_span span)
+{
+	resource_size_t start = addr_from_span(span);
+	resource_size_t end = start + span.size;
+
+	if (span.size == 0) {
+		dev_err(driver->dev, "%s shared memory span is empty\n", name);
+		return -EINVAL;
+	}
+
+	if (end < start) {
+		dev_err(driver->dev,
+			"%s shared memory span wraps: %pa size %u\n", name,
+			&start, span.size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int nvidia_irot_setup_shmem(struct nvidia_irot_driver *driver,
+				   const struct nvidia_irot_message_data_buffers *buffers)
+{
+	struct nvidia_irot_message_data_buffers shmem = *buffers;
+	resource_size_t rx_phys;
+	resource_size_t tx_phys;
+	u32 effective_mtu;
+	int ret;
+
+	ret = nvidia_irot_validate_shmem_span(driver, "rx", shmem.a35_read);
+	if (ret)
+		return ret;
+
+	ret = nvidia_irot_validate_shmem_span(driver, "tx", shmem.a35_write);
+	if (ret)
+		return ret;
+
+	effective_mtu = shmem.mtu_limit;
+	if (shmem.a35_read.size < effective_mtu)
+		effective_mtu = shmem.a35_read.size;
+	if (shmem.a35_write.size < effective_mtu)
+		effective_mtu = shmem.a35_write.size;
+
+	if (effective_mtu < NVIDIA_IROT_MIN_MTU) {
+		dev_err(driver->dev,
+			"invalid shared memory MTU: limit %u rx %u tx %u\n",
+			shmem.mtu_limit, shmem.a35_read.size,
+			shmem.a35_write.size);
+		return -EINVAL;
+	}
+	shmem.mtu_limit = effective_mtu;
+
+	/*
+	 * WARNING: IRoT provides these physical spans over the mailbox.
+	 * The binding does not describe a separate reserved-memory region,
+	 * so this assumes IRoT only reports the reserved A35-accessible MCTP
+	 * shared buffers.
+	 */
+	rx_phys = addr_from_span(shmem.a35_read);
+	driver->worker_state.rx_addr = memremap(rx_phys, shmem.a35_read.size,
+						MEMREMAP_WC);
+	if (!driver->worker_state.rx_addr) {
+		dev_err(driver->dev, "memremap failed for rx at %pa size %u\n",
+			&rx_phys, shmem.a35_read.size);
+		return -ENOMEM;
+	}
+
+	tx_phys = addr_from_span(shmem.a35_write);
+	driver->worker_state.tx_addr = memremap(tx_phys, shmem.a35_write.size,
+						MEMREMAP_WC);
+	if (!driver->worker_state.tx_addr) {
+		dev_err(driver->dev, "memremap failed for tx at %pa size %u\n",
+			&tx_phys, shmem.a35_write.size);
+		memunmap((void *)driver->worker_state.rx_addr);
+		driver->worker_state.rx_addr = NULL;
+		return -ENOMEM;
+	}
+
+	spin_lock_irq(&driver->shared_spin);
+	driver->shared_state.shmem = shmem;
+	spin_unlock_irq(&driver->shared_spin);
+
+	return 0;
+}
+
 /*
- * Copy shared_state under spinlock and handle generic housekeeping:
- * init shared memory regions, respond to pings, and send duplicate
- * command responses.
+ * Copy shared_state under spinlock and handle runtime housekeeping:
+ * respond to pings and send duplicate command responses.
  *
  * Caller must hold driver->worker_mutex.  This function never drops it.
  */
@@ -217,38 +302,17 @@ static void worker_locked_handle_shared_state(
 	       sizeof(*shared_state_copy));
 	spin_unlock_irq(&driver->shared_spin);
 
-	/* Init shared memory regions if needed (shmem is write-once) */
-	if (!driver->worker_state.rx_addr &&
-	    shared_state_copy->shmem.a35_read.size != 0) {
-		driver->worker_state.rx_addr = memremap(
-			addr_from_span(shared_state_copy->shmem.a35_read),
-			shared_state_copy->shmem.a35_read.size, MEMREMAP_WC);
-		if (!driver->worker_state.rx_addr)
-			dev_err(driver->dev,
-				"memremap failed for rx at %pa size %u\n",
-				&(resource_size_t){ addr_from_span(
-					shared_state_copy->shmem.a35_read) },
-				shared_state_copy->shmem.a35_read.size);
-	}
-	if (!driver->worker_state.tx_addr &&
-	    shared_state_copy->shmem.a35_write.size != 0) {
-		driver->worker_state.tx_addr = memremap(
-			addr_from_span(shared_state_copy->shmem.a35_write),
-			shared_state_copy->shmem.a35_write.size, MEMREMAP_WC);
-		if (!driver->worker_state.tx_addr)
-			dev_err(driver->dev,
-				"memremap failed for tx at %pa size %u\n",
-				&(resource_size_t){ addr_from_span(
-					shared_state_copy->shmem.a35_write) },
-				shared_state_copy->shmem.a35_write.size);
-	}
-
 	/* Handle pings */
 	if (shared_state_copy->rx_ping.command == nvidia_irot_cc_ping) {
 		struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
 
 		response.command = nvidia_irot_cc_ping_rsp;
 		response.data.value = shared_state_copy->rx_ping.data.value;
+		/*
+		 * If this send fails, leave rx_ping staged. No explicit retry is
+		 * needed: the next IRoT ping overwrites rx_ping and wakes this
+		 * worker again.
+		 */
 		if (send_message(driver, &response) == 0) {
 			/*
 			 * Clear the in-flight ping only if the counter still
@@ -304,31 +368,52 @@ static ssize_t get_start_offset(struct nvidia_irot_message_span region,
 	return alloc_start - region_start;
 }
 
+static bool pending_read_matches(const struct nvidia_irot_message *pending,
+				 const struct nvidia_irot_message *message)
+{
+	if (pending->command != nvidia_irot_cc_mctp ||
+	    message->command != nvidia_irot_cc_mctp)
+		return false;
+
+	return pending->data.mctp.counter == message->data.mctp.counter;
+}
+
 /*
- * Finalize a read operation.  On success, clears the pending read and sends
- * an ACK to the IRoT.  Always releases worker_mutex before returning.
+ * Finalize a read operation. On success, sends an ACK to the IRoT and records
+ * the completed counter for retransmit handling. On failure, clears the pending
+ * read without ACK so the IRoT can retransmit. Always releases worker_mutex
+ * before returning.
  */
 static ssize_t finish_read_and_unlock(struct nvidia_irot_driver *driver,
 				      ssize_t result,
 				      const struct nvidia_irot_message *message)
 {
+	struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
+	bool delivered;
+	bool send_ack = false;
+
 	if (result >= 0 && result != message->data.mctp.packet.size)
 		result = -EFAULT;
 
-	if (result >= 0) {
-		struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
+	delivered = result >= 0;
 
-		spin_lock_irq(&driver->shared_spin);
+	spin_lock_irq(&driver->shared_spin);
+	if (pending_read_matches(&driver->shared_state.pending_read, message)) {
 		driver->shared_state.pending_read.command = 0;
-		spin_unlock_irq(&driver->shared_spin);
+		if (delivered) {
+			driver->shared_state.completed_rx_counter =
+				message->data.mctp.counter;
+			driver->shared_state.has_completed_rx_counter = true;
+			send_ack = true;
+		}
+	}
+	spin_unlock_irq(&driver->shared_spin);
 
+	if (send_ack) {
 		response.command = nvidia_irot_cc_mctp_done;
 		response.data.value = message->data.mctp.counter;
 		/* Dropped ACKs are handled by IRoT retransmission */
 		(void)send_message(driver, &response);
-
-		mutex_unlock(&driver->worker_mutex);
-		return result;
 	}
 
 	mutex_unlock(&driver->worker_mutex);
@@ -356,8 +441,7 @@ static netdev_tx_t nvidia_irot_start_xmit(struct sk_buff *skb,
 	spin_lock_irqsave(&driver->tx_queue.lock, flags);
 	if (skb_queue_len(&driver->tx_queue) >= NVIDIA_IROT_QUEUE_SIZE) {
 		status = NETDEV_TX_BUSY;
-		dev_dbg(driver->dev, "tx queue overflow\n");
-		dev->stats.tx_dropped++;
+		dev_dbg(driver->dev, "tx queue full, stopping netdev queue\n");
 		netif_stop_queue(dev);
 	} else {
 		status = NETDEV_TX_OK;
@@ -383,6 +467,11 @@ static int nvidia_irot_stop(struct net_device *dev)
 {
 	struct nvidia_irot_netdev_priv *priv = netdev_priv(dev);
 
+	/*
+	 * WARNING: Administrative close/reopen is not supported for this
+	 * binding. This path is expected during teardown/unregister; it stops
+	 * new queueing and drops packets still waiting in the software queue.
+	 */
 	netif_stop_queue(dev);
 	skb_queue_purge(&priv->driver->tx_queue);
 	return 0;
@@ -399,9 +488,9 @@ static void nvidia_irot_netdev_setup(struct net_device *dev)
 	dev->type = ARPHRD_MCTP;
 
 	/* MTU is replaced after shared memory negotiation */
-	dev->min_mtu = 68;
-	dev->max_mtu = 68;
-	dev->mtu = 68;
+	dev->min_mtu = NVIDIA_IROT_MIN_MTU;
+	dev->max_mtu = NVIDIA_IROT_MIN_MTU;
+	dev->mtu = NVIDIA_IROT_MIN_MTU;
 
 	dev->hard_header_len = 0;
 	dev->tx_queue_len = NVIDIA_IROT_QUEUE_SIZE;
@@ -425,7 +514,7 @@ static int nvidia_irot_create_mctp_dev(struct nvidia_irot_driver *driver,
 	spin_lock_irq(&driver->shared_spin);
 	mtu = driver->shared_state.shmem.mtu_limit;
 	spin_unlock_irq(&driver->shared_spin);
-	if (mtu >= 68) {
+	if (mtu >= NVIDIA_IROT_MIN_MTU) {
 		driver->netdev->min_mtu = mtu;
 		driver->netdev->max_mtu = mtu;
 		driver->netdev->mtu = mtu;
@@ -500,8 +589,15 @@ locked_handle_duplicate_rx_command(struct nvidia_irot_driver *driver,
 		&driver->shared_state.duplicate_response;
 	struct nvidia_irot_message response = NVIDIA_IROT_MESSAGE_INIT;
 
-	if (staged->command != 0)
+	if (staged->command != 0) {
+		/*
+		 * A duplicate response is already staged. Wake the worker again
+		 * so an IRoT retransmit can drive another send attempt if the
+		 * previous local mailbox send failed.
+		 */
+		wake_rx_worker(driver);
 		return;
+	}
 	if (command->command != nvidia_irot_cc_mctp)
 		return;
 
@@ -533,23 +629,20 @@ static void locked_handle_rx_message(struct nvidia_irot_driver *driver,
 		if (driver->shared_state.shmem.a35_write.size != 0)
 			return;
 		driver->shared_state.shmem = message->data.buffers;
-		up(&driver->probe_sem);
+		complete(&driver->buffers_ready);
 		return;
 
 	case nvidia_irot_cc_mctp:
 		if (driver->shared_state.pending_read.command != 0)
 			return; /* read already pending, drop */
-		if (driver->mailbox_state.has_prev_rx_counter &&
-		    driver->mailbox_state.prev_rx_counter ==
+		if (driver->shared_state.has_completed_rx_counter &&
+		    driver->shared_state.completed_rx_counter ==
 			    message->data.mctp.counter) {
 			/* duplicate command — send response without re-processing */
 			locked_handle_duplicate_rx_command(driver, message);
 			return;
 		}
 		driver->shared_state.pending_read = *message;
-		driver->mailbox_state.has_prev_rx_counter = true;
-		driver->mailbox_state.prev_rx_counter =
-			message->data.mctp.counter;
 		wake_rx_worker(driver);
 		return;
 
@@ -631,17 +724,18 @@ static ssize_t worker_locked_handle_read(
 		return -EINVAL;
 
 	length = shared_state_copy->pending_read.data.mctp.packet.size;
+	if (length > shared_state_copy->shmem.mtu_limit) {
+		dev_err(driver->dev,
+			"rx packet length %zu exceeds mtu limit %u\n", length,
+			shared_state_copy->shmem.mtu_limit);
+		driver->netdev->stats.rx_errors++;
+		return -EINVAL;
+	}
+
 	offset = get_start_offset(
 		shared_state_copy->shmem.a35_read,
 		shared_state_copy->pending_read.data.mctp.packet);
 	if (offset < 0) {
-		/*
-		 * Error path: clear the pending read so the driver doesn't
-		 * get stuck.  The IRoT will retransmit if no ACK arrives.
-		 */
-		spin_lock_irq(&driver->shared_spin);
-		driver->shared_state.pending_read.command = 0;
-		spin_unlock_irq(&driver->shared_spin);
 		dev_err(driver->dev, "bad read from shared memory\n");
 		driver->netdev->stats.rx_errors++;
 		return -EINVAL;
@@ -670,9 +764,6 @@ static ssize_t worker_locked_handle_read(
 
 	dev_dbg(driver->dev, "rx: %zu bytes\n", length);
 
-	driver->netdev->stats.rx_packets++;
-	driver->netdev->stats.rx_bytes += length;
-
 	ret = netif_receive_skb(skb);
 	if (ret != NET_RX_SUCCESS) {
 		/* skb is still freed by a failed netif_receive_skb */
@@ -680,6 +771,10 @@ static ssize_t worker_locked_handle_read(
 		driver->netdev->stats.rx_errors++;
 		return -EINVAL;
 	}
+
+	driver->netdev->stats.rx_packets++;
+	driver->netdev->stats.rx_bytes += length;
+
 	return length;
 }
 
@@ -763,13 +858,19 @@ static int nvidia_irot_tx_worker(void *data)
 	struct nvidia_irot_driver *driver = data;
 	struct nvidia_irot_driver_shared_state ssc;
 	struct sk_buff *skb = NULL;
+	unsigned long flags;
 	ssize_t ret;
 
 	for (;;) {
 		while (!skb) {
+			/*
+			 * start_xmit() updates tx_queue under its queue lock.
+			 * This wait predicate runs lockless, so use the
+			 * READ_ONCE()-based helper.
+			 */
 			wait_event_interruptible(
 				driver->tx_queue_ready_wq,
-				!skb_queue_empty(&driver->tx_queue) ||
+				!skb_queue_empty_lockless(&driver->tx_queue) ||
 					kthread_should_stop());
 			if (kthread_should_stop())
 				return 0;
@@ -780,6 +881,13 @@ static int nvidia_irot_tx_worker(void *data)
 		}
 
 		for (;;) {
+			/*
+			 * WARNING: This assumes a successful mailbox send is never
+			 * lost, and that IRoT will eventually return mctp_done.
+			 * Once the command is sent, IRoT owns the shared TX buffer.
+			 * Reclaiming it locally could overwrite a packet IRoT is
+			 * still processing.
+			 */
 			wait_event_interruptible(
 				driver->tx_shmem_ready_wq,
 				kthread_should_stop() ||
@@ -805,8 +913,15 @@ static int nvidia_irot_tx_worker(void *data)
 		}
 
 		ret = worker_locked_handle_write(driver, &ssc, skb);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(driver->dev, "failed to send MCTP packet\n");
+			/*
+			 * Local write failures do not hand the TX buffer to IRoT,
+			 * so no mctp_done ACK will arrive to mark it ready again.
+			 */
+			atomic_xchg(&driver->tx_shmem_ready, 1);
+			wake_up(&driver->tx_shmem_ready_wq);
+		}
 		mutex_unlock(&driver->worker_mutex);
 
 		/*
@@ -825,8 +940,10 @@ static int nvidia_irot_tx_worker(void *data)
 		 * can enqueue new packets.  netif_wake_queue both sets
 		 * the queue-running flag and reschedules the qdisc.
 		 */
+		spin_lock_irqsave(&driver->tx_queue.lock, flags);
 		if (skb_queue_len(&driver->tx_queue) < NVIDIA_IROT_QUEUE_SIZE)
 			netif_wake_queue(driver->netdev);
+		spin_unlock_irqrestore(&driver->tx_queue.lock, flags);
 	}
 }
 
@@ -858,8 +975,12 @@ static int nvidia_irot_init_shmem(struct nvidia_irot_driver *driver)
 
 		end_jiffies64 = get_jiffies_64() + (5 * HZ);
 		while (time_is_after_jiffies64(end_jiffies64)) {
-			/* return value intentionally ignored — we poll state */
-			(void)down_timeout(&driver->probe_sem, HZ);
+			/*
+			 * Return value intentionally ignored: the loop also
+			 * polls state and handles probe-time pings.
+			 */
+			(void)wait_for_completion_timeout(&driver->buffers_ready,
+							  HZ);
 			worker_locked_handle_shared_state(driver, &ssc);
 			if (ssc.shmem.mtu_limit != 0)
 				break;
@@ -876,6 +997,11 @@ static int nvidia_irot_init_shmem(struct nvidia_irot_driver *driver)
 			"timeout waiting for IRoT shared memory buffers\n");
 		return -ETIMEDOUT;
 	}
+
+	ret = nvidia_irot_setup_shmem(driver, &ssc.shmem);
+	if (ret)
+		return ret;
+
 	return 0;
 }
 
@@ -962,7 +1088,7 @@ static int nvidia_irot_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, driver);
 	spin_lock_init(&driver->shared_spin);
 	mutex_init(&driver->worker_mutex);
-	sema_init(&driver->probe_sem, 0);
+	init_completion(&driver->buffers_ready);
 	init_waitqueue_head(&driver->rx_worker_wq);
 	atomic_set(&driver->rx_work_ready, 0);
 	init_waitqueue_head(&driver->tx_queue_ready_wq);
