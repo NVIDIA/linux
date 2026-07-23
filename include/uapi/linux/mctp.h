@@ -142,4 +142,64 @@ struct mctp_error {
 	__u8	payload[MCTP_ERROR_PAYLOAD_SIZE];
 };
 
+/*
+ * Socket Statistics Support
+ * For per-socket statistics via getsockopt
+ */
+
+/* New socket option for statistics */
+#define MCTP_OPT_SOCK_STATS    3
+
+/* MCTP per-socket statistics structure */
+struct mctp_sock_stats_info {
+	/* Traffic counters */
+	__u64 tx_bytes;
+	__u64 tx_packets;
+	__u64 tx_messages;
+	__u64 tx_errors;
+	__u64 tx_drops;
+
+	__u64 rx_bytes;
+	__u64 rx_packets;
+	__u64 rx_messages;
+	__u64 rx_errors;
+	__u64 rx_drops;
+
+	/* Detailed drop reasons - RX */
+	__u64 rx_dropped_no_route;
+	__u64 rx_dropped_no_memory;
+	__u64 rx_dropped_seq_mismatch;
+	__u64 rx_dropped_tag_mismatch;
+	__u64 rx_dropped_queue_full;
+	__u64 rx_dropped_invalid_header;
+	__u64 rx_dropped_permission;
+	__u64 rx_dropped_timeout;
+
+	/* Detailed drop reasons - TX */
+	__u64 tx_dropped_no_route;
+	__u64 tx_dropped_mtu_exceeded;
+	__u64 tx_dropped_no_memory;
+	__u64 tx_dropped_queue_full;
+	__u64 tx_dropped_device_down;
+	__u64 tx_dropped_tag_exhaustion;
+	__u64 tx_dropped_permission;
+
+	/* Timestamps (nanoseconds since boot) */
+	__u64 last_tx_time;
+	__u64 last_rx_time;
+
+	/* Connection info */
+	__u32 num_active_keys;
+	__u32 bind_net;
+	__u8  bind_addr;
+	__u8  bind_type;
+	__u16 reserved;
+	__u32 __pad; /* explicit padding: aligns tx_dropped_bad_addrlen to 8 bytes */
+
+	/* New drop reasons — appended after connection info to preserve ABI;
+	 * __pad ensures 8-byte alignment without relying on implicit compiler padding.
+	 */
+	__u64 tx_dropped_bad_addrlen;
+};
+
 #endif /* __UAPI_MCTP_H */

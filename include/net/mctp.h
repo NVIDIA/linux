@@ -12,6 +12,7 @@
 #include <linux/bits.h>
 #include <linux/mctp.h>
 #include <linux/netdevice.h>
+#include <linux/timekeeping.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 
@@ -99,6 +100,48 @@ struct mctp_sock {
 	struct work_struct error_report_work;
 	struct list_head pending_errors;
 	spinlock_t error_queue_lock;
+
+	/* Per-socket statistics */
+	struct {
+		u64 tx_bytes;
+		u64 tx_packets;
+		u64 tx_messages;
+		u64 tx_errors;
+		u64 tx_drops;
+
+		u64 rx_bytes;
+		u64 rx_packets;
+		u64 rx_messages;
+		u64 rx_errors;
+		u64 rx_drops;
+
+		/* Detailed drop reasons - RX */
+		u64 rx_dropped_no_route;
+		u64 rx_dropped_no_memory;
+		u64 rx_dropped_seq_mismatch;
+		u64 rx_dropped_tag_mismatch;
+		u64 rx_dropped_queue_full;
+		u64 rx_dropped_invalid_header;
+		u64 rx_dropped_permission;
+		u64 rx_dropped_timeout;
+
+		/* Detailed drop reasons - TX */
+		u64 tx_dropped_no_route;
+		u64 tx_dropped_mtu_exceeded;
+		u64 tx_dropped_no_memory;
+		u64 tx_dropped_queue_full;
+		u64 tx_dropped_device_down;
+		u64 tx_dropped_tag_exhaustion;
+		u64 tx_dropped_permission;
+		u64 tx_dropped_bad_addrlen;
+
+		/* Timestamps */
+		u64 last_tx_time;
+		u64 last_rx_time;
+	} stats;
+
+	spinlock_t stats_lock;  /* Protects stats */
+	pid_t pid;		/* PID of the creating process */
 };
 
 struct mctp_pending_error {
@@ -367,6 +410,11 @@ void mctp_routes_exit(void);
 int mctp_device_init(void);
 void mctp_device_exit(void);
 
+/* Per-socket statistics support - see net/mctp/stats.c */
+int mctp_stats_init(void);
+void mctp_stats_exit(void);
+void mctp_stats_aggregate_closed_sk(struct sock *sk);
+
 /* Error queue support - see net/mctp/route.c */
 void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 		      int error_code, struct net_device *dev, u8 direction,
@@ -393,5 +441,197 @@ enum mctp_phys_binding {
 	MCTP_PHYS_BINDING_UCIE		= 0x09,
 	MCTP_PHYS_BINDING_VENDOR	= 0xFF,
 };
+
+/* Statistics helper macro
+ *
+ * MCTP_SOCK_STAT_INC bumps a single counter on both the per-namespace
+ * aggregate (atomic64) and, when a socket is supplied, the per-socket stats
+ * (under stats_lock). Use it for events that touch exactly one counter.
+ *
+ * The mctp_sock_stat_*() helpers below cover the multi-counter logical events
+ * (a successful tx/rx, or a drop that bumps both the generic drop counter and
+ * a specific reason) so that route.c / af_mctp.c carry a single hook call per
+ * event instead of an open-coded block of counter manipulation.
+ */
+#define MCTP_SOCK_STAT_INC(_sk, _net, _field) do { \
+	struct netns_mctp *_ns = &(_net)->mctp; \
+	atomic64_inc(&_ns->_field); \
+	if (_sk) { \
+		struct mctp_sock *_msk = container_of(_sk, struct mctp_sock, sk); \
+		spin_lock_bh(&_msk->stats_lock); \
+		_msk->stats._field++; \
+		spin_unlock_bh(&_msk->stats_lock); \
+	} \
+} while (0)
+
+/* TX drop reason selector for mctp_sock_stat_tx_drop()/_tx_error().
+ * MCTP_TX_DROP_NONE bumps only the generic tx_drops counter.
+ */
+enum mctp_tx_drop_reason {
+	MCTP_TX_DROP_NONE = 0,
+	MCTP_TX_DROP_NO_ROUTE,
+	MCTP_TX_DROP_MTU_EXCEEDED,
+	MCTP_TX_DROP_NO_MEMORY,
+	MCTP_TX_DROP_QUEUE_FULL,
+	MCTP_TX_DROP_DEVICE_DOWN,
+	MCTP_TX_DROP_TAG_EXHAUSTION,
+	MCTP_TX_DROP_PERMISSION,
+	MCTP_TX_DROP_BAD_ADDRLEN,
+};
+
+/* Account a successful transmitted message: tx_packets, tx_bytes, tx_messages
+ * (and the per-socket last_tx_time), on both per-socket and per-namespace.
+ */
+static inline void mctp_sock_stat_tx(struct sock *sk, struct net *net,
+				     unsigned int pkt_len)
+{
+	struct netns_mctp *ns = &net->mctp;
+
+	if (sk) {
+		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+		u64 now = ktime_get_ns();
+
+		spin_lock_bh(&msk->stats_lock);
+		msk->stats.tx_packets++;
+		msk->stats.tx_bytes += pkt_len;
+		msk->stats.tx_messages++;
+		msk->stats.last_tx_time = now;
+		spin_unlock_bh(&msk->stats_lock);
+	}
+
+	atomic64_inc(&ns->tx_packets);
+	atomic64_add(pkt_len, &ns->tx_bytes);
+	atomic64_inc(&ns->tx_messages);
+}
+
+/* Account a successful received message (symmetric with mctp_sock_stat_tx). */
+static inline void mctp_sock_stat_rx(struct sock *sk, struct net *net,
+				     unsigned int pkt_len)
+{
+	struct netns_mctp *ns = &net->mctp;
+
+	if (sk) {
+		struct mctp_sock *msk = container_of(sk, struct mctp_sock, sk);
+		u64 now = ktime_get_ns();
+
+		spin_lock_bh(&msk->stats_lock);
+		msk->stats.rx_packets++;
+		msk->stats.rx_bytes += pkt_len;
+		msk->stats.rx_messages++;
+		msk->stats.last_rx_time = now;
+		spin_unlock_bh(&msk->stats_lock);
+	}
+
+	atomic64_inc(&ns->rx_packets);
+	atomic64_add(pkt_len, &ns->rx_bytes);
+	atomic64_inc(&ns->rx_messages);
+}
+
+/* Shared core for tx-drop accounting. Bumps tx_drops (and tx_errors when
+ * @is_error) plus the per-reason counter, on per-socket (under stats_lock,
+ * when @msk) and per-namespace.
+ */
+static inline void __mctp_sock_tx_drop(struct mctp_sock *msk,
+				       struct netns_mctp *ns,
+				       enum mctp_tx_drop_reason reason,
+				       bool is_error)
+{
+	if (msk) {
+		spin_lock_bh(&msk->stats_lock);
+		if (is_error)
+			msk->stats.tx_errors++;
+		msk->stats.tx_drops++;
+		switch (reason) {
+		case MCTP_TX_DROP_NO_ROUTE:	  msk->stats.tx_dropped_no_route++; break;
+		case MCTP_TX_DROP_MTU_EXCEEDED:	  msk->stats.tx_dropped_mtu_exceeded++; break;
+		case MCTP_TX_DROP_NO_MEMORY:	  msk->stats.tx_dropped_no_memory++; break;
+		case MCTP_TX_DROP_QUEUE_FULL:	  msk->stats.tx_dropped_queue_full++; break;
+		case MCTP_TX_DROP_DEVICE_DOWN:	  msk->stats.tx_dropped_device_down++; break;
+		case MCTP_TX_DROP_TAG_EXHAUSTION: msk->stats.tx_dropped_tag_exhaustion++; break;
+		case MCTP_TX_DROP_PERMISSION:	  msk->stats.tx_dropped_permission++; break;
+		case MCTP_TX_DROP_BAD_ADDRLEN:	  msk->stats.tx_dropped_bad_addrlen++; break;
+		case MCTP_TX_DROP_NONE:		  break;
+		}
+		spin_unlock_bh(&msk->stats_lock);
+	}
+
+	if (is_error)
+		atomic64_inc(&ns->tx_errors);
+	atomic64_inc(&ns->tx_drops);
+	switch (reason) {
+	case MCTP_TX_DROP_NO_ROUTE:	  atomic64_inc(&ns->tx_dropped_no_route); break;
+	case MCTP_TX_DROP_MTU_EXCEEDED:	  atomic64_inc(&ns->tx_dropped_mtu_exceeded); break;
+	case MCTP_TX_DROP_NO_MEMORY:	  atomic64_inc(&ns->tx_dropped_no_memory); break;
+	case MCTP_TX_DROP_QUEUE_FULL:	  atomic64_inc(&ns->tx_dropped_queue_full); break;
+	case MCTP_TX_DROP_DEVICE_DOWN:	  atomic64_inc(&ns->tx_dropped_device_down); break;
+	case MCTP_TX_DROP_TAG_EXHAUSTION: atomic64_inc(&ns->tx_dropped_tag_exhaustion); break;
+	case MCTP_TX_DROP_PERMISSION:	  atomic64_inc(&ns->tx_dropped_permission); break;
+	case MCTP_TX_DROP_BAD_ADDRLEN:	  atomic64_inc(&ns->tx_dropped_bad_addrlen); break;
+	case MCTP_TX_DROP_NONE:		  break;
+	}
+}
+
+/* Account a tx drop: bumps tx_drops plus @reason (MCTP_TX_DROP_NONE = generic
+ * only). Replaces the "tx_drops + one reason" open-coded pairs.
+ */
+static inline void mctp_sock_stat_tx_drop(struct sock *sk, struct net *net,
+					  enum mctp_tx_drop_reason reason)
+{
+	__mctp_sock_tx_drop(sk ? container_of(sk, struct mctp_sock, sk) : NULL,
+			    &net->mctp, reason, false);
+}
+
+/* As mctp_sock_stat_tx_drop(), but also bumps tx_errors (transmit-path
+ * failures that are both an error and a drop).
+ */
+static inline void mctp_sock_stat_tx_error(struct sock *sk, struct net *net,
+					   enum mctp_tx_drop_reason reason)
+{
+	__mctp_sock_tx_drop(sk ? container_of(sk, struct mctp_sock, sk) : NULL,
+			    &net->mctp, reason, true);
+}
+
+/* Snapshot the per-socket counters into the UAPI struct, under stats_lock.
+ * Only the statistics fields are filled; the caller sets the connection-info
+ * fields (num_active_keys, bind_*, reserved) outside the lock.
+ */
+static inline void mctp_sock_stats_snapshot(struct mctp_sock *msk,
+					    struct mctp_sock_stats_info *out)
+{
+	spin_lock_bh(&msk->stats_lock);
+	out->tx_bytes = msk->stats.tx_bytes;
+	out->tx_packets = msk->stats.tx_packets;
+	out->tx_messages = msk->stats.tx_messages;
+	out->tx_errors = msk->stats.tx_errors;
+	out->tx_drops = msk->stats.tx_drops;
+
+	out->rx_bytes = msk->stats.rx_bytes;
+	out->rx_packets = msk->stats.rx_packets;
+	out->rx_messages = msk->stats.rx_messages;
+	out->rx_errors = msk->stats.rx_errors;
+	out->rx_drops = msk->stats.rx_drops;
+
+	out->rx_dropped_no_route = msk->stats.rx_dropped_no_route;
+	out->rx_dropped_no_memory = msk->stats.rx_dropped_no_memory;
+	out->rx_dropped_seq_mismatch = msk->stats.rx_dropped_seq_mismatch;
+	out->rx_dropped_tag_mismatch = msk->stats.rx_dropped_tag_mismatch;
+	out->rx_dropped_queue_full = msk->stats.rx_dropped_queue_full;
+	out->rx_dropped_invalid_header = msk->stats.rx_dropped_invalid_header;
+	out->rx_dropped_permission = msk->stats.rx_dropped_permission;
+	out->rx_dropped_timeout = msk->stats.rx_dropped_timeout;
+
+	out->tx_dropped_no_route = msk->stats.tx_dropped_no_route;
+	out->tx_dropped_mtu_exceeded = msk->stats.tx_dropped_mtu_exceeded;
+	out->tx_dropped_no_memory = msk->stats.tx_dropped_no_memory;
+	out->tx_dropped_queue_full = msk->stats.tx_dropped_queue_full;
+	out->tx_dropped_device_down = msk->stats.tx_dropped_device_down;
+	out->tx_dropped_tag_exhaustion = msk->stats.tx_dropped_tag_exhaustion;
+	out->tx_dropped_permission = msk->stats.tx_dropped_permission;
+	out->tx_dropped_bad_addrlen = msk->stats.tx_dropped_bad_addrlen;
+
+	out->last_tx_time = msk->stats.last_tx_time;
+	out->last_rx_time = msk->stats.last_rx_time;
+	spin_unlock_bh(&msk->stats_lock);
+}
 
 #endif /* __NET_MCTP_H */

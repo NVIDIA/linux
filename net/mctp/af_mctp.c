@@ -567,6 +567,48 @@ static int mctp_getsockopt(struct socket *sock, int level, int optname,
 		return 0;
 	}
 
+	if (optname == MCTP_OPT_SOCK_STATS) {
+		struct mctp_sock_stats_info stats = {};
+		struct hlist_node *tmp;
+		unsigned long flags;
+		u32 num_keys = 0;
+
+		if (len < sizeof(stats))
+			return -EINVAL;
+
+		/* Gather per-socket statistics (counters only; connection-info
+		 * fields below are filled by this function).
+		 */
+		mctp_sock_stats_snapshot(msk, &stats);
+
+		/* Count active keys — keys_lock guards msk->keys against
+		 * concurrent add/remove in the route and tag-alloc paths.
+		 */
+		spin_lock_irqsave(&sock_net(&msk->sk)->mctp.keys_lock, flags);
+		hlist_for_each(tmp, &msk->keys)
+			num_keys++;
+		spin_unlock_irqrestore(&sock_net(&msk->sk)->mctp.keys_lock, flags);
+		stats.num_active_keys = num_keys;
+
+		/* Socket binding info.
+		 * 6.12->6.18 drift: struct mctp_sock no longer has a single
+		 * bind_addr; map from the 6.18 bind fields.
+		 */
+		stats.bind_net = msk->bind_net;
+		stats.bind_addr = msk->bind_local_addr;
+		stats.bind_type = msk->bind_type;
+		stats.reserved = 0;
+
+		if (copy_to_user(optval, &stats, sizeof(stats)))
+			return -EFAULT;
+
+		len = sizeof(stats);
+		if (put_user(len, optlen))
+			return -EFAULT;
+
+		return 0;
+	}
+
 	return -ENOPROTOOPT;
 }
 
@@ -826,6 +868,14 @@ static void mctp_sk_expire_keys(struct timer_list *timer)
 
 		spin_lock_irqsave(&key->lock, fl2);
 		if (!time_after_eq(key->expiry, jiffies)) {
+			unsigned long flags3;
+
+			/* Per-socket RX-timeout drop accounting */
+			spin_lock_irqsave(&msk->stats_lock, flags3);
+			msk->stats.rx_drops++;
+			msk->stats.rx_dropped_timeout++;
+			spin_unlock_irqrestore(&msk->stats_lock, flags3);
+
 			__mctp_key_remove(key, net, fl2,
 					  MCTP_TRACE_KEY_TIMEOUT);
 			continue;
@@ -858,6 +908,11 @@ static int mctp_sk_init(struct sock *sk)
 	INIT_WORK(&msk->error_report_work, mctp_error_report_work_fn);
 	INIT_LIST_HEAD(&msk->pending_errors);
 	spin_lock_init(&msk->error_queue_lock);
+
+	/* Per-socket statistics */
+	memset(&msk->stats, 0, sizeof(msk->stats));
+	spin_lock_init(&msk->stats_lock);
+	msk->pid = current->pid;
 
 	return 0;
 }
@@ -905,6 +960,9 @@ static void mctp_sk_unhash(struct sock *sk)
 	mutex_lock(&net->mctp.bind_lock);
 	sk_del_node_init_rcu(sk);
 	mutex_unlock(&net->mctp.bind_lock);
+
+	/* Aggregate stats for closed socket (by process name) */
+	mctp_stats_aggregate_closed_sk(sk);
 
 	/* remove tag allocations */
 	spin_lock_irqsave(&net->mctp.keys_lock, flags);
@@ -1032,6 +1090,12 @@ static __init int mctp_init(void)
 	if (rc)
 		goto err_unreg_neigh;
 
+	rc = mctp_stats_init();
+	if (rc) {
+		pr_warn("MCTP: Statistics init failed, continuing without it\n");
+		/* Not fatal, continue */
+	}
+
 	return 0;
 
 err_unreg_neigh:
@@ -1048,6 +1112,7 @@ err_unreg_sock:
 
 static __exit void mctp_exit(void)
 {
+	mctp_stats_exit();
 	mctp_device_exit();
 	mctp_neigh_exit();
 	mctp_routes_exit();

@@ -755,10 +755,17 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			trace_mctp_rx_packet(skb);
 			rc = sock_queue_rcv_skb(&msk->sk, skb);
 			trace_mctp_rx_socket(skb, rc);
-			if (!rc)
+			if (!rc) {
+				unsigned int pkt_len =
+					skb->len + sizeof(struct mctp_hdr);
+
+				/* Per-socket RX success accounting */
+				mctp_sock_stat_rx(&msk->sk, net, pkt_len);
+
 				skb = NULL;
-			else
+			} else {
 				trace_mctp_drop_packet(skb, "sock_queue_failed");
+			}
 			if (key) {
 				/* we've hit a pending reassembly; not much we
 				 * can do but drop it
@@ -858,8 +865,16 @@ static int mctp_dst_input(struct mctp_dst *dst, struct sk_buff *skb)
 			rc = sock_queue_rcv_skb(key->sk, key->reasm_head);
 			if (key->reasm_head)
 				trace_mctp_rx_socket(key->reasm_head, rc);
-			if (!rc)
+			if (!rc) {
+				unsigned int pkt_len =
+					key->reasm_head->len +
+					sizeof(struct mctp_hdr);
+
+				/* Per-socket RX success accounting */
+				mctp_sock_stat_rx(key->sk, net, pkt_len);
+
 				key->reasm_head = NULL;
+			}
 			__mctp_key_done_in(key, net, f, MCTP_TRACE_KEY_REPLIED);
 			key = NULL;
 		}
@@ -1535,6 +1550,7 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	unsigned long flags;
 	unsigned int netid;
 	unsigned int mtu;
+	unsigned int pkt_len;
 	mctp_eid_t saddr;
 	int rc;
 	u8 tag;
@@ -1555,8 +1571,11 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 	spin_unlock_irqrestore(&dst->dev->addrs_lock, flags);
 	netid = READ_ONCE(dst->dev->net);
 
-	if (rc)
+	if (rc) {
+		/* Track no-route drops */
+		mctp_sock_stat_tx_drop(sk, sock_net(sk), MCTP_TX_DROP_NO_ROUTE);
 		goto out_release;
+	}
 
 	if (req_tag & MCTP_TAG_OWNER) {
 		if (req_tag & MCTP_TAG_PREALLOC)
@@ -1616,6 +1635,12 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 
 	mtu = dst->mtu;
 
+	/* Save length before transmit — dst->output() and
+	 * mctp_do_fragment_route() consume the skb, making skb->len invalid
+	 * afterward.
+	 */
+	pkt_len = skb->len;
+
 	trace_mctp_local_output(saddr, daddr, tag, skb->len);
 	if (skb->len + sizeof(struct mctp_hdr) <= mtu) {
 		hdr->flags_seq_tag = MCTP_HDR_FLAG_SOM |
@@ -1623,6 +1648,22 @@ int mctp_local_output(struct sock *sk, struct mctp_dst *dst,
 		rc = dst->output(dst, skb);
 	} else {
 		rc = mctp_do_fragment_route(dst, skb, mtu, tag);
+	}
+
+	/* Per-socket TX statistics based on transmission result */
+	if (rc == 0) {
+		mctp_sock_stat_tx(sk, sock_net(sk), pkt_len);
+	} else {
+		enum mctp_tx_drop_reason reason = MCTP_TX_DROP_NONE;
+
+		if (rc == -ENETDOWN || rc == -ENODEV)
+			reason = MCTP_TX_DROP_DEVICE_DOWN;
+		else if (rc == -EPERM || rc == -EACCES)
+			reason = MCTP_TX_DROP_PERMISSION;
+		else if (rc == -EMSGSIZE)
+			reason = MCTP_TX_DROP_MTU_EXCEEDED;
+
+		mctp_sock_stat_tx_error(sk, sock_net(sk), reason);
 	}
 
 	/* route output functions consume the skb, even on error */
