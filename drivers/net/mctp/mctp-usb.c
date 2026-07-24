@@ -528,7 +528,7 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	plen = skb->len;
 	pkt_len = plen + sizeof(*hdr);
 
-	if (pkt_len > MCTP_USB_XFER_SIZE) {
+	if (pkt_len > MCTP_USB_1_0_XFER_SIZE) {
 		/* Extract EID for tracking before dropping */
 		struct mctp_hdr *mh = mctp_hdr(skb);
 
@@ -580,7 +580,8 @@ static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, struct urb *urb,
 	if (READ_ONCE(mctp_usb->rx_stopped))
 		return 0;
 
-	skb = __netdev_alloc_skb(mctp_usb->netdev, MCTP_USB_XFER_SIZE, gfp);
+	skb = __netdev_alloc_skb(mctp_usb->netdev,
+				 MCTP_USB_1_0_XFER_SIZE, gfp);
 	if (!skb) {
 		trace_mctp_transport_error("usb", mctp_usb->netdev, "rx_alloc_skb_failed", 0);
 		return -ENOMEM;
@@ -588,7 +589,7 @@ static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, struct urb *urb,
 
 	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
 			  usb_rcvbulkpipe(mctp_usb->usbdev, mctp_usb->ep_in),
-			  skb->data, MCTP_USB_XFER_SIZE,
+			  skb->data, MCTP_USB_1_0_XFER_SIZE,
 			  mctp_usb_in_complete, skb);
 
 	rc = usb_submit_urb(urb, gfp);
@@ -1000,7 +1001,7 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->mtu = MCTP_USB_MTU_MIN;
 	dev->ethtool_ops = &mctp_usb_ethtool_ops;
 	dev->min_mtu = MCTP_USB_MTU_MIN;
-	dev->max_mtu = MCTP_USB_MTU_MAX;
+	dev->max_mtu = MCTP_USB_1_0_MTU_MAX;
 
 	dev->hard_header_len = sizeof(struct mctp_usb_hdr);
 	dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN;
@@ -1062,7 +1063,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		if (mdev) {
 			mdev->tx_batching_enabled = true;
 			mdev->tx_batch_hdr_len = sizeof(struct mctp_usb_hdr);
-			mdev->tx_batch_max_xfer = MCTP_USB_XFER_SIZE;
+			mdev->tx_batch_max_xfer = MCTP_USB_1_0_XFER_SIZE;
 			mctp_dev_put(mdev);
 		}
 		rcu_read_unlock();

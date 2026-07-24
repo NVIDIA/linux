@@ -131,7 +131,7 @@ static struct usb_interface_descriptor mctp_usbg_intf = {
 static struct usb_endpoint_descriptor hs_mctp_source_desc = {
 	.bLength =		USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType =	USB_DT_ENDPOINT,
-	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_XFER_SIZE),
+	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_1_0_XFER_SIZE),
 
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
@@ -140,7 +140,7 @@ static struct usb_endpoint_descriptor hs_mctp_source_desc = {
 static struct usb_endpoint_descriptor hs_mctp_sink_desc = {
 	.bLength =		USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType =	USB_DT_ENDPOINT,
-	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_XFER_SIZE),
+	.wMaxPacketSize =	cpu_to_le16(MCTP_USB_1_0_XFER_SIZE),
 
 	.bEndpointAddress =	USB_DIR_OUT,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
@@ -191,14 +191,14 @@ static int mctp_usbg_bind(struct usb_configuration *c, struct usb_function *f)
 		ERROR(cdev, "%s in_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
-	hs_mctp_source_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_XFER_SIZE);
+	hs_mctp_source_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_1_0_XFER_SIZE);
 
 	mctp->out_ep = usb_ep_autoconfig(cdev->gadget, &hs_mctp_sink_desc);
 	if (!mctp->out_ep) {
 		ERROR(cdev, "%s out_ep autoconfig failed\n", f->name);
 		return -ENODEV;
 	}
-	hs_mctp_sink_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_XFER_SIZE);
+	hs_mctp_sink_desc.wMaxPacketSize = cpu_to_le16(MCTP_USB_1_0_XFER_SIZE);
 
 	rc = usb_assign_descriptors(f, NULL, hs_mctp_descs, NULL, NULL);
 	if (rc) {
@@ -232,7 +232,7 @@ static void mctp_usbg_prealloc(struct f_mctp *mctp)
 		req = list_first_entry(&reqs, struct usb_request, list);
 		list_del(&req->list);
 
-		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_XFER_SIZE,
+		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_1_0_XFER_SIZE,
 					 GFP_KERNEL);
 		if (!skb) {
 			MCTP_STAT_INC(mctp, MCTP_EID_UNKNOWN,
@@ -254,7 +254,7 @@ static void mctp_usbg_prealloc(struct f_mctp *mctp)
 	__skb_queue_head_init(&skbs);
 
 	for (; n_skb < MCTP_USB_PREALLOC; n_skb++) {
-		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_XFER_SIZE,
+		skb = __netdev_alloc_skb(mctp->dev, MCTP_USB_1_0_XFER_SIZE,
 					 GFP_KERNEL);
 		if (!skb)
 			break;
@@ -567,7 +567,7 @@ static int mctp_usbg_enable(struct usb_composite_dev *cdev, struct f_mctp *mctp)
 	}
 
 	/* todo: just one out queued req for now */
-	out_req = alloc_ep_req(mctp->out_ep, MCTP_USB_XFER_SIZE);
+	out_req = alloc_ep_req(mctp->out_ep, MCTP_USB_1_0_XFER_SIZE);
 	if (!out_req) {
 		ERROR(cdev, "%s: out req alloc failed\n", __func__);
 		goto err_disable_in;
@@ -578,7 +578,7 @@ static int mctp_usbg_enable(struct usb_composite_dev *cdev, struct f_mctp *mctp)
 	spin_unlock_irqrestore(&mctp->lock, flags);
 
 	if (!skb)
-		skb = netdev_alloc_skb(mctp->dev, MCTP_USB_XFER_SIZE);
+		skb = netdev_alloc_skb(mctp->dev, MCTP_USB_1_0_XFER_SIZE);
 
 	if (!skb)
 		goto err_free_req;
@@ -635,7 +635,7 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	unsigned int plen;
 	int rc;
 
-	if (skb->len + sizeof(*hdr) > MCTP_USB_XFER_SIZE) {
+	if (skb->len + sizeof(*hdr) > MCTP_USB_1_0_XFER_SIZE) {
 		/* Extract EID for tracking before dropping */
 		struct mctp_hdr *mh = mctp_hdr(skb);
 
@@ -982,7 +982,7 @@ static void mctp_usbg_netdev_setup(struct net_device *dev)
 	dev->mtu = MCTP_USB_MTU_MIN;
 	dev->ethtool_ops = &mctp_usbg_ethtool_ops;
 	dev->min_mtu = MCTP_USB_MTU_MIN;
-	dev->max_mtu = MCTP_USB_MTU_MAX;
+	dev->max_mtu = MCTP_USB_1_0_MTU_MAX;
 
 	dev->hard_header_len = 0;
 	dev->addr_len = 0;
