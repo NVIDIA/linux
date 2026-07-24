@@ -26,8 +26,6 @@
 
 #include <trace/events/mctp.h>
 
-static const unsigned int n_tx_queue = 8;
-
 /* TX watchdog timeout - abort stuck URBs after this time
  */
 #define MCTP_USB_TX_TIMEOUT (6 * HZ)
@@ -273,11 +271,24 @@ enum {
 	MCTP_USB_SUBCLASS_SPAN = 0x02,
 };
 
+/* We use a total-size limit for outstanding URBs, as the transfer counts
+ * may vary a lot between spanning- and non-spanning modes. In spanning mode,
+ * this will allow for a couple of max-sized transfers to be in flight. In
+ * non-spanning mode, 32.
+ *
+ * We want to avoid disabling the tx queue if possible; doing so will end up
+ * requeueing to gso_skb, and we only dequeue from that one skb at a time,
+ * so can no longer perform transfer packing.
+ */
+static const unsigned int TX_QMEM_MAX = 16384;
+
 static void mctp_usb_out_complete(struct urb *urb)
 {
 	struct mctp_usblib_tx_ctx *tx_ctx = urb->context;
 	struct mctp_usb *mctp_usb = mctp_usblib_tx_ctx_priv(tx_ctx);
+	unsigned int len = urb->transfer_buffer_length;
 	struct net_device *netdev = mctp_usb->netdev;
+	unsigned long flags;
 	int status;
 
 	/* ERROR INJECTION POINT: TX URB completion (asynchronous error)
@@ -298,8 +309,11 @@ static void mctp_usb_out_complete(struct urb *urb)
 
 	usb_free_urb(urb);
 
-	if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
+	spin_lock_irqsave(&mctp_usb->tx_qmem_lock, flags);
+	mctp_usb->tx_qmem -= len;
+	if (mctp_usb->tx_qmem < TX_QMEM_MAX && netif_running(netdev))
 		netif_wake_queue(netdev);
+	spin_unlock_irqrestore(&mctp_usb->tx_qmem_lock, flags);
 }
 
 static int mctp_usb_tx_send(struct mctp_usblib_tx_ctx *tx_ctx,
@@ -309,6 +323,7 @@ static int mctp_usb_tx_send(struct mctp_usblib_tx_ctx *tx_ctx,
 	unsigned int npkts = mctp_usblib_tx_ctx_npkts(tx_ctx);
 	struct net_device *netdev = mctp_usb->netdev;
 	u16 eid = MCTP_EID_UNKNOWN;
+	unsigned long flags;
 	struct urb *urb;
 	int rc;
 
@@ -332,8 +347,6 @@ static int mctp_usb_tx_send(struct mctp_usblib_tx_ctx *tx_ctx,
 		urb->transfer_flags |= URB_ZERO_PACKET;
 
 	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
-	if (atomic_inc_return(&mctp_usb->tx_qlen) >= n_tx_queue)
-		netif_stop_queue(netdev);
 
 	rc = usb_submit_urb(urb, GFP_ATOMIC);
 	if (rc) {
@@ -341,10 +354,14 @@ static int mctp_usb_tx_send(struct mctp_usblib_tx_ctx *tx_ctx,
 		trace_mctp_transport_error("usb", netdev, "tx_urb_submit_failed", rc);
 		usb_unanchor_urb(urb);
 		usb_free_urb(urb);
-		if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
-			netif_wake_queue(netdev);
 		goto err;
 	}
+
+	spin_lock_irqsave(&mctp_usb->tx_qmem_lock, flags);
+	mctp_usb->tx_qmem += len;
+	if (mctp_usb->tx_qmem >= TX_QMEM_MAX)
+		netif_stop_queue(netdev);
+	spin_unlock_irqrestore(&mctp_usb->tx_qmem_lock, flags);
 
 	return 0;
 
@@ -402,11 +419,6 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 		MCTP_STAT_INC(mctp_usb, mh->dest, tx_drop_emsgsize);
 		trace_mctp_transport_error("usb", dev, "tx_len_exceeds_max", pkt_len);
 		goto err_drop;
-	}
-
-	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
-		netif_stop_queue(dev);
-		return NETDEV_TX_BUSY;
 	}
 
 	more = READ_ONCE(mctp_usb->tx_batching_enabled) && netdev_xmit_more();
@@ -911,6 +923,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	spin_lock_init(&dev->rx_lock);
 	if (dev->span)
 		netdev->max_mtu = MCTP_USB_1_1_MTU_MAX;
+	spin_lock_init(&dev->tx_qmem_lock);
 	usb_set_intfdata(intf, dev);
 
 	rc = mctp_usblib_rx_init(&dev->rx, le16_to_cpu(ep_in->wMaxPacketSize),
