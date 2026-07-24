@@ -29,27 +29,31 @@ static struct dentry *mctp_usb_debugfs_root;
 
 /* ===== Error injection hooks (USB-specific) ===== */
 
-/* TX synchronous error injection (before URB submission) */
-int mctp_usb_error_inject_tx_sync(struct mctp_usb *mctp_usb, struct sk_buff *skb)
+/* TX synchronous error injection (before URB submission)
+ * @mctp_usb: MCTP USB device
+ * @data: Transfer buffer, starting with the USB header of the first packet
+ * @len: Transfer length
+ */
+int mctp_usb_error_inject_tx_sync(struct mctp_usb *mctp_usb, const void *data,
+				  size_t len)
 {
 	struct mctp_error_inject *ei = &mctp_usb->error_inject;
 	struct mctp_ei_common *c = &ei->common;
-	struct mctp_hdr *mh;
+	const struct mctp_hdr *mh;
 
 	/* Early exit if TX error injection is disabled or sync code not set - zero overhead */
 	if (!c->enable_tx || ei->urb_tx_sync_error_code == 0)
 		return 0;
 
 	/*
-	 * Access MCTP header manually - SKB has USB header prepended at this point.
-	 * Cannot use mctp_hdr(skb) as it has a WARN_ON check that expects the MCTP
-	 * header at skb->data, but we have: [USB HDR][MCTP HDR][PAYLOAD]
+	 * Access MCTP header manually - the transfer buffer has the USB header
+	 * at this point: [USB HDR][MCTP HDR][PAYLOAD]
 	 */
 	if (c->eid_filter.enabled &&
-	    skb->len < sizeof(struct mctp_usb_hdr) + sizeof(struct mctp_hdr))
+	    len < sizeof(struct mctp_usb_hdr) + sizeof(struct mctp_hdr))
 		return 0;
 
-	mh = (struct mctp_hdr *)(skb->data + sizeof(struct mctp_usb_hdr));
+	mh = data + sizeof(struct mctp_usb_hdr);
 
 	if (!mctp_ei_match_filter(c, mh))
 		return 0;
