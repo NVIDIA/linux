@@ -903,7 +903,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	if (rc)
 		goto err_free_netdev;
 	dev->rx.ops = &mctp_usb_rx_ops;
-	mctp_usblib_tx_init(&dev->tx, &tx_ops, dev);
+	mctp_usblib_tx_init(&dev->tx, &tx_ops, dev, false);
 
 	dev->ep_in = ep_in->bEndpointAddress;
 	dev->ep_out = ep_out->bEndpointAddress;
