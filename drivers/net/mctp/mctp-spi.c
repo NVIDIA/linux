@@ -463,9 +463,9 @@ static bool is_gpio_interrupt(struct mctp_spi *midev)
 static bool is_skb_queue_empty(struct mctp_spi *midev)
 {
     bool tmp;
-	spin_lock(&midev->tx_queue.lock);
+	spin_lock_bh(&midev->tx_queue.lock);
     tmp = skb_queue_empty(&midev->tx_queue);
-	spin_unlock(&midev->tx_queue.lock);
+	spin_unlock_bh(&midev->tx_queue.lock);
     return tmp;
 }
 
@@ -580,11 +580,11 @@ static int mctp_spi_tx_thread(void *data)
 				!is_skb_queue_empty(midev) ||
 				kthread_should_stop() || is_gpio_interrupt(midev));
 		// Pop skb if any
-		spin_lock(&midev->tx_queue.lock);
+		spin_lock_bh(&midev->tx_queue.lock);
 		skb = __skb_dequeue(&midev->tx_queue);
 		if (netif_queue_stopped(midev->ndev))
 			netif_wake_queue(midev->ndev);
-		spin_unlock(&midev->tx_queue.lock);
+		spin_unlock_bh(&midev->tx_queue.lock);
 		// Check if this is GPIO interrupt wake
 		spin_lock_irqsave(&midev->gpio_intr_cond_lock, flags);
 		gpio_wake = midev->gpio_intr_cond;
