@@ -528,7 +528,7 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 	plen = skb->len;
 	pkt_len = plen + sizeof(*hdr);
 
-	if (pkt_len > MCTP_USB_1_0_XFER_SIZE) {
+	if (pkt_len > MCTP_USB_1_0_PKTLEN_MAX) {
 		/* Extract EID for tracking before dropping */
 		struct mctp_hdr *mh = mctp_hdr(skb);
 
