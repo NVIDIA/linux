@@ -315,7 +315,7 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	struct mctp_usb_hdr *hdr;
 	struct mctp_skb_cb *cb;
 	unsigned int len;
-	u16 id;
+	u16 id, pkt_len;
 
 	len = req->actual;
 	__skb_put(skb, len);
@@ -345,9 +345,10 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 		goto err;
 	}
 
-	if (hdr->len < sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
+	pkt_len = be16_to_cpu(hdr->len) & MCTP_USB_1_0_PKTLEN_MAX;
+	if (pkt_len < sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
 		dev_dbg(dev, "%s: short packet (hdr) %d\n",
-			__func__, hdr->len);
+			__func__, pkt_len);
 		netdev->stats.rx_errors++;
 		netdev->stats.rx_dropped++;
 		/* USB hdr was pulled; try to extract EID from MCTP data */
@@ -363,9 +364,9 @@ static void mctp_usbg_handle_rx_urb(struct f_mctp *mctp,
 	}
 
 	/* todo: multi-packet transfers */
-	if (hdr->len - sizeof(struct mctp_usb_hdr) < skb->len) {
+	if (pkt_len - sizeof(struct mctp_usb_hdr) < skb->len) {
 		dev_dbg(dev, "%s: short packet (xfer) %d, actual %d\n",
-			__func__, hdr->len, skb->len);
+			__func__, pkt_len, skb->len);
 		netdev->stats.rx_errors++;
 		netdev->stats.rx_dropped++;
 		/* USB hdr was pulled, MCTP hdr should be accessible */
@@ -664,8 +665,7 @@ static netdev_tx_t mctp_usbg_start_xmit(struct sk_buff *skb,
 	plen = skb->len;
 	hdr = skb_push(skb, sizeof(*hdr));
 	hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
-	hdr->rsvd = 0;
-	hdr->len = plen + sizeof(*hdr);
+	hdr->len = cpu_to_be16(plen + sizeof(*hdr));
 
 	/* todo: just one skb per transfer.. */
 	req->context = skb;

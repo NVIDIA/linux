@@ -236,7 +236,8 @@ static void mctp_usb_report_tx_error(struct net_device *netdev,
 	if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID)
 		return;
 
-	pkt_total_len = hdr->len;
+	/* we built this header, so the reserved bits are clear */
+	pkt_total_len = be16_to_cpu(hdr->len);
 	if (pkt_total_len > skb->len ||
 	    pkt_total_len <= sizeof(struct mctp_usb_hdr))
 		return;
@@ -631,7 +632,8 @@ static void mctp_usb_rx_error(struct net_device *netdev,
 	case MCTP_USBLIB_RX_ERR_HDR_LEN:
 		netdev->stats.rx_dropped++;
 		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
-		trace_mctp_transport_error("usb", netdev, "rx_short_packet_hdr", hdr->len);
+		trace_mctp_transport_error("usb", netdev, "rx_short_packet_hdr",
+					   be16_to_cpu(hdr->len));
 		break;
 	case MCTP_USBLIB_RX_ERR_XFER_LEN:
 		netdev->stats.rx_dropped++;
