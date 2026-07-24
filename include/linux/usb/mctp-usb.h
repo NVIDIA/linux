@@ -13,6 +13,8 @@
 #ifndef __LINUX_USB_MCTP_USB_H
 #define __LINUX_USB_MCTP_USB_H
 
+#include <linux/netdevice.h>
+#include <linux/skbuff.h>
 #include <linux/types.h>
 
 struct mctp_usb_hdr {
@@ -28,5 +30,62 @@ struct mctp_usb_hdr {
 #define MCTP_USB_1_0_PKTLEN_MAX	U8_MAX
 #define MCTP_USB_1_0_MTU_MAX	(MCTP_USB_1_0_PKTLEN_MAX - sizeof(struct mctp_usb_hdr))
 #define MCTP_USB_DMTF_ID	0x1ab4
+
+/* mctp-usblib */
+
+/* Reasons for received data being discarded, reported via ops->rx_error */
+enum mctp_usblib_rx_err {
+	/* transport header has an unexpected DMTF ID */
+	MCTP_USBLIB_RX_ERR_ID,
+	/* transport header length is too small for a MCTP packet */
+	MCTP_USBLIB_RX_ERR_HDR_LEN,
+	/* transfer is too short for the header-specified length */
+	MCTP_USBLIB_RX_ERR_XFER_LEN,
+	/* no memory to split a packet from a multi-packet transfer */
+	MCTP_USBLIB_RX_ERR_NOMEM,
+};
+
+/*
+ * Optional RX hooks, for transport drivers that need per-packet visibility.
+ * Both are called from the (atomic) mctp_usblib_rx_complete() context.
+ */
+struct mctp_usblib_rx_ops {
+	/* Called for each complete packet, with @skb->data at the MCTP
+	 * header, before the packet is passed to netif_rx(). A non-zero
+	 * return drops the packet; usblib then frees @skb.
+	 */
+	int (*rx_packet)(struct net_device *netdev, struct sk_buff *skb);
+	/* Called when received data is discarded. @data points to the
+	 * transport header of the affected packet, with @len bytes available
+	 * from there.
+	 */
+	void (*rx_error)(struct net_device *netdev,
+			 enum mctp_usblib_rx_err err,
+			 const void *data, size_t len);
+};
+
+/*
+ * RX handle: drivers will typically create one on init, which persists for
+ * the life of the driver. The same handle is used for progressive
+ * prepare -> complete operations (for each incoming USB transfer), which
+ * result in netif_rx()-ing the MCTP packets received
+ */
+struct mctp_usblib_rx {
+	struct sk_buff *skb;
+	/* optional; set by the driver after mctp_usblib_rx_init() */
+	const struct mctp_usblib_rx_ops *ops;
+};
+
+void mctp_usblib_rx_init(struct mctp_usblib_rx *rx);
+void mctp_usblib_rx_fini(struct mctp_usblib_rx *rx);
+
+int mctp_usblib_rx_prepare(struct net_device *netdev,
+			   struct mctp_usblib_rx *rx,
+			   void **bufp, size_t *lenp, gfp_t gfp);
+
+int mctp_usblib_rx_complete(struct net_device *netdev,
+			    struct mctp_usblib_rx *rx, size_t len);
+
+void mctp_usblib_rx_cancel(struct mctp_usblib_rx *rx);
 
 #endif /*  __LINUX_USB_MCTP_USB_H */

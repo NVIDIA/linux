@@ -8,6 +8,7 @@
 #define __MCTP_USB_INTERNAL_H
 
 #include <linux/usb.h>
+#include <linux/usb/mctp-usb.h>
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/debugfs.h>
@@ -24,9 +25,11 @@ struct mctp_usb {
 	u8 ep_in;
 	u8 ep_out;
 
-	struct usb_anchor rx_anchor;
+	struct mctp_usblib_rx rx;
+	struct urb *rx_urb;
+
 	struct usb_anchor tx_anchor;
-	atomic_t rx_qlen, tx_qlen;
+	atomic_t tx_qlen;
 
 	/* enforces atomic access to rx_stopped and requeuing the retry work */
 	spinlock_t rx_lock;

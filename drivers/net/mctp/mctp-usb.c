@@ -26,7 +26,6 @@
 
 #include <trace/events/mctp.h>
 
-static const unsigned int n_rx_queue = 8;
 static const unsigned int n_tx_queue = 8;
 
 struct mctp_usb_batch_ctx {
@@ -569,52 +568,56 @@ err_drop:
 
 static void mctp_usb_in_complete(struct urb *urb);
 
+/* If we fail to queue an in urb atomically (either due to skb allocation or
+ * urb submission), we will schedule a rx queue in nonatomic context
+ * after a delay, specified in jiffies
+ */
 static const unsigned long RX_RETRY_DELAY = HZ / 4;
 
-static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, struct urb *urb,
-			     gfp_t gfp)
+static int mctp_usb_rx_queue(struct mctp_usb *mctp_usb, gfp_t gfp)
 {
-	struct sk_buff *skb;
+	unsigned long flags;
+	size_t len;
+	void *buf;
 	int rc;
 
-	if (READ_ONCE(mctp_usb->rx_stopped))
-		return 0;
-
-	skb = __netdev_alloc_skb(mctp_usb->netdev,
-				 MCTP_USB_1_0_XFER_SIZE, gfp);
-	if (!skb) {
-		trace_mctp_transport_error("usb", mctp_usb->netdev, "rx_alloc_skb_failed", 0);
-		return -ENOMEM;
-	}
-
-	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
-			  usb_rcvbulkpipe(mctp_usb->usbdev, mctp_usb->ep_in),
-			  skb->data, MCTP_USB_1_0_XFER_SIZE,
-			  mctp_usb_in_complete, skb);
-
-	rc = usb_submit_urb(urb, gfp);
+	rc = mctp_usblib_rx_prepare(mctp_usb->netdev, &mctp_usb->rx,
+				    &buf, &len, gfp);
 	if (rc) {
-		trace_mctp_transport_error("usb", mctp_usb->netdev, "rx_urb_submit_failed", rc);
-		kfree_skb(skb);
-		return rc;
+		trace_mctp_transport_error("usb", mctp_usb->netdev, "rx_alloc_skb_failed", 0);
+		goto err_retry;
 	}
 
-	atomic_inc(&mctp_usb->rx_qlen);
+	usb_fill_bulk_urb(mctp_usb->rx_urb, mctp_usb->usbdev,
+			  usb_rcvbulkpipe(mctp_usb->usbdev, mctp_usb->ep_in),
+			  buf, len, mctp_usb_in_complete, mctp_usb);
+
+	rc = usb_submit_urb(mctp_usb->rx_urb, gfp);
+	if (rc) {
+		netdev_dbg(mctp_usb->netdev, "rx urb submit failure: %d\n", rc);
+		trace_mctp_transport_error("usb", mctp_usb->netdev, "rx_urb_submit_failed", rc);
+		mctp_usblib_rx_cancel(&mctp_usb->rx);
+		if (rc == -ENOMEM)
+			goto err_retry;
+	}
+
+	return rc;
+
+err_retry:
+	spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+	if (!mctp_usb->rx_stopped)
+		schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
+	spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
 	return 0;
 }
 
 static void mctp_usb_in_complete(struct urb *urb)
 {
-	struct sk_buff *skb = urb->context;
-	struct net_device *netdev = skb->dev;
-	struct mctp_usb *mctp_usb = netdev_priv(netdev);
-	struct mctp_skb_cb *cb;
-	unsigned int len;
-	int status, rc;
-	unsigned long flags;
+	struct mctp_usb *mctp_usb = urb->context;
+	struct net_device *netdev = mctp_usb->netdev;
+	int status;
 
 	status = urb->status;
-	atomic_dec(&mctp_usb->rx_qlen);
 
 	/* ERROR INJECTION POINT: RX URB completion error */
 	status = mctp_usb_error_inject_rx(mctp_usb, status);
@@ -632,14 +635,14 @@ static void mctp_usb_in_complete(struct urb *urb)
 			netdev_dbg(netdev,
 				   "RX packet DROPPED (error %d) - expected shutdown/reset\n",
 				   status);
-		usb_unanchor_urb(urb);
-		usb_free_urb(urb);
 		netdev->stats.rx_dropped++;
 		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
 		trace_mctp_transport_error("usb", netdev, "rx_urb_error_shutdown", status);
-		kfree_skb(skb);
+		mctp_usblib_rx_cancel(&mctp_usb->rx);
 		return;
 	case 0:
+		mctp_usblib_rx_complete(netdev, &mctp_usb->rx,
+					urb->actual_length);
 		break;
 	default:
 		if (mctp_usb->error_inject.common.enable_rx)
@@ -649,183 +652,109 @@ static void mctp_usb_in_complete(struct urb *urb)
 		else
 			netdev_dbg(netdev, "unexpected rx urb status: %d\n",
 				   status);
-		usb_unanchor_urb(urb);
-		usb_free_urb(urb);
 		netdev->stats.rx_errors++;
 		netdev->stats.rx_dropped++;
 		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
 		trace_mctp_transport_error("usb", netdev, "rx_urb_error_unexpected", status);
-		kfree_skb(skb);
+		mctp_usblib_rx_cancel(&mctp_usb->rx);
 		return;
 	}
 
-	len = urb->actual_length;
-	__skb_put(skb, len);
-
-	while (skb) {
-		struct sk_buff *skb2 = NULL;
-		struct mctp_usb_hdr *hdr;
-		u8 pkt_len;
-
-		hdr = skb_pull_data(skb, sizeof(*hdr));
-		if (!hdr)
-			break;
-
-		if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID) {
-			netdev_dbg(netdev, "rx: invalid id %04x\n",
-				   be16_to_cpu(hdr->id));
-			netdev->stats.rx_errors++;
-			netdev->stats.rx_dropped++;
-			/* Try to extract EID for per-EID tracking (USB hdr was
-			 * pulled, MCTP hdr should be accessible)
-			 */
-			if (skb->len >= sizeof(struct mctp_hdr)) {
-				struct mctp_hdr *mh = (struct mctp_hdr *)skb->data;
-
-				MCTP_STAT_INC(mctp_usb, mh->src, rx_drop_parse_error);
-			} else {
-				MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_parse_error);
-			}
-			trace_mctp_transport_error("usb", netdev, "rx_invalid_id", be16_to_cpu(hdr->id));
-			break;
-		}
-
-		if (hdr->len <
-		    sizeof(struct mctp_hdr) + sizeof(struct mctp_usb_hdr)) {
-			netdev_dbg(netdev, "rx: short packet (hdr) %d\n",
-				   hdr->len);
-			netdev->stats.rx_dropped++;
-			MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
-			trace_mctp_transport_error("usb", netdev, "rx_short_packet_hdr", hdr->len);
-			break;
-		}
-
-		pkt_len = hdr->len - sizeof(struct mctp_usb_hdr);
-		if (pkt_len > skb->len) {
-			netdev_dbg(netdev,
-				   "rx: short packet (xfer) %d, actual %d\n",
-				   hdr->len, skb->len);
-			netdev->stats.rx_dropped++;
-			MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
-			trace_mctp_transport_error("usb", netdev, "rx_short_packet_xfer", skb->len);
-			break;
-		}
-
-		if (pkt_len < skb->len) {
-			skb2 = skb_clone(skb, GFP_ATOMIC);
-			if (skb2) {
-				if (!skb_pull(skb2, pkt_len)) {
-					kfree_skb(skb2);
-					skb2 = NULL;
-				}
-			}
-			skb_trim(skb, pkt_len);
-		}
-
-		netdev->stats.rx_packets++;
-		netdev->stats.rx_bytes += skb->len;
-
-		skb->protocol = htons(ETH_P_MCTP);
-		skb_reset_network_header(skb);
-		cb = __mctp_cb(skb);
-		cb->halen = 0;
-
-		/* ERROR INJECTION POINT: Fragment drop/corruption
-		 * At this point:
-		 * - USB header has been removed
-		 * - skb->data points to MCTP header
-		 * - Before packet sent to network stack
-		 * This is the ideal location to inject fragment errors.
-		 */
-		if (mctp_usb->error_inject.common.enable_fragment_drop ||
-		    mctp_usb->error_inject.common.enable_seq_corrupt ||
-		    mctp_usb->error_inject.common.enable_som_clear ||
-		    mctp_usb->error_inject.common.enable_rx) {
-			int inject_action =
-				mctp_usb_error_inject_fragment(mctp_usb, skb);
-
-			if (inject_action == 1) {
-				struct mctp_hdr *mh = mctp_hdr(skb);
-				u8 src_eid = mh->src;
-
-				/* Drop this fragment */
-				netdev->stats.rx_dropped++;
-				MCTP_STAT_INC(mctp_usb, src_eid, rx_drop_fragment_error);
-				trace_mctp_transport_error("usb", netdev, "rx_drop_fragment_error", 0);
-				kfree_skb(skb);
-				skb = skb2;
-				continue;
-			}
-			/* inject_action == 0: pass through (normally or with
-			 * corruption)
-			 */
-		}
-
-		trace_mctp_transport_rx("usb", netdev, 0, skb->len);
-		netif_rx(skb);
-
-		skb = skb2;
-	}
-
-	if (skb)
-		kfree_skb(skb);
-
-	rc = mctp_usb_rx_queue(mctp_usb, urb, GFP_ATOMIC);
-	if (rc) {
-		usb_free_urb(urb);
-		spin_lock_irqsave(&mctp_usb->rx_lock, flags);
-		if (!mctp_usb->rx_stopped)
-			schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
-		spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
-	}
+	mctp_usb_rx_queue(mctp_usb, GFP_ATOMIC);
 }
 
-static int mctp_usb_rx_queue_fill(struct mctp_usb *mctp_usb)
+/* usblib RX hook: called for each received packet before netif_rx() */
+static int mctp_usb_rx_packet(struct net_device *netdev, struct sk_buff *skb)
 {
-	int i, qlen, rc = 0;
+	struct mctp_usb *mctp_usb = netdev_priv(netdev);
 
-	qlen = atomic_read(&mctp_usb->rx_qlen);
-	if (qlen < 0 || qlen >= n_rx_queue)
-		return 0;
+	/* ERROR INJECTION POINT: Fragment drop/corruption
+	 * At this point:
+	 * - USB header has been removed
+	 * - skb->data points to MCTP header
+	 * - Before packet sent to network stack
+	 * This is the ideal location to inject fragment errors.
+	 */
+	if (mctp_usb->error_inject.common.enable_fragment_drop ||
+	    mctp_usb->error_inject.common.enable_seq_corrupt ||
+	    mctp_usb->error_inject.common.enable_som_clear ||
+	    mctp_usb->error_inject.common.enable_rx) {
+		int inject_action =
+			mctp_usb_error_inject_fragment(mctp_usb, skb);
 
-	for (i = 0; i < n_rx_queue - qlen; i++) {
-		struct urb *urb = usb_alloc_urb(0, GFP_KERNEL);
+		if (inject_action == 1) {
+			struct mctp_hdr *mh = mctp_hdr(skb);
+			u8 src_eid = mh->src;
 
-		if (!urb) {
-			rc = -ENOMEM;
-			break;
+			/* Drop this fragment; usblib frees the skb */
+			netdev->stats.rx_dropped++;
+			MCTP_STAT_INC(mctp_usb, src_eid, rx_drop_fragment_error);
+			trace_mctp_transport_error("usb", netdev, "rx_drop_fragment_error", 0);
+			return 1;
 		}
-
-		usb_anchor_urb(urb, &mctp_usb->rx_anchor);
-
-		rc = mctp_usb_rx_queue(mctp_usb, urb, GFP_KERNEL);
-		if (rc) {
-			usb_unanchor_urb(urb);
-			usb_free_urb(urb);
-			break;
-		}
+		/* inject_action == 0: pass through (normally or with
+		 * corruption)
+		 */
 	}
 
-	return rc;
+	trace_mctp_transport_rx("usb", netdev, 0, skb->len);
+	return 0;
 }
+
+/* usblib RX hook: called when received data is discarded */
+static void mctp_usb_rx_error(struct net_device *netdev,
+			      enum mctp_usblib_rx_err err,
+			      const void *data, size_t len)
+{
+	struct mctp_usb *mctp_usb = netdev_priv(netdev);
+	const struct mctp_usb_hdr *hdr = data;
+
+	switch (err) {
+	case MCTP_USBLIB_RX_ERR_ID:
+		netdev->stats.rx_errors++;
+		netdev->stats.rx_dropped++;
+		/* Try to extract EID for per-EID tracking (MCTP hdr should
+		 * follow the USB hdr)
+		 */
+		if (len >= sizeof(*hdr) + sizeof(struct mctp_hdr)) {
+			const struct mctp_hdr *mh = (const void *)(hdr + 1);
+
+			MCTP_STAT_INC(mctp_usb, mh->src, rx_drop_parse_error);
+		} else {
+			MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_parse_error);
+		}
+		trace_mctp_transport_error("usb", netdev, "rx_invalid_id", be16_to_cpu(hdr->id));
+		break;
+	case MCTP_USBLIB_RX_ERR_HDR_LEN:
+		netdev->stats.rx_dropped++;
+		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
+		trace_mctp_transport_error("usb", netdev, "rx_short_packet_hdr", hdr->len);
+		break;
+	case MCTP_USBLIB_RX_ERR_XFER_LEN:
+		netdev->stats.rx_dropped++;
+		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_invalid_len);
+		trace_mctp_transport_error("usb", netdev, "rx_short_packet_xfer",
+					   len - sizeof(*hdr));
+		break;
+	case MCTP_USBLIB_RX_ERR_NOMEM:
+		/* usblib accounts the netdev rx drop */
+		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_no_memory);
+		trace_mctp_transport_error("usb", netdev, "rx_split_nomem", 0);
+		break;
+	}
+}
+
+static const struct mctp_usblib_rx_ops mctp_usb_rx_ops = {
+	.rx_packet = mctp_usb_rx_packet,
+	.rx_error = mctp_usb_rx_error,
+};
 
 static void mctp_usb_rx_retry_work(struct work_struct *work)
 {
 	struct mctp_usb *mctp_usb = container_of(work, struct mctp_usb,
 						 rx_retry_work.work);
-	unsigned long flags;
-	int rc;
 
-	if (READ_ONCE(mctp_usb->rx_stopped))
-		return;
-
-	rc = mctp_usb_rx_queue_fill(mctp_usb);
-	if (rc) {
-		spin_lock_irqsave(&mctp_usb->rx_lock, flags);
-		if (!mctp_usb->rx_stopped)
-			schedule_delayed_work(&mctp_usb->rx_retry_work, RX_RETRY_DELAY);
-		spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
-	}
+	mctp_usb_rx_queue(mctp_usb, GFP_KERNEL);
 }
 
 static int mctp_usb_open(struct net_device *dev)
@@ -836,7 +765,7 @@ static int mctp_usb_open(struct net_device *dev)
 
 	netif_start_queue(dev);
 
-	return mctp_usb_rx_queue_fill(mctp_usb);
+	return mctp_usb_rx_queue(mctp_usb, GFP_KERNEL);
 }
 
 static int mctp_usb_stop(struct net_device *dev)
@@ -854,8 +783,10 @@ static int mctp_usb_stop(struct net_device *dev)
 
 	flush_delayed_work(&mctp_usb->rx_retry_work);
 
-	usb_kill_anchored_urbs(&mctp_usb->rx_anchor);
+	usb_kill_urb(mctp_usb->rx_urb);
 	usb_kill_anchored_urbs(&mctp_usb->tx_anchor);
+
+	mctp_usblib_rx_cancel(&mctp_usb->rx);
 
 	return 0;
 }
@@ -1008,6 +939,7 @@ static void mctp_usb_netdev_setup(struct net_device *dev)
 	dev->flags = IFF_NOARP;
 	dev->netdev_ops = &mctp_usb_netdev_ops;
 	dev->watchdog_timeo = MCTP_USB_TX_TIMEOUT;
+	dev->pcpu_stat_type = NETDEV_PCPU_STAT_DSTATS;
 }
 
 static int mctp_usb_probe(struct usb_interface *intf,
@@ -1019,6 +951,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	struct mctp_usb *dev;
 	int rc;
 
+	/* only one alternate */
 	iface_desc = intf->cur_altsetting;
 
 	rc = usb_find_common_endpoints(iface_desc, &ep_in, &ep_out, NULL, NULL);
@@ -1040,11 +973,19 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	spin_lock_init(&dev->rx_lock);
 	usb_set_intfdata(intf, dev);
 
+	mctp_usblib_rx_init(&dev->rx);
+	dev->rx.ops = &mctp_usb_rx_ops;
+
 	dev->ep_in = ep_in->bEndpointAddress;
 	dev->ep_out = ep_out->bEndpointAddress;
 
-	init_usb_anchor(&dev->rx_anchor);
 	init_usb_anchor(&dev->tx_anchor);
+
+	dev->rx_urb = usb_alloc_urb(0, GFP_KERNEL);
+	if (!dev->rx_urb) {
+		rc = -ENOMEM;
+		goto err_fini_rx;
+	}
 
 	INIT_DELAYED_WORK(&dev->rx_retry_work, mctp_usb_rx_retry_work);
 
@@ -1053,7 +994,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	rc = mctp_register_netdev(netdev, &mctp_usb_mctp_ops,
 				  MCTP_PHYS_BINDING_USB);
 	if (rc)
-		goto err_free_netdev;
+		goto err_free_urb;
 
 	{
 		struct mctp_dev *mdev;
@@ -1084,7 +1025,10 @@ static int mctp_usb_probe(struct usb_interface *intf,
 
 err_unregister_netdev:
 	mctp_unregister_netdev(netdev);
-err_free_netdev:
+err_free_urb:
+	usb_free_urb(dev->rx_urb);
+err_fini_rx:
+	mctp_usblib_rx_fini(&dev->rx);
 	free_netdev(netdev);
 	return rc;
 }
@@ -1099,6 +1043,8 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 	mctp_usb_error_inject_cleanup(dev);
 
 	mctp_unregister_netdev(dev->netdev);
+	mctp_usblib_rx_fini(&dev->rx);
+	usb_free_urb(dev->rx_urb);
 	free_netdev(dev->netdev);
 }
 
