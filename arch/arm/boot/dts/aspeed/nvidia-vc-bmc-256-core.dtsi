@@ -258,7 +258,7 @@
             "B0_M0_CPU_DIE_SEL0-O",
             "B0_M0_CPU_DIE_SEL1-O",
             "B0_M0_CPU_DIE_SEL2-O",
-            "B0_M0_CPU_BOOT_COMPLETE-O",
+            "B0_M0_CPLD_AUTH_FAIL_L_1V8-I",
             "B0_M0_IOX_JTAG_NVSEL-O";
     };
 };
@@ -285,12 +285,12 @@
             "",
             "STBY_ETH_PG-I",
             "BMC_SELF_PWR_CYCLE-O",
-            "",
+            "EEDO_1_LED2-O",
             "",
             "",
             "P1V8_PG-I",
             "P1V05_PG-I",
-            "MODULE_PWR_GOOD-I",
+            "",
             "USB2_HUB_RST_L-O",
             "",
             "";
