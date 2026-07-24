@@ -27,6 +27,9 @@ struct mctp_usb {
 
 	struct mctp_usblib_rx rx;
 	struct urb *rx_urb;
+	int in_err_count;
+	int in_err_orig;
+	bool clear_halt;
 
 	struct usb_anchor tx_anchor;
 	atomic_t tx_qlen;

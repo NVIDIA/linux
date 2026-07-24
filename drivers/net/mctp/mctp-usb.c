@@ -611,11 +611,59 @@ err_retry:
 	return 0;
 }
 
+static const unsigned int rx_err_max = 10;
+
+/* Returns -1 if we have hit excessive errors, zero otherwise. */
+static int mctp_usb_in_urb_err(struct mctp_usb *mctp_usb, int status,
+			       bool stalled)
+{
+	mctp_usblib_rx_cancel(&mctp_usb->rx);
+
+	if (!mctp_usb->in_err_count++)
+		mctp_usb->in_err_orig = status;
+
+	if (mctp_usb->in_err_count >= rx_err_max) {
+		netdev_err(mctp_usb->netdev,
+			   "excessive errors from%s IN EP, first: %d\n",
+			   stalled ? " (stalled)" : "",
+			   mctp_usb->in_err_orig);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* Account a failed IN urb; @shutdown for expected shutdown/reset statuses */
+static void mctp_usb_in_urb_err_stats(struct mctp_usb *mctp_usb, int status,
+				      bool shutdown)
+{
+	struct net_device *netdev = mctp_usb->netdev;
+
+	if (mctp_usb->error_inject.common.enable_rx)
+		netdev_info(netdev,
+			    "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
+			    status);
+	else if (shutdown)
+		netdev_dbg(netdev,
+			   "RX packet DROPPED (error %d) - expected shutdown/reset\n",
+			   status);
+
+	if (!shutdown)
+		netdev->stats.rx_errors++;
+	netdev->stats.rx_dropped++;
+	MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
+	trace_mctp_transport_error("usb", netdev,
+				   shutdown ? "rx_urb_error_shutdown" :
+					      "rx_urb_error_unexpected",
+				   status);
+}
+
 static void mctp_usb_in_complete(struct urb *urb)
 {
 	struct mctp_usb *mctp_usb = urb->context;
 	struct net_device *netdev = mctp_usb->netdev;
-	int status;
+	unsigned long flags;
+	int rc, status;
 
 	status = urb->status;
 
@@ -626,38 +674,44 @@ static void mctp_usb_in_complete(struct urb *urb)
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
-	case -EPROTO:
-		if (mctp_usb->error_inject.common.enable_rx)
-			netdev_info(netdev,
-				    "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
-				    status);
-		else
-			netdev_dbg(netdev,
-				   "RX packet DROPPED (error %d) - expected shutdown/reset\n",
-				   status);
-		netdev->stats.rx_dropped++;
-		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
-		trace_mctp_transport_error("usb", netdev, "rx_urb_error_shutdown", status);
+		/* device shutdown, don't resubmit */
+		mctp_usb_in_urb_err_stats(mctp_usb, status, true);
 		mctp_usblib_rx_cancel(&mctp_usb->rx);
 		return;
-	case 0:
-		mctp_usblib_rx_complete(netdev, &mctp_usb->rx,
-					urb->actual_length);
-		break;
+
+	case -EPIPE:
+		/* endpoint stall: clear halt, which will cause a resubmit */
+		mctp_usb_in_urb_err_stats(mctp_usb, status, false);
+		rc = mctp_usb_in_urb_err(mctp_usb, status, true);
+		if (rc)
+			return;
+
+		mctp_usb->clear_halt = true;
+		spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+		if (!mctp_usb->rx_stopped)
+			schedule_delayed_work(&mctp_usb->rx_retry_work,
+					      RX_RETRY_DELAY);
+		spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
+		return;
+
 	default:
-		if (mctp_usb->error_inject.common.enable_rx)
-			netdev_info(netdev,
-				    "RX packet DROPPED (error %d) - error injection is ACTIVE\n",
-				    status);
-		else
-			netdev_dbg(netdev, "unexpected rx urb status: %d\n",
-				   status);
-		netdev->stats.rx_errors++;
-		netdev->stats.rx_dropped++;
-		MCTP_STAT_INC(mctp_usb, MCTP_EID_UNKNOWN, rx_drop_urb_error);
-		trace_mctp_transport_error("usb", netdev, "rx_urb_error_unexpected", status);
-		mctp_usblib_rx_cancel(&mctp_usb->rx);
-		return;
+		netdev_dbg(netdev, "unexpected rx urb status: %d\n", status);
+		fallthrough;
+	case -ETIME:
+	case -EPROTO:
+	case -EILSEQ:
+	case -EOVERFLOW:
+		/* possibly transient; record first failure, resubmit */
+		mctp_usb_in_urb_err_stats(mctp_usb, status, false);
+		rc = mctp_usb_in_urb_err(mctp_usb, status, false);
+		if (rc)
+			return;
+		break;
+
+	case 0:
+		mctp_usblib_rx_complete(netdev, &mctp_usb->rx, urb->actual_length);
+		mctp_usb->in_err_count = 0;
+		break;
 	}
 
 	mctp_usb_rx_queue(mctp_usb, GFP_ATOMIC);
@@ -753,6 +807,30 @@ static void mctp_usb_rx_retry_work(struct work_struct *work)
 {
 	struct mctp_usb *mctp_usb = container_of(work, struct mctp_usb,
 						 rx_retry_work.work);
+	unsigned long flags;
+	int rc;
+
+	/* We are only called when rx completions are suspended */
+	if (mctp_usb->clear_halt) {
+		int pipe = usb_rcvbulkpipe(mctp_usb->usbdev, mctp_usb->ep_in);
+
+		rc = usb_clear_halt(mctp_usb->usbdev, pipe);
+		if (rc) {
+			netdev_err(mctp_usb->netdev,
+				   "can't clear IN EP halt: %d\n", rc);
+
+			if (++mctp_usb->in_err_count >= rx_err_max)
+				return;
+
+			spin_lock_irqsave(&mctp_usb->rx_lock, flags);
+			if (!mctp_usb->rx_stopped)
+				schedule_delayed_work(&mctp_usb->rx_retry_work,
+						      RX_RETRY_DELAY);
+			spin_unlock_irqrestore(&mctp_usb->rx_lock, flags);
+			return;
+		}
+		mctp_usb->clear_halt = false;
+	}
 
 	mctp_usb_rx_queue(mctp_usb, GFP_KERNEL);
 }
@@ -762,6 +840,8 @@ static int mctp_usb_open(struct net_device *dev)
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
 
 	WRITE_ONCE(mctp_usb->rx_stopped, false);
+	mctp_usb->clear_halt = false;
+	mctp_usb->in_err_count = 0;
 
 	netif_start_queue(dev);
 
