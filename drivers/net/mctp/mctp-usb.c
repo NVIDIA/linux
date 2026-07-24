@@ -3,9 +3,9 @@
  * mctp-usb.c - MCTP-over-USB (DMTF DSP0283) transport binding driver.
  *
  * DSP0283 is available at:
- * https://www.dmtf.org/sites/default/files/standards/documents/DSP0283_1.0.1.pdf
+ * https://www.dmtf.org/sites/default/files/standards/documents/DSP0283_1.1.0.pdf
  *
- * Copyright (C) 2024-2025 Code Construct Pty Ltd
+ * Copyright (C) 2024-2026 Code Construct Pty Ltd
  */
 
 #include <linux/module.h>
@@ -268,6 +268,11 @@ static void mctp_usb_report_tx_error(struct net_device *netdev,
 	kfree_skb(pkt_skb);
 }
 
+enum {
+	MCTP_USB_SUBCLASS_BASE = 0x00,
+	MCTP_USB_SUBCLASS_SPAN = 0x02,
+};
+
 static void mctp_usb_out_complete(struct urb *urb)
 {
 	struct mctp_usblib_tx_ctx *tx_ctx = urb->context;
@@ -322,6 +327,9 @@ static int mctp_usb_tx_send(struct mctp_usblib_tx_ctx *tx_ctx,
 	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
 			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
 			  data, len, mctp_usb_out_complete, tx_ctx);
+
+	if (mctp_usb->span)
+		urb->transfer_flags |= URB_ZERO_PACKET;
 
 	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
 	if (atomic_inc_return(&mctp_usb->tx_qlen) >= n_tx_queue)
@@ -386,7 +394,8 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 
 	pkt_len = skb->len + sizeof(struct mctp_usb_hdr);
 
-	if (pkt_len > MCTP_USB_1_0_PKTLEN_MAX) {
+	if (pkt_len > (mctp_usb->span ? MCTP_USB_1_1_PKTLEN_MAX :
+					MCTP_USB_1_0_PKTLEN_MAX)) {
 		/* Extract EID for tracking before dropping */
 		struct mctp_hdr *mh = mctp_hdr(skb);
 
@@ -874,6 +883,7 @@ static int mctp_usb_probe(struct usb_interface *intf,
 	struct usb_host_interface *iface_desc;
 	struct net_device *netdev;
 	struct mctp_usb *dev;
+	bool span;
 	int rc;
 
 	/* only one alternate */
@@ -885,6 +895,8 @@ static int mctp_usb_probe(struct usb_interface *intf,
 		return rc;
 	}
 
+	span = iface_desc->desc.bInterfaceSubClass == MCTP_USB_SUBCLASS_SPAN;
+
 	netdev = alloc_netdev(sizeof(*dev), "mctpusb%d", NET_NAME_ENUM,
 			      mctp_usb_netdev_setup);
 	if (!netdev)
@@ -892,18 +904,21 @@ static int mctp_usb_probe(struct usb_interface *intf,
 
 	SET_NETDEV_DEV(netdev, &intf->dev);
 	dev = netdev_priv(netdev);
+	dev->span = span;
 	dev->netdev = netdev;
 	dev->usbdev = interface_to_usbdev(intf);
 	dev->intf = intf;
 	spin_lock_init(&dev->rx_lock);
+	if (dev->span)
+		netdev->max_mtu = MCTP_USB_1_1_MTU_MAX;
 	usb_set_intfdata(intf, dev);
 
 	rc = mctp_usblib_rx_init(&dev->rx, le16_to_cpu(ep_in->wMaxPacketSize),
-				 false);
+				 dev->span);
 	if (rc)
 		goto err_free_netdev;
 	dev->rx.ops = &mctp_usb_rx_ops;
-	mctp_usblib_tx_init(&dev->tx, &tx_ops, dev, false);
+	mctp_usblib_tx_init(&dev->tx, &tx_ops, dev, dev->span);
 
 	dev->ep_in = ep_in->bEndpointAddress;
 	dev->ep_out = ep_out->bEndpointAddress;
@@ -966,8 +981,10 @@ static void mctp_usb_disconnect(struct usb_interface *intf)
 }
 
 static const struct usb_device_id mctp_usb_devices[] = {
-	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, 0x0, 0x1) },
-	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, 0x0, 0x2) },
+	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, MCTP_USB_SUBCLASS_BASE, 0x1) },
+	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, MCTP_USB_SUBCLASS_SPAN, 0x1) },
+	/* NVIDIA compatibility quirk; protocol 0x2 is not spanning mode. */
+	{ USB_INTERFACE_INFO(USB_CLASS_MCTP, MCTP_USB_SUBCLASS_BASE, 0x2) },
 	{ 0 },
 };
 
