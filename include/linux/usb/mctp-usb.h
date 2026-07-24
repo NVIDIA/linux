@@ -34,6 +34,8 @@ struct mctp_usb_hdr {
 #define MCTP_USB_MTU_MIN	MCTP_USB_BTU
 #define MCTP_USB_1_0_PKTLEN_MAX	U8_MAX
 #define MCTP_USB_1_0_MTU_MAX	(MCTP_USB_1_0_PKTLEN_MAX - sizeof(struct mctp_usb_hdr))
+#define MCTP_USB_1_1_PKTLEN_MAX	GENMASK(12, 0)
+#define MCTP_USB_1_1_MTU_MAX	(MCTP_USB_1_1_PKTLEN_MAX - sizeof(struct mctp_usb_hdr))
 #define MCTP_USB_DMTF_ID	0x1ab4
 
 /* mctp-usblib */
@@ -77,11 +79,13 @@ struct mctp_usblib_rx_ops {
  */
 struct mctp_usblib_rx {
 	struct sk_buff *skb;
+	u16 ep_pktlen;
+	bool span;
 	/* optional; set by the driver after mctp_usblib_rx_init() */
 	const struct mctp_usblib_rx_ops *ops;
 };
 
-void mctp_usblib_rx_init(struct mctp_usblib_rx *rx);
+int mctp_usblib_rx_init(struct mctp_usblib_rx *rx, u16 ep_pktlen, bool span);
 void mctp_usblib_rx_fini(struct mctp_usblib_rx *rx);
 
 int mctp_usblib_rx_prepare(struct net_device *netdev,
