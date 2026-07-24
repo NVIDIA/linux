@@ -84,8 +84,8 @@ config MCTP_TRANSPORT_USB
 
 	  The driver supports TX packet batching, which can be controlled
 	  at runtime via sysfs (/sys/class/net/mctpusb*/tx_batching).
-	  Batching reduces USB overhead by packing multiple packets into
-	  a single USB bulk transfer (up to 512 bytes).
+	  Batching reduces USB overhead by packing multiple MCTP packets
+	  into a single USB bulk transfer.
 
 config MCTP_TRANSPORT_PCIE_VDM
 	tristate "MCTP PCIe VDM transport"

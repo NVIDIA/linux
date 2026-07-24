@@ -28,12 +28,6 @@
 
 static const unsigned int n_tx_queue = 8;
 
-struct mctp_usb_batch_ctx {
-	struct net_device *netdev;
-	struct sk_buff_head skbs;
-	unsigned int num_packets;
-};
-
 /* TX watchdog timeout - abort stuck URBs after this time
  */
 #define MCTP_USB_TX_TIMEOUT (6 * HZ)
@@ -381,143 +375,13 @@ static const struct mctp_usblib_tx_ops tx_ops = {
 	.tx_error = mctp_usb_tx_error,
 };
 
-/* Completion for pre-framed batches from the route-level batching path */
-static void mctp_usb_batch_out_complete(struct urb *urb)
-{
-	struct mctp_usb_batch_ctx *ctx = urb->context;
-	struct net_device *netdev = ctx->netdev;
-	struct mctp_usb *mctp_usb = netdev_priv(netdev);
-	struct sk_buff *skb;
-	int status;
-
-	if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
-		netif_wake_queue(netdev);
-
-	status = urb->status;
-
-	/* ERROR INJECTION POINT: TX URB completion (asynchronous error) */
-	status = mctp_usb_error_inject_tx_async(mctp_usb, urb);
-
-	/* Batched URBs increment counters by ctx->num_packets. */
-	if (status)
-		netdev->stats.tx_dropped += ctx->num_packets;
-	else
-		netdev->stats.tx_packets += ctx->num_packets;
-	mctp_usb_handle_tx_urb_status(mctp_usb, netdev, status,
-				      ctx->num_packets, urb->actual_length);
-
-	while ((skb = skb_dequeue(&ctx->skbs)) != NULL) {
-		if (status == 0) {
-			consume_skb(skb);
-		} else {
-			/* Surface the async TX failure on the socket error
-			 * queue before the skb is freed.
-			 */
-			mctp_usb_report_tx_error(netdev, skb, -status);
-			kfree_skb(skb);
-		}
-	}
-
-	kfree(ctx);
-	usb_free_urb(urb);
-}
-
-static void mctp_usb_fill_batch_hdr(void *hdr, unsigned int pkt_len)
-{
-	struct mctp_usb_hdr *usb_hdr = (struct mctp_usb_hdr *)hdr;
-
-	usb_hdr->id = cpu_to_be16(MCTP_USB_DMTF_ID);
-	usb_hdr->rsvd = 0;
-	usb_hdr->len = pkt_len;
-}
-
-static const struct mctp_netdev_ops mctp_usb_mctp_ops = {
-	.fill_batch_hdr = mctp_usb_fill_batch_hdr,
-};
-
-static netdev_tx_t mctp_usb_send_batch(struct mctp_usb *mctp_usb,
-				       struct sk_buff *skb)
-{
-	struct net_device *netdev = mctp_usb->netdev;
-	struct mctp_usb_batch_ctx *ctx;
-	struct urb *urb;
-	/* Default to -ENOMEM so alloc-failure gotos attribute correctly */
-	int rc = -ENOMEM;
-
-	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue) {
-		netif_stop_queue(netdev);
-		return NETDEV_TX_BUSY;
-	}
-
-	skb->protocol = htons(ETH_P_MCTP);
-
-	ctx = kzalloc(sizeof(*ctx), GFP_ATOMIC);
-	if (!ctx)
-		goto err_drop;
-
-	skb_queue_head_init(&ctx->skbs);
-	ctx->netdev = netdev;
-	ctx->num_packets = 1;
-
-	urb = usb_alloc_urb(0, GFP_ATOMIC);
-	if (!urb)
-		goto err_free_ctx;
-
-	skb_queue_tail(&ctx->skbs, skb);
-
-	/* ERROR INJECTION POINT: TX URB submission (synchronous error) */
-	rc = mctp_usb_error_inject_tx_sync(mctp_usb, skb->data, skb->len);
-	if (rc)
-		goto err_free_urb;
-
-	usb_fill_bulk_urb(urb, mctp_usb->usbdev,
-			  usb_sndbulkpipe(mctp_usb->usbdev, mctp_usb->ep_out),
-			  skb->data, skb->len, mctp_usb_batch_out_complete,
-			  ctx);
-
-	usb_anchor_urb(urb, &mctp_usb->tx_anchor);
-	atomic_inc(&mctp_usb->tx_qlen);
-	if (atomic_read(&mctp_usb->tx_qlen) >= n_tx_queue)
-		netif_stop_queue(netdev);
-	rc = usb_submit_urb(urb, GFP_ATOMIC);
-	if (rc) {
-		usb_unanchor_urb(urb);
-		if (atomic_dec_return(&mctp_usb->tx_qlen) < n_tx_queue)
-			netif_wake_queue(netdev);
-		trace_mctp_transport_error("usb", netdev, "tx_urb_submit_failed", rc);
-		goto err_free_urb;
-	}
-
-	return NETDEV_TX_OK;
-
-err_free_urb:
-	usb_free_urb(urb);
-err_free_ctx:
-	skb_dequeue(&ctx->skbs);
-	kfree(ctx);
-err_drop:
-	/* Batch TX errors are tracked as UNKNOWN (individual EIDs in the
-	 * batch cannot be determined at this point).
-	 */
-	netdev->stats.tx_dropped++;
-	mctp_usb_handle_tx_sync_error(mctp_usb, MCTP_EID_UNKNOWN, rc);
-	trace_mctp_transport_error("usb", netdev, "tx_batch_drop", rc);
-	if (rc != 0)
-		mctp_usb_report_tx_error(netdev, skb, -rc);
-	kfree_skb(skb);
-	return NETDEV_TX_OK;
-}
-
 static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 				       struct net_device *dev)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(dev);
 	unsigned int pkt_len;
+	bool more;
 	int rc;
-
-	/* Batched SKBs from route.c have a marker protocol */
-	if (skb->protocol == htons(ETH_P_MCTP | 0x8000))
-		return mctp_usb_send_batch(mctp_usb, skb);
 
 	pkt_len = skb->len + sizeof(struct mctp_usb_hdr);
 
@@ -535,8 +399,10 @@ static netdev_tx_t mctp_usb_start_xmit(struct sk_buff *skb,
 		return NETDEV_TX_BUSY;
 	}
 
+	more = READ_ONCE(mctp_usb->tx_batching_enabled) && netdev_xmit_more();
+
 	/* usblib accounts drops, and frees @skb on error */
-	rc = mctp_usblib_tx_push(dev, &mctp_usb->tx, skb, netdev_xmit_more());
+	rc = mctp_usblib_tx_push(dev, &mctp_usb->tx, skb, more);
 	if (rc)
 		trace_mctp_transport_error("usb", dev, "tx_dropped_start_xmit", rc);
 
@@ -862,7 +728,8 @@ static ssize_t tx_batching_show(struct device *dev,
 	struct net_device *netdev = to_net_dev(dev);
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
 
-	return sprintf(buf, "%d\n", mctp_usb->tx_batching_enabled ? 1 : 0);
+	return sprintf(buf, "%d\n",
+		       READ_ONCE(mctp_usb->tx_batching_enabled) ? 1 : 0);
 }
 
 static ssize_t tx_batching_store(struct device *dev,
@@ -871,7 +738,6 @@ static ssize_t tx_batching_store(struct device *dev,
 {
 	struct net_device *netdev = to_net_dev(dev);
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
-	struct mctp_dev *mdev;
 	bool enabled;
 	int rc;
 
@@ -879,15 +745,7 @@ static ssize_t tx_batching_store(struct device *dev,
 	if (rc)
 		return rc;
 
-	mctp_usb->tx_batching_enabled = enabled;
-
-	rcu_read_lock();
-	mdev = __mctp_dev_get(netdev);
-	if (mdev) {
-		mdev->tx_batching_enabled = enabled;
-		mctp_dev_put(mdev);
-	}
-	rcu_read_unlock();
+	WRITE_ONCE(mctp_usb->tx_batching_enabled, enabled);
 
 	return count;
 }
@@ -1057,24 +915,9 @@ static int mctp_usb_probe(struct usb_interface *intf,
 
 	dev->tx_batching_enabled = true;
 
-	rc = mctp_register_netdev(netdev, &mctp_usb_mctp_ops,
-				  MCTP_PHYS_BINDING_USB);
+	rc = mctp_register_netdev(netdev, NULL, MCTP_PHYS_BINDING_USB);
 	if (rc)
 		goto err_free_urb;
-
-	{
-		struct mctp_dev *mdev;
-
-		rcu_read_lock();
-		mdev = __mctp_dev_get(netdev);
-		if (mdev) {
-			mdev->tx_batching_enabled = true;
-			mdev->tx_batch_hdr_len = sizeof(struct mctp_usb_hdr);
-			mdev->tx_batch_max_xfer = MCTP_USB_1_0_XFER_SIZE;
-			mctp_dev_put(mdev);
-		}
-		rcu_read_unlock();
-	}
 
 	rc = sysfs_create_group(&netdev->dev.kobj, &mctp_usb_attr_group);
 	if (rc) {
