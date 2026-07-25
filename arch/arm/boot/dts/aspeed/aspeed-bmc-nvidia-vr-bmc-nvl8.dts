@@ -1,0 +1,1286 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+
+#include "aspeed-g6.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+    model = "AST2600 VR NVL8 BMC";
+    compatible = "aspeed,ast2600";
+
+    aliases {
+        serial2 = &uart3;
+        serial4 = &uart5;
+
+        i2c16 = &i2c_bf4_fru;            /* I2C2 (&i2c1) PCA9546 0x70 ch0: BF4 FRU */
+        i2c17 = &i2c_bf4_fru_mux_ch1;    /* I2C2 (&i2c1) PCA9546 0x70 ch1: unused */
+        i2c18 = &i2c_bf4_fru_mux_ch2;    /* I2C2 (&i2c1) PCA9546 0x70 ch2: unused */
+        i2c19 = &i2c_bf4_fru_mux_ch3;    /* I2C2 (&i2c1) PCA9546 0x70 ch3: unused */
+
+        i2c20 = &i2c_cx9_0_gw0;          /* I2C2 (&i2c1) PCA9546 0x73 ch0: CX9_0 GW0 */
+        i2c21 = &i2c_cx9_1_gw0;          /* I2C2 (&i2c1) PCA9546 0x73 ch1: CX9_1 GW0 */
+        i2c22 = &i2c_cx9_mux_ch2;        /* I2C2 (&i2c1) PCA9546 0x73 ch2: unused */
+        i2c23 = &i2c_cx9_mux_ch3;        /* I2C2 (&i2c1) PCA9546 0x73 ch3: unused */
+
+        i2c24 = &i2c_m2_riser_mgmt;      /* I2C9 (&i2c8) PCA9546 0x73 ch0: M.2 Riser cascade + PCA9536 0x41 */
+        i2c25 = &i2c_i2c9_cascade_ch1;   /* I2C9 (&i2c8) PCA9546 0x73 ch1: unused */
+        i2c26 = &i2c_i2c9_cascade_ch2;   /* I2C9 (&i2c8) PCA9546 0x73 ch2: unused */
+        i2c27 = &i2c_cx9_rclk_buf;       /* I2C9 (&i2c8) PCA9546 0x73 ch3: LMK1104 CX9 Rclk buffer */
+
+        i2c28 = &i2c_m2_0;               /* I2C9 (&i2c8) -> 0x73 ch0 -> 0x71 ch0: M.2 SSD_0 */
+        i2c29 = &i2c_m2_1;               /* I2C9 (&i2c8) -> 0x73 ch0 -> 0x71 ch1: M.2 SSD_1 */
+        i2c30 = &i2c_m2_riser_fru;       /* I2C9 (&i2c8) -> 0x73 ch0 -> 0x71 ch2: M.2 board FRU EEPROM 24512 @ 0x51 */
+        i2c31 = &i2c_m2_riser_temp;      /* I2C9 (&i2c8) -> 0x73 ch0 -> 0x71 ch3: TMP411 temp sensor @ 0x4C */
+    };
+
+    chosen {
+        stdout-path = &uart5;
+        bootargs = "console=tty0 console=ttyS4,115200n8 earlyprintk";
+    };
+
+    memory@80000000 {
+        device_type = "memory";
+        reg = <0x80000000 0x80000000>;
+    };
+
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+
+        vga_memory: framebuffer@9f000000 {
+            reg = <0x9f000000 0x01000000>; /* 16M */
+            no-map;
+        };
+
+        ramoops@a0000000 {
+            compatible = "ramoops";
+            reg = <0xa0000000 0x100000>; /* 1MB */
+            record-size = <0x10000>; /* 64KB */
+            max-reason = <2>; /* KMSG_DUMP_OOPS */
+        };
+
+        gfx_memory: framebuffer {
+            compatible = "shared-dma-pool";
+            size = <0x01000000>;
+            alignment = <0x01000000>;
+            reusable;
+        };
+
+        video_engine_memory: jpegbuffer {
+            compatible = "shared-dma-pool";
+            size = <0x02000000>;	/* 32M */
+            alignment = <0x01000000>;
+            reusable;
+        };
+    };
+
+    leds {
+        compatible = "gpio-leds";
+
+        uid_led {
+            gpios = <&gpio0 ASPEED_GPIO(S, 0) GPIO_ACTIVE_LOW>;
+        };
+
+        /*
+         * No physical LED. The gpio-leds driver claims BMC_READY-O so
+         * userspace can drive it via /sys/class/leds/bmc_ready_noled/brightness
+         * (asserted by bmc_ready.sh once platform-init completes).
+         */
+        bmc_ready_noled {
+            gpios = <&gpio0 ASPEED_GPIO(I, 3) (GPIO_ACTIVE_HIGH | GPIO_TRANSITORY)>;
+        };
+    };
+
+    buttons {
+        power-btn {
+            gpio = <&gpio0 ASPEED_GPIO(V, 0) GPIO_ACTIVE_LOW>;
+        };
+
+        uid-btn {
+            gpio = <&gpio0 ASPEED_GPIO(E, 3) GPIO_ACTIVE_LOW>;
+        };
+    };
+};
+
+/*
+ * gpio-line-names are the combination of <signal>-<I/O>; "" is the placeholder for unused pins.
+ * 208 (26*8) 3.3V GPIOs on gpio0; 36 1.8V GPIOs on gpio1.
+ */
+&gpio0 {
+    gpio-line-names =
+        /*A0-A7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*B0-B7*/
+        "",
+        "",
+        "BIOS_EROT_WP-O",
+        "",
+        "",
+        "",
+        "GPU_BASE_HMC_OVERT_L-I",
+        "CEC2_NRESET_IN_N-O",
+
+        /*C0-C7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*D0-D7*/
+        "",
+        "",
+        "",
+        "",
+        "HPM_DETECT-I",
+        "",
+        "",
+        "CPLD_PROG_STAT-I",
+
+        /*E0-E7*/
+        "BMC_RST_DET-I",
+        "",
+        "GPU_BASE_PRSNT_N-I",
+        "UID_BTN_L-I", /* schematic: UID_SWITCH */
+        "",
+        "",
+        "",
+        "CPLD_INT_N-I",
+
+        /*F0-F7*/
+        "",
+        "PWRGD_P3V3-I",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*G0-G7*/
+        "HGX_LEAK_DET_L-I",
+        "GPIO_GPU_BASE_RSVD3-I",
+        "HGX_LEAK_SENSOR_FAULT_L-I",
+        "GPIO_GPU_BASE_RSVD4-I",
+        "",
+        "",
+        "GPU_BASE_HMC_EROT_RST_N-O",
+        "GPU_ALL_BMC_TH_OVERT_N-I",
+
+        /*H0-H7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*I0-I7*/
+        "GPU_PWROK-I",
+        "FRU_WP-O",
+        "",
+        "BMC_READY-O",
+        "",
+        "",
+        "",
+        "",
+
+        /*J0-J7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*K0-K7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*L0-L7*/
+        "",
+        "",
+        "",
+        "",
+        "FM_JTAG_TCK_MUX_SEL_R-O",
+        "",
+        "",
+        "",
+
+        /*M0-M7*/
+        "CPU_RST_L-I",
+        "",
+        "",
+        "CPLD_PWRBTN_N-I",
+        "BMC_RST_BTN_N-I",
+        "BASEBOARD_ALERT_N-I",
+        "",
+        "",
+
+        /*N0-N7*/
+        "CPU0_CHIPTHROT_N_SGPIO-I",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "AC_POWER_CYCLE_N-O", /* similar to BMC_STBY_CYCLE-O on other platforms */
+
+        /*O0-O7*/
+        "",
+        "",
+        "GPU_BASE_HMC_PRSNT_N-I",
+        "",
+        "GPU_BASE_HMC_READY-I",
+        "",
+        "",
+        "",
+
+        /*P0-P7*/
+        "BMC_PHY_RST_N-O",
+        "CEC1_SP0_AP_INTR_N-I",
+        "EROT_FATAL_ERROR_N-I",
+        "CEC1_RST_MON_AP_RST_REQ_N-O",
+        "CEC1_AP_EROT_REQ_N-O",
+        "CEC1_EROT_AP_GNT_N-I",
+        "",
+        "",
+
+        /*Q0-Q7*/
+        "GPU_BASE_CPLD_READY-I",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "MID_SYSTEM_READY-I",
+        "RUN_POWER_PG_SGPIO-I",
+
+        /*R0-R7*/
+        "GPU1_INT_BMC_MCU2_N-I",
+        "GPU1_INT_BMC_MCU1_N-I",
+        "",
+        "CPLD_ALERT_N-I",
+        "GPU_PWR_BRAKE_L-O",
+        "",
+        "",
+        "",
+
+        /*S0-S7*/
+        "BMC_UID_LED-O",
+        "",
+        "BMC_PE_WAKE_N-I",
+        "",
+        "",
+        "",
+        "BMC_HEARTBEAT-O",
+        "",
+
+        /*T0-T7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*U0-U7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*V0-V7*/
+        "PWR_BTN_L-I", /* schematic: BMC_PWR_BTN_R_N */
+        "",
+        "",
+        "BMC_CPLD_BOOT_N-I",
+        "",
+        "",
+        "",
+        "",
+
+        /*W0-W7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "I2C_BMC_SSIF_ALERT_L-O",
+        "",
+
+        /*X0-X7*/
+        "",
+        "",
+        "SGPIO_BOOT_COMPLETE-I",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*Y0-Y7*/
+        "",
+        "",
+        "CEC1_WDTRST-O",
+        "PWRBTN_DISABLE-O",
+        "",
+        "",
+        "",
+        "",
+
+        /*Z0-Z7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "";
+};
+
+&gpio1 {
+    gpio-line-names =
+        /*A0-A7*/
+        "",
+        "",
+        "",
+        "GPU_BASE_CEC_RECOV_N-O",
+        "",
+        "",
+        "",
+        "GPU_BASE_HMC_EROT_FATALERR_N-I",
+
+        /*B0-B7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*C0-C7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*D0-D7*/
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+
+        /*E0-E3*/
+        "",
+        "",
+        "",
+        "";
+};
+
+// EMMC group that excludes WP & CD pin
+&pinctrl {
+    pinctrl_emmcg9_default: emmcg9_default {
+        function = "EMMC";
+        groups = "EMMCG9";
+    };
+};
+
+// Enabled Primary flash on FMC for bring up activity
+&fmc {
+    status = "okay";
+
+    flash@0 {
+        compatible = "jedec,spi-nor";
+        label = "bmc";
+        spi-max-frequency = <50000000>;
+        status = "okay";
+#include "aspeed-bmc-nvidia-gh-flash-layout-64.dtsi"
+    };
+};
+
+&fmcraw {
+    status = "okay";
+
+    spidev@0 {
+        compatible = "mctp-spi";
+        interrupt-parent = <&gpio0>;
+        interrupts = <&gpio0 ASPEED_GPIO(P, 1) GPIO_ACTIVE_HIGH>;
+        alert-gpio = <&gpio0 ASPEED_GPIO(P, 1) GPIO_ACTIVE_HIGH>;
+        status = "okay";
+    };
+};
+
+&spi1raw {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi1_default>;
+    status = "okay";
+
+    spidev@0 {
+        compatible = "hgx,glacier";
+        spi-max-frequency = <25000000>;
+        status = "okay";
+    };
+};
+
+&spi2 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_spi2_default>;
+    status = "okay";
+
+    // Data SPI is 64MB in size
+    flash@0 {
+        label = "config";
+        spi-max-frequency = <50000000>;
+        status = "okay";
+
+        partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            u-boot-env@0 {
+                reg = <0x0 0x40000>;            // 256KB at offset 0
+                label = "u-boot-env";
+            };
+
+            rwfs@40000 {
+                reg = <0x40000 0x1000000>;      // 16MB at offset 0x40000
+                label = "rwfs";
+            };
+
+            log@0x1040000 {
+                reg = <0x1040000 0x2800000>;    // 40MB at offset 0x1040000
+                label = "log";                  // Move log to EMMC, make this unused
+            };
+        };
+    };
+};
+
+&uart1 {
+    status = "okay";
+};
+
+&uart3 {
+    // Enabling SOL
+    status = "okay";
+};
+
+&uart5 {
+    // BMC Debug Console
+    status = "okay";
+};
+
+&uart_routing {
+    status = "okay";
+};
+
+// MAC3 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
+// This is "mac2" in zero-based DTS
+&mdio2 {
+    status = "okay";
+
+    ethphy0: ethernet-phy@0 {
+        compatible = "ethernet-phy-ieee802.3-c22";
+        reg = <0>;
+    };
+};
+
+&mac2 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_rgmii3_default>;
+    phy-mode = "rgmii";
+    phy-handle = <&ethphy0>;
+    max-speed = <1000>;
+    status = "okay";
+};
+
+// Enable emmc
+&emmc_controller {
+    status = "okay";
+};
+
+&emmc {
+    pinctrl-0 = <&pinctrl_emmcg9_default>;
+    bus-width = <8>;
+    max-frequency = <52000000>;
+    clk-phase-mmc-hs200 = <9>, <225>;
+    non-removable;
+};
+
+/*
+ * Enable USB port A as device (via the virtual hub) to host
+ */
+&vhub {
+    pinctrl-names = "default";
+    /*
+     * Uncomment below line to enable internal EHCI controller.
+     * Current config uses xHCI Port1.
+     */
+    // pinctrl-0 = <&pinctrl_usb2adp_default>;
+    status = "okay";
+};
+
+&video {
+    memory-region = <&video_engine_memory>;
+    status = "okay";
+};
+
+// USB 2.0, BF4 NIC CP2112 GPIO bridges on USB Port B
+&ehci1 {
+    status = "okay";
+
+    /*
+     * BMC-side 4-port USB hub on EHCI1 root port 1.
+     * Downstream ports: 1 = Secondary HPM USB HUB (fans to USB-C header,
+     * HPM MCU, CP2108 SOL, and HMC via midplane), 2 = SSD/E1.S BP MCU,
+     * 3 = BF4, 4 = unused.
+     */
+    hub@1 {
+        reg = <1>;
+
+        /* BF4 internal 4-port hub: ports 1=MCU, 2=CP2112, 3=DPU BMC, 4=unused */
+        hub@3 {
+            reg = <3>;
+
+            device@2 {
+                reg = <2>;
+
+                cp2112: interface@1 {
+                    reg = <1 1>;
+                    gpio-controller;
+                    #gpio-cells = <2>;
+                    gpio-line-names =
+                        "BF4_USB_MCU_RECOVERY_L-O",
+                        "BF4_USB_MCU_RST_L-O",
+                        "BF4_USB_FORCE_FNP_L-O",
+                        "BF4_GLOBAL_WP-O",
+                        "BF4_FORCE_POR_L-O",
+                        "BF4_BMC_EROT_RST_L-O",
+                        "BF4_BMC_EROT_RECOVERY_L-O",
+                        "BF4_THERM_SHUTDOWN-I";
+
+                    i2c_bf4: i2c {
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                    };
+                };
+            };
+        };
+    };
+};
+
+// I2C1
+&i2c0 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C2, SW Board IOX (PCA9557 0x19), INA226 power monitors (0x40/0x41/0x44/0x45),
+//       SWB FRU EEPROM (24128 @ 0x51), PCIe clock buffers (LMKDB1104 @ 0x61/0x6C;
+//       no upstream kernel driver -- documented here only),
+//       BF4 FRU mux (PCA9546 0x70), CX9 management mux (PCA9546 0x73)
+&i2c1 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // SW Board, Expander @0x19
+    exp0: pca9557@19 {
+        compatible = "nxp,pca9557";
+        reg = <0x19>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "J3MCIO_PRSNT1_N-I",
+            "",
+            "J9MCIO_PRSNT1_N-I",
+            "",
+            "USB2_HUB_RST_L-O",
+            "FRU_SW_WP_N-O",
+            "PCIE_PWRBRK_N-O",
+            "PCIE_WAKE_N-I";
+    };
+
+    // E1.S backplane power monitor
+    // TODO: shunt-resistor value TBD from HW eng; using driver default
+    ina_e1s_bp: ina226@40 {
+        compatible = "ti,ina226";
+        reg = <0x40>;
+    };
+
+    // M.2 OCP mezz power monitor
+    // TODO: shunt-resistor value TBD from HW eng
+    ina_m2_ocp: ina226@41 {
+        compatible = "ti,ina226";
+        reg = <0x41>;
+    };
+
+    // CX9 switches power monitor
+    // TODO: shunt-resistor value TBD from HW eng
+    ina_cx9: ina226@44 {
+        compatible = "ti,ina226";
+        reg = <0x44>;
+    };
+
+    // PCIe slot (BF4) power monitor
+    // TODO: shunt-resistor value TBD from HW eng
+    ina_pcie_bf4: ina226@45 {
+        compatible = "ti,ina226";
+        reg = <0x45>;
+    };
+
+    // Switch Board FRU EEPROM (24128, 16 KB)
+    swb_fru: eeprom@51 {
+        compatible = "atmel,24c128";
+        reg = <0x51>;
+        pagesize = <64>;
+    };
+
+    // BF4 FRU mux (PCA9546 0x70 on I2C2)
+    // ch0 -> BF4 FRU EEPROM; ch1/2/3 unused
+    i2c-mux@70 {
+        compatible = "nxp,pca9546";
+        reg = <0x70>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        i2c-mux-idle-disconnect;
+
+        i2c_bf4_fru: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            // BF4 FRU EEPROM (24M128, 16 KB; 24c128 driver compatible)
+            bf4_fru: eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+                pagesize = <64>;
+            };
+        };
+
+        // ch1 unused; alias reserved for completeness
+        i2c_bf4_fru_mux_ch1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        // ch2 unused; alias reserved for completeness
+        i2c_bf4_fru_mux_ch2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        // ch3 unused; alias reserved for completeness
+        i2c_bf4_fru_mux_ch3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+
+    // CX9 access mux (PCA9546 0x73 on I2C2)
+    // ch0 -> CX9_0 GW0 @ 0x48; ch1 -> CX9_1 GW0 @ 0x48; ch2/3 unused
+    // BF4 management is MCTP-over-USB and does not use an I2C mux.
+    i2c-mux@73 {
+        compatible = "nxp,pca9546";
+        reg = <0x73>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        i2c-mux-idle-disconnect;
+
+        i2c_cx9_0_gw0: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+            // CX9_0 GW0 endpoint at 0x48; managed by daemons, no kernel driver
+        };
+
+        i2c_cx9_1_gw0: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+            // CX9_1 GW0 endpoint at 0x48; managed by daemons, no kernel driver
+        };
+
+        // ch2/ch3 unused; aliases reserved for completeness
+        i2c_cx9_mux_ch2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c_cx9_mux_ch3: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+};
+
+// I2C3, P5055 Bus 3 IOX
+&i2c2 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // P5055 Bus 3, Expander @0x20
+    exp2: pca9555@20 {
+        compatible = "nxp,pca9555";
+        reg = <0x20>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "SHDN_FORCE_L-O",
+            "",
+            "THERM_OVERT_L-I",
+            "THERM_WARN_L-I",
+            "GLOBAL_WP-O",
+            "USB_HUB0_RST_L-O",
+            "PRE_SYS_RST_L-O",
+            "LEAK_DETECT_ALERT_L-I",
+            "RUN_POWER_EN-O",
+            "RUN_POWER_PG-I",
+            "CPU_CHIPTHROT_L-I",
+            "SHDN_REQ_L-O",
+            "CPU_SHDN_OK_L-I",
+            "CPLD_READY-I",
+            "PWR_BRAKE_L-O",
+            "PWR_BRAKE_STATUS_L-I";
+    };
+
+    // P5055 Bus 3, Expander @0x21
+    exp3: pca9555@21 {
+        compatible = "nxp,pca9555";
+        reg = <0x21>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "",
+            "HPM_MCU_OK-I",
+            "CPU_L0_RST_IND_L-I",
+            "SOCAMM_DAC_SEL0-O",
+            "SOCAMM_DAC_SEL1-O",
+            "C0_SOCAMM_I2C_SEL_R-O",
+            "C1_SOCAMM_I2C_SEL_R-O",
+            "EEPROM_POWER_DISABLE-O",
+            "L0L1_RST_L-I",
+            "L2_RST_L-I",
+            "BRD_ID_0-I",
+            "BRD_ID_1-I",
+            "LEAK_TEST_L-O",
+            "MCU_BMC_ALERT_L-I",
+            "CPU_BOOT_COMPLETE-I",
+            "";
+    };
+
+    // P5055 Bus 3, Expander @0x22
+    exp4: pca9555@22 {
+        compatible = "nxp,pca9555";
+        reg = <0x22>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "HPM_MCU_RESET_L-O",
+            "HPM_MCU_REC_L-O",
+            "HGX_MCU_RESET_L-O",
+            "HGX_MCU_REC_L-O",
+            "HSC_AND_HSCC_ALERT_L-I",
+            "OCP1_RIS_PRSNT_L-I",
+            "RTC_CLR_L-O",
+            "",
+            "",
+            "MCU_ALERT_L-I",
+            "SNN_USB_HMC_HUB_RST_L-O",
+            "HGX_STBY_EN_BMC-O",
+            "",
+            "CPLD_AUTH_FAIL_L-I",
+            "",
+            "SNN_PWR_BRAKE_STATUS_L-I";
+    };
+
+    // P5055 Bus 3, Expander @0x23
+    exp5: pca9555@23 {
+        compatible = "nxp,pca9555";
+        reg = <0x23>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "CPU_FORCED_RECOVERY_L-O",
+            "CPU_BOOT_DEV_SEL0-O",
+            "CPU_BOOT_DEV_SEL1-O",
+            "CPU_BOOT_DEV_SEL2-O",
+            "",
+            "CPU_RECOVERY_TYPE0-O",
+            "CPU_RECOVERY_TYPE1-O",
+            "CPU_IST_BOOT_HMC-O",
+            "CPU_BOOT_CHAIN0-O",
+            "",
+            "HPM_MCU_I2C_ENABLE-O",
+            "CPU_DIE_SEL0-O",
+            "CPU_DIE_SEL1-O",
+            "CPU_DIE_SEL2-O",
+            "",
+            "NVJTAG_SEL-O";
+    };
+
+    // P5055 Bus 3 RTC (NCT3018Y); 0x57 = SRAM (kernel-unbound), 0x6F = time registers
+    p5055_rtc: rtc@6f {
+        compatible = "nuvoton,nct3018y";
+        reg = <0x6f>;
+    };
+};
+
+// I2C4, SSIF channel BMC <-> CPU0
+&i2c3 {
+    disable-master = <1>;
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <128000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    tout-baseclk-div = <4096>;
+    status = "okay";
+
+    ssif-bmc@10 {
+        compatible = "ssif-bmc";
+        reg = <0x10>;
+        pulse_width_us = <5>;
+        timeout_ms = <4995>;
+        alert-gpio = <&gpio0 ASPEED_GPIO(W, 6) GPIO_ACTIVE_LOW>;
+    };
+};
+
+// I2C5, routes through midplane to HMC P2312 I2C1 input
+&i2c4 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C6, routes through midplane to HMC P2312 I2C2 input
+&i2c5 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C7, HSCs (12V HSCC, 54V_STBY HSC, 54V_MAIN HSC) -- 3x LM5066I
+&i2c6 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    hsc_54v_stby: lm5066i@10 {
+        compatible = "ti,lm5066i";
+        reg = <0x10>;
+    };
+
+    hsc_54v_main: lm5066i@45 {
+        compatible = "ti,lm5066i";
+        reg = <0x45>;
+    };
+
+    // 12V HSCC is a Renesas RAA2280; using generic "pmbus" compatible
+    // until a chip-specific driver is available upstream
+    hscc_12v: hsc@60 {
+        compatible = "pmbus";
+        reg = <0x60>;
+    };
+};
+
+// I2C8, chassis FRU 0x50, ISO/MCU MCXN556, CPLD Lattice MachX02
+&i2c7 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // HPM FRU EEPROM (24AA64, 8 KB)
+    hpm_fru: eeprom@50 {
+        compatible = "atmel,24c64";
+        reg = <0x50>;
+        pagesize = <32>;
+    };
+};
+
+// I2C9, SW Board IOX (CX0, CX1), MAX1363s, RTC, cascade parent mux (PCA9546 0x73)
+&i2c8 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // SW Board IOX, CX0 Expander @0x26
+    exp6: pca9555@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "WP_QSPI_CX0-O",
+            "RST_SEQ_CX0_L-O",
+            "BOOT_CMPLT_CX0-I",
+            "FNP_CX0_L-O",
+            "WP_FRU_CX0-O",
+            "OVT_SHUTDOWN_CX0-I",
+            "",
+            "",
+            "",
+            "",
+            "TMP_WARNING_CX0-I",
+            "",
+            "I2C_SWITCH1_RESET_L-O",
+            "",
+            "",
+            "";
+    };
+
+    // SW Board IOX, CX1 Expander @0x27
+    exp7: pca9555@27 {
+        compatible = "nxp,pca9555";
+        reg = <0x27>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <ASPEED_GPIO(M, 5) IRQ_TYPE_LEVEL_LOW>;
+        gpio-line-names =
+            "WP_QSPI_CX1-O",
+            "RST_SEQ_CX1_L-O",
+            "BOOT_CMPLT_CX1-I",
+            "FNP_CX1_L-O",
+            "WP_FRU_CX1-O",
+            "OVT_SHUTDOWN_CX1-I",
+            "TMP_WARNING_CX1-I",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "I2C_SWITCH2_RESET_L-O";
+    };
+
+    // Leak-detect ADCs (4-channel 12-bit MAX1363) on the L9 tray
+    leak_adc_0: max1363@34 {
+        compatible = "maxim,max1363";
+        reg = <0x34>;
+    };
+
+    leak_adc_1: max1363@35 {
+        compatible = "maxim,max1363";
+        reg = <0x35>;
+    };
+
+    // Intrusion-detect RTC (NCT3018Y), distinct chip from the P5055 Bus 3 RTC
+    intrusion_rtc: rtc@6f {
+        compatible = "nuvoton,nct3018y";
+        reg = <0x6f>;
+    };
+
+    // I2C9 cascade parent (PCA9546 0x73 on I2C9)
+    // ch0 -> M.2 OCP Riser cascade child mux + parallel PCA9536 0x41 GPIO expander
+    // ch1/ch2 unused; ch3 -> LMK1104 clock buffer (CX9 Rclk)
+    i2c-mux@73 {
+        compatible = "nxp,pca9546";
+        reg = <0x73>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        i2c-mux-idle-disconnect;
+
+        i2c_m2_riser_mgmt: i2c@0 {
+            reg = <0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            // PCA9536 4-bit GPIO expander, parallel to the M.2 cascade mux on this virtual bus.
+            // Only bit 0 is connected; bits 1-3 are unused.
+            pca9536@41 {
+                compatible = "nxp,pca9536";
+                reg = <0x41>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names = "M2_FRU_WP_EN-O", "", "", "";
+            };
+
+            // M.2 OCP Riser cascade mux (PCA9546 0x71)
+            i2c-mux@71 {
+                compatible = "nxp,pca9546";
+                reg = <0x71>;
+                #address-cells = <1>;
+                #size-cells = <0>;
+                i2c-mux-idle-disconnect;
+
+                // ch0 -> M.2 SSD_0; NVMe-MI device, no kernel driver
+                i2c_m2_0: i2c@0 {
+                    reg = <0>;
+                    #address-cells = <1>;
+                    #size-cells = <0>;
+                };
+
+                // ch1 -> M.2 SSD_1; NVMe-MI device, no kernel driver
+                i2c_m2_1: i2c@1 {
+                    reg = <1>;
+                    #address-cells = <1>;
+                    #size-cells = <0>;
+                };
+
+                // ch2 -> M.2 board FRU EEPROM (24512, 64 KB)
+                i2c_m2_riser_fru: i2c@2 {
+                    reg = <2>;
+                    #address-cells = <1>;
+                    #size-cells = <0>;
+
+                    eeprom@51 {
+                        compatible = "atmel,24c512";
+                        reg = <0x51>;
+                        pagesize = <128>;
+                    };
+                };
+
+                // ch3 -> M.2 board temperature sensor (TMP411)
+                i2c_m2_riser_temp: i2c@3 {
+                    reg = <3>;
+                    #address-cells = <1>;
+                    #size-cells = <0>;
+
+                    temp_m2_riser: tmp411@4c {
+                        compatible = "ti,tmp411";
+                        reg = <0x4c>;
+                    };
+                };
+            };
+        };
+
+        // ch1/ch2 unused; aliases reserved for completeness
+        i2c_i2c9_cascade_ch1: i2c@1 {
+            reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        i2c_i2c9_cascade_ch2: i2c@2 {
+            reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+
+        // ch3 -> LMK1104 clock buffer (CX9 Rclk); managed by daemons, no kernel driver
+        i2c_cx9_rclk_buf: i2c@3 {
+            reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
+};
+
+// I2C10, E1.S backplane (IOX, FRU, MCU)
+&i2c9 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // E1.S BP IO Expander -- MCU reset/recovery + SSD PERST force-control.
+    exp_e1s_bp: pca6408@20 {
+        compatible = "nxp,pca6408";
+        reg = <0x20>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        gpio-line-names =
+            "E1S_MCU_RST_L-O",
+            "E1S_MCU_RECOVERY_L-O",
+            "",
+            "",
+            "",
+            "",
+            "SSD_03_FORCE_PERST-O",
+            "SSD_47_FORCE_PERST-O";
+    };
+
+    // E1.S BP FRU EEPROM (34C02, 256 bytes; 24c02 driver compatible)
+    e1s_bp_fru: eeprom@51 {
+        compatible = "atmel,24c02";
+        reg = <0x51>;
+        pagesize = <8>;
+    };
+};
+
+// I2C11
+&i2c10 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C12, pass-through to HGX Baseboard (no local device on P5055)
+&i2c11 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C13, pass-through to HGX Baseboard (no local device on P5055)
+&i2c12 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C14, DC-SCM cluster (TMP1075, BMC DC-SCM FRU 0x50, EROT, Intel i210, CPLD)
+&i2c13 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+
+    // BMC module temperature sensor
+    temp_bmc_module: tmp1075@48 {
+        compatible = "ti,tmp1075";
+        reg = <0x48>;
+    };
+
+    // BMC DC-SCM FRU EEPROM (24512, 64 KB)
+    eeprom@50 {
+        compatible = "atmel,24c512";
+        reg = <0x50>;
+        pagesize = <128>;
+    };
+};
+
+// I2C15
+&i2c14 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// I2C16
+&i2c15 {
+    clock-frequency = <400000>;
+    i2c-scl-clk-low-timeout-us = <32000>;
+    i2c-tck-thddat-config = <0x0099EC00>;
+    status = "okay";
+};
+
+// PCIe RC
+&pcie0 {
+    interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
+    status = "okay";
+};
+
+&mctp1 {
+    status = "okay";
+};
+
+&jtag0 {
+    status = "okay";
+};
+
+&jtag1 {
+    status = "okay";
+};
+
+&rng1 {
+    status = "okay";
+};
+
+&chassis {
+    status = "okay";
+};

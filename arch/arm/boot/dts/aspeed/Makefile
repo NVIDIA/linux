@@ -93,6 +93,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-nvidia-bluesphere.dtb \
 	aspeed-bmc-nvidia-bluesphere-dual-dpu.dtb \
 	aspeed-bmc-nvidia-vr-bmc-c2.dts.dtb \
+	aspeed-bmc-nvidia-vr-bmc-nvl8.dtb \
 	aspeed-bmc-nvidia-vr-bmc-e5010.dtb \
 	aspeed-bmc-nvidia-vr-bmc-nvl.dtb \
 	aspeed-bmc-nvidia-vr-bmc-nvl72-gl10.dtb \
