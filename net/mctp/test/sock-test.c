@@ -82,6 +82,11 @@ static int mctp_test_sock_local_output(struct sock *sk,
 	KUNIT_EXPECT_EQ(test, dst->halen, cfg->halen);
 	KUNIT_EXPECT_MEMEQ(test, dst->haddr, cfg->haddr, dst->halen);
 
+	/* No socket option or cmsg is set in this test, so the plumbing must
+	 * pass the default per-message timeout of 0 through to mctp_local_output.
+	 */
+	KUNIT_EXPECT_EQ(test, tag_timeout_ms, 0U);
+
 	cfg->invoked = true;
 
 	kfree_skb(skb);

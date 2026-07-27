@@ -60,7 +60,7 @@ struct mctp_fq_addr {
  * 0 selects the per-device default (see mctp_dev_set_timeout()) or the
  * kernel default (6 seconds) when no device applies.
  */
-#define MCTP_OPT_TAG_TIMEOUT_MS	3
+#define MCTP_OPT_TAG_TIMEOUT_MS	4
 
 /* Ancillary data (cmsg) for sendmsg(), with cmsg_level == SOL_MCTP.
  *
