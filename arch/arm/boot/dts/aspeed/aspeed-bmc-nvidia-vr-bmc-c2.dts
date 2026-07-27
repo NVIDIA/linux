@@ -106,13 +106,7 @@
 		};
 
 		mctp0_reserved: mctp0_reserved@b1000000 {
-			reg = <0xb1000000 0x10000>;
-			compatible = "shared-dma-pool";
-			no-map;
-		};
-
-		mctp1_reserved: mctp1_reserved@b1010000 {
-			reg = <0xb1010000 0x10000>;
+			reg = <0xb1000000 0x23000>;
 			compatible = "shared-dma-pool";
 			no-map;
 		};
@@ -1310,9 +1304,8 @@
 &mctp0 {
     reg = <0x1e6e8000 0x1000>;
     interrupts-extended = <&gic GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
-                          <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_HI_TO_LO>,
                           <&scu_ic0 ASPEED_AST2600_SCU_IC0_PCIE_PERST_LO_TO_HI>;
-    interrupt-names = "mctp", "perst-lo", "perst-hi";
+    interrupt-names = "mctp", "pcie";
     memory-region = <&mctp0_reserved>;
     status = "okay";
 };
