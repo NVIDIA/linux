@@ -133,13 +133,13 @@ static void mctp_usb_handle_tx_urb_status(struct mctp_usb *mctp_usb,
 		/* URB was unlinked rather than failing on the wire. This happens
 		 * in two cases: the TX watchdog (mctp_usb_tx_timeout) aborting a
 		 * stuck transfer while the link is up, or mctp_usb_stop() tearing
-		 * down on interface down (->stopped set). Only the former is a
+		 * down on interface down (->rx_stopped set). Only the former is a
 		 * transmit timeout; either way it is deliberate, so don't log it
 		 * as an "unexpected" status. Account the two cases separately so
 		 * neither is conflated with a genuine -ENOENT.
 		 */
 		netdev->stats.tx_dropped += num_packets;
-		if (READ_ONCE(mctp_usb->stopped)) {
+		if (READ_ONCE(mctp_usb->rx_stopped)) {
 			mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_drop_unlinked += num_packets;
 			trace_mctp_transport_error("usb", netdev, "tx_urb_unlinked", status);
 		} else {
@@ -905,7 +905,7 @@ static void mctp_usb_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 	set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
 	trace_mctp_transport_error("usb", netdev, "tx_watchdog_timeout", 0);
 
-	usb_unlink_anchored_urbs(&mctp_usb->tx_anchor);
+	usb_kill_anchored_urbs(&mctp_usb->tx_anchor);
 }
 
 static const struct net_device_ops mctp_usb_netdev_ops = {
