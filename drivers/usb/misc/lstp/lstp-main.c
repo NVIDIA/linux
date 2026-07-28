@@ -1028,24 +1028,59 @@ static int lstp_init_channel_fwnode(struct lstp_channel *ch, const char *compati
 	return devm_add_action_or_reset(ch->dev, lstp_put_fwnode, ch->fwnode);
 }
 
-static bool lstp_intf_has_channel_node(struct usb_interface *intf)
+/**
+ * lstp_fwnode_is_supported_channel() - Test whether @fwnode describes an LSTP channel.
+ * @fwnode: Firmware node to test
+ *
+ * Return: true if @fwnode matches a registered subsystem fwnode_compatible string.
+ */
+static bool lstp_fwnode_is_supported_channel(const struct fwnode_handle *fwnode)
 {
-	struct fwnode_handle *fwnode = dev_fwnode(&intf->dev);
-	struct fwnode_handle *child;
 	size_t i;
 
-	if (!fwnode)
-		return false;
+	for (i = 0; i < ARRAY_SIZE(lstp_subsystems); i++) {
+		const char *compatible = lstp_subsystems[i]->fwnode_compatible;
 
-	fwnode_for_each_available_child_node(fwnode, child) {
-		for (i = 0; i < ARRAY_SIZE(lstp_subsystems); i++) {
-			const char *compatible = lstp_subsystems[i]->fwnode_compatible;
+		if (compatible && fwnode_device_is_compatible(fwnode, compatible))
+			return true;
+	}
 
-			if (compatible && fwnode_device_is_compatible(child, compatible)) {
-				fwnode_handle_put(child);
+	return false;
+}
+
+/**
+ * lstp_intf_has_channel_node() - Test whether firmware describes this USB interface.
+ * @intf: USB interface matched by lstp_id_table
+ *
+ * Uses the USB device firmware node and the same interface@ / channel@
+ * hierarchy as lstp_find_channel_fwnode(). If the USB device has no firmware
+ * node, returns true and leaves probe unfiltered.
+ *
+ * Return: true if probe should proceed, false if firmware omits this interface.
+ */
+static bool lstp_intf_has_channel_node(struct usb_interface *intf)
+{
+	struct fwnode_handle *usb_dev_fwnode = dev_fwnode(&interface_to_usbdev(intf)->dev);
+	struct fwnode_handle *intf_node, *ch_node;
+	u8 intf_num = intf->cur_altsetting->desc.bInterfaceNumber;
+	u32 reg;
+
+	if (!usb_dev_fwnode)
+		return true;
+
+	fwnode_for_each_available_child_node(usb_dev_fwnode, intf_node) {
+		if (fwnode_property_read_u32(intf_node, "reg", &reg) || reg != intf_num)
+			continue;
+
+		fwnode_for_each_available_child_node(intf_node, ch_node) {
+			if (lstp_fwnode_is_supported_channel(ch_node)) {
+				fwnode_handle_put(ch_node);
+				fwnode_handle_put(intf_node);
 				return true;
 			}
 		}
+		fwnode_handle_put(intf_node);
+		break;
 	}
 
 	return false;
