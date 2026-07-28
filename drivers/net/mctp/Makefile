@@ -7,5 +7,6 @@ obj-$(CONFIG_MCTP_TRANSPORT_SPI) += mctp-spi-error-inject.o
 obj-$(CONFIG_MCTP_TRANSPORT_USB) += mctp-usb.o
 obj-$(CONFIG_MCTP_TRANSPORT_USB) += mctp-usb-error-inject.o
 obj-$(CONFIG_MCTP_TRANSPORT_PCIE_VDM) += mctp-pcie-vdm.o
+obj-$(CONFIG_MCTP_TRANSPORT_PCIE_VDM_ERROR_INJECT) += mctp-pcie-vdm-error-inject.o
 obj-$(CONFIG_NVIDIA_AST27XX_IROT) += nvidia-ast27xx-irot.o
 obj-$(CONFIG_NVIDIA_OPTEE_VROT) += nvidia-optee-vrot.o

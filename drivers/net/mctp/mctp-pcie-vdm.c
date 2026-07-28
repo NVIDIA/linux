@@ -35,6 +35,8 @@
 #include <net/mctp.h>
 #include <net/mctpdevice.h>
 
+#include "mctp-pcie-vdm-error-inject.h"
+
 // 64bytes mctp payload + 4bytes mctp header
 #define MCTP_PCIE_VDM_MIN_MTU (64 + 4)
 #define MCTP_PCIE_VDM_MAX_MTU 512
@@ -58,6 +60,7 @@
 
 #define MCTP_PCIE_VDM_EID_UNKNOWN 256
 #define MCTP_PCIE_VDM_EID_COUNT 257
+#define MCTP_PCIE_VDM_TX_INJECTED 1
 
 #define MCTP_PCIE_SWAP_NET_ENDIAN(arr, len)       \
 	do {                                      \
@@ -109,6 +112,7 @@ struct mctp_pcie_vdm_eid_stats {
 struct mctp_pcie_vdm_dev {
 	struct device *dev;
 	const struct mctp_pcie_vdm_ops *callback_ops;
+	struct mctp_pcie_vdm_error_inject *error_inject;
 	struct mctp_pcie_vdm_eid_stats
 		eid_stats[MCTP_PCIE_VDM_EID_COUNT];
 };
@@ -145,6 +149,18 @@ static u64 mctp_pcie_vdm_stat_read(struct mctp_pcie_vdm_dev *vdm_dev,
 				   enum mctp_pcie_vdm_stat stat)
 {
 	return atomic64_read(&vdm_dev->eid_stats[eid].value[stat]);
+}
+
+static unsigned int mctp_pcie_vdm_skb_eid(struct sk_buff *skb, bool source,
+					  int offset)
+{
+	struct mctp_hdr mh;
+
+	if (offset < 0 || offset > skb->len ||
+	    skb_copy_bits(skb, offset, &mh, sizeof(mh)))
+		return MCTP_PCIE_VDM_EID_UNKNOWN;
+
+	return source ? mh.src : mh.dest;
 }
 
 static void mctp_pcie_vdm_get_strings(struct net_device *ndev,
@@ -229,6 +245,7 @@ static int mctp_pcie_vdm_xmit(struct net_device *ndev, struct sk_buff *skb)
 	u8 *hdr_byte;
 	u16 payload_len_dw;
 	u16 payload_len_byte;
+	unsigned int eid;
 	int rc;
 
 	stats = &ndev->stats;
@@ -247,6 +264,15 @@ static int mctp_pcie_vdm_xmit(struct net_device *ndev, struct sk_buff *skb)
 				  sizeof(struct mctp_pcie_vdm_hdr) / sizeof(u32));
 
 	mctp_pcie_vdm_display_skb_buff_data(skb);
+	if (mctp_pcie_vdm_error_inject_tx(vdm_dev->error_inject, skb)) {
+		eid = mctp_pcie_vdm_skb_eid(skb, false,
+					    skb_network_offset(skb));
+		mctp_pcie_vdm_stat_inc(vdm_dev, eid,
+				       MCTP_PCIE_VDM_STAT_TX_DROP_INJECTED);
+		stats->tx_dropped++;
+		return MCTP_PCIE_VDM_TX_INJECTED;
+	}
+
 	rc = vdm_dev->callback_ops->send_packet(vdm_dev->dev, skb->data, payload_len_dw * sizeof(u32));
 
 	if (rc) {
@@ -385,6 +411,7 @@ void mctp_pcie_vdm_receive_packet(struct net_device *ndev)
 		struct mctp_skb_cb *cb;
 		struct net_device_stats *stats;
 		struct sk_buff *skb;
+		unsigned int eid;
 		u16 len;
 		int net_status;
 
@@ -410,6 +437,19 @@ void mctp_pcie_vdm_receive_packet(struct net_device *ndev)
 		/* put data into tail sk buff */
 		skb_put_data(skb, &packet[sizeof(struct mctp_pcie_vdm_hdr)], len);
 		mctp_pcie_vdm_display_skb_buff_data(skb);
+
+		if (mctp_pcie_vdm_error_inject_rx(vdm_dev->error_inject,
+						  skb)) {
+			eid = mctp_pcie_vdm_skb_eid(skb, true, 0);
+			mctp_pcie_vdm_stat_inc(vdm_dev, eid,
+					       MCTP_PCIE_VDM_STAT_RX_DROP_FRAGMENT_ERROR);
+			stats->rx_dropped++;
+			kfree_skb(skb);
+			vdm_dev->callback_ops->free_packet(packet);
+			packet =
+				vdm_dev->callback_ops->recv_packet(vdm_dev->dev);
+			continue;
+		}
 
 		cb = __mctp_cb(skb);
 		cb->halen = 3; // route type | bdf address
@@ -446,6 +486,8 @@ struct net_device *mctp_pcie_vdm_add_dev(struct device *dev,
 	vdm_dev = netdev_priv(ndev);
 	vdm_dev->dev = dev;
 	vdm_dev->callback_ops = ops;
+	vdm_dev->error_inject =
+		mctp_pcie_vdm_error_inject_init(netdev_name(ndev));
 
 	return ndev;
 }
@@ -456,7 +498,10 @@ void mctp_pcie_vdm_remove_dev(struct net_device *vdm_dev)
 	pr_debug("%s: removing vdm_dev %s\n", __func__, vdm_dev->name);
 
 	if (vdm_dev) {
+		struct mctp_pcie_vdm_dev *priv = netdev_priv(vdm_dev);
+
 		mctp_unregister_netdev(vdm_dev);
+		mctp_pcie_vdm_error_inject_cleanup(priv->error_inject);
 		free_netdev(vdm_dev);
 	}
 }

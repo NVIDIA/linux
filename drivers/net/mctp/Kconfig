@@ -79,6 +79,20 @@ config MCTP_TRANSPORT_PCIE_VDM
 	help
 	  Provides a driver to access MCTP devices over PCIe VDM transport,
 	  from DMTF specification DSP0238.
+
+config MCTP_TRANSPORT_PCIE_VDM_ERROR_INJECT
+	bool "MCTP PCIe VDM diagnostic error injection"
+	depends on MCTP_TRANSPORT_PCIE_VDM=y
+	depends on DEBUG_FS
+	help
+	  Add a default-off-at-runtime debugfs interface for deliberately
+	  dropping or corrupting MCTP PCIe VDM packets. This is intended for
+	  platform validation and error-path testing only.
+
+	  The controls are created below debugfs/aspeed_mctp/<interface>.
+	  Enabling this option does not alter packets until a runtime
+	  injection control is explicitly enabled.
+
 config NVIDIA_AST27XX_IROT
 	tristate "NVIDIA AST27XX IROT support"
 	depends on ARCH_ASPEED
