@@ -6,10 +6,12 @@
  * https://www.dmtf.org/sites/default/files/standards/documents/DSP0238_1.2.0.pdf
  *
  */
+#include <linux/atomic.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/byteorder/generic.h>
 #include <linux/dynamic_debug.h>
+#include <linux/ethtool.h>
 #include <linux/fs.h>
 #include <linux/hashtable.h>
 #include <linux/if_arp.h>
@@ -54,6 +56,9 @@
 #define MCTP_MSG_TYPE_MASK GENMASK(6, 0)
 #define MCTP_PCIE_VDM_MSG_TYPE 0x7E
 
+#define MCTP_PCIE_VDM_EID_UNKNOWN 256
+#define MCTP_PCIE_VDM_EID_COUNT 257
+
 #define MCTP_PCIE_SWAP_NET_ENDIAN(arr, len)       \
 	do {                                      \
 		u32 *p = (u32 *)(arr);            \
@@ -87,9 +92,103 @@ struct mctp_pcie_vdm_hdr {
 	u16 pci_target_id;
 };
 
+enum mctp_pcie_vdm_stat {
+	MCTP_PCIE_VDM_STAT_RX_DROP_NO_MEMORY,
+	MCTP_PCIE_VDM_STAT_RX_DROP_FRAGMENT_ERROR,
+	MCTP_PCIE_VDM_STAT_RX_HW_OVERFLOW,
+	MCTP_PCIE_VDM_STAT_TX_DROP_QUEUE_FULL,
+	MCTP_PCIE_VDM_STAT_TX_DROP_INJECTED,
+	MCTP_PCIE_VDM_STAT_TX_HW_WRONG_CMD,
+	MCTP_PCIE_VDM_STAT_COUNT,
+};
+
+struct mctp_pcie_vdm_eid_stats {
+	atomic64_t value[MCTP_PCIE_VDM_STAT_COUNT];
+};
+
 struct mctp_pcie_vdm_dev {
 	struct device *dev;
 	const struct mctp_pcie_vdm_ops *callback_ops;
+	struct mctp_pcie_vdm_eid_stats
+		eid_stats[MCTP_PCIE_VDM_EID_COUNT];
+};
+
+static const char * const
+mctp_pcie_vdm_stat_names[MCTP_PCIE_VDM_STAT_COUNT] = {
+	[MCTP_PCIE_VDM_STAT_RX_DROP_NO_MEMORY] =
+		"rx_drop_no_memory",
+	[MCTP_PCIE_VDM_STAT_RX_DROP_FRAGMENT_ERROR] =
+		"rx_drop_fragment_error",
+	[MCTP_PCIE_VDM_STAT_RX_HW_OVERFLOW] =
+		"rx_hw_overflow",
+	[MCTP_PCIE_VDM_STAT_TX_DROP_QUEUE_FULL] =
+		"tx_drop_queue_full",
+	[MCTP_PCIE_VDM_STAT_TX_DROP_INJECTED] =
+		"tx_drop_injected",
+	[MCTP_PCIE_VDM_STAT_TX_HW_WRONG_CMD] =
+		"tx_hw_wrong_cmd",
+};
+
+static void mctp_pcie_vdm_stat_inc(struct mctp_pcie_vdm_dev *vdm_dev,
+				   unsigned int eid,
+				   enum mctp_pcie_vdm_stat stat)
+{
+	if (WARN_ON_ONCE(eid >= MCTP_PCIE_VDM_EID_COUNT ||
+			 stat >= MCTP_PCIE_VDM_STAT_COUNT))
+		return;
+
+	atomic64_inc(&vdm_dev->eid_stats[eid].value[stat]);
+}
+
+static u64 mctp_pcie_vdm_stat_read(struct mctp_pcie_vdm_dev *vdm_dev,
+				   unsigned int eid,
+				   enum mctp_pcie_vdm_stat stat)
+{
+	return atomic64_read(&vdm_dev->eid_stats[eid].value[stat]);
+}
+
+static void mctp_pcie_vdm_get_strings(struct net_device *ndev,
+				      u32 stringset, u8 *data)
+{
+	unsigned int stat;
+
+	if (stringset != ETH_SS_STATS)
+		return;
+
+	for (stat = 0; stat < MCTP_PCIE_VDM_STAT_COUNT; stat++) {
+		strscpy(data, mctp_pcie_vdm_stat_names[stat],
+			ETH_GSTRING_LEN);
+		data += ETH_GSTRING_LEN;
+	}
+}
+
+static int mctp_pcie_vdm_get_sset_count(struct net_device *ndev, int sset)
+{
+	return sset == ETH_SS_STATS ? MCTP_PCIE_VDM_STAT_COUNT :
+				     -EOPNOTSUPP;
+}
+
+static void mctp_pcie_vdm_get_ethtool_stats(struct net_device *ndev,
+					    struct ethtool_stats *stats,
+					    u64 *data)
+{
+	struct mctp_pcie_vdm_dev *vdm_dev = netdev_priv(ndev);
+	unsigned int eid;
+	unsigned int stat;
+
+	for (stat = 0; stat < MCTP_PCIE_VDM_STAT_COUNT; stat++) {
+		u64 total = 0;
+
+		for (eid = 0; eid < MCTP_PCIE_VDM_EID_COUNT; eid++)
+			total += mctp_pcie_vdm_stat_read(vdm_dev, eid, stat);
+		*data++ = total;
+	}
+}
+
+static const struct ethtool_ops mctp_pcie_vdm_ethtool_ops = {
+	.get_strings = mctp_pcie_vdm_get_strings,
+	.get_sset_count = mctp_pcie_vdm_get_sset_count,
+	.get_ethtool_stats = mctp_pcie_vdm_get_ethtool_stats,
 };
 
 static const struct mctp_pcie_vdm_hdr mctp_pcie_vdm_hdr_template = {
@@ -243,6 +342,7 @@ static void mctp_pcie_vdm_net_setup(struct net_device *ndev)
 
 	ndev->netdev_ops = &mctp_pcie_vdm_net_ops;
 	ndev->header_ops = &mctp_pcie_vdm_net_hdr_ops;
+	ndev->ethtool_ops = &mctp_pcie_vdm_ethtool_ops;
 }
 
 static int mctp_pcie_vdm_add_net_dev(struct net_device **dev, const char *ifname)
@@ -298,6 +398,10 @@ void mctp_pcie_vdm_receive_packet(struct net_device *ndev)
 
 		if (!skb) {
 			stats->rx_errors++;
+			stats->rx_dropped++;
+			mctp_pcie_vdm_stat_inc(vdm_dev,
+					       MCTP_PCIE_VDM_EID_UNKNOWN,
+					       MCTP_PCIE_VDM_STAT_RX_DROP_NO_MEMORY);
 			pr_err("%s: failed to alloc skb\n", __func__);
 			continue;
 		}
@@ -357,6 +461,35 @@ void mctp_pcie_vdm_remove_dev(struct net_device *vdm_dev)
 	}
 }
 EXPORT_SYMBOL_GPL(mctp_pcie_vdm_remove_dev);
+
+void mctp_pcie_vdm_account_hw_event(struct net_device *ndev,
+				    enum mctp_pcie_vdm_hw_event event)
+{
+	struct mctp_pcie_vdm_dev *vdm_dev;
+	enum mctp_pcie_vdm_stat stat;
+
+	if (!ndev)
+		return;
+
+	switch (event) {
+	case MCTP_PCIE_VDM_HW_RX_NO_MEMORY:
+		stat = MCTP_PCIE_VDM_STAT_RX_DROP_NO_MEMORY;
+		break;
+	case MCTP_PCIE_VDM_HW_RX_OVERFLOW:
+		stat = MCTP_PCIE_VDM_STAT_RX_HW_OVERFLOW;
+		break;
+	case MCTP_PCIE_VDM_HW_TX_WRONG_CMD:
+		stat = MCTP_PCIE_VDM_STAT_TX_HW_WRONG_CMD;
+		break;
+	default:
+		WARN_ON_ONCE(1);
+		return;
+	}
+
+	vdm_dev = netdev_priv(ndev);
+	mctp_pcie_vdm_stat_inc(vdm_dev, MCTP_PCIE_VDM_EID_UNKNOWN, stat);
+}
+EXPORT_SYMBOL_GPL(mctp_pcie_vdm_account_hw_event);
 
 void mctp_pcie_vdm_set_carrier(struct net_device *ndev, bool up)
 {

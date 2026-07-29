@@ -341,6 +341,15 @@ struct aspeed_mctp {
 #endif
 };
 
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+static void aspeed_vdm_event(struct aspeed_mctp *priv,
+			     enum mctp_pcie_vdm_hw_event event)
+{
+	if (priv->pcie_vdm_enabled)
+		mctp_pcie_vdm_account_hw_event(priv->ndev, event);
+}
+#endif
+
 struct mctp_client {
 	struct kref ref;
 	struct aspeed_mctp *priv;
@@ -977,6 +986,10 @@ static void aspeed_mctp_rx_tasklet(unsigned long data)
 				aspeed_mctp_dispatch_packet(priv, rx_packet);
 			} else {
 				dev_dbg(priv->dev, "Failed to allocate RX packet\n");
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+				aspeed_vdm_event(priv,
+						 MCTP_PCIE_VDM_HW_RX_NO_MEMORY);
+#endif
 			}
 			data_dump(priv, &rx_packet->data);
 			*hdr = 0;
@@ -1039,6 +1052,10 @@ static void aspeed_mctp_rx_tasklet(unsigned long data)
 				aspeed_mctp_dispatch_packet(priv, rx_packet);
 			} else {
 				dev_dbg(priv->dev, "Failed to allocate RX packet\n");
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+				aspeed_vdm_event(priv,
+						 MCTP_PCIE_VDM_HW_RX_NO_MEMORY);
+#endif
 			}
 			dev_dbg(priv->dev,
 				"rx->wr_ptr = %d, rx_cmd->rx_lo = %08x",
@@ -2195,6 +2212,9 @@ static irqreturn_t aspeed_mctp_irq_handler(int irq, void *arg)
 	if (status & TX_CMD_WRONG_INT) {
 		/* TODO: print the actual command */
 		dev_warn(priv->dev, "TX wrong");
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+		aspeed_vdm_event(priv, MCTP_PCIE_VDM_HW_TX_WRONG_CMD);
+#endif
 
 		handled |= TX_CMD_WRONG_INT;
 	}
@@ -2207,6 +2227,9 @@ static irqreturn_t aspeed_mctp_irq_handler(int irq, void *arg)
 
 	if (status & RX_CMD_NO_MORE_INT) {
 		dev_dbg(priv->dev, "RX full");
+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+		aspeed_vdm_event(priv, MCTP_PCIE_VDM_HW_RX_OVERFLOW);
+#endif
 		priv->rx.stopped = true;
 		tasklet_hi_schedule(&priv->rx.tasklet);
 

@@ -28,12 +28,26 @@ struct mctp_pcie_vdm_ops {
 	void (*uninit)(struct device *dev);
 };
 
+/**
+ * enum mctp_pcie_vdm_hw_event - backend events without packet/EID context
+ * @MCTP_PCIE_VDM_HW_RX_NO_MEMORY: backend could not allocate an RX packet
+ * @MCTP_PCIE_VDM_HW_RX_OVERFLOW: hardware RX queue ran out of buffers
+ * @MCTP_PCIE_VDM_HW_TX_WRONG_CMD: hardware rejected a TX command
+ */
+enum mctp_pcie_vdm_hw_event {
+	MCTP_PCIE_VDM_HW_RX_NO_MEMORY,
+	MCTP_PCIE_VDM_HW_RX_OVERFLOW,
+	MCTP_PCIE_VDM_HW_TX_WRONG_CMD,
+};
+
 struct net_device *mctp_pcie_vdm_add_dev(struct device *dev,
 					 const struct mctp_pcie_vdm_ops *ops,
 					 const char *ifname);
 void mctp_pcie_vdm_receive_packet(struct net_device *ndev);
 void mctp_pcie_vdm_remove_dev(struct net_device *ndev);
 void mctp_pcie_vdm_set_carrier(struct net_device *ndev, bool up);
+void mctp_pcie_vdm_account_hw_event(struct net_device *ndev,
+				    enum mctp_pcie_vdm_hw_event event);
 
 #endif	/* CONFIG_MCTP_TRANSPORT_PCIE_VDM */
 #endif	/* __LINUX_MCTP_PCIE_VDM_H */
