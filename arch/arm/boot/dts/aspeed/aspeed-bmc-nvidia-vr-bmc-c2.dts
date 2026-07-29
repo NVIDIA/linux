@@ -58,7 +58,6 @@
 		i2c67	= &e1s_ssd7_i2c;
 
 		i2c70	= &i2c70;
-		i2c71	= &i2c71;
 	};
 
 	chosen {
@@ -524,17 +523,8 @@
                         compatible = "usb0955,cf11";
                         reg = <2>;
 
-                        bp_sma_cp2112: interface@1 {
+                        lstp_mcu: interface@1 {
                             reg = <1 1>;
-
-                            i2c71: i2c {
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                            };
-                        };
-
-                        lstp_mcu: interface@2 {
-                            reg = <2 1>;
                             #address-cells = <1>;
                             #size-cells = <0>;
 
