@@ -623,7 +623,8 @@
 };
 
 // I2C10
-// Hotswap Controller
+// Hotswap Controller (Node HSC, symmetric across all BMCs)
+// 54V Shared HSC (asymmetric: only BMC4/Node4 has PU26 on this bus)
 &i2c9 {
     status = "okay";
     clock-frequency = <400000>;
@@ -632,6 +633,14 @@
     hsc@45 {
         compatible = "ti,lm5066i";
         reg = <0x45>;
+    };
+
+    // PU26: 54V Shared HSC (FIO, Ethernet switch, E1.S shared rail).
+    // Originally TPS16890VMAR, replaced with LM5066H on production boards.
+    // Only BMC4 (Node 4) has this device wired; probe fails gracefully on BMC1-3.
+    shared_hsc@46 {
+        compatible = "ti,lm5066i";
+        reg = <0x46>;
     };
 };
 
