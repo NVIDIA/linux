@@ -242,24 +242,84 @@
 
     hub@1 {
         reg = <1>;
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-        // BF4 physical CP2112
+        // BF4 Lily
         hub@1 {
             reg = <1>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
             hub@4 {
                 reg = <4>;
-                device@1 {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                bf4_mcu: device@1 {
                     reg = <1>;
-                    interface@1 {
+                    #address-cells = <2>;
+                    #size-cells = <0>;
+
+                    bf4_mcu_cp2112: interface@1 {
                         reg = <1 1>;
-                        i2c73: bf4_sma_i2c: i2c {
+
+                        i2c73: bf4_mcu_cp2112_i2c: i2c {
                             #address-cells = <1>;
                             #size-cells = <0>;
+
+                            bf4_lily_iox0: pca9555@50 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x50>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+                                gpio-line-names =
+                                    "BF4_MCU_RECOVERY_N-I",
+                                    "BF4_S_BMC_IO0_MCU-O",
+                                    "BF4_S_BMC_IO1_MCU-O",
+                                    "BF4_MCU_BOARD_ID0-I",
+                                    "BF4_SE_SPI_MCU_CS0_L-O",
+                                    "BF4_S_WP_FRU_STBY-O",
+                                    "BF4_EXP_INBAND_RECOVERY_EN-O",
+                                    "BF4_S_BMC_EROT_FATAL_ERROR_L-I",
+                                    "BF4_S_BMC_BOOT_DONE_L-I",
+                                    "BF4_S_EROT_CPU_FATAL_ERROR_N-I",
+                                    "BF4_S_EROT_RECOV_N-O",
+                                    "BF4_S_EXP_GRACE_EROT_RST_L-O",
+                                    "BF4_S_BOARD_THERM_WARN_R-I",
+                                    "BF4_S_DPU_BMC_PWR_OFF_R-O",
+                                    "BF4_EROT_I2C_MUX_CTRL-I",
+                                    "BF4_S_SPI_MUX_CTRL-O";
+                            };
+
+                            bf4_lily_iox1: pca9555@51 {
+                                compatible = "nxp,pca9555";
+                                reg = <0x51>;
+                                gpio-controller;
+                                #gpio-cells = <2>;
+                                gpio-line-names =
+                                    "BF4_CEC_I2C_ADDR1_STRAP_MUX-I",
+                                    "",
+                                    "BF4_S_P_ON_COUNTER_EXPIRED-I",
+                                    "BF4_S_CX9_BOOT_DONE_L-I",
+                                    "BF4_S_GPIO2_MCU_CPLD-I",
+                                    "BF4_S_GPIO0_MCU_CX9-I",
+                                    "BF4_S_GPIO1_MCU_CX9-I",
+                                    "BF4_S_GPIO0_MCU_GRACE-I",
+                                    "BF4_S_GPIO1_MCU_GRACE-I",
+                                    "BF4_S_GPIO0_MCU_BMC-I",
+                                    "BF4_S_GPIO1_MCU_BMC-I",
+                                    "BF4_S_NIC_MOD_INDICATION-I",
+                                    "BF4_NIC_MODE_LATCHED_IND-I",
+                                    "BF4_LEAK_DETECT_VR_PIN_0-I",
+                                    "BF4_LEAK_DETECT_VR_PIN_1-I",
+                                    "";
+                            };
                         };
                     };
                 };
 
-                bf4_cp2112: device@2 {
+                bf4_u122_cp2112: device@2 {
                     reg = <2>;
                     gpio-controller;
                     #gpio-cells = <2>;
@@ -276,7 +336,7 @@
                         "BF4_BMC_EROT_RECOVERY_L",
                         "BF4_THERM_SHUTDOWN";
 
-                    i2c72: bf4_i2c: i2c {
+                    i2c72: bf4_u122_i2c: i2c {
                         #address-cells = <1>;
                         #size-cells = <0>;
                     };
