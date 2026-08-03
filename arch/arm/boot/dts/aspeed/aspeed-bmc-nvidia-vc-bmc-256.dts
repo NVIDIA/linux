@@ -16,9 +16,15 @@
 		i2c18	= &i2c_dp;
 		i2c60	= &e1s_ssd0_i2c;
 		i2c61	= &e1s_ssd1_i2c;
-		i2c70	= &i2c70;
 		i2c72	= &i2c72;
 		i2c73	= &i2c73;
+		i2c80	= &i2c80;
+		i2c81	= &i2c81;
+		i2c82	= &i2c82;
+		i2c83	= &i2c83;
+		i2c84	= &i2c84;
+		i2c85	= &i2c85;
+		i2c86	= &i2c86;
 	};
 
 	chosen {
@@ -278,185 +284,191 @@
             };
         };
 
-        // HPM MCU virtual CP2112 and LSTP
+        // HPM MCU LSTP-only interface
         hub@2 {
             reg = <2>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
             device@4 {
+                compatible = "usb0955,cf11";
                 reg = <4>;
-                cp2112: interface@1 {
-                    reg = <1 1>;
+                #address-cells = <1>;
+                #size-cells = <0>;
 
-                    gpio-controller;
-                    interrupt-controller;
-                    #gpio-cells = <2>;
-                    #interrupt-cells = <2>;
+                hpm_mcu_lstp: interface@1 {
+                    reg = <1>;
+                    #address-cells = <1>;
+                    #size-cells = <0>;
 
-                    i2c70: i2c {
+                    hpm_mcu_cpu_flash_spi: channel@1 {
+                        compatible = "nvidia,lstp-spi";
+                        reg = <1>;
                         #address-cells = <1>;
                         #size-cells = <0>;
 
-                        exp9: pca9555@50 {
-                            compatible = "nxp,pca9555";
-                            reg = <0x50>;
-                            gpio-controller;
-                            #gpio-cells = <2>;
-
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                            interrupt-controller;
-                            #interrupt-cells = <2>;
-                            interrupt-parent = <&cp2112>;
-                            interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
-
-                            gpio-line-names =
-                                "CPU0_IROT_RECOVERY_L_3V3-I",
-                                "CPU0_IROT_FATAL_ERR_L_3V3-I",
-                                "CPU0_OVERT_L-I",
-                                "C0_THERM_WARN_N-I",
-                                "C0_S0_THERM_OVERT_N-I",
-                                "CPU0_CHIPTHROT_L-I",
-                                "C0_SOCAMM_0_ID_PRSNT_N_1V8-I",
-                                "C0_SOCAMM_1_ID_PRSNT_N-I",
-                                "C0_SOCAMM_2_ID_PRSNT_N-I",
-                                "C0_SOCAMM_3_ID_PRSNT_N-I",
-                                "C0_SOCAMM_4_ID_PRSNT_N-I",
-                                "C0_SOCAMM_5_ID_PRSNT_N-I",
-                                "C0_SOCAMM_6_ID_PRSNT_N-I",
-                                "C0_SOCAMM_7_ID_PRSNT_N-I",
-                                "MCU_JTAG_BYPASS_CPU0_S-O",
-                                "MCU_JTAG_BYPASS_CPU0-O";
+                        spidev@0 {
+                            compatible = "nvidia,lstp-spidev";
+                            reg = <0>;
+                            spi-max-frequency = <18750000>;
                         };
-                        exp10: pca9555@51 {
-                            compatible = "nxp,pca9555";
-                            reg = <0x51>;
-                            gpio-controller;
-                            #gpio-cells = <2>;
 
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                            interrupt-controller;
-                            #interrupt-cells = <2>;
-                            interrupt-parent = <&cp2112>;
-                            interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
-
-                            gpio-line-names =
-                                "CPU1_IROT_RECOVERY_L_3V3-I",
-                                "CPU1_IROT_FATAL_ERR_L_3V3-I",
-                                "CPU1_OVERT_L-I",
-                                "C1_THERM_WARN_N-I",
-                                "C1_S0_THERM_OVERT_N-I",
-                                "CPU1_CHIPTHROT_L-I",
-                                "C1_SOCAMM_0_ID_PRSNT_N-I",
-                                "C1_SOCAMM_1_ID_PRSNT_N-I",
-                                "C1_SOCAMM_2_ID_PRSNT_N-I",
-                                "C1_SOCAMM_3_ID_PRSNT_N-I",
-                                "C1_SOCAMM_4_ID_PRSNT_N-I",
-                                "C1_SOCAMM_5_ID_PRSNT_N-I",
-                                "C1_SOCAMM_6_ID_PRSNT_N-I",
-                                "C1_SOCAMM_7_ID_PRSNT_N-I",
-                                "MCU_JTAG_BYPASS_CPU1_S-O",
-                                "MCU_JTAG_BYPASS_CPU1-O";
-                        };
-                        exp11: pca9555@52 {
-                            compatible = "nxp,pca9555";
-                            reg = <0x52>;
-                            gpio-controller;
-                            #gpio-cells = <2>;
-
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                            interrupt-controller;
-                            #interrupt-cells = <2>;
-                            interrupt-parent = <&cp2112>;
-                            interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-
-                            gpio-line-names =
-                                "COMBINED_CPU_CEM_WAKE_L-I",
-                                "MCU_THERM_OVERT_N-I",
-                                "MCU_THERM_WARN_N-I",
-                                "PCB_T_SENSOR_ALERT_L-I",
-                                "GLOBAL_WP_1V8-I",
-                                "NVBUF_LOS_L-I",
-                                "LEAK_DETECT_L-I",
-                                "vLeakDetect1Status0-I",
-                                "vLeakDetect1Status1-I",
-                                "vLeakDetect2Status0-I",
-                                "vLeakDetect2Status1-I",
-                                "BMC_IOX_INT_L-I",
-                                "MCU_BMC_ALERT_L-I",
-                                "MCU_HMC_ALERT_L-I",
-                                "MCU_USER_STRAP-I",
-                                "HPM_MCU_OK-I";
-                        };
-                        exp12: pca9555@53 {
-                            compatible = "nxp,pca9555";
-                            reg = <0x53>;
-                            gpio-controller;
-                            #gpio-cells = <2>;
-
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                            interrupt-controller;
-                            #interrupt-cells = <2>;
-                            interrupt-parent = <&cp2112>;
-                            interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
-
-                            gpio-line-names =
-                                "CPLD_RESET_L-I",
-                                "CPLD_PSEQ_FAULT-I",
-                                "CPLD_READY-I",
-                                "CPLD_PROGRAM-I",
-                                "INPUT_12V_VALID_VMON_PG-I",
-                                "RUN_PWR_EN_1V8-I",
-                                "MODULE_PWR_GOOD_1V8-I",
-                                "MCU_I2C_RTC_ALERT_L-I",
-                                "SLOT_PWR_BRAKE_EN_L-I",
-                                "OOB_MUX_CTRL0-O",
-                                "OOB_MUX_CTRL1-O",
-                                "OOB_MUX_CTRL2-O",
-                                "CPU_OOB_CS0_L-O",
-                                "CPU_OOB_CS1_L-O",
-                                "LEAK_SELF_TEST_L_1V8-I",
-                                "MCU_RECOVERY_L-I";
-                        };
-                        exp13: pca9555@54 {
-                            compatible = "nxp,pca9555";
-                            reg = <0x54>;
-                            gpio-controller;
-                            #gpio-cells = <2>;
-
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                            interrupt-controller;
-                            #interrupt-cells = <2>;
-                            interrupt-parent = <&cp2112>;
-                            interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
-
-                            gpio-line-names =
-                                "JTAG_SEL_MCU-O",
-                                "JTAG_TCK_MCU-O",
-                                "JTAG_TMS_MCU-O",
-                                "JTAG_TDO_MCU-I",
-                                "JTAG_TDI_MCU-O",
-                                "JTAG_TRST_L_MCU-O",
-                                "CPU0_SSIF_ALERT_L_3V3-I",
-                                "CPU1_SSIF_ALERT_L_1V8-I",
-                                "USB_HMC_TO_CPU_FORCE_EN_L-O",
-                                "",
-                                "",
-                                "",
-                                "",
-                                "",
-                                "",
-                                "";
+                        spidev@1 {
+                            compatible = "nvidia,lstp-spidev";
+                            reg = <1>;
+                            spi-max-frequency = <18750000>;
                         };
                     };
-                };
 
-                lstp_mcu_hpm: interface@2 {
-                    reg = <2 1>;
-                    #address-cells = <1>;
-                    #size-cells = <0>;
+                    hpm_mcu_cpu0_ssif: channel@2 {
+                        compatible = "nvidia,lstp-ipmi";
+                        reg = <2>;
+                        label = "ipmi-ssif-host-cpu0";
+                    };
+
+                    hpm_mcu_cpu1_ssif: channel@3 {
+                        compatible = "nvidia,lstp-ipmi";
+                        reg = <3>;
+                        label = "ipmi-ssif-host-cpu1";
+                    };
+
+                    i2c80: hpm_mcu_temp_refclk_i2c: channel@4 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <4>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c81: hpm_mcu_vrd_cpu0_i2c: channel@5 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <5>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c82: hpm_mcu_cpld_prog_i2c: channel@6 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <6>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c83: hpm_mcu_vrd_cpu1_i2c: channel@7 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <7>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c84: hpm_mcu_cpld_user_i2c: channel@8 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <8>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c85: hpm_mcu_cpu0_ocp_i3c: channel@9 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <9>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    i2c86: hpm_mcu_cpu1_ocp_i3c: channel@10 {
+                        compatible = "nvidia,lstp-i2c";
+                        reg = <10>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        clock-frequency = <400000>;
+                    };
+
+                    hpm_mcu_gpio: channel@11 {
+                        compatible = "nvidia,lstp-gpio";
+                        reg = <11>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+
+                        gpio-line-names =
+                            "CPU0_IROT_RECOVERY_L_3V3-I",
+                            "CPU0_IROT_FATAL_ERR_L_3V3-I",
+                            "CPU0_OVERT_L-I",
+                            "C0_THERM_WARN_N-I",
+                            "C0_S0_THERM_OVERT_N-I",
+                            "CPU0_CHIPTHROT_L-I",
+                            "C0_SOCAMM_0_ID_PRSNT_N_1V8-I",
+                            "C0_SOCAMM_1_ID_PRSNT_N-I",
+                            "C0_SOCAMM_2_ID_PRSNT_N-I",
+                            "C0_SOCAMM_3_ID_PRSNT_N-I",
+                            "C0_SOCAMM_4_ID_PRSNT_N-I",
+                            "C0_SOCAMM_5_ID_PRSNT_N-I",
+                            "C0_SOCAMM_6_ID_PRSNT_N-I",
+                            "C0_SOCAMM_7_ID_PRSNT_N-I",
+                            "MCU_JTAG_BYPASS_CPU0_S-O",
+                            "MCU_JTAG_BYPASS_CPU0-O",
+                            "CPU1_IROT_RECOVERY_L_3V3-I",
+                            "CPU1_IROT_FATAL_ERR_L_3V3-I",
+                            "CPU1_OVERT_L-I",
+                            "C1_THERM_WARN_N-I",
+                            "C1_S0_THERM_OVERT_N-I",
+                            "CPU1_CHIPTHROT_L-I",
+                            "C1_SOCAMM_0_ID_PRSNT_N-I",
+                            "C1_SOCAMM_1_ID_PRSNT_N-I",
+                            "C1_SOCAMM_2_ID_PRSNT_N-I",
+                            "C1_SOCAMM_3_ID_PRSNT_N-I",
+                            "C1_SOCAMM_4_ID_PRSNT_N-I",
+                            "C1_SOCAMM_5_ID_PRSNT_N-I",
+                            "C1_SOCAMM_6_ID_PRSNT_N-I",
+                            "C1_SOCAMM_7_ID_PRSNT_N-I",
+                            "MCU_JTAG_BYPASS_CPU1_S-O",
+                            "MCU_JTAG_BYPASS_CPU1-O",
+                            "COMBINED_CPU_CEM_WAKE_L-I",
+                            "MCU_THERM_OVERT_N-I",
+                            "MCU_THERM_WARN_N-I",
+                            "PCB_T_SENSOR_ALERT_L-I",
+                            "GLOBAL_WP_1V8-I",
+                            "NVBUF_LOS_L-I",
+                            "LEAK_DETECT_L-I",
+                            "BMC_IOX_INT_L-I",
+                            "MCU_BMC_ALERT_L-I",
+                            "MCU_HMC_ALERT_L-I",
+                            "MCU_USER_STRAP-I",
+                            "HPM_MCU_OK-I",
+                            "CPLD_RESET_L-I",
+                            "CPLD_PSEQ_FAULT-I",
+                            "CPLD_READY-I",
+                            "CPLD_PROGRAM-I",
+                            "INPUT_12V_VALID_VMON_PG-I",
+                            "RUN_PWR_EN_1V8-I",
+                            "MODULE_PWR_GOOD_1V8-I",
+                            "MCU_I2C_RTC_ALERT_L-I",
+                            "SLOT_PWR_BRAKE_EN_L-I",
+                            "OOB_MUX_CTRL0-O",
+                            "OOB_MUX_CTRL1-O",
+                            "OOB_MUX_CTRL2-O",
+                            "CPU_OOB_CS0_L-O",
+                            "CPU_OOB_CS1_L-O",
+                            "LEAK_SELF_TEST_L_1V8-I",
+                            "MCU_RECOVERY_L-I",
+                            "JTAG_SEL_MCU-O",
+                            "JTAG_TCK_MCU-O",
+                            "JTAG_TMS_MCU-O",
+                            "JTAG_TDO_MCU-I",
+                            "JTAG_TDI_MCU-O",
+                            "JTAG_TRST_L_MCU-O",
+                            "CPU0_SSIF_ALERT_L_3V3-I",
+                            "CPU1_SSIF_ALERT_L_1V8-I",
+                            "USB_HMC_TO_CPU_FORCE_EN_L-O",
+                            "vLeakDetect1Status0-I",
+                            "vLeakDetect1Status1-I",
+                            "vLeakDetect2Status0-I",
+                            "vLeakDetect2Status1-I";
+                    };
                 };
             };
         };
