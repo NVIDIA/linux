@@ -14,8 +14,8 @@
 		i2c16	= &i2c_usbhub;
 		i2c17	= &i2c_tpm;
 		i2c18	= &i2c_dp;
-		i2c60	= &e1s_ssd0_i2c;
-		i2c61	= &e1s_ssd1_i2c;
+		i2c60	= &i2c60;
+		i2c61	= &i2c61;
 		i2c72	= &i2c72;
 		i2c73	= &i2c73;
 		i2c80	= &i2c80;
@@ -537,24 +537,53 @@
         device@3 {
             compatible = "usb0955,cf11";
             reg = <3>;
+            #address-cells = <1>;
+            #size-cells = <0>;
 
-            lstp_mcu: interface@1 {
-                reg = <1 1>;
+            e1s_mcu_lstp: interface@1 {
+                reg = <1>;
                 #address-cells = <1>;
                 #size-cells = <0>;
 
-                e1s_ssd0_i2c: channel@1 {
+                i2c60: e1s_mcu_ssd0_i2c: channel@1 {
                     compatible = "nvidia,lstp-i2c";
                     reg = <1>;
                     #address-cells = <1>;
                     #size-cells = <0>;
+                    clock-frequency = <400000>;
                 };
 
-                e1s_ssd1_i2c: channel@2 {
+                i2c61: e1s_mcu_ssd1_i2c: channel@2 {
                     compatible = "nvidia,lstp-i2c";
                     reg = <2>;
                     #address-cells = <1>;
                     #size-cells = <0>;
+                    clock-frequency = <400000>;
+                };
+
+                e1s_mcu_gpio: channel@3 {
+                    compatible = "nvidia,lstp-gpio";
+                    reg = <3>;
+                    gpio-controller;
+                    #gpio-cells = <2>;
+
+                    gpio-line-names =
+                        "SSD0_PRSNT_L-I",
+                        "SSD1_PRSNT_L-I",
+                        "POWER_LED_OUT_L-O",
+                        "POWER_BTN_IN_L-I",
+                        "FAULT_STATUS_IN_L-I",
+                        "FAULT_LED_OUT_L-O",
+                        "FAULT_STATUS_OUT_L-O",
+                        "UID_STATUS_IN_L-I",
+                        "UID_LED_OUT_L-O",
+                        "UID_STATUS_OUT_L-O",
+                        "UID_BTN_IN_L-I",
+                        "vBTN_ACTION0-I",
+                        "vBTN_ACTION1-I",
+                        "vBTN_ACTION2-I",
+                        "vLEAK_DETECT_STATUS0-I",
+                        "vLEAK_DETECT_STATUS1-I";
                 };
             };
         };
