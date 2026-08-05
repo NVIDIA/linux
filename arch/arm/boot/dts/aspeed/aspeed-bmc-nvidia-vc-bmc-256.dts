@@ -78,14 +78,6 @@
     leds {
         compatible = "gpio-leds";
 
-        uid_led {
-            gpios = <&e1s_mcu_gpio 8 GPIO_ACTIVE_LOW>;
-        };
-
-        fault_led {
-            gpios = <&e1s_mcu_gpio 5 GPIO_ACTIVE_LOW>;
-        };
-
         power_led {
             gpios = <&e1s_mcu_gpio 2 GPIO_ACTIVE_LOW>;
         };
