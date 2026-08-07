@@ -1081,12 +1081,12 @@
             "FAN_P12V_FAN56_PG-I",
             "",
             "",
-            "FAN_FAN1_PRSNT_BUF-I",
-            "FAN_FAN2_PRSNT_BUF-I",
-            "FAN_FAN3_PRSNT_BUF-I",
-            "FAN_FAN4_PRSNT_BUF-I",
-            "FAN_FAN5_PRSNT_BUF-I",
-            "FAN_FAN6_PRSNT_BUF-I",
+            "FAN_FAN1_PRSNT_BUF_L-I",
+            "FAN_FAN2_PRSNT_BUF_L-I",
+            "FAN_FAN3_PRSNT_BUF_L-I",
+            "FAN_FAN4_PRSNT_BUF_L-I",
+            "FAN_FAN5_PRSNT_BUF_L-I",
+            "FAN_FAN6_PRSNT_BUF_L-I",
             "FAN_FANCTRL_FAIL_L-I",
             "FAN_FANCTRL2_FAIL_L-I";
     };
