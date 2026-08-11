@@ -71,9 +71,14 @@ config MCTP_TRANSPORT_USBLIB
 	  This will be automatically enabled by the transport driver.
 
 config MCTP_TRANSPORT_USBLIB_TEST
-        bool "MCTP usblib tests" if !KUNIT_ALL_TESTS
-        depends on MCTP_TRANSPORT_USBLIB=y && KUNIT=y
-        default KUNIT_ALL_TESTS
+	bool "MCTP usblib tests" if !KUNIT_ALL_TESTS
+	depends on MCTP_TRANSPORT_USBLIB=y && KUNIT=y
+	default KUNIT_ALL_TESTS
+	help
+	  Run KUnit tests for MCTP-over-USB transfer processing. The tests
+	  cover legacy and spanning packet parsing, Full-Speed endpoint
+	  sizing, malformed input recovery, and transport length limits.
+	  This is intended for development and continuous integration.
 
 config MCTP_TRANSPORT_USB
 	tristate "MCTP USB transport"
