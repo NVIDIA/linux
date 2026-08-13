@@ -19,7 +19,6 @@
 		i2c19	= &i2c_rtc;
 		i2c70	= &i2c70;
 		i2c71	= &i2c71;
-		i2c72	= &i2c72;
 		i2c73	= &i2c73;
 		i2c74	= &i2c74;
 		i2c75	= &i2c75;
@@ -29,6 +28,7 @@
 		i2c79	= &i2c79;
 		i2c80	= &i2c80;
 		i2c81	= &i2c81;
+		i2c83	= &i2c83;
 	};
 
 	chosen {
@@ -249,26 +249,29 @@
                         };
                     };
                 };
-                cp2112g: device@2 {
+                device@2 {
                     reg = <2>;
-                    gpio-controller;
-                    #gpio-cells = <2>;
-                    interrupt-controller;
-                    #interrupt-cells = <2>;
+                    cp2112g: interface@1 {
+                        reg = <1 1>;
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
 
-                    gpio-line-names =
-                        "BF4_USB_MCU_RECOVERY_L",
-                        "BF4_USB_MCU_RST_L",
-                        "BF4_USB_FORCE_FNP_L",
-                        "BF4_GLOBAL_WP",
-                        "BF4_FORCE_POR_L",
-                        "BF4_BMC_EROT_RST_L",
-                        "BF4_BMC_EROT_RECOVERY_L",
-                        "BF4_THERM_SHUTDOWN";
+                        gpio-line-names =
+                            "BF4_USB_MCU_RECOVERY_L",
+                            "BF4_USB_MCU_RST_L",
+                            "BF4_USB_FORCE_FNP_L",
+                            "BF4_GLOBAL_WP",
+                            "BF4_FORCE_POR_L",
+                            "BF4_BMC_EROT_RST_L",
+                            "BF4_BMC_EROT_RECOVERY_L",
+                            "BF4_THERM_SHUTDOWN";
 
-                    i2c72: i2c {
-                        #address-cells = <1>;
-                        #size-cells = <0>;
+                        i2c83: i2c {
+                            #address-cells = <1>;
+                            #size-cells = <0>;
+                        };
                     };
                 };
             };
