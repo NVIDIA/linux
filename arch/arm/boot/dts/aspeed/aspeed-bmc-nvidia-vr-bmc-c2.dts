@@ -513,6 +513,34 @@
                         };
                     };
                 };
+                hub@3 {
+                    reg = <3>;
+                    hub@2 {
+                        reg = <2>;
+                        bf4_u122_cp2112: device@2 {
+                            reg = <2>;
+                            gpio-controller;
+                            #gpio-cells = <2>;
+                            interrupt-controller;
+                            #interrupt-cells = <2>;
+
+                            gpio-line-names =
+                                "BF4_USB_MCU_RECOVERY_L-O",
+                                "BF4_USB_MCU_RST_L-O",
+                                "BF4_USB_FORCE_FNP_L-O",
+                                "BF4_GLOBAL_WP-O",
+                                "BF4_FORCE_POR_L-O",
+                                "BF4_BMC_EROT_RST_L-O",
+                                "BF4_BMC_EROT_RECOVERY_L-O",
+                                "BF4_THERM_SHUTDOWN-I";
+
+                            i2c72: i2c {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                            };
+                        };
+                    };
+                };
             };
         };
 
