@@ -145,12 +145,12 @@
         gpio-line-names =
             "E1S_MCU_RESET_L-O",
             "E1S_MCU_RECOVERY_L-O",
-            "",
+            "E1S_FRU_WP-O",
             "E1S_TEMP_ALERT_L-I",
-            "E1S_PMB_ALERT_L-I",
-            "",
+            "E1S_P12V_PG-I",
+            "E1S_P0V8_STBY_PG-I",
             "E1S_LOWER_PERST-O",
-            "";
+            "E1S_MCU_USB_EN-O";
     };
 };
 
@@ -268,17 +268,17 @@
         vcc-supply = <&standby_power_regulator>;
         gpio-line-names =
             "",
-            "8373_INT_N-O",
-            "P12V_STBY_PG-I",
+            "",
+            "",
             "GLOBAL_WP-O",
             "",
             "STBY_ETH_PG-I",
             "BMC_SELF_PWR_CYCLE-O",
-            "EEDO_1_LED2-O",
+            "NIC_1G_ENABLE-O",
             "",
             "",
-            "P1V8_PG-I",
-            "P1V05_PG-I",
+            "STBY_MODULE_PG-I",
+            "",
             "",
             "USB2_HUB_RST_L-O",
             "",
@@ -298,7 +298,7 @@
         interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
         vcc-supply = <&standby_power_regulator>;
         gpio-line-names =
-            "U8367_LINK_BF4_GOOD-I",
+            "",
             "BMC_TPM_MUX_SEL-O",
             "BOARD_ID_0-I",
             "BOARD_ID_1-I",
