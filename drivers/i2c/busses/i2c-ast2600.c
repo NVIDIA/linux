@@ -540,8 +540,8 @@ static void ast2700_i2c_ac_timing_config(struct ast2600_i2c_bus *i2c_bus)
 	data = (scl_high - 1) << 20 | scl_high << 16 | scl_low << 12 | baseclk_idx;
 
 	if (i2c_bus->timeout) {
-		i2c_bus->timeout = min(i2c_bus->timeout, 255);
-		writel(MSIC_I2C_SET_TIMEOUT(i2c_bus->timeout, 0),
+		i2c_bus->tout_ticks = min(DIV_ROUND_UP(i2c_bus->timeout, 1024), 255);
+		writel(MSIC_I2C_SET_TIMEOUT(i2c_bus->tout_ticks, 0),
 		       i2c_bus->reg_base + MSIC_CONFIG_ACTIMING1);
 		/* timeout_base set as 1ms */
 		data |= AST2600_I2CC_TOUTBASECLK(AST2700_I2C_TIMEOUT_CLK);
@@ -682,7 +682,7 @@ static void ast2700_i2c_target_packet_dma_irq(struct ast2600_i2c_bus *i2c_bus, u
 				AST2600_I2CC_AC_TIMING_MASK;
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-		ac_timing |= AST2700_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2700_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_RX_DMA_EN;
 		writel(AST2600_I2CS_SET_RX_DMA_LEN(I2C_TARGET_MSG_BUF_SIZE),
@@ -1120,7 +1120,7 @@ static void ast2700_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 				AST2600_I2CC_AC_TIMING_MASK;
 
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
-		ac_timing |= AST2700_I2CC_TTIMEOUT(i2c_bus->timeout);
+		ac_timing |= AST2700_I2CC_TTIMEOUT(i2c_bus->tout_ticks);
 		writel(ac_timing, i2c_bus->reg_base + AST2600_I2CC_AC_TIMING);
 		writel(TARGET_TRIGGER_CMD, i2c_bus->reg_base + AST2600_I2CS_CMD_STS);
 		/* clear sirq log */
