@@ -207,15 +207,6 @@
     pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
-&mac2 {
-    status = "okay";
-    phy-mode = "rmii";
-    use-ncsi;
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_rmii3_default>;
-};
-
-
 // Enable emmc
 &emmc_controller {
     status = "okay";
@@ -603,28 +594,10 @@
     };
 };
 
-// I2C1, SSIF IPMI interface
-/*
- * SSIF is handled by the MCU LSTP path, not by the ASPEED I2C
- * controller acting as a direct SMBus slave. Remove this legacy
- * direct SSIF setup after bringup is complete.
- */
+// I2C1
 &i2c0 {
     status = "okay";
     clock-frequency = <400000>;
-    disable-master = <1>;
-    i2c-scl-clk-low-timeout-us = <128000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-    tout-baseclk-div = <4096>;
-
-    ssif-bmc@10 {
-        compatible = "ssif-bmc";
-        status = "disabled";
-        alert-gpio = <&gpio1 ASPEED_GPIO(D, 7) GPIO_ACTIVE_LOW>;
-        pulse_width_us = <5>;
-        timeout_ms = <4995>;
-        reg = <0x10>;
-    };
 };
 
 // I2C2
