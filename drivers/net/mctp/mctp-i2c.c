@@ -605,7 +605,22 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 	}
 
 	if (rc < 0) {
+		struct mctp_sk_key *key = NULL;
+		struct sock *sk;
+
 		stats->tx_errors++;
+
+		/* Report to the socket error queue so a subscriber polling
+		 * POLLERR on its AF_MCTP socket sees driver-level TX failures,
+		 * rather than the packet being dropped silently.
+		 */
+		sk = mctp_lookup_sock_for_error(skb, midev->ndev, NULL, &key);
+		if (sk) {
+			mctp_queue_error(sk, skb, -rc, midev->ndev,
+					 MCTP_DIR_TX, MCTP_PHYS_BINDING_SMBUS,
+					 key);
+			sock_put(sk);
+		}
 
 		/* Track specific error types per-EID */
 		if (rc == -ENOMEM) {

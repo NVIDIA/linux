@@ -233,6 +233,62 @@ static void mctp_usb_handle_tx_sync_error(struct mctp_usb *mctp_usb,
 	}
 }
 
+/**
+ * mctp_usb_report_tx_error - Report a TX failure to the socket error queue
+ * @netdev: Network device
+ * @skb: Failed TX skb, USB header still attached; may hold a batch of packets
+ * @err: Positive error code to report
+ *
+ * Derives a single-packet skb from the first packet of @skb, strips the USB
+ * header to expose the MCTP header, then looks up the owning socket and queues
+ * the error there, so a subscriber polling POLLERR on its AF_MCTP socket sees
+ * driver-level TX failures. @skb itself is left intact.
+ */
+static void mctp_usb_report_tx_error(struct net_device *netdev,
+				     struct sk_buff *skb, int err)
+{
+	struct mctp_usb_hdr *hdr;
+	struct sk_buff *pkt_skb;
+	struct mctp_sk_key *key = NULL;
+	struct sock *sk;
+	unsigned int pkt_total_len;
+
+	if (!skb || skb->len < sizeof(struct mctp_usb_hdr))
+		return;
+
+	hdr = (struct mctp_usb_hdr *)skb->data;
+	if (be16_to_cpu(hdr->id) != MCTP_USB_DMTF_ID)
+		return;
+
+	pkt_total_len = hdr->len;
+	if (pkt_total_len > skb->len ||
+	    pkt_total_len <= sizeof(struct mctp_usb_hdr))
+		return;
+
+	/* Copy the first packet so the original (batched) skb is untouched */
+	pkt_skb = alloc_skb(pkt_total_len, GFP_ATOMIC);
+	if (!pkt_skb)
+		return;
+
+	skb_put_data(pkt_skb, skb->data, pkt_total_len);
+	pkt_skb->dev = netdev;
+	if (skb->sk)
+		skb_set_owner_w(pkt_skb, skb->sk);
+
+	/* Strip the USB header to expose the MCTP header for the socket lookup */
+	if (skb_pull(pkt_skb, sizeof(struct mctp_usb_hdr))) {
+		skb_reset_network_header(pkt_skb);
+
+		sk = mctp_lookup_sock_for_error(pkt_skb, netdev, NULL, &key);
+		if (sk) {
+			mctp_queue_error(sk, pkt_skb, err, netdev,
+					 MCTP_DIR_TX, MCTP_PHYS_BINDING_USB, key);
+			sock_put(sk);
+		}
+	}
+	kfree_skb(pkt_skb);
+}
+
 static void mctp_usb_out_complete(struct urb *urb)
 {
 	struct mctp_usb_batch_ctx *ctx = urb->context;
@@ -261,10 +317,15 @@ static void mctp_usb_out_complete(struct urb *urb)
 				      ctx->num_packets, urb->actual_length);
 
 	while ((skb = skb_dequeue(&ctx->skbs)) != NULL) {
-		if (status == 0)
+		if (status == 0) {
 			consume_skb(skb);
-		else
+		} else {
+			/* Surface the async TX failure on the socket error
+			 * queue before the skb is freed.
+			 */
+			mctp_usb_report_tx_error(netdev, skb, -status);
 			kfree_skb(skb);
+		}
 	}
 
 	kfree(ctx);
@@ -342,6 +403,9 @@ err_free_ctx:
 	kfree(ctx);
 err_drop:
 	netdev->stats.tx_dropped++;
+
+	if (rc != 0)
+		mctp_usb_report_tx_error(netdev, skb, -rc);
 
 	/* Track per-EID sync TX error: pull the USB header (still present from
 	 * mctp_usb_start_xmit) to expose the MCTP header for EID attribution.
@@ -441,6 +505,8 @@ err_drop:
 	netdev->stats.tx_dropped++;
 	mctp_usb_handle_tx_sync_error(mctp_usb, MCTP_EID_UNKNOWN, rc);
 	trace_mctp_transport_error("usb", netdev, "tx_batch_drop", rc);
+	if (rc != 0)
+		mctp_usb_report_tx_error(netdev, skb, -rc);
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
