@@ -2597,6 +2597,21 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 		}
 	}
 
+	/* Method 3: skb->sk fallback, for TX errors with no key (responses).
+	 * Skipped if key provided, as for Method 2. found_key stays NULL:
+	 * no orig_payload is available this way.
+	 */
+	if (!key && skb->sk && skb->sk->sk_family == AF_MCTP) {
+		struct mctp_sock *msk = container_of(skb->sk,
+						     struct mctp_sock, sk);
+
+		if (sock_flag(&msk->sk, SOCK_DEAD) || !msk->enable_errqueue)
+			return NULL;
+
+		sock_hold(skb->sk);
+		return skb->sk;
+	}
+
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(mctp_lookup_sock_for_error);
@@ -2637,7 +2652,6 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 	struct sk_buff *err_skb;
 	struct mctp_hdr *mh;
 	size_t capture_len;
-	bool key_found = false;
 
 	if (!msk->enable_errqueue)
 		return;
@@ -2649,15 +2663,18 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 
 	if (direction == MCTP_DIR_TX) {
 		tx_key = rx_key;
-		if (tx_key && tx_key->orig_payload_len > 0)
-			key_found = true;
-		if (!key_found)
-			return;
+		if (!tx_key || tx_key->orig_payload_len == 0) {
+			/* No usable key; responses never have one. Extract
+			 * from the packet instead: only the first packet
+			 * carries the type byte, so skip without SOM.
+			 */
+			tx_key = NULL;
+			if (!(mh->flags_seq_tag & MCTP_HDR_FLAG_SOM))
+				return;
+		}
 	} else if (error_code == ETIMEDOUT) {
 		tx_key = rx_key;
-		if (tx_key && tx_key->orig_payload_len > 0)
-			key_found = true;
-		else
+		if (!tx_key || tx_key->orig_payload_len == 0)
 			return;
 	} else {
 		u8 tag = mh->flags_seq_tag & MCTP_HDR_TAG_MASK;
@@ -2666,9 +2683,7 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 				READ_ONCE(((struct mctp_dev *)
 					rcu_dereference(dev->mctp_ptr))->net),
 				mh->dest, mh->src, tag);
-		if (tx_key)
-			key_found = true;
-		else
+		if (!tx_key)
 			return;
 		if (tx_key->orig_payload_len == 0) {
 			mctp_key_unref(tx_key);
@@ -2703,6 +2718,26 @@ void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 
 		if (direction == MCTP_DIR_RX && error_code != ETIMEDOUT)
 			mctp_key_unref(tx_key);
+	} else {
+		/* TX only; RX paths return early without a key. Offsets are
+		 * from the network header, not skb->data: the i2c binding
+		 * reports with the link-layer header still attached.
+		 */
+		size_t need = ((const u8 *)mh - skb->data) + sizeof(*mh);
+
+		if (skb_headlen(skb) > need) {
+			const u8 *payload = (const u8 *)(mh + 1);
+			size_t avail = skb_headlen(skb) - need;
+
+			mctp_err->msg_type = *payload;
+			if (avail > 1) {
+				capture_len = min_t(size_t, avail - 1,
+						    MCTP_ERROR_PAYLOAD_SIZE);
+				memcpy(mctp_err->payload, payload + 1,
+				       capture_len);
+				mctp_err->payload_len = capture_len;
+			}
+		}
 	}
 
 	if (sock_queue_err_skb(sk, err_skb) == 0)

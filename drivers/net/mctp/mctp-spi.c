@@ -424,6 +424,28 @@ static int mctp_spi_tx_thread(void *data)
 					MCTP_STAT_INC(midev, dest_eid, tx_drop_spi_error);
 				}
 				trace_mctp_transport_error("spi", midev->ndev, "spb_ap_send_failed", err);
+
+				/* Report to the socket error queue. The skb is
+				 * freed just below, so the SPI header can be
+				 * pulled in place to expose the MCTP header.
+				 */
+				if (skb->len > sizeof(struct mctp_spi_hdr)) {
+					struct mctp_sk_key *key = NULL;
+					struct sock *sk;
+
+					skb_pull(skb, sizeof(struct mctp_spi_hdr));
+					skb_reset_network_header(skb);
+
+					sk = mctp_lookup_sock_for_error(skb, midev->ndev,
+									NULL, &key);
+					if (sk) {
+						mctp_queue_error(sk, skb, -err, midev->ndev,
+								 MCTP_DIR_TX,
+								 MCTP_PHYS_BINDING_SERIAL,
+								 key);
+						sock_put(sk);
+					}
+				}
 			}
 			kfree_skb(skb);
 			while (midev->ap->msgs_available > 0) {

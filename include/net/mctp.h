@@ -419,6 +419,8 @@ void mctp_stats_aggregate_closed_sk(struct sock *sk);
 void mctp_queue_error(struct sock *sk, struct sk_buff *skb,
 		      int error_code, struct net_device *dev, u8 direction,
 		      u8 binding, struct mctp_sk_key *key);
+struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev,
+				     struct mctp_sk_key **found_key);
 struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 					struct net_device *dev,
 					struct mctp_sk_key *key,
