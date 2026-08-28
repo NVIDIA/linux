@@ -445,6 +445,8 @@ static int mctp_spi_tx_thread(void *data)
 								 key);
 						sock_put(sk);
 					}
+					if (key)
+						mctp_key_unref(key);
 				}
 			}
 			kfree_skb(skb);

@@ -2531,8 +2531,13 @@ struct sock *mctp_lookup_sock_by_key(struct sk_buff *skb, struct net_device *dev
 		sk = key->sk;
 		if (sk) {
 			sock_hold(sk);
-			if (found_key)
+			/* Caller may use the key after keys_lock is
+			 * dropped; hand it back with a reference held.
+			 */
+			if (found_key) {
+				refcount_inc(&key->refs);
 				*found_key = key;
+			}
 		}
 		break;
 	}
@@ -2587,12 +2592,19 @@ struct sock *mctp_lookup_sock_for_error(struct sk_buff *skb,
 
 			if (sock_flag(&msk->sk, SOCK_DEAD) ||
 			    !msk->enable_errqueue) {
+				if (tx_key)
+					mctp_key_unref(tx_key);
 				sock_put(sk);
 				return NULL;
 			}
 
+			/* Reference passes to the caller; drop it if there
+			 * is nowhere to hand it back.
+			 */
 			if (found_key)
 				*found_key = tx_key;
+			else if (tx_key)
+				mctp_key_unref(tx_key);
 			return sk;
 		}
 	}

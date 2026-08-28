@@ -621,6 +621,8 @@ static void mctp_i2c_xmit(struct mctp_i2c_dev *midev, struct sk_buff *skb)
 					 key);
 			sock_put(sk);
 		}
+		if (key)
+			mctp_key_unref(key);
 
 		/* Track specific error types per-EID */
 		if (rc == -ENOMEM) {

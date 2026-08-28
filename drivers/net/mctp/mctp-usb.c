@@ -285,6 +285,8 @@ static void mctp_usb_report_tx_error(struct net_device *netdev,
 					 MCTP_DIR_TX, MCTP_PHYS_BINDING_USB, key);
 			sock_put(sk);
 		}
+		if (key)
+			mctp_key_unref(key);
 	}
 	kfree_skb(pkt_skb);
 }
