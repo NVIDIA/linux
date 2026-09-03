@@ -16,6 +16,7 @@
 #include <linux/hid.h>
 #include <linux/hidraw.h>
 #include <linux/i2c.h>
+#include <linux/property.h>
 #include <linux/gpio/driver.h>
 #include <linux/iio/iio.h>
 #include "hid-ids.h"
@@ -956,6 +957,11 @@ static void mcp2221_hid_unregister(void *ptr)
 	hid_hw_stop(hdev);
 }
 
+static void mcp2221_fwnode_put(void *ptr)
+{
+	fwnode_handle_put(ptr);
+}
+
 /* This is needed to be sure hid_hw_stop() isn't called twice by the subsystem */
 static void mcp2221_remove(struct hid_device *hdev)
 {
@@ -1140,6 +1146,10 @@ static int mcp2221_probe(struct hid_device *hdev,
 					const struct hid_device_id *id)
 {
 	int ret;
+	u32 i2c_clk_freq_hz;
+	struct fwnode_handle *bridge_fwnode;
+	struct fwnode_handle *i2c_fwnode;
+	struct fwnode_handle *usb_fwnode;
 	struct mcp2221 *mcp;
 
 	mcp = devm_kzalloc(&hdev->dev, sizeof(*mcp), GFP_KERNEL);
@@ -1177,6 +1187,32 @@ static int mcp2221_probe(struct hid_device *hdev,
 	hid_set_drvdata(hdev, mcp);
 	mcp->hdev = hdev;
 
+	/*
+	 * A composite USB device does not share its firmware node with each
+	 * interface. Allow firmware to explicitly place the MCP2221A bridge
+	 * description on the parent USB device node.
+	 */
+	bridge_fwnode = dev_fwnode(&hdev->dev);
+	if (!bridge_fwnode && hdev->dev.parent && hdev->dev.parent->parent) {
+		usb_fwnode = dev_fwnode(hdev->dev.parent->parent);
+		if (usb_fwnode &&
+		    fwnode_property_present(usb_fwnode,
+					    "microchip,use-device-fwnode"))
+			bridge_fwnode = usb_fwnode;
+	}
+
+	/* Prefer a per-bus firmware setting over the module default. */
+	i2c_clk_freq_hz = clamp_val(i2c_clk_freq, 50, 400) * 1000;
+	if (bridge_fwnode) {
+		i2c_fwnode = fwnode_get_named_child_node(bridge_fwnode, "i2c");
+		if (i2c_fwnode) {
+			fwnode_property_read_u32(i2c_fwnode, "clock-frequency",
+						 &i2c_clk_freq_hz);
+			fwnode_handle_put(i2c_fwnode);
+		}
+	}
+	i2c_clk_freq_hz = clamp_val(i2c_clk_freq_hz, 50000, 400000);
+
 	ret = devm_add_action_or_reset(&hdev->dev, mcp2221_hid_unregister, hdev);
 	if (ret)
 		return ret;
@@ -1184,11 +1220,7 @@ static int mcp2221_probe(struct hid_device *hdev,
 	hid_device_io_start(hdev);
 
 	/* Set I2C bus clock diviser */
-	if (i2c_clk_freq > 400)
-		i2c_clk_freq = 400;
-	if (i2c_clk_freq < 50)
-		i2c_clk_freq = 50;
-	mcp->cur_i2c_clk_div = (12000000 / (i2c_clk_freq * 1000)) - 3;
+	mcp->cur_i2c_clk_div = (12000000 / i2c_clk_freq_hz) - 3;
 	ret = mcp_set_i2c_speed(mcp);
 	if (ret) {
 		hid_err(hdev, "can't set i2c speed: %d\n", ret);
@@ -1201,6 +1233,17 @@ static int mcp2221_probe(struct hid_device *hdev,
 	mcp->adapter.retries = 1;
 	mcp->adapter.dev.parent = &hdev->dev;
 	ACPI_COMPANION_SET(&mcp->adapter.dev, ACPI_COMPANION(hdev->dev.parent));
+	if (bridge_fwnode) {
+		i2c_fwnode = fwnode_get_named_child_node(bridge_fwnode, "i2c");
+		if (i2c_fwnode) {
+			device_set_node(&mcp->adapter.dev, i2c_fwnode);
+			ret = devm_add_action_or_reset(&hdev->dev,
+						       mcp2221_fwnode_put,
+						       i2c_fwnode);
+			if (ret)
+				return ret;
+		}
+	}
 	snprintf(mcp->adapter.name, sizeof(mcp->adapter.name),
 			"MCP2221 usb-i2c bridge");
 
@@ -1227,6 +1270,7 @@ static int mcp2221_probe(struct hid_device *hdev,
 	mcp->gc->base = -1;
 	mcp->gc->can_sleep = 1;
 	mcp->gc->parent = &hdev->dev;
+	mcp->gc->fwnode = bridge_fwnode;
 
 	ret = devm_gpiochip_add_data(&hdev->dev, mcp->gc, mcp);
 	if (ret)
