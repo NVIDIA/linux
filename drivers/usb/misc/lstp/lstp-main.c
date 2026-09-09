@@ -1028,29 +1028,6 @@ static int lstp_init_channel_fwnode(struct lstp_channel *ch, const char *compati
 	return devm_add_action_or_reset(ch->dev, lstp_put_fwnode, ch->fwnode);
 }
 
-static bool lstp_intf_has_channel_node(struct usb_interface *intf)
-{
-	struct fwnode_handle *fwnode = dev_fwnode(&intf->dev);
-	struct fwnode_handle *child;
-	size_t i;
-
-	if (!fwnode)
-		return false;
-
-	fwnode_for_each_available_child_node(fwnode, child) {
-		for (i = 0; i < ARRAY_SIZE(lstp_subsystems); i++) {
-			const char *compatible = lstp_subsystems[i]->fwnode_compatible;
-
-			if (compatible && fwnode_device_is_compatible(child, compatible)) {
-				fwnode_handle_put(child);
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 /**
  * lstp_alloc_channel_bufs() - Allocate framework-owned per-channel buffers.
  * @ch: LSTP channel whose subsystem may opt into framework-allocated buffers.
@@ -1435,11 +1412,6 @@ static int lstp_probe(struct usb_interface *intf, const struct usb_device_id *id
 	struct usb_endpoint_descriptor *ep_in, *ep_out;
 	struct lstp_usb *dev;
 	int ret;
-
-	if (!lstp_intf_has_channel_node(intf)) {
-		usb_put_dev(udev);
-		return -ENODEV;
-	}
 
 	dev = devm_kzalloc(&intf->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
