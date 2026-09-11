@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+#include "aspeed-bmc-nvidia-vc-bmc-cmx.dts"
+
+/ {
+	model = "AST2600 NVIDIA Gravastar (CMX Tester) BMC";
+};
+
+// I2C10 CMX Tester Midplane GPIO Expander
+&i2c9 {
+       i2c-mux@70 {
+               compatible = "nxp,pca9546";
+               #address-cells = <1>;
+               #size-cells = <0>;
+               reg = <0x70>;
+               i2c-mux-idle-disconnect;
+
+               i2c@0 {
+                       #address-cells = <1>;
+                       #size-cells = <0>;
+                       reg = <0>;
+
+                       exp23: pca9555@26 {
+                               compatible = "nxp,pca9555";
+                               reg = <0x26>;
+                               gpio-controller;
+                               #gpio-cells = <2>;
+                               gpio-line-names =
+                                       "TRAY_FAST_SHDN_N-I",
+                                       "FANGIO_STBY_PWR_PG-I",
+                                       "VERA_AHS_3V3_MCU0_0_INT_N-I",
+                                       "VERA_AHS_3V3_MCU0_1_INT_N-I",
+                                       "VERA_AHS_3V3_MCU1_0_INT_N-I",
+                                       "VERA_AHS_3V3_MCU1_1_INT_N-I",
+                                       "SSD0_3_PCIE_PERST_D_N-O",
+                                       "SSD4_11_PCIE_PERST_D_N-O",
+                                       "SW_BOARD_PRSNT_N-I",
+                                       "PE0_1_PERST_N-O",
+                                       "S_GPIOX1_12_TP",
+                                       "S_GPIOX1_13_TP",
+                                       "S_GPIOX1_14_TP",
+                                       "S_GPIOX1_15_TP",
+                                       "S_GPIOX1_16_TP",
+                                       "S_GPIOX1_17_TP";
+                       };
+               };
+       };
+};
