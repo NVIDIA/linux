@@ -583,9 +583,9 @@
                         "UID_LED_OUT_L-O",
                         "UID_STATUS_OUT-O",
                         "UID_BTN_IN_L-I",
-                        "vBTN_ACTION0-I",
-                        "vBTN_ACTION1-I",
-                        "vBTN_ACTION2-I",
+                        "vBTN_UID_OFF_BTN-IN_L-I",
+                        "vBTN_POWER_BTN-IN_L-I",
+                        "vBTN_UID_BTN_IN_L-I",
                         "vLEAK_DETECT_STATUS0-I",
                         "vLEAK_DETECT_STATUS1-I";
                 };
