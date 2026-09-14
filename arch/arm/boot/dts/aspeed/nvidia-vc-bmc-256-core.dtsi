@@ -317,32 +317,6 @@
     };
 };
 
-// I2C7 GPIO Expander
-&i2c6 {
-    // BMC IO Expander @0x20
-    exp6: tca6408@20 {
-        compatible = "ti,tca6408";
-        reg = <0x20>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        interrupt-parent = <&gpio1>;
-        interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
-
-        gpio-line-names =
-            "",
-            "",
-            "EROT_FATAL_ERROR_N",
-            "",
-            "",
-            "EROT_RECOV_N",
-            "NRESET_IN_IOX_N",
-            "";
-    };
-};
-
 // EMMC group that excludes WP & CD pin
 &pinctrl {
     pinctrl_emmcg9_default: emmcg9_default {
