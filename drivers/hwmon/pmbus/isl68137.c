@@ -62,18 +62,19 @@ enum chips {
 	raa229001,
 	raa229004,
 	raa229140,
+	rrv97791,
 };
 
 enum variants {
-	raa_dmpvr1_2rail,
+	raa_dmpvr1_2rail = 1,
 	raa_dmpvr2_1rail,
 	raa_dmpvr2_2rail,
 	raa_dmpvr2_2rail_nontc,
+	raa229140_2rail_nontc,
 	raa_dmpvr2_3rail,
 	raa_dmpvr2_hv,
+	rrv_dmpvr2_2rail,
 };
-
-static const struct i2c_device_id raa_dmpvr_id[];
 
 static ssize_t isl68137_avs_enable_show_page(struct i2c_client *client,
 					     int page,
@@ -246,7 +247,7 @@ static struct pmbus_driver_info raa_dmpvr_info = {
  * a check, keeping the previous behaviour.
  */
 struct raa_dmpvr_device_id {
-	const char *name;
+	enum variants variant;
 	const u8 *id;
 	u8 len;
 };
@@ -254,8 +255,16 @@ struct raa_dmpvr_device_id {
 /* IC_DEVICE_ID is reported least significant byte first: 49D2C000h */
 static const u8 raa229140_device_id[] = { 0x00, 0xc0, 0xd2, 0x49 };
 
+/*
+ * 49D2E700h. The preliminary datasheet (R16DS0320EU0100 Rev.1.00) documents
+ * 49D2BE00h, but production silicon reports 49D2E700h.
+ */
+static const u8 rrv97791_device_id[] = { 0x00, 0xe7, 0xd2, 0x49 };
+
 static const struct raa_dmpvr_device_id raa_dmpvr_device_ids[] = {
-	{ "raa229140", raa229140_device_id, sizeof(raa229140_device_id) },
+	{ raa229140_2rail_nontc, raa229140_device_id,
+	  sizeof(raa229140_device_id) },
+	{ rrv_dmpvr2_2rail, rrv97791_device_id, sizeof(rrv97791_device_id) },
 };
 
 /*
@@ -265,14 +274,15 @@ static const struct raa_dmpvr_device_id raa_dmpvr_device_ids[] = {
  * part binds silently and reports values from unknown hardware -- including a
  * wrong rail count, which this driver takes from the matched part.
  */
-static int isl68137_check_device_id(struct i2c_client *client, const char *name)
+static int isl68137_check_device_id(struct i2c_client *client,
+				    enum variants variant)
 {
 	const struct raa_dmpvr_device_id *chip = NULL;
 	u8 buf[I2C_SMBUS_BLOCK_MAX];
 	int i, ret;
 
 	for (i = 0; i < ARRAY_SIZE(raa_dmpvr_device_ids); i++) {
-		if (!strcmp(raa_dmpvr_device_ids[i].name, name)) {
+		if (raa_dmpvr_device_ids[i].variant == variant) {
 			chip = &raa_dmpvr_device_ids[i];
 			break;
 		}
@@ -285,8 +295,7 @@ static int isl68137_check_device_id(struct i2c_client *client, const char *name)
 		return ret;
 
 	if (ret != chip->len || memcmp(buf, chip->id, chip->len)) {
-		dev_err(&client->dev, "Unexpected device ID %*ph for %s\n",
-			ret, buf, name);
+		dev_err(&client->dev, "Unexpected device ID %*ph\n", ret, buf);
 		return -ENODEV;
 	}
 
@@ -295,11 +304,11 @@ static int isl68137_check_device_id(struct i2c_client *client, const char *name)
 
 static int isl68137_probe(struct i2c_client *client)
 {
-	const struct i2c_device_id *id = i2c_match_id(raa_dmpvr_id, client);
+	enum variants variant = (unsigned long)i2c_get_match_data(client);
 	struct pmbus_driver_info *info;
 	int ret;
 
-	ret = isl68137_check_device_id(client, id->name);
+	ret = isl68137_check_device_id(client, variant);
 	if (ret < 0)
 		return ret;
 
@@ -308,7 +317,7 @@ static int isl68137_probe(struct i2c_client *client)
 		return -ENOMEM;
 	memcpy(info, &raa_dmpvr_info, sizeof(*info));
 
-	switch (id->driver_data) {
+	switch (variant) {
 	case raa_dmpvr1_2rail:
 		info->pages = 2;
 		info->R[PSC_VOLTAGE_IN] = 3;
@@ -322,6 +331,7 @@ static int isl68137_probe(struct i2c_client *client)
 		info->pages = 1;
 		info->read_word_data = raa_dmpvr2_read_word_data;
 		break;
+	case raa229140_2rail_nontc:
 	case raa_dmpvr2_2rail_nontc:
 		info->func[0] &= ~PMBUS_HAVE_TEMP3;
 		info->func[1] &= ~PMBUS_HAVE_TEMP3;
@@ -331,6 +341,17 @@ static int isl68137_probe(struct i2c_client *client)
 		info->read_word_data = raa_dmpvr2_read_word_data;
 		break;
 	case raa_dmpvr2_3rail:
+		info->read_word_data = raa_dmpvr2_read_word_data;
+		break;
+	case rrv_dmpvr2_2rail:
+		/*
+		 * The RRV97791 only implements READ_TEMPERATURE_1 and has no
+		 * VMON input, so drop the sensors the DMPVR2 defaults assume.
+		 */
+		info->func[0] &= ~(PMBUS_HAVE_TEMP2 | PMBUS_HAVE_TEMP3 |
+				   PMBUS_HAVE_VMON);
+		info->func[1] &= ~PMBUS_HAVE_TEMP3;
+		info->pages = 2;
 		info->read_word_data = raa_dmpvr2_read_word_data;
 		break;
 	case raa_dmpvr2_hv:
@@ -392,16 +413,26 @@ static const struct i2c_device_id raa_dmpvr_id[] = {
 	{"raa228228", raa_dmpvr2_2rail_nontc},
 	{"raa229001", raa_dmpvr2_2rail},
 	{"raa229004", raa_dmpvr2_2rail},
-	{"raa229140", raa_dmpvr2_2rail_nontc},
+	{"raa229140", raa229140_2rail_nontc},
+	{"rrv97791", rrv_dmpvr2_2rail},
 	{}
 };
 
 MODULE_DEVICE_TABLE(i2c, raa_dmpvr_id);
 
+static const struct of_device_id __maybe_unused raa_dmpvr_of_match[] = {
+	{ .compatible = "renesas,raa229140", .data = (void *)raa229140_2rail_nontc },
+	{ .compatible = "renesas,rrv97791", .data = (void *)rrv_dmpvr2_2rail },
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, raa_dmpvr_of_match);
+
 /* This is the driver that will be inserted */
 static struct i2c_driver isl68137_driver = {
 	.driver = {
 		   .name = "isl68137",
+		   .of_match_table = of_match_ptr(raa_dmpvr_of_match),
 		   },
 	.probe = isl68137_probe,
 	.id_table = raa_dmpvr_id,

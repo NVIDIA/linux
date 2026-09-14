@@ -394,6 +394,22 @@ Supported chips:
 
       Publicly available (after August 2020 launch) at the Renesas website
 
+  * Renesas RAA229140
+
+    Prefix: 'raa229140'
+
+    Addresses scanned: -
+
+    Datasheet: Not published
+
+  * Renesas RRV97791
+
+    Prefix: 'rrv97791'
+
+    Addresses scanned: -
+
+    Datasheet: Not published
+
 Authors:
       - Maxim Sloyko <maxims@google.com>
       - Robert Lippert <rlippert@google.com>

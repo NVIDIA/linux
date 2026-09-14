@@ -341,6 +341,10 @@ properties:
           - renesas,hs3001
             # Renesas ISL29501 time-of-flight sensor
           - renesas,isl29501
+            # Renesas RAA229140 Multi-phase Digital VR Controller
+          - renesas,raa229140
+            # Renesas RRV97791 Multi-phase Digital VR Controller
+          - renesas,rrv97791
             # Rohm BH2228FV 8 channel DAC
           - rohm,bh2228fv
             # Rohm DH2228FV - This device does not exist, use rohm,bh2228fv instead.
