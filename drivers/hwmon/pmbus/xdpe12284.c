@@ -20,6 +20,8 @@
 #define XDPE122_AMD_625MV		0x10 /* AMD mode 6.25mV */
 #define XDPE122_PAGE_NUM		2
 
+#define XDPE19284_DEVICE_ID		0x9802 /* IC_DEVICE_ID of XDPE19284C */
+
 static int xdpe122_read_word_data(struct i2c_client *client, int page,
 				  int phase, int reg)
 {
@@ -151,9 +153,52 @@ static struct pmbus_driver_info xdpe122_info = {
 #endif
 };
 
+/*
+ * Verify the chip against the fixed IC_DEVICE_ID documented for the part the
+ * device was matched as. Neither the PMBus core nor this driver otherwise
+ * checks the identity of the chip, so a device tree or board description
+ * naming the wrong part binds silently and reports values from unknown
+ * hardware. Parts whose device ID is not known are matched with an expected ID
+ * of 0 and keep the previous, unchecked behaviour.
+ */
+static int xdpe122_check_device_id(struct i2c_client *client, u16 expected)
+{
+	u8 buf[I2C_SMBUS_BLOCK_MAX];
+	u16 device_id;
+	int ret;
+
+	ret = i2c_smbus_read_block_data(client, PMBUS_IC_DEVICE_ID, buf);
+	if (ret < 0)
+		return ret;
+	if (ret != 2) {
+		dev_err(&client->dev, "Unexpected IC_DEVICE_ID length %d\n",
+			ret);
+		return -ENODEV;
+	}
+
+	device_id = buf[0] | buf[1] << 8;
+	if (device_id != expected) {
+		dev_err(&client->dev,
+			"Unexpected device ID 0x%04x, expected 0x%04x\n",
+			device_id, expected);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int xdpe122_probe(struct i2c_client *client)
 {
 	struct pmbus_driver_info *info;
+	unsigned long device_id;
+	int ret;
+
+	device_id = (unsigned long)i2c_get_match_data(client);
+	if (device_id) {
+		ret = xdpe122_check_device_id(client, device_id);
+		if (ret < 0)
+			return ret;
+	}
 
 	info = devm_kmemdup(&client->dev, &xdpe122_info, sizeof(*info),
 			    GFP_KERNEL);
@@ -164,9 +209,10 @@ static int xdpe122_probe(struct i2c_client *client)
 }
 
 static const struct i2c_device_id xdpe122_id[] = {
-	{"xdpe11280"},
-	{"xdpe12254"},
-	{"xdpe12284"},
+	{"xdpe11280", 0},
+	{"xdpe12254", 0},
+	{"xdpe12284", 0},
+	{"xdpe19284", XDPE19284_DEVICE_ID},
 	{}
 };
 
@@ -176,6 +222,8 @@ static const struct of_device_id __maybe_unused xdpe122_of_match[] = {
 	{.compatible = "infineon,xdpe11280"},
 	{.compatible = "infineon,xdpe12254"},
 	{.compatible = "infineon,xdpe12284"},
+	{.compatible = "infineon,xdpe19284",
+	 .data = (void *)XDPE19284_DEVICE_ID},
 	{}
 };
 MODULE_DEVICE_TABLE(of, xdpe122_of_match);

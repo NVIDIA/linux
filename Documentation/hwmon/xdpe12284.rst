@@ -17,6 +17,10 @@ Supported chips:
 
     Prefix: 'xdpe12284'
 
+  * Infineon XDPE19284
+
+    Prefix: 'xdpe19284'
+
 Authors:
 
 	Vadim Pasternak <vadimp@mellanox.com>
@@ -26,7 +30,7 @@ Description
 
 This driver implements support for Infineon Multi-phase XDPE112 and XDPE122
 family dual loop voltage regulators.
-These families include XDPE11280, XDPE12284 and XDPE12254 devices.
+These families include XDPE11280, XDPE12284, XDPE12254 and XDPE19284 devices.
 The devices from this family compliant with:
 
 - Intel VR13 and VR13HC rev 1.3, IMVP8 rev 1.2 and IMPVP9 rev 1.3 DC-DC
@@ -93,7 +97,9 @@ indexes 1, 2 are for "pin" and 3, 4 for "pout":
 
 The driver provides for temperature: input, maximum and critical thresholds
 and maximum and critical alarms.
-The driver exports the following attributes for via the sysfs files:
+The driver exports the following attributes for via the sysfs files.
+XDPE19284 additionally exposes a second telemetry temperature reading
+(READ_TEMPERATURE_2) as temp3:
 
 **temp[1-2]_crit**
 
@@ -104,3 +110,11 @@ The driver exports the following attributes for via the sysfs files:
 **temp[1-2]_max**
 
 **temp[1-2]_max_alarm**
+
+**temp3_crit** (XDPE19284 only)
+
+**temp3_crit_alarm** (XDPE19284 only)
+
+**temp3_input** (XDPE19284 only)
+
+**temp3_max** (XDPE19284 only)
