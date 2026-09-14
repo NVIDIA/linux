@@ -16,6 +16,14 @@
 #define XDPE1A2G7B_PAGE_NUM 2
 #define XDPE1A2G7B_NVIDIA_195MV 0x1E /* NVIDIA mode 1.95mV, VID step is 5mV */
 
+/*
+ * IC_DEVICE_ID is a two byte block reported least significant byte first. The
+ * datasheet (rev 1.0) documents 90h for the XDPE1A2G7 family, but an
+ * XDPE1A2G7C-032A-80 reports 9B02h, so the value below is taken from the
+ * device rather than from the datasheet.
+ */
+#define XDPE1A2G7C_DEVICE_ID	0x9b02
+
 enum xdpe1a2g7b_chip {
 	xdpe1a2g5b = 1,
 	xdpe1a2g7b,
@@ -190,12 +198,49 @@ static struct pmbus_driver_info xdpe1a2g7b_info = {
 		   PMBUS_HAVE_PIN | PMBUS_HAVE_POUT | PMBUS_HAVE_STATUS_INPUT,
 };
 
+static int xdpe1a2g7b_check_device_id(struct i2c_client *client, u16 expected)
+{
+	u8 buf[I2C_SMBUS_BLOCK_MAX];
+	u16 device_id;
+	int ret;
+
+	ret = i2c_smbus_read_block_data(client, PMBUS_IC_DEVICE_ID, buf);
+	if (ret < 0)
+		return ret;
+	if (ret != 2) {
+		dev_err(&client->dev, "Unexpected IC_DEVICE_ID length %d\n",
+			ret);
+		return -ENODEV;
+	}
+
+	device_id = buf[0] | buf[1] << 8;
+	if (device_id != expected) {
+		dev_err(&client->dev,
+			"Unexpected device ID 0x%04x, expected 0x%04x\n",
+			device_id, expected);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int xdpe1a2g7b_probe(struct i2c_client *client)
 {
 	struct pmbus_driver_info *info;
 	enum xdpe1a2g7b_chip chip;
+	int ret;
 
 	chip = (kernel_ulong_t)i2c_get_match_data(client);
+
+	/*
+	 * Only the XDPE1A2G7C device ID has been confirmed. The other parts are
+	 * matched by name alone, as before.
+	 */
+	if (chip == xdpe1a2g7c) {
+		ret = xdpe1a2g7b_check_device_id(client, XDPE1A2G7C_DEVICE_ID);
+		if (ret < 0)
+			return ret;
+	}
 
 	info = devm_kmemdup(&client->dev, &xdpe1a2g7b_info, sizeof(*info),
 			    GFP_KERNEL);
