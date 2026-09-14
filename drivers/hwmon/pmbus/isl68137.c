@@ -61,6 +61,7 @@ enum chips {
 	raa228228,
 	raa229001,
 	raa229004,
+	raa229140,
 };
 
 enum variants {
@@ -238,16 +239,76 @@ static struct pmbus_driver_info raa_dmpvr_info = {
 	    | PMBUS_HAVE_STATUS_IOUT | PMBUS_HAVE_POUT,
 };
 
+/*
+ * Expected IC_DEVICE_ID contents, for the parts whose value is known. These
+ * devices do not populate MFR_ID, MFR_MODEL or MFR_REVISION, so IC_DEVICE_ID
+ * is the only usable identity. Parts absent from this table are probed without
+ * a check, keeping the previous behaviour.
+ */
+struct raa_dmpvr_device_id {
+	const char *name;
+	const u8 *id;
+	u8 len;
+};
+
+/* IC_DEVICE_ID is reported least significant byte first: 49D2C000h */
+static const u8 raa229140_device_id[] = { 0x00, 0xc0, 0xd2, 0x49 };
+
+static const struct raa_dmpvr_device_id raa_dmpvr_device_ids[] = {
+	{ "raa229140", raa229140_device_id, sizeof(raa229140_device_id) },
+};
+
+/*
+ * Verify the chip against the IC_DEVICE_ID documented for the part the device
+ * was matched as. Neither the PMBus core nor this driver otherwise checks the
+ * identity of the chip, so a device tree or board description naming the wrong
+ * part binds silently and reports values from unknown hardware -- including a
+ * wrong rail count, which this driver takes from the matched part.
+ */
+static int isl68137_check_device_id(struct i2c_client *client, const char *name)
+{
+	const struct raa_dmpvr_device_id *chip = NULL;
+	u8 buf[I2C_SMBUS_BLOCK_MAX];
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(raa_dmpvr_device_ids); i++) {
+		if (!strcmp(raa_dmpvr_device_ids[i].name, name)) {
+			chip = &raa_dmpvr_device_ids[i];
+			break;
+		}
+	}
+	if (!chip)
+		return 0;
+
+	ret = i2c_smbus_read_block_data(client, PMBUS_IC_DEVICE_ID, buf);
+	if (ret < 0)
+		return ret;
+
+	if (ret != chip->len || memcmp(buf, chip->id, chip->len)) {
+		dev_err(&client->dev, "Unexpected device ID %*ph for %s\n",
+			ret, buf, name);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int isl68137_probe(struct i2c_client *client)
 {
+	const struct i2c_device_id *id = i2c_match_id(raa_dmpvr_id, client);
 	struct pmbus_driver_info *info;
+	int ret;
+
+	ret = isl68137_check_device_id(client, id->name);
+	if (ret < 0)
+		return ret;
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
 	memcpy(info, &raa_dmpvr_info, sizeof(*info));
 
-	switch (i2c_match_id(raa_dmpvr_id, client)->driver_data) {
+	switch (id->driver_data) {
 	case raa_dmpvr1_2rail:
 		info->pages = 2;
 		info->R[PSC_VOLTAGE_IN] = 3;
@@ -331,6 +392,7 @@ static const struct i2c_device_id raa_dmpvr_id[] = {
 	{"raa228228", raa_dmpvr2_2rail_nontc},
 	{"raa229001", raa_dmpvr2_2rail},
 	{"raa229004", raa_dmpvr2_2rail},
+	{"raa229140", raa_dmpvr2_2rail_nontc},
 	{}
 };
 
