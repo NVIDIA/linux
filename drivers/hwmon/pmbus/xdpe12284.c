@@ -205,6 +205,18 @@ static int xdpe122_probe(struct i2c_client *client)
 	if (!info)
 		return -ENOMEM;
 
+	/*
+	 * The XDPE19284 reports a second telemetry temperature via
+	 * READ_TEMPERATURE_2, whose source is selected per loop by
+	 * MFR_SELECT_TEMPERATURE_SENSOR (CCh) and is typically the controller
+	 * die. Expose it on page 0 only: both loops normally select the same
+	 * source, so a per-page attribute would only duplicate the reading.
+	 * The other parts in this family are left alone, their
+	 * READ_TEMPERATURE_2 behaviour being unverified.
+	 */
+	if (device_id == XDPE19284_DEVICE_ID)
+		info->func[0] |= PMBUS_HAVE_TEMP2;
+
 	return pmbus_do_probe(client, info);
 }
 
