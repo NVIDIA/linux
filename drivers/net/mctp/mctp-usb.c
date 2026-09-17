@@ -960,6 +960,17 @@ MCTP_DEFINE_EID_ETHTOOL_OPS(mctp_usb, struct mctp_usb,
 			    struct mctp_usb_eid_stats, mctp_usb_eid_stat_descs,
 			    "UNKNOWN: URB/pre-parse errors ");
 
+/* Asynchronously unlink every URB on an anchor.*/
+static void mctp_usb_unlink_anchored_urbs(struct usb_anchor *anchor)
+{
+	struct urb *victim;
+
+	while ((victim = usb_get_from_anchor(anchor)) != NULL) {
+		usb_unlink_urb(victim);
+		usb_put_urb(victim);
+	}
+}
+
 static void mctp_usb_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 {
 	struct mctp_usb *mctp_usb = netdev_priv(netdev);
@@ -972,8 +983,7 @@ static void mctp_usb_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 	mctp_usb->eid_stats.eid[MCTP_EID_UNKNOWN].tx_timeouts++;
 	set_bit(MCTP_EID_UNKNOWN, mctp_usb->eid_stats.active);
 	trace_mctp_transport_error("usb", netdev, "tx_watchdog_timeout", 0);
-
-	usb_kill_anchored_urbs(&mctp_usb->tx_anchor);
+	mctp_usb_unlink_anchored_urbs(&mctp_usb->tx_anchor);
 }
 
 static const struct net_device_ops mctp_usb_netdev_ops = {
