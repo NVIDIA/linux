@@ -288,6 +288,19 @@
 /* OSFP U3 CP2112 provides board FRU access and independent MCU recovery GPIOs. */
 &osfp_u3_cp2112 {
 	compatible = "usb10c4,ea90";
+	gpio-controller;
+	interrupt-controller;
+	#gpio-cells = <2>;
+	#interrupt-cells = <2>;
+	gpio-line-names =
+		"CX9_01_MCU_RESET_L-O",
+		"CX9_01_MCU_REC_L-O",
+		"GLOBAL_WP-O",
+		"CX9_01_MCU_READY-I",
+		"CX9_01_PWR_EN-O",
+		"CX9_CX01_DVDD_PGOOD-I",
+		"P12V_MAIN_EN-O",
+		"";
 
 	osfp_u3_cp2112_i2c: i2c {
 		#address-cells = <1>;
