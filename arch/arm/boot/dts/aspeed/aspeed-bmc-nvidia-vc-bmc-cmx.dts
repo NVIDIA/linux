@@ -15,8 +15,9 @@
 
 		i2c132 = &osfp_u3_cp2112_i2c;
 		i2c133 = &osfp_u59_cx0_i2c;
-		i2c134 = &midplane_u155_cp2112_i2c;
-		i2c135 = &osfp_u59_cx1_i2c;
+		i2c134 = &osfp_u59_cx1_i2c;
+		i2c135 = &midplane_u155_cp2112_i2c;
+		i2c136 = &p4218_u100_hid_i2c;
 	};
 
 	chosen {
@@ -402,6 +403,20 @@
  */
 &p4218_u100_mcu {
 	compatible = "usb0955,cf11";
+	#address-cells = <2>;
+	#size-cells = <0>;
+
+	/* CP2112-compatible HID interface; writes remain policy-restricted. */
+	interface@1 {
+		reg = <1 0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		p4218_u100_hid_i2c: i2c {
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
 };
 
 /* I2C1 is not populated; current P4218 MCU firmware has no SSIF LSTP channel. */
