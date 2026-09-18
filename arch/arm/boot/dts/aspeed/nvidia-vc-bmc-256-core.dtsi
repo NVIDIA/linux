@@ -307,7 +307,7 @@
             "",
             "P54V_HSC_PG-I",
             "I2C_BUS_MUX_RESET_L-O",
-            "",
+            "P54V_HSC_EN-O",
             "PDB_TRAY_RST-O",
             "HOST_RDY_PWR_EN-O",
             "RTC_CLR_L-O",
