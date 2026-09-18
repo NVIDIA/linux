@@ -6,62 +6,22 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-    model = "AST2600 NVIDIA CMX BMC";
-    compatible = "aspeed,ast2600";
+	model = "AST2600 NVIDIA CMX BMC";
+	compatible = "aspeed,ast2600";
 
 	aliases {
 		serial2 = &uart3;
 		serial4 = &uart5;
-		i2c16	= &i2c_usbhub;
-		i2c17	= &i2c_tpm;
-		i2c18	= &i2c_dp;
-		i2c19	= &i2c_rtc;
-		i2c20   = &i2c_fan_ctrl0;
-		i2c21   = &i2c_fan_ctrl1;
-		i2c22   = &i2c_fan_iox;
-		i2c23   = &i2c_fan_hsc;
 
-		i2c30   = &i2c_mcio_c0c1_north0;
-		i2c31   = &i2c_mcio_c0c1_north1;
-		i2c32   = &i2c_mcio_c0c1_north2;
-		i2c33   = &i2c_mcio_c0c1_north3;
-		i2c34   = &i2c_mcio_c0c1_north4;
-		i2c35   = &i2c_mcio_c0c1_north5;
-		i2c36   = &i2c_mcio_c0c1_north6;
-		i2c37   = &i2c_mcio_c0c1_north7;
-
-		i2c40   = &i2c_mcio_c0_south0;
-		i2c41   = &i2c_mcio_c0_south1;
-		i2c42   = &i2c_mcio_c0_south2;
-		i2c43   = &i2c_mcio_c0_south3;
-		i2c44   = &i2c_mcio_c0_south4;
-		i2c45   = &i2c_mcio_c0_south5;
-		i2c46   = &i2c_mcio_c0_south6;
-		i2c47   = &i2c_mcio_c0_south7;
-
-		i2c50   = &i2c_mcio_c1_south0;
-		i2c51   = &i2c_mcio_c1_south1;
-		i2c52   = &i2c_mcio_c1_south2;
-		i2c53   = &i2c_mcio_c1_south3;
-		i2c54   = &i2c_mcio_c1_south4;
-		i2c55   = &i2c_mcio_c1_south5;
-		i2c56   = &i2c_mcio_c1_south6;
-		i2c57   = &i2c_mcio_c1_south7;
-
-		i2c120 = &hpm_mcu_cpld_user_i2c;
-		i2c121 = &hpm_mcu_cpld_program_i2c;
-		i2c122 = &hpm_mcu_hvbuck_i2c;
-		i2c123 = &hpm_mcu_hpm_i2c;
-		i2c124 = &hpm_mcu_vrd_i2c;
-		i2c132 = &hpm_mcu_cp2112_i2c;
-		i2c133 = &cx9_mcu_cx0_i2c;
-		i2c135 = &cx9_mcu_cx1_i2c;
-		i2c137 = &cx9_mcu_cp2112_i2c;
+		i2c132 = &osfp_u3_cp2112_i2c;
+		i2c133 = &osfp_u59_cx0_i2c;
+		i2c134 = &midplane_u155_cp2112_i2c;
+		i2c135 = &osfp_u59_cx1_i2c;
 	};
 
 	chosen {
-		stdout-path = &uart5;
-		bootargs = "console=tty0 console=ttyS4,115200n8 earlyprintk";
+		/* The OF console parser expects a path or alias string with options. */
+		stdout-path = "serial4:115200n8";
 	};
 
 	memory@80000000 {
@@ -78,7 +38,6 @@
 			no-map;
 			reg = <0x9f000000 0x01000000>; /* 16M */
 		};
-
 
 		ramoops@a0000000 {
 			compatible = "ramoops";
@@ -102,184 +61,148 @@
 		};
 	};
 
-    power-gpios{
-        n2-gpios = <&gpio0 ASPEED_GPIO(N, 2) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-        n3-gpios = <&gpio0 ASPEED_GPIO(N, 3) (GPIO_ACTIVE_HIGH|GPIO_PULL_UP)>;
-    };
+	leds {
+		compatible = "gpio-leds";
+		uid_led {
+			gpios = <&smm_u73_gpio 10 GPIO_ACTIVE_LOW>;
+		};
+		fault_led {
+			gpios = <&smm_u73_gpio 12 GPIO_ACTIVE_LOW>;
+		};
+		power_led {
+			gpios = <&smm_u73_gpio 8 GPIO_ACTIVE_LOW>;
+		};
+	};
 
-    leds {
-        compatible = "gpio-leds";
-        uid_led {
-                gpios = <&exp7 10 GPIO_ACTIVE_LOW>;
-        };
-        fault_led {
-                gpios = <&exp7 12 GPIO_ACTIVE_LOW>;
-        };
-        power_led {
-                gpios = <&exp7 8 GPIO_ACTIVE_LOW>;
-        };
-    };
+	buttons {
+		power-btn {
+			gpio = <&smm_u73_gpio 9 GPIO_ACTIVE_LOW>;
+		};
+		uid-btn {
+			gpio = <&smm_u73_gpio 11 GPIO_ACTIVE_LOW>;
+		};
+	};
 
-    buttons {
-        power-btn {
-            gpio = <&exp7 9 GPIO_ACTIVE_LOW>;
-        };
-        uid-btn {
-            gpio = <&exp7 11 GPIO_ACTIVE_LOW>;
-        };
-    };
+};
 
-    standby_power_regulator: standby-power-regulator {
+/* Enabled Primary flash on FMC for bring up activity */
+&fmc {
+	status = "okay";
+	flash@0 {
 		status = "okay";
-		compatible = "regulator-fixed";
-		regulator-name = "standby_power";
-		gpio = <&gpio0 ASPEED_GPIO(M, 3) GPIO_ACTIVE_HIGH>;
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
+		compatible = "jedec,spi-nor";
+		label = "bmc";
+		spi-max-frequency = <50000000>;
+#include "aspeed-bmc-nvidia-gh-flash-layout-64.dtsi"
 	};
 };
 
-// Enabled Primary flash on FMC for bring up activity
-&fmc {
-    status = "okay";
-    flash@0 {
-        status = "okay";
-        compatible = "jedec,spi-nor";
-        label = "bmc";
-        spi-max-frequency = <50000000>;
-#include "aspeed-bmc-nvidia-gh-flash-layout-64.dtsi"
-    };
-};
-
 &fmcraw {
-    status = "okay";
-    spidev@0 {
-        compatible = "mctp-spi";
-        alert-gpio = <&gpio0 ASPEED_GPIO(R, 1) GPIO_ACTIVE_HIGH>;
-        interrupts-extended = <&gpio0 ASPEED_GPIO(R, 1) IRQ_TYPE_LEVEL_HIGH>;
-        status = "okay";
-    };
+	status = "okay";
+	spidev@0 {
+		compatible = "mctp-spi";
+		alert-gpio = <&gpio0 ASPEED_GPIO(R, 1) GPIO_ACTIVE_HIGH>;
+		interrupts-extended = <&gpio0 ASPEED_GPIO(R, 1) IRQ_TYPE_LEVEL_HIGH>;
+		status = "okay";
+	};
 };
 
 &spi1raw {
-    status = "okay";
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_spi1_default>;
-    spidev@0 {
-        spi-max-frequency = <25000000>;
-        compatible = "hgx,glacier";
-        status = "okay";
-    };
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default>;
+	spidev@0 {
+		spi-max-frequency = <25000000>;
+		compatible = "hgx,glacier";
+		status = "okay";
+	};
 };
 
 &spi2 {
-    status = "okay";
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_spi2_default>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2_default>;
 
-    // Data SPI is 64MB in size
-    flash@0 {
-        status = "okay";
-        label = "config";
-        spi-max-frequency = <50000000>;
-        partitions {
-            compatible = "fixed-partitions";
-            #address-cells = <1>;
-            #size-cells = <1>;
+	/* Data SPI is 64MB in size */
+	flash@0 {
+		status = "okay";
+		label = "config";
+		spi-max-frequency = <50000000>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
 
-            u-boot-env@0 {
-                reg = <0x0 0x40000>;            // 256KB at offset 0
-                label = "u-boot-env";
-            };
+			u-boot-env@0 {
+				reg = <0x0 0x40000>; /* 256KB at offset 0 */
+				label = "u-boot-env";
+			};
 
-            rwfs@40000 {
-                reg = <0x40000 0x1000000>;      // 16MB at offset 0x40000
-                label = "rwfs";
-            };
+			rwfs@40000 {
+				reg = <0x40000 0x1000000>; /* 16MB at offset 0x40000 */
+				label = "rwfs";
+			};
 
-            log@1040000 {
-                reg = <0x1040000 0x2800000>;    // 40MB at offset 0x1040000
-                label = "log";                  // Move log to EMMC, make this unused
-            };
-        };
-    };
+			log@1040000 {
+				reg = <0x1040000 0x2800000>; /* 40MB at offset 0x1040000 */
+				label = "log"; /* Move log to EMMC, make this unused */
+			};
+		};
+	};
 };
 
 &uart1 {
-        status = "okay";
-};
-
-&uart3 {
-        //Enabling SOL
-        status = "okay";
-
+	status = "okay";
 };
 
 &uart5 {
-    // BMC Debug Console
-    status = "okay";
+	/* BMC Debug Console */
+	status = "okay";
 };
 
 &uart_routing {
-       status = "okay";
-};
-
-// MAC1 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
-// This is "mac0" in zero-based DTS
-&mdio0 {
-    status = "okay";
-    ethphy0: ethernet-phy@0 {
-        compatible = "ethernet-phy-ieee802.3-c22";
-        reg = <0>;
-    };
-
-};
-
-&mac0 {
-    status = "okay";
-    pinctrl-names = "default";
-    phy-mode = "rgmii-rxid";
-    max-speed = <1000>;
-    phy-handle = <&ethphy0>;
-    pinctrl-0 = <&pinctrl_rgmii1_default>;
-};
-
-&mac2 {
-    status = "okay";
-    phy-mode = "rmii";
-    use-ncsi;
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_rmii3_default>;
-};
-
-
-// Enable emmc
-&emmc_controller {
-    status = "okay";
-};
-
-&emmc {
-    non-removable;
-    pinctrl-0 = <&pinctrl_emmcg9_default>;
-    bus-width = <8>;
-    max-frequency = <52000000>;
-    clk-phase-mmc-hs200 = <9>, <225>;
+	status = "okay";
 };
 
 /*
- * Enable USB port A as device (via the virtual hub) to host
+ * MAC1 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
+ * This is "mac0" in zero-based DTS
  */
+&mdio0 {
+	status = "okay";
+	/* P3809 U50 RTL8211FSI-CG RGMII-to-SGMII Ethernet PHY. */
+	p3809_u50_phy: ethernet-phy@1 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <1>;
+	};
+};
+
+&mac0 {
+	status = "okay";
+	pinctrl-names = "default";
+	phy-mode = "rgmii-rxid";
+	max-speed = <1000>;
+	phy-handle = <&p3809_u50_phy>;
+	pinctrl-0 = <&pinctrl_rgmii1_default>;
+};
+
+/* Enable emmc */
+&emmc_controller {
+	status = "okay";
+};
+
+&emmc {
+	non-removable;
+	pinctrl-0 = <&pinctrl_emmcg9_default>;
+	bus-width = <8>;
+	max-frequency = <52000000>;
+	clk-phase-mmc-hs200 = <9>, <225>;
+};
+
+/* Enable USB port A as device (via the virtual hub) to host */
 &vhub {
-    status = "okay";
-    pinctrl-names = "default";
-    /*
-        Uncomment below line to enable internal EHCI controller
-        Current config uses xHCI Port1
-    */
-    // pinctrl-0 = <&pinctrl_usb2adp_default>;
+	status = "okay";
+	pinctrl-names = "default";
 };
 
 &video {
@@ -291,660 +214,312 @@
  * USB 2.0 management topology on AST2600 port B:
  *
  *   U54 root hub
- *   |-- port 1: U184 drive-midplane hub
- *   |   |-- port 1: U155 CP2112
- *   |   |-- port 2: U1 storage SMA
- *   |   `-- port 3: U2 storage SMA
  *   |-- port 2: U20 OSFP hub
  *   |   |-- port 1: U3 CP2112
- *   |   `-- port 2: U59 shared CX9 SMA
- *   `-- port 3: U125 Fangio hub
- *       |-- port 1: U100 HPM SMA
+ *   |   |-- port 2: U59 shared CX9 SMA
+ *   |   `-- port 3: U184 drive-midplane hub
+ *   |       |-- port 1: U155 CP2112
+ *   |       |-- port 2: U1 storage SMA
+ *   |       `-- port 3: U2 storage SMA
+ *   `-- port 3: P4218 U125 hub
+ *       |-- port 1: P4218 U100 SMA
  *       |-- port 2: U216 CP2108
  *       |-- port 3: Vera USB MCTP or external USB-C through U1263
  *       `-- port 4: optional air-cooling endpoint
  */
 &ehci1 {
-    status = "okay";
-    #address-cells = <1>;
-    #size-cells = <0>;
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
 
-    /* U54 USX2064 root management hub. */
-    hub@1 {
-        reg = <1>;
-        #address-cells = <1>;
-        #size-cells = <0>;
+	/* P3809 U54 USX2064 four-port root management USB hub. */
+	p3809_u54_hub: hub@1 {
+		reg = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-        /* U184 drive-midplane hub. */
-        hub@1 {
-            reg = <1>;
-            #address-cells = <1>;
-            #size-cells = <0>;
+		/* OSFP U20 USX2064 hub for board and drive-midplane management. */
+		osfp_u20_hub: hub@2 {
+			reg = <2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 
-            /* U155 discrete CP2112 recovery bridge. */
-            device@1 {
-                reg = <1>;
-                #address-cells = <2>;
-                #size-cells = <0>;
+			osfp_u3_cp2112: device@1 {
+				reg = <1>;
+			};
 
-                midplane_cp2112: interface@1 {
-                    reg = <1 1>;
-                    gpio-controller;
-                    interrupt-controller;
-                    #gpio-cells = <2>;
-                    #interrupt-cells = <2>;
-                    gpio-line-names =
-                        "MIDP_MCU0_RST_L-O",
-                        "MIDP_MCU0_RECOVERY_L-O",
-                        "MIDP_MCU1_RST_L-O",
-                        "MIDP_MCU1_RECOVERY_L-O",
-                        "", "", "MIDP_GLOBAL_WP-O", "";
+			osfp_u59_mcu: device@2 {
+				reg = <2>;
+			};
 
-                    i2c {
-                        #address-cells = <1>;
-                        #size-cells = <0>;
+			/* Drive-midplane U184 USX2064 hub for the CP2112 and storage MCUs. */
+			midplane_u184_hub: hub@3 {
+				reg = <3>;
+				#address-cells = <1>;
+				#size-cells = <0>;
 
-                        eeprom@54 {
-                            compatible = "atmel,24c64";
-                            reg = <0x54>;
-                        };
+				midplane_u155_cp2112: device@1 {
+					reg = <1>;
+				};
 
-                        i2c-mux@70 {
-                            compatible = "nxp,pca9546";
-                            reg = <0x70>;
-                            #address-cells = <1>;
-                            #size-cells = <0>;
-                        };
-                    };
-                };
-            };
+				midplane_u1_mcu: device@2 {
+					reg = <2>;
+				};
 
-            /* U1 storage SMA, MCTP EID 90 and LSTP channels 1..8. */
-            mcu_midp_0: device@2 {
-                compatible = "usb0955,cf11";
-                reg = <2>;
-                #address-cells = <1>;
-                #size-cells = <0>;
+				midplane_u2_mcu: device@3 {
+					reg = <3>;
+				};
+			};
+		};
 
-                interface@1 {
-                    reg = <1>;
-                    #address-cells = <1>;
-                    #size-cells = <0>;
+		/* P4218 U125 USX2064 four-port management USB hub. */
+		p4218_u125_hub: hub@3 {
+			reg = <3>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 
-                    midp0_ssd0_i2c: channel@1 { compatible = "nvidia,lstp-i2c"; reg = <1>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd1_i2c: channel@2 { compatible = "nvidia,lstp-i2c"; reg = <2>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd2_i2c: channel@3 { compatible = "nvidia,lstp-i2c"; reg = <3>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd3_i2c: channel@4 { compatible = "nvidia,lstp-i2c"; reg = <4>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd4_i2c: channel@5 { compatible = "nvidia,lstp-i2c"; reg = <5>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd5_i2c: channel@6 { compatible = "nvidia,lstp-i2c"; reg = <6>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd6_i2c: channel@7 { compatible = "nvidia,lstp-i2c"; reg = <7>; #address-cells = <1>; #size-cells = <0>; };
-                    midp0_ssd7_i2c: channel@8 { compatible = "nvidia,lstp-i2c"; reg = <8>; #address-cells = <1>; #size-cells = <0>; };
-                };
-            };
-
-            /* U2 storage SMA, MCTP EID 95 and LSTP channels 1..4. */
-            mcu_midp_1: device@3 {
-                compatible = "usb0955,cf11";
-                reg = <3>;
-                #address-cells = <1>;
-                #size-cells = <0>;
-
-                interface@1 {
-                    reg = <1>;
-                    #address-cells = <1>;
-                    #size-cells = <0>;
-
-                    midp1_ssd8_i2c: channel@1 { compatible = "nvidia,lstp-i2c"; reg = <1>; #address-cells = <1>; #size-cells = <0>; };
-                    midp1_ssd9_i2c: channel@2 { compatible = "nvidia,lstp-i2c"; reg = <2>; #address-cells = <1>; #size-cells = <0>; };
-                    midp1_ssd10_i2c: channel@3 { compatible = "nvidia,lstp-i2c"; reg = <3>; #address-cells = <1>; #size-cells = <0>; };
-                    midp1_ssd11_i2c: channel@4 { compatible = "nvidia,lstp-i2c"; reg = <4>; #address-cells = <1>; #size-cells = <0>; };
-                };
-            };
-        };
-
-        /* U20 OSFP hub. */
-        hub@2 {
-            reg = <2>;
-            #address-cells = <1>;
-            #size-cells = <0>;
-
-            /* U3 discrete CP2112; its I2C bus number remains dynamic. */
-            device@1 { reg = <1>; };
-
-            /* U59 shared CX9 SMA, MCTP EID 50. */
-            mcu_cx9_01: device@2 {
-                compatible = "usb0955,cf11";
-                reg = <2>;
-                #address-cells = <1>;
-                #size-cells = <0>;
-
-                interface@1 {
-                    reg = <1>;
-                    cx9_mcu_cp2112_i2c: i2c {
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-                };
-
-                interface@2 {
-                    reg = <2>;
-                    #address-cells = <1>;
-                    #size-cells = <0>;
-
-                    cx9_mcu_cx0_i2c: channel@1 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <1>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    cx9_mcu_cx1_i2c: channel@2 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <2>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-                };
-            };
-        };
-
-        /* U125 Fangio hub. */
-        hub@3 {
-            reg = <3>;
-            #address-cells = <1>;
-            #size-cells = <0>;
-
-            /* U100 HPM SMA, MCTP EID 70. */
-            mcu_hpm_0: device@1 {
-                compatible = "usb0955,cf11";
-                reg = <1>;
-                #address-cells = <1>;
-                #size-cells = <0>;
-
-                interface@1 {
-                    reg = <1>;
-                    hpm_mcu_cp2112_i2c: i2c {
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-                };
-
-                interface@2 {
-                    reg = <2>;
-                    #address-cells = <1>;
-                    #size-cells = <0>;
-
-                    hpm_mcu_ssif: channel@2 {
-                        compatible = "nvidia,lstp-ipmi";
-                        reg = <2>;
-                        label = "ipmi-ssif-host";
-                    };
-
-                    hpm_mcu_cpld_program_i2c: channel@3 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <3>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    hpm_mcu_sideband_i2c: channel@4 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <4>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    hpm_mcu_hvbuck_i2c: channel@5 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <5>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    hpm_mcu_hpm_i2c: channel@6 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <6>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    hpm_mcu_cpld_user_i2c: channel@7 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <7>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-
-                    hpm_mcu_vrd_i2c: channel@8 {
-                        compatible = "nvidia,lstp-i2c";
-                        reg = <8>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                    };
-                };
-            };
-        };
-    };
+			p4218_u100_mcu: device@1 {
+				reg = <1>;
+			};
+		};
+	};
 };
 
-// I2C1 is not populated; host SSIF is provided by HPM MCU LSTP channel 2.
+/* OSFP U3 CP2112 provides board FRU access and independent MCU recovery GPIOs. */
+&osfp_u3_cp2112 {
+	compatible = "usb10c4,ea90";
+
+	osfp_u3_cp2112_i2c: i2c {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* OSFP U21 BR24G128FJ board FRU EEPROM. */
+		osfp_u21_fru: eeprom@57 {
+			compatible = "rohm,24c128", "atmel,24c128";
+			reg = <0x57>;
+			label = "osfp-fru";
+		};
+	};
+};
+
+/*
+ * OSFP U59 MCXN556 manages both ConnectX-9 devices. Its USB composite
+ * function provides MCTP plus LSTP I2C channels for the two CX GW0 buses.
+ */
+&osfp_u59_mcu {
+	compatible = "usb0955,cf11";
+	#address-cells = <2>;
+	#size-cells = <0>;
+
+	interface@2 {
+		reg = <2 1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		osfp_u59_cx0_i2c: channel@1 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
+		osfp_u59_cx1_i2c: channel@2 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+};
+
+/* Midplane U155 CP2112 provides FRU/ISP access and recovery GPIOs for U1/U2. */
+&midplane_u155_cp2112 {
+	compatible = "usb10c4,ea90";
+	gpio-controller;
+	interrupt-controller;
+	#gpio-cells = <2>;
+	#interrupt-cells = <2>;
+	gpio-line-names =
+		"MIDP_MCU0_RST_L-O",
+		"MIDP_MCU0_RECOVERY_L-O",
+		"MIDP_MCU1_RST_L-O",
+		"MIDP_MCU1_RECOVERY_L-O",
+		"", "", "MIDP_GLOBAL_WP-O", "";
+
+	midplane_u155_cp2112_i2c: i2c {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* Drive-midplane U156 BR24G128FJ FRU EEPROM. */
+		midplane_u156_fru: eeprom@54 {
+			compatible = "rohm,24c128", "atmel,24c128";
+			reg = <0x54>;
+			label = "midplane-fru";
+		};
+
+		/* Drive-midplane U190 PCA9546 MCU ISP mux. */
+		midplane_u190_isp_mux: i2c-mux@70 {
+			compatible = "nxp,pca9546";
+			reg = <0x70>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+};
+
+/*
+ * Midplane U1 MCXN556 is the USB MCTP endpoint for drives 0 through 7.
+ * Its eight downstream SSD SMBus links are MCU-owned and are not LSTP buses.
+ */
+&midplane_u1_mcu {
+	compatible = "usb0955,cf11";
+};
+
+/*
+ * Midplane U2 MCXN556 is intended to manage populated drives 8 through 11.
+ * The shared eight-link USB MCTP firmware has no LSTP buses; mapping is unresolved.
+ */
+&midplane_u2_mcu {
+	compatible = "usb0955,cf11";
+};
+
+/*
+ * P4218 U100 MCXN556 provides USB MCTP and bridges two downstream I3C endpoints.
+ * LSTP has management and unsafe raw flash SPI only; SPI is omitted intentionally.
+ */
+&p4218_u100_mcu {
+	compatible = "usb0955,cf11";
+};
+
+/* I2C1 is not populated; current P4218 MCU firmware has no SSIF LSTP channel. */
 &i2c0 {
-    status = "disabled";
+	status = "disabled";
 };
 
-// I2C2 is not part of the CMX L10 management topology.
+/* I2C2 is not part of the CMX L10 management topology. */
 &i2c1 {
-    status = "disabled";
+	status = "disabled";
 };
 
-// I2C3, Fangio MGMT0
+/* I2C3, P4218 MGMT0 */
 &i2c2 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
+	status = "okay";
+	clock-frequency = <400000>;
+	i2c-scl-clk-low-timeout-us = <32000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
 
-    // Fangio HPM FRU EEPROM
-    eeprom@50 {
-        compatible = "atmel,24c64";
-        reg = <0x50>;
-        pagesize = <32>;
-    };
+	/* P4218 U1343 M24C64 BMC FRU EEPROM. */
+	p4218_u1343_fru: eeprom@50 {
+		compatible = "st,24c64", "atmel,24c64";
+		reg = <0x50>;
+		label = "p4218-fru";
+	};
 };
 
-// I2C4
+/* I2C4 is test-point-only on the SMM carrier. */
 &i2c3 {
-    status = "ok";
-    clock-frequency = <400000>;
+	status = "disabled";
 };
 
-// I2C5 is not part of the CMX L10 management topology.
+/* I2C5 is test-point-only on the SMM carrier. */
 &i2c4 {
-    status = "okay";
-
-	i2c-mux@70 {
-		compatible = "nxp,pca9548";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-		vdd-supply = <&standby_power_regulator>;
-
-		i2c_mcio_c0_south0: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_mcio_c0_south1: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_mcio_c0_south2: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_mcio_c0_south3: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-
-		i2c_mcio_c0_south4: i2c@4 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <4>;
-		};
-
-		i2c_mcio_c0_south5: i2c@5 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <5>;
-		};
-
-		i2c_mcio_c0_south6: i2c@6 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <6>;
-                        mctp-controller;
-		};
-
-		i2c_mcio_c0_south7: i2c@7 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <7>;
-		};
-	};
-
-	i2c-mux@71 {
-		compatible = "nxp,pca9548";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x71>;
-		vdd-supply = <&standby_power_regulator>;
-
-		i2c_mcio_c0c1_north0: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_mcio_c0c1_north1: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_mcio_c0c1_north2: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_mcio_c0c1_north3: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-
-		i2c_mcio_c0c1_north4: i2c@4 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <4>;
-		};
-
-		i2c_mcio_c0c1_north5: i2c@5 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <5>;
-		};
-
-		i2c_mcio_c0c1_north6: i2c@6 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <6>;
-		};
-
-		i2c_mcio_c0c1_north7: i2c@7 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <7>;
-		};
-	};
-
-	i2c-mux@75 {
-		compatible = "nxp,pca9548";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x75>;
-		vdd-supply = <&standby_power_regulator>;
-
-		i2c_mcio_c1_south0: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_mcio_c1_south1: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_mcio_c1_south2: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_mcio_c1_south3: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-
-		i2c_mcio_c1_south4: i2c@4 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <4>;
-		};
-
-		i2c_mcio_c1_south5: i2c@5 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <5>;
-		};
-
-		i2c_mcio_c1_south6: i2c@6 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <6>;
-                        mctp-controller;
-		};
-
-		i2c_mcio_c1_south7: i2c@7 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <7>;
-		};
-	};
+	status = "disabled";
 };
 
-// I2C6
-// Module 0/1 I2C MUX x3
+/* I2C6 serves SMM-local GPIO, temperature, and FRU devices. */
 &i2c5 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
+	status = "okay";
+	clock-frequency = <400000>;
+	i2c-scl-clk-low-timeout-us = <32000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
+
+	/* SMM U43 CAT34C02 carrier FRU EEPROM. */
+	smm_u43_fru: eeprom@50 {
+		compatible = "catalyst,24c02", "atmel,24c02";
+		reg = <0x50>;
+		label = "smm-fru";
+	};
 };
 
-// I2C7
-// Module 0/1 Leak Sensors
-// Module 0/1 Fan Controllers
+/* I2C7 is test-point-only on the SMM carrier. */
 &i2c6 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-
-	i2c-mux@70 {
-		compatible = "nxp,pca9546";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-		i2c-mux-idle-disconnect;
-
-		i2c_usbhub: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_tpm: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_dp: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_rtc: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-	};
+	status = "disabled";
 };
 
-// I2C8
+/* I2C8 is test-point-only on the SMM carrier. */
 &i2c7 {
-    status = "okay";
-    clock-frequency = <400000>;
+	status = "disabled";
 };
 
-// I2C9
-// M.2
+/* I2C9 is an SSIF/test pair with no active target. */
 &i2c8 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-scl-clk-low-timeout-us = <32000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
+	status = "disabled";
 };
 
-// I2C10
-// PDB
+/*
+ * I2C10
+ * PDB
+ */
 &i2c9 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
+	status = "okay";
+	clock-frequency = <400000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
 
-	i2c-mux@76 {
-		compatible = "nxp,pca9546";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x76>;
-		i2c-mux-idle-disconnect;
+};
 
-		i2c_fan_ctrl0: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_fan_ctrl1: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_fan_iox: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c_fan_hsc: i2c@3 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
+/*
+ * I2C11
+ * BMC FRU EEPROM
+ * BMC Temp Sensor
+ */
+&i2c10 {
+	status = "okay";
+	clock-frequency = <400000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
+	/* P3809 U43 CAT34C02 BMC FRU EEPROM. */
+	p3809_u43_fru: eeprom@50 {
+		compatible = "catalyst,24c02", "atmel,24c02";
+		reg = <0x50>;
+		label = "p3809-fru";
 	};
 };
 
-// I2C11
-// BMC FRU EEPROM
-// BMC Temp Sensor
-&i2c10 {
-    status = "okay";
-    clock-frequency = <400000>;
-    i2c-tck-thddat-config = <0x0099EC00>;
-    // BMC FRU EEPROM - 256 bytes
-    eeprom@50 {
-        compatible = "atmel,24c02";
-        reg = <0x50>;
-        pagesize = <8>;
-    };
-};
-
-// I2C12
+/* I2C12 serves the SMM Ethernet switch management segment. */
 &i2c11 {
-    status = "ok";
-    clock-frequency = <400000>;
+	status = "ok";
+	clock-frequency = <400000>;
 };
 
-// I2C13
+/* I2C13 is test-point-only on the SMM carrier. */
 &i2c12 {
-    status = "ok";
-    clock-frequency = <400000>;
+	status = "disabled";
 };
 
-// I2C14
-// Module 0 UPHY3 SMBus
+/* I2C14 is test-point-only on the SMM carrier. */
 &i2c13 {
-    status = "ok";
-    clock-frequency = <400000>;
+	status = "disabled";
 };
 
-// I2C15
-// Module 1 UPHY3 SMBus
+/* I2C15 is a non-addressed SMM LED-control stuffing option. */
 &i2c14 {
-    status = "okay";
-    clock-frequency = <400000>;
+	status = "disabled";
 };
 
-// I2C16
+/* I2C16 has only no-stuff reserve button aliases. */
 &i2c15 {
-    status = "okay";
-    clock-frequency = <400000>;
-};
-
-// I2C Fan Control 0
-&i2c_fan_ctrl0 {
-    status = "okay";
-    clock-frequency = <400000>;
-
-    fan-controller@2c {
-        compatible = "maxim,max31790";
-        reg = <0x2C>;
-        #address-cells = <1>;
-        #size-cells = <0>;
-    };
-};
-
-// I2C Fan Control 1
-&i2c_fan_ctrl1 {
-    status = "okay";
-    clock-frequency = <400000>;
-
-    fan-controller@2f {
-        compatible = "maxim,max31790";
-        reg = <0x2F>;
-        #address-cells = <1>;
-        #size-cells = <0>;
-    };
-};
-
-// E1S Backplane GPIO Expander
-&i2c_mcio_c0c1_north6 {
-    // E1S Backplane, Expander @0x20
-    exp22: pca6408@20 {
-        compatible = "nxp,pca6408";
-        reg = <0x20>;
-        gpio-controller;
-        #gpio-cells = <2>;
-
-        #address-cells = <1>;
-        #size-cells = <0>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "E1S_MCU_RESET_L-O",
-            "E1S_MCU_RECOVERY_L-O",
-            "",
-            "",
-            "",
-            "",
-            "E1S_LOWER_PERST-O",
-            "E1S_UPPER_PERST-O";
-    };
+	status = "disabled";
 };
 
 &jtag0 {
-    status = "okay";
+	status = "okay";
 };
 
 &jtag1 {
-    status = "okay";
+	status = "okay";
 };
 
 &rng1 {
-    status = "okay";
+	status = "okay";
 };
 
 &chassis {
