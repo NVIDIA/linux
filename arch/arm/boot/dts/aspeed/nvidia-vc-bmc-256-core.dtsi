@@ -309,7 +309,7 @@
             "I2C_BUS_MUX_RESET_L-O",
             "",
             "PDB_TRAY_RST-O",
-            "HOST_RDY_PWR_EN-I",
+            "HOST_RDY_PWR_EN-O",
             "RTC_CLR_L-O",
             "I2C_RTC_ALERT_L-I",
             "X86_MUX_TPM_RST_SEL-O",
