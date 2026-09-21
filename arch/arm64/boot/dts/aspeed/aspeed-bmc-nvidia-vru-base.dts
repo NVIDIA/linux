@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (c) 2026 NVIDIA Corporation
+
+/dts-v1/;
+
+#include "aspeed-g7.dtsi"
+
+/ {
+	model = "NVIDIA VRU BMC base";
+	compatible = "aspeed,ast2700";
+
+	memory@400000000 {
+		device_type = "memory";
+		reg = <0x4 0x00000000 0x0 0x40000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		#include "ast2700-reserved-mem.dtsi"
+
+		video_engine_memory0: video0 {
+			size = <0x0 0x02c00000>;
+			alignment = <0x0 0x00100000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		video_engine_memory1: video1{
+			size = <0x0 0x02c00000>;
+			alignment = <0x0 0x00100000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		gfx_memory: framebuffer {
+			size = <0x0 0x01000000>;
+			alignment = <0x0 0x01000000>;
+			compatible = "shared-dma-pool";
+			reusable;
+		};
+
+		xdma_memory0: xdma0 {
+			size = <0x0 0x01000000>;
+			alignment = <0x0 0x01000000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		xdma_memory1: xdma1 {
+			size = <0x0 0x01000000>;
+			alignment = <0x0 0x01000000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		phram_env: phram-env@4237ff000 {
+			compatible = "phram";
+			label = "phram-env";
+			reg = <0x00000004 0x237ff000 0x0 0x00001000>;
+			no-map;
+		};
+	};
+
+	firmware {
+		optee: optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	chosen {
+		stdout-path = &uart12;
+	};
+
+};
+
+&gpio0 {
+	status = "disabled";
+};
+
+&gpio1 {
+	status = "disabled";
+};
+
+&uart12 {
+	status = "okay";
+};
+
+&mac2 {
+	status = "okay";
+	phy-mode = "sgmii";
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&sgmii {
+	status = "okay";
+	phy-side;
+};
+
+&emmc_controller {
+	status = "okay";
+	mmc-hs200-1_8v;
+};
+
+&emmc {
+	status = "okay";
+	non-removable;
+	bus-width = <4>;
+	max-frequency = <52000000>;
+};

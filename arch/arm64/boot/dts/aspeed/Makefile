@@ -26,3 +26,6 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	ast2700a1-evb-s0.dtb \
 	ast2700a1-evb-s1.dtb \
 	ast2700a1-ci-host.dtb
+
+dtb-$(CONFIG_ARCH_ASPEED) += \
+	aspeed-bmc-nvidia-vru-base.dtb
