@@ -146,6 +146,8 @@ struct ssif_bmc_ctx {
 #endif //CONFIG_SEPARATE_SSIF_POSTCODES
 	struct ast2600_ara *ara;
 	bool wr_tolerance;
+	/* bus has slave-event-nack: refuse early reads, never hide the address */
+	bool bus_nack;
 };
 
 static ssize_t ssif_timeout_show(struct device *dev,
@@ -379,7 +381,6 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	struct ssif_bmc_ctx *ssif_bmc = to_ssif_bmc(file);
 	struct ipmi_ssif_msg msg;
 	unsigned long flags;
-	ssize_t ret;
 	ktime_t delta;
 	ktime_t now;
 	s64 timer;
@@ -390,29 +391,34 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 	if (copy_from_user(&msg, buf, count))
 		return -EFAULT;
 
+	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	//the message count must match, otherwise it is wrong message
 	//tell upper layers that all is fine even though the message was dropped by the user
 	if (msg.header.msg_num != ssif_bmc->msg_count) {
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		return count;
 	}
 
 	if (!msg.header.len || count < sizeof(struct ipmi_ssif_msg_header) + msg.header.len) {
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		return -EINVAL;
 	}
 	now = ktime_get();
 	delta = ktime_sub(now, ssif_bmc->msg_time);
 	timer = ktime_to_ms(delta);
-	if (timer > (s64)(ssif_bmc->timeout))
+	if (timer > (s64)(ssif_bmc->timeout)) {
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		return -EPERM;
+	}
 
-	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 	memcpy(&ssif_bmc->response, &msg, count);
 	ssif_bmc->is_singlepart_read = (msg.header.len <= MAX_PAYLOAD_PER_TRANSACTION);
 	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 
 	timer_delete_sync(&ssif_bmc->response_timer);
 	spin_lock_irqsave(&ssif_bmc->lock_addr_reg, flags);
-	enable_ast2600_slave(ssif_bmc->client);
+	if (!ssif_bmc->bus_nack)
+		enable_ast2600_slave(ssif_bmc->client);
 	if (!IS_ERR(ssif_bmc->alert))
 		enable_ast2600_ara(ssif_bmc->client);
 	spin_unlock_irqrestore(&ssif_bmc->lock_addr_reg, flags);
@@ -428,7 +434,7 @@ static ssize_t ssif_bmc_write(struct file *file, const char __user *buf, size_t 
 		gpiod_set_value(ssif_bmc->alert, 1);
 	}
 
-	return (ret < 0) ? ret : count;
+	return count;
 }
 
 static int ssif_bmc_open(struct inode *inode, struct file *file)
@@ -514,13 +520,17 @@ static void handle_request(struct ssif_bmc_ctx *ssif_bmc)
 			return;
 		}
 
-		spin_lock(&ssif_bmc->lock_addr_reg);
-		disable_ast2600_slave(ssif_bmc->client);
-		spin_unlock(&ssif_bmc->lock_addr_reg);
+		if (!ssif_bmc->bus_nack) {
+			spin_lock(&ssif_bmc->lock_addr_reg);
+			disable_ast2600_slave(ssif_bmc->client);
+			spin_unlock(&ssif_bmc->lock_addr_reg);
+		}
 		mod_timer(&ssif_bmc->response_timer, jiffies + msecs_to_jiffies(ssif_bmc->response_timeout));
 
+		spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
 		memset(&ssif_bmc->response, 0, sizeof(struct ipmi_ssif_msg_header));
 		ssif_bmc->msg_time = ktime_get();
+		spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
 		wake_up_all(&ssif_bmc->wait_queue_rd);
 	}
 }
@@ -548,7 +558,8 @@ static void set_singlepart_response_buffer(struct ssif_bmc_ctx *ssif_bmc)
 
 	part->address = GET_8BIT_ADDR(ssif_bmc->client->addr);
 	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
-	part->length = (u8)ssif_bmc->response.header.len;
+	part->length = min_t(unsigned int, ssif_bmc->response.header.len,
+			     MAX_PAYLOAD_PER_TRANSACTION);
 	/* Clear the rest to 0 */
 	memset(part->payload + part->length, 0, MAX_PAYLOAD_PER_TRANSACTION - part->length);
 	memcpy(&part->payload[0], &ssif_bmc->response.payload[0], part->length);
@@ -803,11 +814,14 @@ static void process_smbus_cmd(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	}
 }
 
-static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
+static int on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
+	unsigned long flags;
+	bool staged, singlepart;
+
 	/*
-	 * In SMBUS spec, the byte-count cannot be 0.
-	 * Send byte-count = 1 if there is nothing to send.
+	 * SMBus byte-count cannot be 0: preload 1 as the legacy fallback.
+	 * On slave-event-nack buses the errno below refuses the read instead.
 	 */
 
 	*val = 1;
@@ -820,7 +834,7 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ REQUESTED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		return;
+		return -EPROTO;
 
 	} else if (ssif_bmc->state == SSIF_SMBUS_CMD) {
 		if (!supported_read_cmd(ssif_bmc->part_buf.smbus_cmd)) {
@@ -838,10 +852,20 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	ssif_bmc->msg_idx = 0;
 
 	if (ssif_bmc->state == SSIF_ABORTING) {
-		return;
+		return -EPROTO;
 	}
 
-	if (ssif_bmc->is_singlepart_read)
+	spin_lock_irqsave(&ssif_bmc->lock_wr, flags);
+	staged = ssif_bmc->response.header.len != 0;
+	singlepart = ssif_bmc->is_singlepart_read;
+	spin_unlock_irqrestore(&ssif_bmc->lock_wr, flags);
+
+	if (!staged && ssif_bmc->bus_nack) {
+		ssif_bmc->state = SSIF_ABORTING;
+		return -EPROTO;
+	}
+
+	if (singlepart)
 		set_singlepart_response_buffer(ssif_bmc);
 	else
 		set_multipart_response_buffer(ssif_bmc);
@@ -854,9 +878,11 @@ static void on_read_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 
 	if (!IS_ERR(ssif_bmc->alert))
 		gpiod_set_value(ssif_bmc->alert, 0);
+
+	return 0;
 }
 
-static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
+static int on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
 	if (ssif_bmc->state == SSIF_READY ||
 	    ssif_bmc->state == SSIF_START ||
@@ -866,20 +892,19 @@ static void on_read_processed_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected READ PROCESSED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		*val = 0;
-		return;
 	}
 
-	/* Send 0 if there is nothing to send */
+	/* Send 0 if there is nothing to send (refused on slave-event-nack buses) */
 	if (ssif_bmc->state == SSIF_ABORTING) {
 		*val = 0;
-		return;
+		return -EPROTO;
 	}
 
 	handle_read_processed(ssif_bmc, val);
+	return 0;
 }
 
-static void on_write_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
+static int on_write_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
 	if (ssif_bmc->state == SSIF_READY || ssif_bmc->state == SSIF_SMBUS_CMD) {
 		ssif_bmc->state = SSIF_START;
@@ -896,29 +921,32 @@ static void on_write_requested_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 */
 			dev_warn(&ssif_bmc->client->dev, "Dup WREQ\n");
 			ssif_bmc->wr_tolerance = false;
-			return;
+			return 0;
 		}
 
 		dev_dbg(&ssif_bmc->client->dev,
 			 "Warn: %s unexpected WRITE REQUEST in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-		return;
+		return -EPROTO;
 	}
 
 	ssif_bmc->msg_idx = 0;
 	ssif_bmc->part_buf.address = *val;
+	return 0;
 }
 
-static void on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
+static int on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
+	int rc = 0;
+
 	if (ssif_bmc->state == SSIF_READY ||
 	    ssif_bmc->state == SSIF_RES_SENDING) {
 		dev_dbg(&ssif_bmc->client->dev,
 			 "Warn: %s unexpected WRITE RECEIVED in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_ABORTING;
-
+		rc = -EPROTO;
 	} else if (ssif_bmc->state == SSIF_START) {
 		ssif_bmc->state = SSIF_SMBUS_CMD;
 
@@ -933,18 +961,20 @@ static void on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 				 */
 				dev_warn(&ssif_bmc->client->dev, "Dup WRCV:0x%x\n", *val);
 				ssif_bmc->wr_tolerance = false;
-				return;
-            }
+				return 0;
+			}
 
 			dev_dbg(&ssif_bmc->client->dev, "Warn: Unknown SMBus write command=0x%x",
 				 ssif_bmc->part_buf.smbus_cmd);
 			ssif_bmc->aborting = true;
 		}
 
-		if (ssif_bmc->aborting)
+		if (ssif_bmc->aborting) {
 			ssif_bmc->state = SSIF_ABORTING;
-		else
+			rc = -EPROTO;
+		} else {
 			ssif_bmc->state = SSIF_REQ_RECVING;
+		}
 	} else if (ssif_bmc->state == SSIF_ABORTING) {
 		if (supported_write_start_cmd(*val)) {
 			ssif_bmc->state = SSIF_SMBUS_CMD;
@@ -960,10 +990,14 @@ static void on_write_received_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 		ssif_bmc->wr_tolerance = true;
 		process_smbus_cmd(ssif_bmc, val);
 	}
+
+	return rc;
 }
 
-static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
+static int on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 {
+	int rc = 0;
+
 	if (ssif_bmc->state == SSIF_READY ||
 	    ssif_bmc->state == SSIF_START ||
 	    ssif_bmc->state == SSIF_SMBUS_CMD ||
@@ -972,7 +1006,7 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 "Warn: %s unexpected SLAVE STOP in state=%s\n",
 			 __func__, state_to_string(ssif_bmc->state));
 		ssif_bmc->state = SSIF_READY;
-
+		rc = -EPROTO;
 	} else if (ssif_bmc->state == SSIF_REQ_RECVING) {
 		if (validate_request_part(ssif_bmc)) {
 			process_request_part(ssif_bmc);
@@ -988,6 +1022,7 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 			 */
 			dev_err(&ssif_bmc->client->dev, "Error: invalid pec\n");
 			ssif_bmc->aborting = true;
+			rc = -EPROTO;
 		}
 	} else if (ssif_bmc->state == SSIF_RES_SENDING) {
 		ssif_bmc->state = SSIF_READY;
@@ -996,6 +1031,8 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 	/* Reset message index */
 	ssif_bmc->msg_idx = 0;
 	ssif_bmc->wr_tolerance = false;
+
+	return rc;
 }
 
 /*
@@ -1004,31 +1041,32 @@ static void on_stop_event(struct ssif_bmc_ctx *ssif_bmc, u8 *val)
 static int ssif_bmc_cb(struct i2c_client *client, enum i2c_slave_event event, u8 *val)
 {
 	struct ssif_bmc_ctx *ssif_bmc = i2c_get_clientdata(client);
-	int ret = 0;
+	int ret;
 
 	switch (event) {
 	case I2C_SLAVE_READ_REQUESTED:
-		on_read_requested_event(ssif_bmc, val);
+		ret = on_read_requested_event(ssif_bmc, val);
 		break;
 
 	case I2C_SLAVE_WRITE_REQUESTED:
-		on_write_requested_event(ssif_bmc, val);
+		ret = on_write_requested_event(ssif_bmc, val);
 		break;
 
 	case I2C_SLAVE_READ_PROCESSED:
-		on_read_processed_event(ssif_bmc, val);
+		ret = on_read_processed_event(ssif_bmc, val);
 		break;
 
 	case I2C_SLAVE_WRITE_RECEIVED:
-		on_write_received_event(ssif_bmc, val);
+		ret = on_write_received_event(ssif_bmc, val);
 		break;
 
 	case I2C_SLAVE_STOP:
-		on_stop_event(ssif_bmc, val);
+		ret = on_stop_event(ssif_bmc, val);
 		break;
 
 	default:
 		dev_dbg(&ssif_bmc->client->dev, "Warn: Unknown i2c slave event\n");
+		ret = -EINVAL;
 		break;
 	}
 
@@ -1039,6 +1077,11 @@ static void retry_timeout(struct timer_list *t)
 {
 	struct ssif_bmc_ctx *ssif_bmc = container_of(t, struct ssif_bmc_ctx, response_timer);
 	unsigned long flags;
+
+	if (ssif_bmc->bus_nack) {
+		dev_warn(&ssif_bmc->client->dev, "Userspace did not respond in time\n");
+		return;
+	}
 
 	dev_warn(&ssif_bmc->client->dev, "Userspace did not respond in time. Force enable i2c target\n");
 	spin_lock_irqsave(&ssif_bmc->lock_addr_reg, flags);
@@ -1064,6 +1107,7 @@ static int ssif_bmc_probe(struct i2c_client *client)
 		ssif_bmc->pulse_width = 5;
 
 	ssif_bmc->response_timeout = ssif_bmc->timeout + 5;
+	ssif_bmc->bus_nack = device_property_read_bool(&client->dev, "bus-nack");
 
 	ret = kfifo_alloc(&ssif_bmc->fifo, BUFFER_SIZE, GFP_KERNEL);
 	if (ret)

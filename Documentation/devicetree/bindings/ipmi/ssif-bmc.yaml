@@ -19,6 +19,14 @@ properties:
   reg:
     maxItems: 1
 
+  bus-nack:
+    type: boolean
+    description:
+      The bus controller refuses a host read when the slave callback
+      returns an error (see the controller binding). The driver then
+      returns -EPROTO for a read with no response staged instead of
+      hiding its slave address.
+
 required:
   - compatible
   - reg
