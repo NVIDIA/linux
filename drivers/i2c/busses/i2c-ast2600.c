@@ -389,6 +389,8 @@ struct ast2600_i2c_bus {
 	struct i2c_client		*target;
 	void (*target_packet_irq)(struct ast2600_i2c_bus *i2c_bus, u32 isr);
 	void (*target_byte_irq)(struct ast2600_i2c_bus *i2c_bus, u32 isr);
+	/* DT slave-event-nack: honor i2c_slave_event() errno, stage no TX byte */
+	bool target_event_nack;
 #endif
 	/* Manual tCK* and HDDAT setting for the ICC04 register
 	 * ICC04[11:10]: Hold Time of Master/Slave Data
@@ -1836,6 +1838,7 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 	int target_rx_len = 0;
 	u32 cmd = 0;
 	u8 value;
+	int ret;
 	int i;
 
 	/* due to controller target is common buffer, need force the master stop not issue */
@@ -1957,15 +1960,18 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 			i2c_slave_event(i2c_bus->target, I2C_SLAVE_WRITE_RECEIVED, &value);
 		}
 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
-		i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
-		writeb(value, i2c_bus->buf_base);
+		ret = i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
+		if (!i2c_bus->target_event_nack || !ret)
+			writeb(value, i2c_bus->buf_base);
 		break;
 	case AST2600_I2CS_WAIT_TX_DMA | AST2600_I2CS_SLAVE_MATCH:
-		i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
-		writeb(value, i2c_bus->buf_base);
-		writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
-		       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
-		cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+		ret = i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
+		if (!i2c_bus->target_event_nack || !ret) {
+			writeb(value, i2c_bus->buf_base);
+			writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
+			       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
+			cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+		}
 		break;
 	case AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_WAIT_TX_DMA | AST2600_I2CS_RX_DONE:
 	case AST2600_I2CS_WAIT_TX_DMA | AST2600_I2CS_RX_DONE:
@@ -1981,14 +1987,16 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 				value = readb(i2c_bus->buf_base + 0x10 + i);
 				i2c_slave_event(i2c_bus->target, I2C_SLAVE_WRITE_RECEIVED, &value);
 			}
-			i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
+			ret = i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
 		} else {
-			i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_PROCESSED, &value);
+			ret = i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_PROCESSED, &value);
 		}
-		writeb(value, i2c_bus->buf_base);
-		writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
-		       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
-		cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+		if (!i2c_bus->target_event_nack || !ret) {
+			writeb(value, i2c_bus->buf_base);
+			writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
+			       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
+			cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+		}
 		break;
 	/* workaround : trigger the cmd twice to fix next state keep 1000000 */
 	case AST2600_I2CS_SLAVE_MATCH | AST2600_I2CS_RX_DONE:
@@ -2002,11 +2010,14 @@ static void ast2600_i2c_target_packet_buff_irq(struct ast2600_i2c_bus *i2c_bus, 
 			u32 tx_dir = readl(i2c_bus->reg_base + AST2600_I2CC_STS_AND_BUFF) >> 29;
 
 			if (tx_dir == 0x6) {
-				i2c_slave_event(i2c_bus->target, I2C_SLAVE_READ_REQUESTED, &value);
-				writeb(value, i2c_bus->buf_base);
-				writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
-				       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
-				cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+				ret = i2c_slave_event(i2c_bus->target,
+						      I2C_SLAVE_READ_REQUESTED, &value);
+				if (!i2c_bus->target_event_nack || !ret) {
+					writeb(value, i2c_bus->buf_base);
+					writel(AST2600_I2CC_SET_TX_BUF_LEN(1),
+					       i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
+					cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_TX_BUFF_EN;
+				}
 			} else {
 				i2c_slave_event(i2c_bus->target, I2C_SLAVE_WRITE_REQUESTED, &value);
 				cmd = TARGET_TRIGGER_CMD | AST2600_I2CS_RX_BUFF_EN;
@@ -3229,6 +3240,11 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
 	 * Example of divisor 1024: 1/(1000/1024) = 1024us
 	 */
 	ret = device_property_read_u32(dev, "i2c-scl-clk-low-timeout-us", &i2c_bus->timeout);
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	i2c_bus->target_event_nack = device_property_read_bool(dev, "slave-event-nack");
+	if (i2c_bus->target_event_nack)
+		dev_info(dev, "slave-event NACK cap enabled");
+#endif
 
 	ret = device_property_read_u32(dev, "i2c-tck-thddat-config", &i2c_bus->tck_thddat);
 	if (!ret)
