@@ -17,7 +17,12 @@
 		i2c133 = &osfp_u59_cx0_i2c;
 		i2c134 = &osfp_u59_cx1_i2c;
 		i2c135 = &midplane_u155_cp2112_i2c;
-		i2c136 = &p4218_u100_hid_i2c;
+		i2c80 = &p4218_u100_temp_refclk_i2c;
+		i2c81 = &p4218_u100_vrd_cpu0_i2c;
+		i2c82 = &p4218_u100_cpld_prog_i2c;
+		i2c83 = &p4218_u100_i2c_m2;
+		i2c84 = &p4218_u100_cpld_user_i2c;
+		i2c85 = &p4218_u100_cpu0_ocp_i3c;
 	};
 
 	chosen {
@@ -383,34 +388,159 @@
 	compatible = "usb0955,cf11";
 };
 
-/*
- * P4218 U100 MCXN556 provides USB MCTP and bridges two downstream I3C endpoints.
- * LSTP has management and unsafe raw flash SPI only; SPI is omitted intentionally.
- */
+/* P4218 U100 MCXN556 exposes the P4218_HPM LSTP interfaces. */
 &p4218_u100_mcu {
 	compatible = "usb0955,cf11";
 	#address-cells = <2>;
 	#size-cells = <0>;
 
-	/* CP2112-compatible HID interface; writes remain policy-restricted. */
-	interface@1 {
-		reg = <1 0>;
+	p4218_u100_lstp: interface@1 {
+		reg = <1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		p4218_u100_hid_i2c: i2c {
+		p4218_u100_cpu_flash_spi: channel@1 {
+			compatible = "nvidia,lstp-spi";
+			reg = <1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+
+			spidev@0 {
+				compatible = "nvidia,lstp-spidev";
+				reg = <0>;
+				spi-max-frequency = <18750000>;
+			};
+
+			spidev@1 {
+				compatible = "nvidia,lstp-spidev";
+				reg = <1>;
+				spi-max-frequency = <18750000>;
+			};
 		};
+
+		p4218_u100_cpu0_ssif: channel@2 {
+			compatible = "nvidia,lstp-ipmi";
+			reg = <2>;
+			label = "ipmi-ssif-host-cpu0";
+		};
+
+		i2c80: p4218_u100_temp_refclk_i2c: channel@3 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <3>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+		};
+
+		i2c81: p4218_u100_vrd_cpu0_i2c: channel@4 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <4>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+		};
+
+		i2c82: p4218_u100_cpld_prog_i2c: channel@5 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <5>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+		};
+
+		i2c83: p4218_u100_i2c_m2: channel@6 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <6>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+		};
+
+		i2c84: p4218_u100_cpld_user_i2c: channel@7 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <7>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+		};
+
+		i2c85: p4218_u100_cpu0_ocp_i3c: channel@8 {
+			compatible = "nvidia,lstp-i2c";
+			reg = <8>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <375000>;
+		};
+
+		p4218_u100_gpio: channel@9 {
+			compatible = "nvidia,lstp-gpio";
+			reg = <9>;
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			gpio-line-names =
+				"CPU0_IROT_FATAL_ERR_L_3V3-I",
+				"CPU0_OVERT_L-I",
+				"C0_THERM_WARN_N-I",
+				"C0_S0_THERM_OVERT_N-I",
+				"CPU0_CHIPTHROT_L-I",
+				"C0_SOCAMM_0_ID_PRSNT_N_1V8-I",
+				"C0_SOCAMM_1_ID_PRSNT_N-I",
+				"C0_SOCAMM_2_ID_PRSNT_N-I",
+				"C0_SOCAMM_3_ID_PRSNT_N-I",
+				"C0_SOCAMM_4_ID_PRSNT_N-I",
+				"C0_SOCAMM_5_ID_PRSNT_N-I",
+				"C0_SOCAMM_6_ID_PRSNT_N-I",
+				"C0_SOCAMM_7_ID_PRSNT_N-I",
+				"MCU_JTAG_BYPASS_CPU0_S-O",
+				"MCU_JTAG_BYPASS_CPU0-O",
+				"C1_THERM_WARN_N-I",
+				"MCU_JTAG_BYPASS_CPU1_S-O",
+				"MCU_JTAG_BYPASS_CPU1-O",
+				"MCU_THERM_OVERT_N-I",
+				"MCU_THERM_WARN_N-I",
+				"PCB_T_SENSOR_ALERT_L-I",
+				"GLOBAL_WP_1V8-I",
+				"NVBUF_LOS_L-I",
+				"TRAY_FAST_SHDN_L-I",
+				"MCU_M2_ALERT_L-I",
+				"LEAK_DETECT_L-O",
+				"BMC_IOX_INT_L-I",
+				"MCU_BMC_ALERT_L-O",
+				"MCU_HMC_ALERT_L-O",
+				"MCU_USER_STRAP-I",
+				"HPM_MCU_OK-O",
+				"CPLD_RESET_L-O",
+				"CPLD_PSEQ_FAULT-I",
+				"CPLD_READY-I",
+				"CPLD_PROGRAM-I",
+				"INPUT_12V_VALID_VMON_PG-I",
+				"RUN_PWR_EN_1V8-I",
+				"MODULE_PWR_GOOD_1V8-I",
+				"MCU_I2C_RTC_ALERT_L-O",
+				"SLOT_PWR_BRAKE_EN_L-O",
+				"OOB_MUX_CTRL0-O",
+				"OOB_MUX_CTRL1-O",
+				"OOB_MUX_CTRL2-O",
+				"CPU_OOB_CS0_L-O",
+				"CPU_OOB_CS1_L-O",
+				"LEAK_SELF_TEST_L_1V8-I",
+				"MCU_RECOVERY_L-I",
+				"CPU0_SSIF_ALERT_L_3V3-O",
+				"USB_HMC_TO_CPU_FORCE_EN_L-O",
+				"vLeakDetect1Status0-I",
+				"vLeakDetect1Status1-I",
+				"vLeakDetect2Status0-I",
+				"vLeakDetect2Status1-I";
+		};
+
 	};
 };
 
-/* I2C1 is not populated; current P4218 MCU firmware has no SSIF LSTP channel. */
 &i2c0 {
 	status = "disabled";
 };
 
-/* I2C2 is not part of the CMX L10 management topology. */
 &i2c1 {
 	status = "disabled";
 };
@@ -430,12 +560,10 @@
 	};
 };
 
-/* I2C4 is test-point-only on the SMM carrier. */
 &i2c3 {
 	status = "disabled";
 };
 
-/* I2C5 is test-point-only on the SMM carrier. */
 &i2c4 {
 	status = "disabled";
 };
@@ -449,50 +577,39 @@
 
 	/* SMM U43 CAT34C02 carrier FRU EEPROM. */
 	smm_u43_fru: eeprom@50 {
-		compatible = "catalyst,24c02", "atmel,24c02";
+		compatible = "atmel,24c02";
 		reg = <0x50>;
 		label = "smm-fru";
 	};
 };
 
-/* I2C7 is test-point-only on the SMM carrier. */
 &i2c6 {
 	status = "disabled";
 };
 
-/* I2C8 is test-point-only on the SMM carrier. */
 &i2c7 {
 	status = "disabled";
 };
 
-/* I2C9 is an SSIF/test pair with no active target. */
 &i2c8 {
 	status = "disabled";
 };
 
-/*
- * I2C10
- * PDB
- */
+/* I2C10 (I2C_PDB) */
 &i2c9 {
 	status = "okay";
 	clock-frequency = <400000>;
 	i2c-tck-thddat-config = <0x0099EC00>;
-
 };
 
-/*
- * I2C11
- * BMC FRU EEPROM
- * BMC Temp Sensor
- */
+/* I2C11 - BMC FRU EEPROM + temp sensor */
 &i2c10 {
 	status = "okay";
 	clock-frequency = <400000>;
 	i2c-tck-thddat-config = <0x0099EC00>;
 	/* P3809 U43 CAT34C02 BMC FRU EEPROM. */
 	p3809_u43_fru: eeprom@50 {
-		compatible = "catalyst,24c02", "atmel,24c02";
+		compatible = "atmel,24c02";
 		reg = <0x50>;
 		label = "p3809-fru";
 	};
@@ -504,22 +621,18 @@
 	clock-frequency = <400000>;
 };
 
-/* I2C13 is test-point-only on the SMM carrier. */
 &i2c12 {
 	status = "disabled";
 };
 
-/* I2C14 is test-point-only on the SMM carrier. */
 &i2c13 {
 	status = "disabled";
 };
 
-/* I2C15 is a non-addressed SMM LED-control stuffing option. */
 &i2c14 {
 	status = "disabled";
 };
 
-/* I2C16 has only no-stuff reserve button aliases. */
 &i2c15 {
 	status = "disabled";
 };
