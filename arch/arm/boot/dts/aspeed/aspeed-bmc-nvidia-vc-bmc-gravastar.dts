@@ -6,7 +6,7 @@
 	model = "AST2600 NVIDIA Gravastar (CMX Tester) BMC";
 };
 
-// I2C10 CMX Tester Midplane GPIO Expander
+// I2C10 CMX Tester Midplane U25 GPIO Expander
 &i2c9 {
        i2c-mux@70 {
                compatible = "nxp,pca9546";
@@ -26,22 +26,22 @@
                                gpio-controller;
                                #gpio-cells = <2>;
                                gpio-line-names =
-                                       "TRAY_FAST_SHDN_N-I",
+                                       "",
+                                       "",
+                                       "54V_SW_EN-I",
+                                       "54V_SSD_EN-I",
+                                       "P54V_HPM_EN-I",
+                                       "",
+                                       "",
+                                       "",
+                                       "P54V_AON_PG-I",
+                                       "PG_P54V_HPM-I",
+                                       "P3V3_SSD_PG-I",
+                                       "PG_54V_SW-I",
+                                       "PG_54V_SSD-I",
                                        "FANGIO_STBY_PWR_PG-I",
-                                       "VERA_AHS_3V3_MCU0_0_INT_N-I",
-                                       "VERA_AHS_3V3_MCU0_1_INT_N-I",
-                                       "VERA_AHS_3V3_MCU1_0_INT_N-I",
-                                       "VERA_AHS_3V3_MCU1_1_INT_N-I",
-                                       "SSD0_3_PCIE_PERST_D_N-O",
-                                       "SSD4_11_PCIE_PERST_D_N-O",
-                                       "SW_BOARD_PRSNT_N-I",
-                                       "PE0_1_PERST_N-O",
-                                       "S_GPIOX1_12_TP",
-                                       "S_GPIOX1_13_TP",
-                                       "S_GPIOX1_14_TP",
-                                       "S_GPIOX1_15_TP",
-                                       "S_GPIOX1_16_TP",
-                                       "S_GPIOX1_17_TP";
+                                       "",
+                                       "VR_P12V_STBY_HPM_PG-I";
                        };
                };
        };
