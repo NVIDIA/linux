@@ -203,7 +203,7 @@
 			"B0_M0_CPU_RST_MK_N-I",
 			"",
 			"",
-			"B0_M0_CPLD_READY-I",
+			"",
 
 			"B0_M0_MODULE_PWR_GOOD-I",
 			"B0_M0_MCU_ALERT_L-I",
