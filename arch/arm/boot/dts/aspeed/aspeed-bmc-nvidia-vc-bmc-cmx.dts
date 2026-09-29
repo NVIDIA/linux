@@ -108,17 +108,6 @@
 	};
 };
 
-&spi1raw {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_spi1_default>;
-	spidev@0 {
-		spi-max-frequency = <25000000>;
-		compatible = "hgx,glacier";
-		status = "okay";
-	};
-};
-
 &spi2 {
 	status = "okay";
 	pinctrl-names = "default";
@@ -127,8 +116,9 @@
 	/* Data SPI is 64MB in size */
 	flash@0 {
 		status = "okay";
-		label = "config";
 		spi-max-frequency = <50000000>;
+
+		label = "config";
 		partitions {
 			compatible = "fixed-partitions";
 			#address-cells = <1>;
@@ -165,10 +155,6 @@
 	status = "okay";
 };
 
-/*
- * MAC1 (per schematics, 1-based MAC1-MAC4) of AST2600 connected to external PHY
- * This is "mac0" in zero-based DTS
- */
 &mdio0 {
 	status = "okay";
 	/* P3809 U50 RTL8211FSI-CG RGMII-to-SGMII Ethernet PHY. */
@@ -181,10 +167,10 @@
 &mac0 {
 	status = "okay";
 	pinctrl-names = "default";
-	phy-mode = "rgmii-rxid";
-	max-speed = <1000>;
-	phy-handle = <&p3809_u50_phy>;
 	pinctrl-0 = <&pinctrl_rgmii1_default>;
+
+	phy-mode = "rgmii-rxid";
+	phy-handle = <&p3809_u50_phy>;
 };
 
 /* Enable emmc */
