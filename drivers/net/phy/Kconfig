@@ -498,6 +498,12 @@ config REALTEK_600MV_DRIVE_STRENGTH
 	help
 		Enables 600Mv Drive strength
 
+config REALTEK_DISABLE_SGMII_NWAY
+	bool "Disable RTL8211F SGMII N-way"
+	depends on REALTEK_PHY
+	help
+		Disables SGMII N-way autonegotiation on RTL8211F PHYs at probe
+
 config RTL_RGMII_SGMII_3809
     bool "P3809 RGMII/SGMII bridge"
     help
