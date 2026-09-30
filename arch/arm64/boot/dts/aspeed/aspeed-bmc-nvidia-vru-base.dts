@@ -5,6 +5,9 @@
 
 #include "aspeed-g7.dtsi"
 
+/* Enables bmc_dev0_memory/pcie0_mmbi0_memory in ast2700-reserved-mem.dtsi; the overlay references them. */
+#define PCIE0_EP 1
+
 / {
 	model = "NVIDIA VRU BMC base";
 	compatible = "aspeed,ast2700";
