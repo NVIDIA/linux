@@ -105,6 +105,8 @@
 
 #define RTL8211F_LED_COUNT			3
 
+#define RTL8211F_SGMII_NWAY_DIS			BIT(1)
+
 MODULE_DESCRIPTION("Realtek PHY driver");
 MODULE_AUTHOR("Johnson Leung");
 MODULE_LICENSE("GPL");
@@ -142,6 +144,39 @@ static void set_600mv_drive_strength(struct phy_device *phydev){
 	ret = __phy_write(phydev, 0x1f, 0x0);
 
 	dev_info(dev, "Done writing drive strength indirect\n");
+}
+
+static int bypass_sgmii_nway_mode(struct phy_device *phydev)
+{
+	int ret = 0;
+	int oldpage;
+	u16 val;
+	struct device *dev = &phydev->mdio.dev;
+
+	dev_info(dev, "bypassing sgmii nway mode");
+
+	oldpage = phy_select_page(phydev, 0xa43);
+	if (oldpage < 0)
+		goto out;
+
+	ret = __phy_write(phydev, 0x1b, 0xdc88);
+	if (ret)
+		goto out;
+
+	ret = __phy_read(phydev, 0x1c);
+	if (ret < 0)
+		goto out;
+
+	val = ret | RTL8211F_SGMII_NWAY_DIS;
+	ret = __phy_write(phydev, 0x1b, 0xdc88);
+	if (ret)
+		goto out;
+
+	ret = __phy_write(phydev, 0x1c, val);
+	if (!ret)
+		dev_info(dev, "sgmii nway mode disabled");
+out:
+	return phy_restore_page(phydev, oldpage, ret);
 }
 
 static int rtl821x_probe(struct phy_device *phydev)
@@ -182,6 +217,11 @@ static int rtl821x_probe(struct phy_device *phydev)
 	phydev->priv = priv;
 #ifdef CONFIG_REALTEK_600MV_DRIVE_STRENGTH
 	set_600mv_drive_strength(phydev);
+#endif
+#ifdef CONFIG_REALTEK_DISABLE_SGMII_NWAY
+	ret = bypass_sgmii_nway_mode(phydev);
+	if (ret)
+		dev_err(dev, "failed to disable sgmii nway");
 #endif
 	return 0;
 }
