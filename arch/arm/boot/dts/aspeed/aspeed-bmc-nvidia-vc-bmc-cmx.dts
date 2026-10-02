@@ -601,9 +601,9 @@
 	clock-frequency = <100000>;
 
 	/* SSD midplane TCA9535 GPIO expander for standby and HSC status. */
-	pdb_gpio: pca9555@20 {
+	pdb_gpio: pca9555@21 {
 		compatible = "nxp,pca9555";
-		reg = <0x20>;
+		reg = <0x21>;
 
 		interrupt-controller;
 		#interrupt-cells = <2>;
