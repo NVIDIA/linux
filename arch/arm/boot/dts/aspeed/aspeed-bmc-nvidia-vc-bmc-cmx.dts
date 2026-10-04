@@ -20,9 +20,8 @@
 		i2c80 = &p4218_u100_temp_refclk_i2c;
 		i2c81 = &p4218_u100_vrd_cpu0_i2c;
 		i2c82 = &p4218_u100_cpld_prog_i2c;
-		i2c83 = &p4218_u100_i2c_m2;
-		i2c84 = &p4218_u100_cpld_user_i2c;
-		i2c85 = &p4218_u100_cpu0_ocp_i3c;
+		i2c83 = &p4218_u100_cpld_user_i2c;
+		i2c84 = &p4218_u100_cpu0_ocp_i3c;
 	};
 
 	chosen {
@@ -404,18 +403,6 @@
 			reg = <1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-
-			spidev@0 {
-				compatible = "nvidia,lstp-spidev";
-				reg = <0>;
-				spi-max-frequency = <18750000>;
-			};
-
-			spidev@1 {
-				compatible = "nvidia,lstp-spidev";
-				reg = <1>;
-				spi-max-frequency = <18750000>;
-			};
 		};
 
 		p4218_u100_cpu0_ssif: channel@2 {
@@ -448,7 +435,7 @@
 			clock-frequency = <400000>;
 		};
 
-		i2c83: p4218_u100_i2c_m2: channel@6 {
+		i2c83: p4218_u100_cpld_user_i2c: channel@6 {
 			compatible = "nvidia,lstp-i2c";
 			reg = <6>;
 			#address-cells = <1>;
@@ -456,79 +443,19 @@
 			clock-frequency = <400000>;
 		};
 
-		i2c84: p4218_u100_cpld_user_i2c: channel@7 {
+		i2c84: p4218_u100_cpu0_ocp_i3c: channel@7 {
 			compatible = "nvidia,lstp-i2c";
 			reg = <7>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			clock-frequency = <400000>;
-		};
-
-		i2c85: p4218_u100_cpu0_ocp_i3c: channel@8 {
-			compatible = "nvidia,lstp-i2c";
-			reg = <8>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			clock-frequency = <375000>;
 		};
 
-		p4218_u100_gpio: channel@9 {
+		p4218_u100_gpio: channel@8 {
 			compatible = "nvidia,lstp-gpio";
-			reg = <9>;
+			reg = <8>;
 			gpio-controller;
 			#gpio-cells = <2>;
-
-			gpio-line-names =
-				"CPU0_IROT_FATAL_ERR_L_3V3-I",
-				"CPU0_OVERT_L-I",
-				"C0_THERM_WARN_N-I",
-				"C0_S0_THERM_OVERT_N-I",
-				"CPU0_CHIPTHROT_L-I",
-				"C0_SOCAMM_0_ID_PRSNT_N_1V8-I",
-				"C0_SOCAMM_1_ID_PRSNT_N-I",
-				"C0_SOCAMM_2_ID_PRSNT_N-I",
-				"C0_SOCAMM_3_ID_PRSNT_N-I",
-				"C0_SOCAMM_4_ID_PRSNT_N-I",
-				"C0_SOCAMM_5_ID_PRSNT_N-I",
-				"C0_SOCAMM_6_ID_PRSNT_N-I",
-				"C0_SOCAMM_7_ID_PRSNT_N-I",
-				"MCU_JTAG_BYPASS_CPU0_S-O",
-				"MCU_JTAG_BYPASS_CPU0-O",
-				"MCU_THERM_OVERT_N-I",
-				"MCU_THERM_WARN_N-I",
-				"PCB_T_SENSOR_ALERT_L-I",
-				"GLOBAL_WP_1V8-I",
-				"NVBUF_LOS_L-I",
-				"TRAY_FAST_SHDN_L-I",
-				"MCU_M2_ALERT_L-I",
-				"LEAK_DETECT_L-O",
-				"BMC_IOX_INT_L-I",
-				"MCU_BMC_ALERT_L-O",
-				"MCU_HMC_ALERT_L-O",
-				"MCU_USER_STRAP-I",
-				"HPM_MCU_OK-O",
-				"CPLD_RESET_L-O",
-				"CPLD_PSEQ_FAULT-I",
-				"CPLD_READY-I",
-				"CPLD_PROGRAM-I",
-				"INPUT_12V_VALID_VMON_PG-I",
-				"RUN_PWR_EN_1V8-I",
-				"MODULE_PWR_GOOD_1V8-I",
-				"MCU_I2C_RTC_ALERT_L-O",
-				"SLOT_PWR_BRAKE_EN_L-O",
-				"OOB_MUX_CTRL0-O",
-				"OOB_MUX_CTRL1-O",
-				"OOB_MUX_CTRL2-O",
-				"CPU_OOB_CS0_L-O",
-				"CPU_OOB_CS1_L-O",
-				"LEAK_SELF_TEST_L_1V8-I",
-				"MCU_RECOVERY_L-I",
-				"CPU0_SSIF_ALERT_L_3V3-O",
-				"USB_HMC_TO_CPU_FORCE_EN_L-O",
-				"vLeakDetect1Status0-I",
-				"vLeakDetect1Status1-I",
-				"vLeakDetect2Status0-I",
-				"vLeakDetect2Status1-I";
 		};
 
 	};
