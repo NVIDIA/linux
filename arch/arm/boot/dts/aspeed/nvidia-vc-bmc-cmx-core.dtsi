@@ -36,7 +36,7 @@
 		"",
 		"",
 		"QSPI2_RST_L-O",
-		"GLOBAL_WP_BMC-I",
+		"BMC_SPI_WP-O",
 		"BMC_DDR4_TEN-O",
 
 	/* J0-L7 */
@@ -136,7 +136,7 @@
 			"",
 			"B0_THERM_OVERT_L-I",
 			"B0_THERM_WARN_L-I",
-			"B0_GLOBAL_WP-O",
+			"B0_HPM_WP-O",
 			"B0_USB_HUB0_RST_L-O",
 			"B0_PRE_SYS_RST_L-O",
 			"B0_LEAK_DETECT_ALERT_L-I",
@@ -266,7 +266,7 @@
 			"",
 			"",
 			"",
-			"GLOBAL_WP-O",
+			"SMM_FRU_WP-O",
 			"",
 			"",
 			"BMC_SELF_PWR_CYCLE-O",
