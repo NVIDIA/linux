@@ -284,12 +284,12 @@
 	#gpio-cells = <2>;
 	#interrupt-cells = <2>;
 	gpio-line-names =
-		"CX9_01_MCU_RESET_L-O",
-		"CX9_01_MCU_REC_L-O",
-		"GLOBAL_WP-O",
-		"CX9_01_MCU_READY-I",
-		"CX9_01_PWR_EN-O",
-		"CX9_CX01_DVDD_PGOOD-I",
+		"CX9_MCU_RESET_L-O",
+		"CX9_MCU_RECOVERY_L-O",
+		"CX9_GLOBAL_WP-O",
+		"CX9_MCU_READY-I",
+		"CX9_PWR_EN-O",
+		"CX9_POWER_GD-I",
 		"P12V_MAIN_EN-O",
 		"";
 
@@ -344,11 +344,11 @@
 	#gpio-cells = <2>;
 	#interrupt-cells = <2>;
 	gpio-line-names =
-		"MIDP_MCU0_RST_L-O",
-		"MIDP_MCU0_RECOVERY_L-O",
-		"MIDP_MCU1_RST_L-O",
-		"MIDP_MCU1_RECOVERY_L-O",
-		"", "", "MIDP_GLOBAL_WP-O", "";
+		"SSD_MCU0_RST_L-O",
+		"SSD_MCU0_RECOVERY_L-O",
+		"SSD_MCU1_RST_L-O",
+		"SSD_MCU1_RECOVERY_L-O",
+		"", "", "SSD_GLOBAL_WP-O", "";
 
 	midplane_u155_cp2112_i2c: i2c {
 		#address-cells = <1>;

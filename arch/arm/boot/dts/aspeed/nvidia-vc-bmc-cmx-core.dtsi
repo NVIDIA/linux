@@ -132,23 +132,23 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		gpio-line-names =
-			"B0_M0_SHDN_FORCE_L-O",
+			"B0_SHDN_FORCE_L-O",
 			"",
-			"B0_M0_THERM_OVERT_L-I",
-			"B0_M0_THERM_WARN_L-I",
-			"B0_M0_GLOBAL_WP-O",
-			"B0_M0_USB_HUB0_RST_L-O",
-			"B0_M0_PRE_SYS_RST_L-O",
-			"B0_M0_LEAK_DETECT_ALERT_L-I",
+			"B0_THERM_OVERT_L-I",
+			"B0_THERM_WARN_L-I",
+			"B0_GLOBAL_WP-O",
+			"B0_USB_HUB0_RST_L-O",
+			"B0_PRE_SYS_RST_L-O",
+			"B0_LEAK_DETECT_ALERT_L-I",
 
-			"B0_M0_RUN_PWR_EN-O",
-			"B0_M0_RUN_PWR_PG-I",
-			"B0_M0_CPU_CHIPTHROT_L-I",
-			"B0_M0_SHDN_REQ_L-O",
-			"B0_M0_CPU_SHDN_OK_L-I",
-			"B0_M0_CPLD_READY-I",
-			"B0_M0_PWR_BRAKE_L-O",
-			"B0_M0_PWR_BRAKE_STATUS_L-I";
+			"B0_RUN_POWER_EN-O",
+			"B0_RUN_POWER_PG-I",
+			"B0_CPU_CHIPTHROT_L-I",
+			"B0_SHDN_REQ_L-O",
+			"B0_CPU_SHDN_OK_L-I",
+			"B0_CPLD_READY-I",
+			"B0_PWR_BRAKE_L-O",
+			"B0_PWR_BRAKE_STATUS_L-I";
 	};
 
 	/* P4218 U1133 TCA9535 GPIO bank 1 for mux, SOCAMM, and status control. */
@@ -165,21 +165,21 @@
 		#gpio-cells = <2>;
 		gpio-line-names =
 			"",
-			"B0_M0_HPM_MCU_OK-I",
-			"B0_M0_CPU_SYS_RST_N-I",
-			"B0_M0_C0_SOCAMM_DAC_I2C_SEL-O",
+			"B0_HPM_MCU_OK-I",
+			"B0_CPU_L0_RST_IND_L-I",
+			"B0_SOCAMM_DAC_SEL0-O",
+			"B0_SOCAMM_DAC_SEL1-O",
+			"B0_C0_SOCAMM_I2C_SEL_R-O",
 			"",
-			"B0_M0_C0_SOCAMM_SPD_I2C_SEL-O",
-			"",
-			"B0_M0_EEPROM_POWER_DISABLE-O",
+			"B0_EEPROM_POWER_DISABLE-O",
 
-			"B0_M0_CPU_L0L1_RST_L-I",
-			"B0_M0_CPU_L2_RST_L-I",
-			"B0_M0_BRD_ID_0-I",
-			"B0_M0_BRD_ID_1-I",
-			"B0_M0_BMC_LEAK_TEST_L-O",
-			"B0_M0_MCU_BMC_ALERT_L-I",
-			"B0_M0_CPU_BOOT_COMPLETE-I",
+			"B0_L0L1_RST_L-I",
+			"B0_L2_RST_L-I",
+			"B0_BRD_ID_0-I",
+			"B0_BRD_ID_1-I",
+			"B0_LEAK_TEST_L-O",
+			"B0_MCU_BMC_ALERT_L-I",
+			"B0_CPU_BOOT_COMPLETE-I",
 			"";
 	};
 
@@ -196,23 +196,23 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		gpio-line-names =
-			"B0_M0_MCU_RESET_L-O",
-			"B0_M0_MCU_RECOVERY_L-O",
-			"B0_M0_SMM_RTC_ALERT_L-I",
-			"B0_M0_SMM_RTC_CLR_L-O",
-			"B0_M0_CPU_RST_MK_N-I",
+			"B0_HPM_MCU_RESET_L-O",
+			"B0_HPM_MCU_REC_L-O",
+			"B0_BMC_RTC_ALERT_L-I",
+			"B0_BMC_RTC_CLR_L-O",
+			"B0_CPU_RST_L-I",
 			"",
 			"",
-			"",
+			"B0_CPLD_READY-I",
 
-			"B0_M0_MODULE_PWR_GOOD-I",
-			"B0_M0_MCU_ALERT_L-I",
+			"B0_RUN_POWER_PG-I",
+			"B0_MCU_ALERT_L-I",
 			"",
-			"B0_M0_HPM_MCU_OK-I",
+			"B0_HPM_MCU_OK-I",
 			"",
-			"B0_M0_CPLD_AUTH_FAIL-I",
+			"B0_CPLD_AUTH_FAIL-I",
 			"",
-			"B0_M0_PWR_BRAKE_STATUS2_L-I";
+			"B0_PWR_BRAKE_STATUS2_L-I";
 	};
 
 	/* P4218 U1131 TCA9535 GPIO bank 3 for CPU boot and JTAG control. */
@@ -228,23 +228,23 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		gpio-line-names =
-			"B0_M0_CPU_FORCED_RECOVERY_L-O",
-			"B0_M0_CPU_BOOT_DEV_SEL0-O",
-			"B0_M0_CPU_BOOT_DEV_SEL1-O",
-			"B0_M0_CPU_BOOT_DEV_SEL2-O",
+			"B0_CPU_FORCED_RECOVERY_L-O",
+			"B0_CPU_BOOT_DEV_SEL0-O",
+			"B0_CPU_BOOT_DEV_SEL1-O",
+			"B0_CPU_BOOT_DEV_SEL2-O",
 			"",
-			"B0_M0_CPU_RECOVERY_TYPE0-O",
-			"B0_M0_CPU_RECOVERY_TYPE1-O",
-			"B0_M0_CPU_IST_BOOT_HMC-O",
+			"B0_CPU_RECOVERY_TYPE0-O",
+			"B0_CPU_RECOVERY_TYPE1-O",
+			"B0_CPU_IST_BOOT_HMC-O",
 
-			"B0_M0_CPU_PREBOOT_DIAG-O",
-			"B0_M0_HMC_BRD_ID1-I",
-			"B0_M0_HPM_MCU_I2C_ENABLE-O",
-			"B0_M0_CPU_DIE_SEL0-O",
-			"B0_M0_CPU_DIE_SEL1-O",
-			"B0_M0_CPU_DIE_SEL2-O",
-			"", /* PD */
-			"B0_M0_NVJTAG_SEL-O";
+			"B0_CPU_PREBOOT_DIAG-O",
+			"",
+			"B0_HPM_MCU_I2C_ENABLE-O",
+			"B0_CPU_DIE_SEL0-O",
+			"B0_CPU_DIE_SEL1-O",
+			"B0_CPU_DIE_SEL2-O",
+			"",
+			"B0_NVJTAG_SEL-O";
 	};
 };
 
