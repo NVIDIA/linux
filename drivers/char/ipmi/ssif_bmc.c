@@ -1089,14 +1089,66 @@ static void retry_timeout(struct timer_list *t)
 	spin_unlock_irqrestore(&ssif_bmc->lock_addr_reg, flags);
 }
 
+/*
+ * Boards can have more than one ssif-bmc instance (one SSIF channel per I2C
+ * bus). Every instance registers a misc device, and registering a name that
+ * already exists makes the kernel print a sysfs duplicate-filename warning
+ * with a full backtrace before misc_register() returns -EEXIST. So the name
+ * is decided before registering: the first instance keeps the plain legacy
+ * name (existing userspace opens /dev/ipmi-ssif-host), every other instance
+ * gets a bus-qualified one, and the colliding registration is never tried.
+ */
+static DEFINE_MUTEX(ssif_name_lock);
+static struct ssif_bmc_ctx *ssif_plain_name_owner;
+
+static void ssif_release_plain_name(void *data)
+{
+	struct ssif_bmc_ctx *ssif_bmc = data;
+
+	mutex_lock(&ssif_name_lock);
+	if (ssif_plain_name_owner == ssif_bmc)
+		ssif_plain_name_owner = NULL;
+	mutex_unlock(&ssif_name_lock);
+}
+
 static int ssif_bmc_probe(struct i2c_client *client)
 {
 	struct ssif_bmc_ctx *ssif_bmc;
+	const char *name = DEVICE_NAME;
+#ifdef CONFIG_SEPARATE_SSIF_POSTCODES
+	const char *name_post = DEVICE_NAME_POST;
+#endif
+	bool plain_name;
 	int ret;
 
 	ssif_bmc = devm_kzalloc(&client->dev, sizeof(*ssif_bmc), GFP_KERNEL);
 	if (!ssif_bmc)
 		return -ENOMEM;
+
+	mutex_lock(&ssif_name_lock);
+	plain_name = !ssif_plain_name_owner;
+	if (plain_name)
+		ssif_plain_name_owner = ssif_bmc;
+	mutex_unlock(&ssif_name_lock);
+
+	if (plain_name) {
+		/* Releases the claim on any later probe failure and on removal. */
+		ret = devm_add_action_or_reset(&client->dev,
+					       ssif_release_plain_name, ssif_bmc);
+		if (ret)
+			return ret;
+	} else {
+		name = devm_kasprintf(&client->dev, GFP_KERNEL, "%s-i2c%d-%02x",
+				      DEVICE_NAME, client->adapter->nr, client->addr);
+#ifdef CONFIG_SEPARATE_SSIF_POSTCODES
+		name_post = devm_kasprintf(&client->dev, GFP_KERNEL, "%s-i2c%d-%02x",
+					   DEVICE_NAME_POST, client->adapter->nr, client->addr);
+		if (!name_post)
+			return -ENOMEM;
+#endif
+		if (!name)
+			return -ENOMEM;
+	}
 
 	/* Request GPIO for alerting the host that response is ready */
 	ssif_bmc->alert = devm_gpiod_get(&client->dev, "alert", GPIOD_OUT_LOW);
@@ -1123,7 +1175,7 @@ static int ssif_bmc_probe(struct i2c_client *client)
 
 	/* Register misc device interface */
 	ssif_bmc->miscdev.minor = MISC_DYNAMIC_MINOR;
-	ssif_bmc->miscdev.name = DEVICE_NAME;
+	ssif_bmc->miscdev.name = name;
 	ssif_bmc->miscdev.fops = &ssif_bmc_fops;
 	ssif_bmc->miscdev.parent = &client->dev;
 	ret = misc_register(&ssif_bmc->miscdev);
@@ -1140,7 +1192,7 @@ static int ssif_bmc_probe(struct i2c_client *client)
 		return ret;
 	}
 	ssif_bmc->miscdev_post.minor = MISC_DYNAMIC_MINOR;
-	ssif_bmc->miscdev_post.name = DEVICE_NAME_POST;
+	ssif_bmc->miscdev_post.name = name_post;
 	ssif_bmc->miscdev_post.fops = &ssif_bmc_post_fops;
 	ssif_bmc->miscdev_post.parent = &client->dev;
 	ret = misc_register(&ssif_bmc->miscdev_post);
