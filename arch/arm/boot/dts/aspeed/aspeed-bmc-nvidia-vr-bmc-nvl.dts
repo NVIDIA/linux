@@ -89,6 +89,9 @@
         power_led {
                 gpios = <&exp4 8 GPIO_ACTIVE_LOW>;
         };
+        warn_led {
+                gpios = <&exp4 15 GPIO_ACTIVE_LOW>;
+        };
     };
 
     buttons {
