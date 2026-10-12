@@ -11,6 +11,7 @@
 #include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/compat.h>
+#include <linux/sched.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spidev.h>
@@ -689,6 +690,9 @@ static int mctp_spi_probe(struct spi_device *spi)
 					  "%s/tx", ndev->name);
 	if (IS_ERR(mctp_spi_dev->tx_thread))
 		return PTR_ERR(mctp_spi_dev->tx_thread);
+
+	/* Pick tx up quickly after each ERoT ACK wake-up */
+	sched_set_normal(mctp_spi_dev->tx_thread, MIN_NICE);
 
 	/* Init SPB */
 	ap = kzalloc(sizeof(*ap), GFP_KERNEL);
