@@ -334,7 +334,7 @@
                         "BF4_USB_MCU_RECOVERY_L",
                         "BF4_USB_MCU_RST_L",
                         "BF4_USB_FORCE_FNP_L",
-                        "BF4_GLOBAL_WP",
+                        "BF4_CARD_POSITION_MCU",
                         "BF4_FORCE_POR_L",
                         "BF4_BMC_EROT_RST_L",
                         "BF4_BMC_EROT_RECOVERY_L",
