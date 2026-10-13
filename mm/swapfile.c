@@ -770,6 +770,7 @@ static void swap_reclaim_full_clusters(struct swap_info_struct *si, bool force)
 			}
 			offset++;
 		}
+		cond_resched();
 		spin_lock(&si->lock);
 
 		if (to_scan <= 0)
@@ -3427,6 +3428,13 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 	}
 	if (IS_SWAPFILE(inode)) {
 		error = -EBUSY;
+		goto bad_swap_unlock_inode;
+	}
+	if (IS_ENCRYPTED(inode)) {
+		pr_warn_once(
+			"Filesystem-level encrypted swapfile '%s' is unsupported. Create a loop device over it, or use dm-crypt\n",
+			name->name);
+		error = -EINVAL;
 		goto bad_swap_unlock_inode;
 	}
 

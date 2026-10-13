@@ -139,8 +139,23 @@ void	xdr_terminate_string(const struct xdr_buf *, const u32);
 size_t	xdr_buf_pagecount(const struct xdr_buf *buf);
 int	xdr_alloc_bvec(struct xdr_buf *buf, gfp_t gfp);
 void	xdr_free_bvec(struct xdr_buf *buf);
-unsigned int xdr_buf_to_bvec(struct bio_vec *bvec, unsigned int bvec_size,
-			     const struct xdr_buf *xdr);
+int xdr_buf_to_bvec(struct bio_vec *bvec, unsigned int bvec_size,
+		    const struct xdr_buf *xdr);
+int xdr_buf_to_sg(const struct xdr_buf *buf, unsigned int offset,
+		  unsigned int len, struct scatterlist *sg, unsigned int nsg);
+int xdr_buf_to_sg_alloc(const struct xdr_buf *buf, unsigned int offset,
+			unsigned int len, struct scatterlist *sg_head,
+			unsigned int sg_head_nents,
+			struct scatterlist **sg_overflow, gfp_t gfp);
+
+/*
+ * Inline scatterlist entries for xdr_buf_to_sg_alloc().  Sized to cover the
+ * head kvec, tail kvec, and a few page fragments without any heap allocation.
+ */
+enum {
+	XDR_BUF_TO_SG_NENTS	= 8,
+};
+
 
 static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int len)
 {
@@ -677,6 +692,27 @@ xdr_stream_decode_u32(struct xdr_stream *xdr, __u32 *ptr)
 	if (unlikely(!p))
 		return -EBADMSG;
 	*ptr = be32_to_cpup(p);
+	return 0;
+}
+
+/**
+ * xdr_stream_decode_be32 - Decode a big-endian 32-bit integer
+ * @xdr: pointer to xdr_stream
+ * @ptr: location to store integer
+ *
+ * Return values:
+ *   %0 on success
+ *   %-EBADMSG on XDR buffer overflow
+ */
+static inline ssize_t
+xdr_stream_decode_be32(struct xdr_stream *xdr, __be32 *ptr)
+{
+	const size_t count = sizeof(*ptr);
+	__be32 *p = xdr_inline_decode(xdr, count);
+
+	if (unlikely(!p))
+		return -EBADMSG;
+	*ptr = *p;
 	return 0;
 }
 
