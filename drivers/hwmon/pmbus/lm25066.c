@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Hardware monitoring driver for LM25056 / LM25066 / LM5064 / LM5066
+ * Hardware monitoring driver for LM25056 / LM25066 / LM5064 / LM5066 /
+ * LM5066H
  *
  * Copyright (c) 2011 Ericsson AB.
  * Copyright (c) 2013 Guenter Roeck
  */
 
+#include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -18,7 +20,7 @@
 #include <linux/of.h>
 #include "pmbus.h"
 
-enum chips { lm25056, lm25066, lm5064, lm5066, lm5066i };
+enum chips { lm25056, lm25066, lm5064, lm5066, lm5066i, lm5066h };
 
 #define LM25066_READ_VAUX		0xd0
 #define LM25066_MFR_READ_IIN		0xd1
@@ -45,6 +47,17 @@ enum chips { lm25056, lm25066, lm5064, lm5066, lm5066i };
 
 #define LM25056_MFR_STS_VAUX_OV_WARN	BIT(1)
 #define LM25056_MFR_STS_VAUX_UV_WARN	BIT(0)
+
+/* LM5066H only */
+
+#define LM5066H_READ_PIN_PEAK		0xa3
+#define LM5066H_DEVICE_SETUP1		0xcc
+#define LM5066H_ADC_CONFIG_2		0xee
+#define LM5066H_DEVICE_SETUP2		0xef
+
+#define LM5066H_DEV_SETUP1_CL_SMBUS	BIT(2)	/* CL from DEVICE_SETUP2 */
+#define LM5066H_ADC_CONFIG_2_FS_2X	BIT(6)	/* ADC full scale 2x VCL */
+#define LM5066H_DEV_SETUP2_CL		GENMASK(5, 3)
 
 struct __coeff {
 	short m, b, R;
@@ -226,6 +239,71 @@ static const struct __coeff lm25066_coeff[][PSC_NUM_CLASSES + 2] = {
 			.m = 16,
 		},
 	},
+	[lm5066h] = {
+		[PSC_VOLTAGE_IN] = {
+			.m = 4596,
+			.b = 255,
+			.R = -2,
+		},
+		[PSC_VOLTAGE_OUT] = {
+			.m = 4596,
+			.b = 455,
+			.R = -2,
+		},
+		[PSC_TEMPERATURE] = {
+			.m = 100,
+			.b = 26437,
+			.R = -2,
+		},
+	},
+};
+
+/*
+ * LM5066H current and power coefficients, indexed by ADC full scale (1x, 2x
+ * VCL) and current limit voltage (10, 12.5, 15, 17.5, 20, 22.5, 25, 50 mV).
+ */
+static const struct __coeff lm5066h_iin_coeff[2][8] = {
+	{
+		{ .m = 3792, .b = 10, .R = -1 },
+		{ .m = 30333, .b = 396, .R = -2 },
+		{ .m = 25278, .b = -209, .R = -2 },
+		{ .m = 21667, .b = 4, .R = -2 },
+		{ .m = 18958, .b = -246, .R = -2 },
+		{ .m = 16852, .b = -55, .R = -2 },
+		{ .m = 15167, .b = 64, .R = -2 },
+		{ .m = 7583, .b = 237, .R = -2 },
+	}, {
+		{ .m = 18958, .b = 461, .R = -2 },
+		{ .m = 15167, .b = 622, .R = -2 },
+		{ .m = 12639, .b = 121, .R = -2 },
+		{ .m = 10833, .b = 251, .R = -2 },
+		{ .m = 9479, .b = 58, .R = -2 },
+		{ .m = 8426, .b = 194, .R = -2 },
+		{ .m = 7583, .b = 282, .R = -2 },
+		{ .m = 3792, .b = 415, .R = -2 },
+	},
+};
+
+static const struct __coeff lm5066h_pin_coeff[2][8] = {
+	{
+		{ .m = 4256, .b = 6690, .R = -3 },
+		{ .m = 3404, .b = 8003, .R = -3 },
+		{ .m = 28370, .b = 4699, .R = -4 },
+		{ .m = 24317, .b = 5764, .R = -4 },
+		{ .m = 21278, .b = 4422, .R = -4 },
+		{ .m = 18913, .b = 5378, .R = -4 },
+		{ .m = 17022, .b = 6005, .R = -4 },
+		{ .m = 8511, .b = 6868, .R = -4 },
+	}, {
+		{ .m = 22980, .b = 6692, .R = -4 },
+		{ .m = 18384, .b = 7998, .R = -4 },
+		{ .m = 15320, .b = 4711, .R = -4 },
+		{ .m = 13131, .b = 5779, .R = -4 },
+		{ .m = 11490, .b = 4418, .R = -4 },
+		{ .m = 10213, .b = 5387, .R = -4 },
+		{ .m = 9192, .b = 6026, .R = -4 },
+		{ .m = 4596, .b = 6871, .R = -4 },
+	},
 };
 
 struct lm25066_data {
@@ -267,6 +345,10 @@ static int lm25066_read_word_data(struct i2c_client *client, int page,
 			/* VIN: 2.18 mV VAUX: 725 uV LSB */
 			ret = DIV_ROUND_CLOSEST(ret * 725, 2180);
 			break;
+		case lm5066h:
+			/* VIN: 21.76 mV VAUX: 725 uV LSB */
+			ret = DIV_ROUND_CLOSEST(ret * 725, 21760);
+			break;
 		}
 		break;
 	case PMBUS_READ_IIN:
@@ -303,6 +385,8 @@ static int lm25066_read_word_data(struct i2c_client *client, int page,
 		break;
 	case PMBUS_VIRT_READ_PIN_MAX:
 		ret = pmbus_read_word_data(client, 0, 0xff,
+					   data->id == lm5066h ?
+					   LM5066H_READ_PIN_PEAK :
 					   LM25066_READ_PIN_PEAK);
 		break;
 	case PMBUS_VIRT_RESET_PIN_HISTORY:
@@ -448,6 +532,7 @@ static const struct i2c_device_id lm25066_id[] = {
 	{"lm5064", lm5064},
 	{"lm5066", lm5066},
 	{"lm5066i", lm5066i},
+	{"lm5066h", lm5066h},
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, lm25066_id);
@@ -458,9 +543,34 @@ static const struct of_device_id __maybe_unused lm25066_of_match[] = {
 	{ .compatible = "ti,lm5064",  .data = (void *)lm5064,  },
 	{ .compatible = "ti,lm5066",  .data = (void *)lm5066,  },
 	{ .compatible = "ti,lm5066i", .data = (void *)lm5066i, },
+	{ .compatible = "ti,lm5066h", .data = (void *)lm5066h, },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, lm25066_of_match);
+
+/* Returns the lm5066h coefficient index for the configured current limit */
+static int lm5066h_cl_index(struct i2c_client *client, int setup1, int *range)
+{
+	int ret, cl = 0;
+
+	ret = i2c_smbus_read_byte_data(client, LM5066H_ADC_CONFIG_2);
+	if (ret < 0)
+		return ret;
+	*range = !!(ret & LM5066H_ADC_CONFIG_2_FS_2X);
+
+	if (setup1 & LM5066H_DEV_SETUP1_CL_SMBUS) {
+		ret = i2c_smbus_read_byte_data(client, LM5066H_DEVICE_SETUP2);
+		if (ret < 0)
+			return ret;
+		cl = FIELD_GET(LM5066H_DEV_SETUP2_CL, ret);
+	}
+
+	/* 001b to 111b select 10 mV to 22.5 mV, 111b is also 22.5 mV */
+	if (cl)
+		return min(cl, 6) - 1;
+
+	return (setup1 & LM25066_DEV_SETUP_CL) ? 6 : 7;
+}
 
 static int lm25066_probe(struct i2c_client *client)
 {
@@ -479,11 +589,13 @@ static int lm25066_probe(struct i2c_client *client)
 	if (!data)
 		return -ENOMEM;
 
-	config = i2c_smbus_read_byte_data(client, LM25066_DEVICE_SETUP);
+	data->id = (enum chips)(unsigned long)i2c_get_match_data(client);
+
+	config = i2c_smbus_read_byte_data(client, data->id == lm5066h ?
+					  LM5066H_DEVICE_SETUP1 :
+					  LM25066_DEVICE_SETUP);
 	if (config < 0)
 		return config;
-
-	data->id = (enum chips)(unsigned long)i2c_get_match_data(client);
 
 	info = &data->info;
 
@@ -523,11 +635,21 @@ static int lm25066_probe(struct i2c_client *client)
 	info->R[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN].R;
 	info->R[PSC_POWER] = coeff[PSC_POWER].R;
 
-#if IS_ENABLED(CONFIG_LM25066_CURR_LIMIT_HIGH)
-	if (LM25066_DEV_SETUP_CL) {
-#else
-	if (config & LM25066_DEV_SETUP_CL) {
-#endif /*CONFIG_LM25066_CURR_LIMIT_HIGH*/
+	if (data->id == lm5066h) {
+		int range, cl;
+
+		cl = lm5066h_cl_index(client, config, &range);
+		if (cl < 0)
+			return cl;
+
+		info->m[PSC_CURRENT_IN] = lm5066h_iin_coeff[range][cl].m;
+		info->b[PSC_CURRENT_IN] = lm5066h_iin_coeff[range][cl].b;
+		info->R[PSC_CURRENT_IN] = lm5066h_iin_coeff[range][cl].R;
+		info->m[PSC_POWER] = lm5066h_pin_coeff[range][cl].m;
+		info->b[PSC_POWER] = lm5066h_pin_coeff[range][cl].b;
+		info->R[PSC_POWER] = lm5066h_pin_coeff[range][cl].R;
+	} else if (IS_ENABLED(CONFIG_LM25066_CURR_LIMIT_HIGH) ||
+		   (config & LM25066_DEV_SETUP_CL)) {
 		info->m[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN_L].m;
 		info->b[PSC_CURRENT_IN] = coeff[PSC_CURRENT_IN_L].b;
 		info->m[PSC_POWER] = coeff[PSC_POWER_L].m;

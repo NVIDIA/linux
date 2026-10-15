@@ -57,6 +57,16 @@ Supported chips:
 
     https://www.ti.com/product/LM5066I
 
+  * Texas Instruments LM5066H
+
+    Prefix: 'lm5066h'
+
+    Addresses scanned: -
+
+    Datasheet:
+
+    https://www.ti.com/product/LM5066H
+
 
 Author: Guenter Roeck <linux@roeck-us.net>
 
@@ -65,7 +75,7 @@ Description
 -----------
 
 This driver supports hardware monitoring for National Semiconductor / TI LM25056,
-LM25066, LM5064, and LM5066/LM5066I Power Management, Monitoring,
+LM25066, LM5064, and LM5066/LM5066I/LM5066H Power Management, Monitoring,
 Control, and Protection ICs.
 
 The driver is a client driver to the core PMBus driver. Please see
