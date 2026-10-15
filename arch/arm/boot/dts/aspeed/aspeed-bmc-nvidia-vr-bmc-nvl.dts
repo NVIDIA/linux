@@ -124,6 +124,8 @@
 // Enabled Primary flash on FMC for bring up activity
 &fmc {
     status = "okay";
+    /* Flash reads through the DMA engine: skips CPU reads of the memory window. */
+    fmc-spi-dma-mode;
     flash@0 {
         status = "okay";
         compatible = "jedec,spi-nor";
