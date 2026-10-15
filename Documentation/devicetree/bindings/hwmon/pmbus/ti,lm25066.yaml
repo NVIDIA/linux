@@ -24,6 +24,7 @@ properties:
       - ti,lm25066
       - ti,lm5064
       - ti,lm5066
+      - ti,lm5066h
       - ti,lm5066i
 
   reg:
