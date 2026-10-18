@@ -1,0 +1,453 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * VR NVL BMC that runs the HMC software as a vHMC container instead of on a
+ * physical HMC. The BMC takes over the HMC's devices: the I2C_MGMT1 buses to
+ * the two HPM boards (&i2c1 for board 0, &i2c3 for board 1) and the HPM CP2112
+ * USB-to-I2C bridges behind the HMC USB hub.
+ */
+
+#include "aspeed-bmc-nvidia-vr-bmc-nvl.dts"
+
+/ {
+	aliases {
+		i2c82 = &i2c82;
+		i2c83 = &i2c83;
+	};
+};
+
+// USB 2.0 to HMC, on USB Port B
+&ehci1 {
+	hub@1 {
+		hub@3 {
+			reg = <3>;
+
+			// HPM board 0 CP2112
+			hub@1 {
+				reg = <1>;
+				device@1 {
+					reg = <1>;
+					cp2112m: interface@1 {
+						reg = <1 1>;
+
+						gpio-controller;
+						interrupt-controller;
+						#gpio-cells = <2>;
+						#interrupt-cells = <2>;
+
+						i2c82: i2c {
+							#address-cells = <1>;
+							#size-cells = <0>;
+
+							exp2_brd0: pca9555@50 {
+								compatible = "nxp,pca9555";
+								reg = <0x50>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112m>;
+								interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD0_GPU0_THERM_OVERT_L-I",
+									"BRD0_GPU0_AP_BOOT_COMPLETE-I",
+									"BRD0_GPU0_RECOVERY-O",
+									"BRD0_GPU0_MFG_BS_TEST-O",
+									"BRD0_GPU0_STRAP4_GPU_MOD_ID-I",
+									"BRD0_GPU0_STRAP_NVS_PRSNT-I",
+									"BRD0_GPU0_STRAP5_GPU_MOD_ID-I",
+									"BRD0_GPU0_IROT_ERROR_L-I",
+									"BRD0_GPU0_THERM_ALERT_L-I",
+									"BRD0_GPU0_STRAP_CPLD_PRSNT-I",
+									"BRD0_MCU_THERM_OVERT_L-I",
+									"BRD0_GPU_MCU_OK-I",
+									"BRD0_MCU_HEARTBEAT-I",
+									"BRD0_MCU_THERM_WARN_L-I",
+									"BRD0_GLOBAL_WP-I",
+									"BRD0_MCU_PWR_BRAKE_L-I";
+							};
+
+							exp3_brd0: pca9555@51 {
+								compatible = "nxp,pca9555";
+								reg = <0x51>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112m>;
+								interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD0_GPU1_THERM_OVERT_L-I",
+									"BRD0_GPU1_AP_BOOT_COMPLETE-I",
+									"BRD0_GPU1_RECOVERY-O",
+									"BRD0_GPU1_MFG_BS_TEST-O",
+									"BRD0_GPU1_STRAP4_GPU_MOD_ID-I",
+									"BRD0_GPU1_STRAP_NVS_PRSNT-I",
+									"BRD0_GPU1_STRAP5_GPU_MOD_ID-I",
+									"BRD0_GPU1_IROT_ERROR_L-I",
+									"BRD0_GPU1_THERM_ALERT_L-I",
+									"BRD0_GPU1_STRAP_CPLD_PRSNT-I",
+									"BRD0_INA_CRITICAL_L-I",
+									"BRD0_HSC_ALERT_L-I",
+									"BRD0_HSCC_SMBUS_ALT_N-I",
+									"BRD0_3V3_PGD-I",
+									"BRD0_5V_PGD-I",
+									"BRD0_BOARD_LOC-I";
+							};
+
+							exp4_brd0: pca9555@52 {
+								compatible = "nxp,pca9555";
+								reg = <0x52>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112m>;
+								interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD0_RUN_POWER_EN-I",
+									"BRD0_RUN_POWER_PG-I",
+									"BRD0_INA_WARN_L-I",
+									"BRD0_MCU_RECOVERY_STATUS-I",
+									"BRD0_MCU_USER_STRAP0-I",
+									"BRD0_VDD_1V8_PGOOD-I",
+									"BRD0_PWR_BRAKE_SOC_ACTIVE-I",
+									"BRD0_PWR_BRAKE_BUSBAR_THERM_ACTIVE-I",
+									"", "", "", "",
+									"", "", "", "";
+							};
+
+							eeprom0@54 {
+								compatible = "atmel,24c02";
+								reg = <0x54>;
+								read-only;
+							};
+
+							eeprom0@55 {
+								compatible = "atmel,24c02";
+								reg = <0x55>;
+								read-only;
+							};
+						};
+					};
+				};
+			};
+
+			// HPM board 1 CP2112
+			hub@2 {
+				reg = <2>;
+				device@1 {
+					reg = <1>;
+					cp2112n: interface@1 {
+						reg = <1 1>;
+
+						gpio-controller;
+						interrupt-controller;
+						#gpio-cells = <2>;
+						#interrupt-cells = <2>;
+
+						i2c83: i2c {
+							#address-cells = <1>;
+							#size-cells = <0>;
+
+							exp2_brd1: pca9555@50 {
+								compatible = "nxp,pca9555";
+								reg = <0x50>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112n>;
+								interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD1_GPU2_THERM_OVERT_L-I",
+									"BRD1_GPU2_AP_BOOT_COMPLETE-I",
+									"BRD1_GPU2_RECOVERY-O",
+									"BRD1_GPU2_MFG_BS_TEST-O",
+									"BRD1_GPU2_STRAP4_GPU_MOD_ID-I",
+									"BRD1_GPU2_STRAP_NVS_PRSNT-I",
+									"BRD1_GPU2_STRAP5_GPU_MOD_ID-I",
+									"BRD1_GPU2_IROT_ERROR_L-I",
+									"BRD1_GPU2_THERM_ALERT_L-I",
+									"BRD1_GPU2_STRAP_CPLD_PRSNT-I",
+									"BRD1_MCU_THERM_OVERT_L-I",
+									"BRD1_GPU_MCU_OK-I",
+									"BRD1_MCU_HEARTBEAT-I",
+									"BRD1_MCU_THERM_WARN_L-I",
+									"BRD1_GLOBAL_WP-I",
+									"BRD1_MCU_PWR_BRAKE_L-I";
+							};
+
+							exp3_brd1: pca9555@51 {
+								compatible = "nxp,pca9555";
+								reg = <0x51>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112n>;
+								interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD1_GPU3_THERM_OVERT_L-I",
+									"BRD1_GPU3_AP_BOOT_COMPLETE-I",
+									"BRD1_GPU3_RECOVERY-O",
+									"BRD1_GPU3_MFG_BS_TEST-O",
+									"BRD1_GPU3_STRAP4_GPU_MOD_ID-I",
+									"BRD1_GPU3_STRAP_NVS_PRSNT-I",
+									"BRD1_GPU3_STRAP5_GPU_MOD_ID-I",
+									"BRD1_GPU3_IROT_ERROR_L-I",
+									"BRD1_GPU3_THERM_ALERT_L-I",
+									"BRD1_GPU3_STRAP_CPLD_PRSNT-I",
+									"BRD1_INA_CRITICAL_L-I",
+									"BRD1_HSC_ALERT_L-I",
+									"BRD1_HSCC_SMBUS_ALT_N-I",
+									"BRD1_3V3_PGD-I",
+									"BRD1_5V_PGD-I",
+									"BRD1_BOARD_LOC-I";
+							};
+
+							exp4_brd1: pca9555@52 {
+								compatible = "nxp,pca9555";
+								reg = <0x52>;
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								#address-cells = <1>;
+								#size-cells = <0>;
+								interrupt-controller;
+								#interrupt-cells = <2>;
+								interrupt-parent = <&cp2112n>;
+								interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+
+								gpio-line-names =
+									"BRD1_RUN_POWER_EN-I",
+									"BRD1_RUN_POWER_PG-I",
+									"BRD1_INA_WARN_L-I",
+									"BRD1_MCU_RECOVERY_STATUS-I",
+									"BRD1_MCU_USER_STRAP0-I",
+									"BRD1_VDD_1V8_PGOOD-I",
+									"BRD1_PWR_BRAKE_SOC_ACTIVE-I",
+									"BRD1_PWR_BRAKE_BUSBAR_THERM_ACTIVE-I",
+									"", "", "", "",
+									"", "", "", "";
+							};
+
+							eeprom1@54 {
+								compatible = "atmel,24c02";
+								reg = <0x54>;
+								read-only;
+							};
+
+							eeprom1@55 {
+								compatible = "atmel,24c02";
+								reg = <0x55>;
+								read-only;
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
+// I2C_MGMT1 to HPM board 0
+&i2c1 {
+	multi-master;
+	mctp-controller;
+	mctp-no-flows;
+	i2c-retries = <30>;
+	i2c-timeout-ms = <150>;
+
+	// The vHMC reads the FRUs directly, and there is no physical HMC to
+	// serve the remote FRU bridge, so drop the i2c-90 virtual mux.
+	/delete-node/ bridge@54;
+
+	// FRU
+	eeprom@50 {
+		compatible = "atmel,24c64";
+		reg = <0x50>;
+		read-only;
+	};
+
+	// MCTP to the HPM MCU
+	mctp@18 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+
+		/* NACK retry config */
+		i2c-nack-retries = <32>;
+		i2c-nack-retry-delay-us = <0>;
+		i2c-nack-retry-addr = <0x52>;
+	};
+
+	// The driver is bound from userspace once standby power is up.
+	exp0_brd0: tca9535@20 {
+		compatible = "nxp,pca9535";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+
+		gpio-line-names =
+			"BRD0_MCU_RESET_L-O",
+			"BRD0_MCU_RECOVERY_L-O",
+			"BRD0_GPU_MCU_RESET_L_3V3-O",
+			"BRD0_GPU_MCU_RECOVERY_L_3V3-O",
+			"BRD0_THERM_OVERT_L-I",
+			"BRD0_THERM_WARN_L-I",
+			"BRD0_HMC_IST_PRE_RST_L-O",
+			"BRD0_CPLD_READY-I",
+			"BRD0_MODULE_PWR_GOOD-I",
+			"BRD0_MCU_HMC_ALERT_L-I",
+			"BRD0_USB_HMC_HUB_RST_L-O",
+			"BRD0_HPM_MCU_OK-I",
+			"BRD0_CPU0_SHDN_OK_L_3V3-I",
+			"BRD0_CPLD_AUTH_FAIL_L-I",
+			"BRD0_IST_SYS_RST_L-O",
+			"BRD0_PWR_BRAKE_STATUS_L-I";
+	};
+
+	// The driver is bound from userspace once standby power is up.
+	exp1_brd0: tca9535@21 {
+		compatible = "nxp,pca9535";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+
+		gpio-line-names =
+			"BRD0_CPU_FORCED_RECOVERY_L-O",
+			"BRD0_CPU_BOOT_DEV_SEL0-O",
+			"BRD0_CPU_BOOT_DEV_SEL1-O",
+			"BRD0_CPU_BOOT_DEV_SEL2-O",
+			"BRD0_BOARD_ID_0-I",
+			"BRD0_CPU_RECOVERY_TYPE0-O",
+			"BRD0_CPU_RECOVERY_TYPE1-O",
+			"BRD0_CPU_IST_BOOT_HMC-O",
+			"BRD0_CPU_BOOT_CHAIN0-O",
+			"BRD0_BOARD_ID_1-I",
+			"BRD0_HMC_TO_MCU_I2C_EN-O",
+			"BRD0_CPU_DIE_SEL0-O",
+			"BRD0_CPU_DIE_SEL1-O",
+			"BRD0_CPU_DIE_SEL2-O",
+			"BRD0_CPU_BOOT_COMPLETE-I",
+			"BRD0_IOX_JTAG_NVSEL-O";
+	};
+};
+
+// I2C_MGMT1 to HPM board 1
+&i2c3 {
+	status = "okay";
+	i2c-scl-clk-low-timeout-us = <32000>;
+	i2c-tck-thddat-config = <0x0099EC00>;
+
+	multi-master;
+	mctp-controller;
+	mctp-no-flows;
+	i2c-retries = <30>;
+	i2c-timeout-ms = <150>;
+
+	// FRU
+	eeprom@50 {
+		compatible = "atmel,24c64";
+		reg = <0x50>;
+		read-only;
+	};
+
+	// MCTP to the HPM MCU
+	mctp@18 {
+		compatible = "mctp-i2c-controller";
+		reg = <(0x18 | I2C_OWN_SLAVE_ADDRESS)>;
+
+		/* NACK retry config */
+		i2c-nack-retries = <32>;
+		i2c-nack-retry-delay-us = <0>;
+		i2c-nack-retry-addr = <0x52>;
+	};
+
+	// The driver is bound from userspace once standby power is up.
+	exp0_brd1: tca9535@20 {
+		compatible = "nxp,pca9535";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+
+		gpio-line-names =
+			"BRD1_MCU_RESET_L-O",
+			"BRD1_MCU_RECOVERY_L-O",
+			"BRD1_GPU_MCU_RESET_L_3V3-O",
+			"BRD1_GPU_MCU_RECOVERY_L_3V3-O",
+			"BRD1_THERM_OVERT_L-I",
+			"BRD1_THERM_WARN_L-I",
+			"BRD1_HMC_IST_PRE_RST_L-O",
+			"BRD1_CPLD_READY-I",
+			"BRD1_MODULE_PWR_GOOD-I",
+			"BRD1_MCU_HMC_ALERT_L-I",
+			"BRD1_USB_HMC_HUB_RST_L-O",
+			"BRD1_HPM_MCU_OK-I",
+			"BRD1_CPU0_SHDN_OK_L_3V3-I",
+			"BRD1_CPLD_AUTH_FAIL_L-I",
+			"BRD1_IST_SYS_RST_L-O",
+			"BRD1_PWR_BRAKE_STATUS_L-I";
+	};
+
+	// The driver is bound from userspace once standby power is up.
+	exp1_brd1: tca9535@21 {
+		compatible = "nxp,pca9535";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
+
+		gpio-line-names =
+			"BRD1_CPU_FORCED_RECOVERY_L-O",
+			"BRD1_CPU_BOOT_DEV_SEL0-O",
+			"BRD1_CPU_BOOT_DEV_SEL1-O",
+			"BRD1_CPU_BOOT_DEV_SEL2-O",
+			"BRD1_BOARD_ID_0-I",
+			"BRD1_CPU_RECOVERY_TYPE0-O",
+			"BRD1_CPU_RECOVERY_TYPE1-O",
+			"BRD1_CPU_IST_BOOT_HMC-O",
+			"BRD1_CPU_BOOT_CHAIN0-O",
+			"BRD1_BOARD_ID_1-I",
+			"BRD1_HMC_TO_MCU_I2C_EN-O",
+			"BRD1_CPU_DIE_SEL0-O",
+			"BRD1_CPU_DIE_SEL1-O",
+			"BRD1_CPU_DIE_SEL2-O",
+			"BRD1_CPU_BOOT_COMPLETE-I",
+			"BRD1_IOX_JTAG_NVSEL-O";
+	};
+};
