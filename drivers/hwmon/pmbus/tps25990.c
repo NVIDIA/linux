@@ -49,7 +49,8 @@
 
 #define TPS1689_VIN_OV_RANGE_SEL_MASK	GENMASK(7, 6)
 #define TPS1689_VIN_VOV_MASK		GENMASK(5, 0)
-#define TPS1689_VIN_SCALING		251
+#define TPS1689_VIN_M			1166
+#define TPS1689_VIN_MV_DIV		100000
 #define TPS1689_VIN_VOV_STEP_MV		250
 #define TPS1689_VIN_RANGE_SPAN_MV	16000
 
@@ -211,8 +212,9 @@ static int tps25990_read_word_data(struct i2c_client *client,
 				   TPS1689_VIN_RANGE_SPAN_MV;
 			int vov = FIELD_GET(TPS1689_VIN_VOV_MASK, ret) * TPS1689_VIN_VOV_STEP_MV;
 
-			ret = DIV_ROUND_CLOSEST(rng + vov - TPS1689_VIN_RANGE_SPAN_MV,
-						TPS1689_VIN_SCALING);
+			/* Convert the threshold in mV to READ_VIN direct format */
+			ret = DIV_ROUND_CLOSEST((rng + vov) * TPS1689_VIN_M,
+						TPS1689_VIN_MV_DIV);
 		}
 		break;
 
@@ -286,10 +288,13 @@ static int tps25990_write_word_data(struct i2c_client *client,
 						  TPS25990_VIN_OVF_NUM);
 			value = clamp_val(value, 0, 0xf);
 		} else if (data->chip_id == tps1689) {
-			u32 scaled_value = value * TPS1689_VIN_SCALING + TPS1689_VIN_RANGE_SPAN_MV;
-			u32 rng_idx = scaled_value / TPS1689_VIN_RANGE_SPAN_MV;
+			u32 scaled_value = DIV_ROUND_CLOSEST((u32)value * TPS1689_VIN_MV_DIV,
+							     TPS1689_VIN_M);
+			u32 rng_idx;
 			u32 ov_set;
 
+			scaled_value = max_t(u32, scaled_value, TPS1689_VIN_RANGE_SPAN_MV);
+			rng_idx = scaled_value / TPS1689_VIN_RANGE_SPAN_MV;
 			rng_idx = clamp_val(rng_idx, 1,
 					    FIELD_MAX(TPS1689_VIN_OV_RANGE_SEL_MASK) + 1);
 			ov_set = scaled_value - (TPS1689_VIN_RANGE_SPAN_MV * rng_idx);
@@ -396,9 +401,9 @@ static const struct pmbus_driver_info tps25990_base_info[] = {
 	[tps1689] = {
 		.pages = 1,
 		.format[PSC_VOLTAGE_IN] = direct,
-		.m[PSC_VOLTAGE_IN] = 3984,
-		.b[PSC_VOLTAGE_IN] = -63750,
-		.R[PSC_VOLTAGE_IN] = -3,
+		.m[PSC_VOLTAGE_IN] = 1166,
+		.b[PSC_VOLTAGE_IN] = 0,
+		.R[PSC_VOLTAGE_IN] = -2,
 		.format[PSC_VOLTAGE_OUT] = direct,
 		.m[PSC_VOLTAGE_OUT] = 1166,
 		.b[PSC_VOLTAGE_OUT] = 0,
@@ -416,19 +421,14 @@ static const struct pmbus_driver_info tps25990_base_info[] = {
 		.m[PSC_CURRENT_IN] = 9548,
 		.b[PSC_CURRENT_IN] = 0,
 		.R[PSC_CURRENT_IN] = -6,
-		.format[PSC_CURRENT_OUT] = direct,
-		.m[PSC_CURRENT_OUT] = 24347,
-		.b[PSC_CURRENT_OUT] = 0,
-		.R[PSC_CURRENT_OUT] = -3,
 		.format[PSC_POWER] = direct,
-		.m[PSC_POWER] = 2775,
+		.m[PSC_POWER] = 1080,
 		.b[PSC_POWER] = 0,
-		.R[PSC_POWER] = -4,
+		.R[PSC_POWER] = -7,
 		.func[0] = (PMBUS_HAVE_VIN |
 			    PMBUS_HAVE_VOUT |
 			    PMBUS_HAVE_VMON |
 			    PMBUS_HAVE_IIN |
-			    PMBUS_HAVE_IOUT |
 			    PMBUS_HAVE_PIN |
 			    PMBUS_HAVE_TEMP |
 			    PMBUS_HAVE_STATUS_VOUT |
@@ -533,7 +533,6 @@ static int tps25990_probe(struct i2c_client *client)
 
 	/* Adapt the current and power scale for each instance */
 	tps25990_set_m(&data->info.m[PSC_CURRENT_IN], rimon);
-	tps25990_set_m(&data->info.m[PSC_CURRENT_OUT], rimon);
 	tps25990_set_m(&data->info.m[PSC_POWER], rimon);
 
 	return pmbus_do_probe(client, &data->info);
