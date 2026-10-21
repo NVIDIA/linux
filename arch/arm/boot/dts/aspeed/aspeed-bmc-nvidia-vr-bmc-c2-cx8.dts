@@ -61,6 +61,24 @@
 		i2c67	= &e1s_ssd7_i2c;
 
 		i2c70	= &i2c70;
+
+		// SwitchBoard_0 (ET816) TCA9546 channels
+		i2c80   = &i2c_swb0_ch0;
+		i2c81   = &i2c_swb0_ch1;
+		i2c82   = &i2c_swb0_ch2;
+		i2c83   = &i2c_swb0_ch3;
+		i2c84   = &i2c_swb1_ch0;
+		i2c85   = &i2c_swb1_ch1;
+		i2c86   = &i2c_swb1_ch2;
+		i2c87   = &i2c_swb1_ch3;
+		i2c88   = &i2c_swb2_ch0;
+		i2c89   = &i2c_swb2_ch1;
+		i2c90   = &i2c_swb2_ch2;
+		i2c91   = &i2c_swb2_ch3;
+		i2c92   = &i2c_swb3_ch0;
+		i2c93   = &i2c_swb3_ch1;
+		i2c94   = &i2c_swb3_ch2;
+		i2c95   = &i2c_swb3_ch3;
 	};
 
 	chosen {
@@ -692,11 +710,7 @@
 			#size-cells = <0>;
 			reg = <0>;
 
-			// GPU_1 FRU EEPROM (C1)
-			eeprom@50 {
-				compatible = "atmel,24c128";
-				reg = <0x50>;
-			};
+			// ET816 J20: SwitchBoard_0 link 1
 		};
 
 		i2c_mcio_c0_south1: i2c@1 {
@@ -710,7 +724,7 @@
 			#size-cells = <0>;
 			reg = <2>;
 
-			// GPU_0 FRU EEPROM
+			// BlueField-3 CEM FRU EEPROM
 			eeprom@50 {
 				compatible = "atmel,24c128";
 				reg = <0x50>;
@@ -739,13 +753,8 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <6>;
-			mctp-controller;
 
-			// CX_0 FRU EEPROM
-			eeprom@50 {
-				compatible = "atmel,24c128";
-				reg = <0x50>;
-			};
+			// ET816 J19: SwitchBoard_0 link 0
 		};
 
 		i2c_mcio_c0_south7: i2c@7 {
@@ -849,11 +858,7 @@
 			#size-cells = <0>;
 			reg = <0>;
 
-			// GPU_1 FRU EEPROM (C2)
-			eeprom@50 {
-				compatible = "atmel,24c128";
-				reg = <0x50>;
-			};
+			// ET816 J22: SwitchBoard_0 link 3
 		};
 
 		i2c_mcio_c1_south1: i2c@1 {
@@ -866,6 +871,8 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
+
+			// ET816 J21: SwitchBoard_0 link 2
 		};
 
 		i2c_mcio_c1_south3: i2c@3 {
@@ -890,13 +897,8 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <6>;
-			mctp-controller;
 
-			// CX_1 FRU EEPROM
-			eeprom@50 {
-				compatible = "atmel,24c128";
-				reg = <0x50>;
-			};
+			// J222: unpopulated in MGX 4U CX8
 		};
 
 		i2c_mcio_c1_south7: i2c@7 {
@@ -1222,75 +1224,458 @@
     };
 };
 
-// GPU0 GPIO Expander
-&i2c_mcio_c0_south2 {
-    // GPU 0, Expander @0x20
-    exp23: pca6408@20 {
-        compatible = "nxp,pca6408";
-        reg = <0x20>;
+// ET816 (Alon-8) CX8 PCIe switchboard: one link per HPM MCIO x8.
+// Per link: TCA9555 @0x26, TCA9546 @0x72; board FRU @0x56 on link 0.
+// TCA9546 ch0/ch1 are CX SMBus0/2, owned by the ET816 MCUs.
+// TCA9546 ch2/ch3 are CEM slots (PG153: FRU @0x50, TCA6408 @0x20).
+
+// SwitchBoard_0 link 0: HPM i2c_mcio_c0_south6 to ET816 J19
+&i2c_mcio_c0_south6 {
+    // SwitchBoard_0 FRU EEPROM (ET816 U133)
+    eeprom@56 {
+        compatible = "atmel,24c128";
+        reg = <0x56>;
+    };
+
+    // ET816 U102
+    swb_iox0: gpio@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
         gpio-controller;
         #gpio-cells = <2>;
+        gpio-line-names =
+            "CX0_WP_QSPI-O",
+            "CX0_RST_SEQ_L-O",
+            "CX0_BOOT_CMPLT-I",
+            "CX0_FNP_L-O",
+            "SWB_FRU_WP-O",
+            "CX0_OVT_SHUTDOWN-I",
+            "",
+            "",
+            "",
+            "",
+            "CX0_TMP_WARNING-I",
+            "SWB_USB_HUB0_RST_L-O",
+            "SWB_I2C_SW0_RST_L-O",
+            "CX_SMA_0_GPIO-I",
+            "CX_SMA_0_RST_L-O",
+            "CX_SMA_0_RECOVERY_L-O";
+    };
 
+    // ET816 U98
+    i2c-mux@72 {
+        compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "GPU0_GLOBAL_WP-O",
-            "GPU0_OOB_RST_N-O",
-            "GPU0_OOB_RECOVERY-O",
-            "GPU0_MCU_RECOVERY_N-O",
-            "GPU0_MCU_RST_N-O",
-            "GPU0_MCU_BYPASS_N-O",
-            "GPU0_SMBUS_FRU_EEPROM_WP-O",
-            "";
+        reg = <0x72>;
+        i2c-mux-idle-disconnect;
+
+        // CX0 SMBus0
+        i2c_swb0_ch0: i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+        };
+
+        // CX0 SMBus2
+        i2c_swb0_ch1: i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+        };
+
+        // GPU_0 CEM slot ET816 J8
+        i2c_swb0_ch2: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+            // GPU_0 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_0 GPIO Expander
+            gpu0_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU0_GLOBAL_WP-O",
+                    "GPU0_OOB_RST_N-O",
+                    "GPU0_OOB_RECOVERY-O",
+                    "GPU0_MCU_RECOVERY_N-O",
+                    "GPU0_MCU_RST_N-O",
+                    "GPU0_MCU_BYPASS_N-O",
+                    "GPU0_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
+
+        // GPU_1 CEM slot ET816 J7
+        i2c_swb0_ch3: i2c@3 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <3>;
+
+            // GPU_1 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_1 GPIO Expander
+            gpu1_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU1_GLOBAL_WP-O",
+                    "GPU1_OOB_RST_N-O",
+                    "GPU1_OOB_RECOVERY-O",
+                    "GPU1_MCU_RECOVERY_N-O",
+                    "GPU1_MCU_RST_N-O",
+                    "GPU1_MCU_BYPASS_N-O",
+                    "GPU1_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
     };
 };
 
-// GPU1 GPIO Expander (C1)
+// SwitchBoard_0 link 1: HPM i2c_mcio_c0_south0 to ET816 J20
 &i2c_mcio_c0_south0 {
-    // GPU 1, Expander @0x20
-    exp28: pca6408@20 {
-        compatible = "nxp,pca6408";
-        reg = <0x20>;
+    // ET816 U134
+    swb_iox1: gpio@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
         gpio-controller;
         #gpio-cells = <2>;
+        gpio-line-names =
+            "CX1_WP_QSPI-O",
+            "CX1_RST_SEQ_L-O",
+            "CX1_BOOT_CMPLT-I",
+            "CX1_FNP_L-O",
+            "",
+            "CX1_OVT_SHUTDOWN-I",
+            "CX1_TMP_WARNING-I",
+            "SWB_USB_HUB1_RST_L-O",
+            "SWB_I2C_SW1_RST_L-O",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "";
+    };
 
+    // ET816 U99
+    i2c-mux@72 {
+        compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        vcc-supply = <&standby_power_regulator>;
-        gpio-line-names =
-            "GPU1_GLOBAL_WP-O",
-            "GPU1_OOB_RST_N-O",
-            "GPU1_OOB_RECOVERY-O",
-            "GPU1_MCU_RECOVERY_N-O",
-            "GPU1_MCU_RST_N-O",
-            "GPU1_MCU_BYPASS_N-O",
-            "GPU1_SMBUS_FRU_EEPROM_WP-O",
-            "";
+        reg = <0x72>;
+        i2c-mux-idle-disconnect;
+
+        // CX1 SMBus0
+        i2c_swb1_ch0: i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+        };
+
+        // CX1 SMBus2
+        i2c_swb1_ch1: i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+        };
+
+        // GPU_2 CEM slot ET816 J6
+        i2c_swb1_ch2: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+            // GPU_2 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_2 GPIO Expander
+            gpu2_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU2_GLOBAL_WP-O",
+                    "GPU2_OOB_RST_N-O",
+                    "GPU2_OOB_RECOVERY-O",
+                    "GPU2_MCU_RECOVERY_N-O",
+                    "GPU2_MCU_RST_N-O",
+                    "GPU2_MCU_BYPASS_N-O",
+                    "GPU2_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
+
+        // GPU_3 CEM slot ET816 J5
+        i2c_swb1_ch3: i2c@3 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <3>;
+
+            // GPU_3 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_3 GPIO Expander
+            gpu3_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU3_GLOBAL_WP-O",
+                    "GPU3_OOB_RST_N-O",
+                    "GPU3_OOB_RECOVERY-O",
+                    "GPU3_MCU_RECOVERY_N-O",
+                    "GPU3_MCU_RST_N-O",
+                    "GPU3_MCU_BYPASS_N-O",
+                    "GPU3_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
     };
 };
 
-// GPU1 GPIO Expander (C2)
-&i2c_mcio_c1_south0 {
-    // GPU 1, Expander @0x20
-    exp24: pca6408@20 {
-        compatible = "nxp,pca6408";
-        reg = <0x20>;
+// SwitchBoard_0 link 2: HPM i2c_mcio_c1_south2 to ET816 J21
+&i2c_mcio_c1_south2 {
+    // ET816 U103
+    swb_iox2: gpio@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
         gpio-controller;
         #gpio-cells = <2>;
+        gpio-line-names =
+            "CX2_WP_QSPI-O",
+            "CX2_RST_SEQ_L-O",
+            "CX2_BOOT_CMPLT-I",
+            "CX2_FNP_L-O",
+            "",
+            "CX2_OVT_SHUTDOWN-I",
+            "",
+            "",
+            "",
+            "",
+            "CX2_TMP_WARNING-I",
+            "SWB_USB_HUB2_RST_L-O",
+            "SWB_I2C_SW2_RST_L-O",
+            "CX_SMA_1_GPIO-I",
+            "CX_SMA_1_RST_L-O",
+            "CX_SMA_1_RECOVERY_L-O";
+    };
 
+    // ET816 U100
+    i2c-mux@72 {
+        compatible = "nxp,pca9546";
         #address-cells = <1>;
         #size-cells = <0>;
-        vcc-supply = <&standby_power_regulator>;
+        reg = <0x72>;
+        i2c-mux-idle-disconnect;
+
+        // CX2 SMBus0
+        i2c_swb2_ch0: i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+        };
+
+        // CX2 SMBus2
+        i2c_swb2_ch1: i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+        };
+
+        // GPU_4 CEM slot ET816 J4
+        i2c_swb2_ch2: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+            // GPU_4 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_4 GPIO Expander
+            gpu4_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU4_GLOBAL_WP-O",
+                    "GPU4_OOB_RST_N-O",
+                    "GPU4_OOB_RECOVERY-O",
+                    "GPU4_MCU_RECOVERY_N-O",
+                    "GPU4_MCU_RST_N-O",
+                    "GPU4_MCU_BYPASS_N-O",
+                    "GPU4_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
+
+        // GPU_5 CEM slot ET816 J3
+        i2c_swb2_ch3: i2c@3 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <3>;
+
+            // GPU_5 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_5 GPIO Expander
+            gpu5_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU5_GLOBAL_WP-O",
+                    "GPU5_OOB_RST_N-O",
+                    "GPU5_OOB_RECOVERY-O",
+                    "GPU5_MCU_RECOVERY_N-O",
+                    "GPU5_MCU_RST_N-O",
+                    "GPU5_MCU_BYPASS_N-O",
+                    "GPU5_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
+    };
+};
+
+// SwitchBoard_0 link 3: HPM i2c_mcio_c1_south0 to ET816 J22
+&i2c_mcio_c1_south0 {
+    // ET816 U135
+    swb_iox3: gpio@26 {
+        compatible = "nxp,pca9555";
+        reg = <0x26>;
+        gpio-controller;
+        #gpio-cells = <2>;
         gpio-line-names =
-            "GPU1_GLOBAL_WP-O",
-            "GPU1_OOB_RST_N-O",
-            "GPU1_OOB_RECOVERY-O",
-            "GPU1_MCU_RECOVERY_N-O",
-            "GPU1_MCU_RST_N-O",
-            "GPU1_MCU_BYPASS_N-O",
-            "GPU1_SMBUS_FRU_EEPROM_WP-O",
+            "CX3_WP_QSPI-O",
+            "CX3_RST_SEQ_L-O",
+            "CX3_BOOT_CMPLT-I",
+            "CX3_FNP_L-O",
+            "",
+            "CX3_OVT_SHUTDOWN-I",
+            "CX3_TMP_WARNING-I",
+            "SWB_USB_HUB3_RST_L-O",
+            "SWB_I2C_SW3_RST_L-O",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             "";
+    };
+
+    // ET816 U101
+    i2c-mux@72 {
+        compatible = "nxp,pca9546";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0x72>;
+        i2c-mux-idle-disconnect;
+
+        // CX3 SMBus0
+        i2c_swb3_ch0: i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+        };
+
+        // CX3 SMBus2
+        i2c_swb3_ch1: i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+        };
+
+        // GPU_6 CEM slot ET816 J2
+        i2c_swb3_ch2: i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+
+            // GPU_6 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_6 GPIO Expander
+            gpu6_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU6_GLOBAL_WP-O",
+                    "GPU6_OOB_RST_N-O",
+                    "GPU6_OOB_RECOVERY-O",
+                    "GPU6_MCU_RECOVERY_N-O",
+                    "GPU6_MCU_RST_N-O",
+                    "GPU6_MCU_BYPASS_N-O",
+                    "GPU6_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
+
+        // GPU_7 CEM slot ET816 J1
+        i2c_swb3_ch3: i2c@3 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <3>;
+
+            // GPU_7 FRU EEPROM
+            eeprom@50 {
+                compatible = "atmel,24c128";
+                reg = <0x50>;
+            };
+
+            // GPU_7 GPIO Expander
+            gpu7_iox: gpio@20 {
+                compatible = "nxp,pca6408";
+                reg = <0x20>;
+                gpio-controller;
+                #gpio-cells = <2>;
+                gpio-line-names =
+                    "GPU7_GLOBAL_WP-O",
+                    "GPU7_OOB_RST_N-O",
+                    "GPU7_OOB_RECOVERY-O",
+                    "GPU7_MCU_RECOVERY_N-O",
+                    "GPU7_MCU_RST_N-O",
+                    "GPU7_MCU_BYPASS_N-O",
+                    "GPU7_SMBUS_FRU_EEPROM_WP-O",
+                    "";
+            };
+        };
     };
 };
 
