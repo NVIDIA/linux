@@ -8,41 +8,33 @@
 
 // I2C10 CMX Tester Midplane U25 GPIO Expander
 &i2c9 {
-       i2c-mux@70 {
-               compatible = "nxp,pca9546";
-               #address-cells = <1>;
-               #size-cells = <0>;
-               reg = <0x70>;
-               i2c-mux-idle-disconnect;
+       exp23: pca9555@26 {
+               compatible = "nxp,pca9555";
+               reg = <0x26>;
 
-               i2c@0 {
-                       #address-cells = <1>;
-                       #size-cells = <0>;
-                       reg = <0>;
+               interrupt-controller;
+               #interrupt-cells = <2>;
+               interrupt-parent = <&gpio1>;
+               interrupts = <ASPEED_GPIO(B, 6) IRQ_TYPE_LEVEL_LOW>;
 
-                       exp23: pca9555@26 {
-                               compatible = "nxp,pca9555";
-                               reg = <0x26>;
-                               gpio-controller;
-                               #gpio-cells = <2>;
-                               gpio-line-names =
-                                       "",
-                                       "",
-                                       "54V_SW_EN-I",
-                                       "54V_SSD_EN-I",
-                                       "P54V_HPM_EN-I",
-                                       "",
-                                       "",
-                                       "",
-                                       "P54V_AON_PG-I",
-                                       "PG_P54V_HPM-I",
-                                       "P3V3_SSD_PG-I",
-                                       "PG_54V_SW-I",
-                                       "PG_54V_SSD-I",
-                                       "FANGIO_STBY_PWR_PG-I",
-                                       "",
-                                       "VR_P12V_STBY_HPM_PG-I";
-                       };
-               };
+               gpio-controller;
+               #gpio-cells = <2>;
+               gpio-line-names =
+                       "",
+                       "",
+                       "54V_SW_EN-I",
+                       "54V_SSD_EN-I",
+                       "P54V_HPM_EN-I",
+                       "",
+                       "",
+                       "",
+                       "P54V_AON_PG-I",
+                       "PG_P54V_HPM-I",
+                       "P3V3_SSD_PG-I",
+                       "PG_54V_SW-I",
+                       "PG_54V_SSD-I",
+                       "FANGIO_STBY_PWR_PG-I",
+                       "",
+                       "VR_P12V_STBY_HPM_PG-I";
        };
 };
