@@ -710,13 +710,15 @@
 			#size-cells = <0>;
 			reg = <0>;
 
-			// ET816 J20: SwitchBoard_0 link 1
+			// ET816 J21: SwitchBoard_0 link 2
 		};
 
 		i2c_mcio_c0_south1: i2c@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
+
+			// ET816 J45: CX2 lanes 8-15, no sideband
 		};
 
 		i2c_mcio_c0_south2: i2c@2 {
@@ -754,13 +756,15 @@
 			#size-cells = <0>;
 			reg = <6>;
 
-			// ET816 J19: SwitchBoard_0 link 0
+			// ET816 J22: SwitchBoard_0 link 3
 		};
 
 		i2c_mcio_c0_south7: i2c@7 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <7>;
+
+			// ET816 J46: CX3 lanes 8-15, no sideband
 		};
 	};
 
@@ -858,13 +862,15 @@
 			#size-cells = <0>;
 			reg = <0>;
 
-			// ET816 J22: SwitchBoard_0 link 3
+			// ET816 J19: SwitchBoard_0 link 0
 		};
 
 		i2c_mcio_c1_south1: i2c@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
+
+			// ET816 J43: CX0 lanes 8-15, no sideband
 		};
 
 		i2c_mcio_c1_south2: i2c@2 {
@@ -872,13 +878,15 @@
 			#size-cells = <0>;
 			reg = <2>;
 
-			// ET816 J21: SwitchBoard_0 link 2
+			// ET816 J20: SwitchBoard_0 link 1
 		};
 
 		i2c_mcio_c1_south3: i2c@3 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
+
+			// ET816 J44: CX1 lanes 8-15, no sideband
 		};
 
 		i2c_mcio_c1_south4: i2c@4 {
@@ -1224,13 +1232,15 @@
     };
 };
 
-// ET816 (Alon-8) CX8 PCIe switchboard: one link per HPM MCIO x8.
+// ET816 (Alon-8) CX8 PCIe switchboard. Each CX8 is an x16 over two HPM
+// MCIO x8: ET816 J19..J22 carry the sideband (link I2C, USB), and
+// J43..J46 carry lanes 8-15 only.
 // Per link: TCA9555 @0x26, TCA9546 @0x72; board FRU @0x56 on link 0.
 // TCA9546 ch0/ch1 are CX SMBus0/2, owned by the ET816 MCUs.
 // TCA9546 ch2/ch3 are CEM slots (PG153: FRU @0x50, TCA6408 @0x20).
 
-// SwitchBoard_0 link 0: HPM i2c_mcio_c0_south6 to ET816 J19
-&i2c_mcio_c0_south6 {
+// SwitchBoard_0 link 0: HPM i2c_mcio_c1_south0 to ET816 J19
+&i2c_mcio_c1_south0 {
     // SwitchBoard_0 FRU EEPROM (ET816 U133)
     eeprom@56 {
         compatible = "atmel,24c128";
@@ -1346,8 +1356,8 @@
     };
 };
 
-// SwitchBoard_0 link 1: HPM i2c_mcio_c0_south0 to ET816 J20
-&i2c_mcio_c0_south0 {
+// SwitchBoard_0 link 1: HPM i2c_mcio_c1_south2 to ET816 J20
+&i2c_mcio_c1_south2 {
     // ET816 U134
     swb_iox1: gpio@26 {
         compatible = "nxp,pca9555";
@@ -1457,8 +1467,8 @@
     };
 };
 
-// SwitchBoard_0 link 2: HPM i2c_mcio_c1_south2 to ET816 J21
-&i2c_mcio_c1_south2 {
+// SwitchBoard_0 link 2: HPM i2c_mcio_c0_south0 to ET816 J21
+&i2c_mcio_c0_south0 {
     // ET816 U103
     swb_iox2: gpio@26 {
         compatible = "nxp,pca9555";
@@ -1568,8 +1578,8 @@
     };
 };
 
-// SwitchBoard_0 link 3: HPM i2c_mcio_c1_south0 to ET816 J22
-&i2c_mcio_c1_south0 {
+// SwitchBoard_0 link 3: HPM i2c_mcio_c0_south6 to ET816 J22
+&i2c_mcio_c0_south6 {
     // ET816 U135
     swb_iox3: gpio@26 {
         compatible = "nxp,pca9555";
