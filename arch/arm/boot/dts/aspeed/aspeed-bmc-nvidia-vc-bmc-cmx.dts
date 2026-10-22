@@ -333,6 +333,13 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
+
+		osfp_u59_gpio: channel@3 {
+			compatible = "nvidia,lstp-gpio";
+			reg = <3>;
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
 	};
 };
 
