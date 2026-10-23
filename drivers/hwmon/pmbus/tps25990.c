@@ -294,6 +294,8 @@ static int tps25990_write_word_data(struct i2c_client *client,
 			u32 ov_set;
 
 			scaled_value = max_t(u32, scaled_value, TPS1689_VIN_RANGE_SPAN_MV);
+			scaled_value = DIV_ROUND_CLOSEST(scaled_value, TPS1689_VIN_VOV_STEP_MV) *
+				       TPS1689_VIN_VOV_STEP_MV;
 			rng_idx = scaled_value / TPS1689_VIN_RANGE_SPAN_MV;
 			rng_idx = clamp_val(rng_idx, 1,
 					    FIELD_MAX(TPS1689_VIN_OV_RANGE_SEL_MASK) + 1);
