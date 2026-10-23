@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/init.h>
+#include <linux/kobject.h>
 #include <linux/serial.h>
 #include <linux/termios.h>
 #include <linux/tty.h>
@@ -678,6 +679,7 @@ static int lstp_uart_start(struct lstp_channel *ch)
 {
 	struct lstp_uart_ctx *ctx = ch->priv;
 	struct device *tty_dev;
+	int ret;
 
 	tty_dev = tty_port_register_device(&ctx->port, lstp_tty_driver, ctx->minor, ch->dev);
 	if (IS_ERR(tty_dev)) {
@@ -686,8 +688,14 @@ static int lstp_uart_start(struct lstp_channel *ch)
 		return PTR_ERR(tty_dev);
 	}
 
-	if (ch->fwnode)
+	if (ch->fwnode) {
 		device_set_node(tty_dev, ch->fwnode);
+		/* Registration sent ADD before the channel fwnode was attached. */
+		ret = kobject_uevent(&tty_dev->kobj, KOBJ_CHANGE);
+		if (ret)
+			dev_warn(tty_dev, "Failed to announce channel fwnode (%pe)\n",
+				 ERR_PTR(ret));
+	}
 
 	deprecated_lstp_channel_publish_child_dev(ch, tty_dev);
 
