@@ -10,6 +10,8 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
+#include <linux/spinlock.h>
+#include <linux/bitops.h>
 #include <linux/bitfield.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
@@ -19,6 +21,7 @@
 #include <linux/property.h>
 #include <linux/gpio/driver.h>
 #include <linux/iio/iio.h>
+#include <linux/workqueue.h>
 #include "hid-ids.h"
 
 /* Commands codes in a raw output report */
@@ -63,6 +66,10 @@ enum {
 };
 
 #define MCP_NGPIO	4
+#define MCP2221_GPIO_GET_ALL	0xff
+#define MCP2221_GPIO_POLL_INTERVAL_MS	10
+#define MCP2221_SRAM_GPIO_CHANGE	BIT(7)
+#define MCP2221_SRAM_GPIO_OFFSET	8
 
 /* MCP GPIO set command layout */
 struct mcp_set_gpio {
@@ -105,7 +112,17 @@ struct mcp2221 {
 	struct gpio_chip *gc;
 	u8 gp_idx;
 	u8 gpio_dir;
+	u8 gpio_valid_mask;
 	u8 mode[4];
+#if IS_REACHABLE(CONFIG_GPIOLIB)
+	struct delayed_work gpio_poll_worker;
+	raw_spinlock_t irq_lock;
+	unsigned long irq_mask;
+	unsigned long gpio_init_mask;
+	u8 gpio_prev_state;
+	u32 gpio_poll_interval_ms;
+	bool removing;
+#endif
 #if IS_REACHABLE(CONFIG_IIO)
 	struct iio_chan_spec iio_channels[3];
 	u16 adc_values[3];
@@ -223,6 +240,47 @@ static int mcp_set_i2c_speed(struct mcp2221 *mcp)
 		usleep_range(980, 1000);
 		mcp_cancel_last_cmd(mcp);
 	}
+
+	return 0;
+}
+
+static int mcp_configure_gpio_sram(struct mcp2221 *mcp,
+				   struct fwnode_handle *fwnode)
+{
+	u8 gpio_settings[MCP_NGPIO];
+	int ret, i;
+
+	if (!fwnode)
+		return 0;
+
+	ret = fwnode_property_read_u8_array(fwnode,
+					    "microchip,gpio-sram-settings",
+					    gpio_settings, MCP_NGPIO);
+	if (ret == -EINVAL || ret == -ENODATA)
+		return 0;
+	if (ret)
+		return dev_err_probe(&mcp->hdev->dev, ret,
+				     "failed to read GPIO SRAM settings\n");
+
+	for (i = 0; i < MCP_NGPIO; i++) {
+		if (gpio_settings[i] & GENMASK(7, 5))
+			return dev_err_probe(&mcp->hdev->dev, -EINVAL,
+					     "invalid GP%d SRAM setting %#x\n",
+					     i, gpio_settings[i]);
+	}
+
+	mutex_lock(&mcp->lock);
+	memset(mcp->txbuf, 0, 12);
+	mcp->txbuf[0] = MCP2221_SET_SRAM_SETTINGS;
+	mcp->txbuf[7] = MCP2221_SRAM_GPIO_CHANGE;
+	memcpy(&mcp->txbuf[MCP2221_SRAM_GPIO_OFFSET], gpio_settings,
+	       sizeof(gpio_settings));
+	ret = mcp_send_data_req_status(mcp, mcp->txbuf, 12);
+	mutex_unlock(&mcp->lock);
+
+	if (ret)
+		return dev_err_probe(&mcp->hdev->dev, ret,
+				     "failed to configure GPIO SRAM settings\n");
 
 	return 0;
 }
@@ -616,11 +674,22 @@ static int mcp_gpio_get(struct gpio_chip *gc,
 	int ret;
 	struct mcp2221 *mcp = gpiochip_get_data(gc);
 
+	mutex_lock(&mcp->lock);
 	mcp->txbuf[0] = MCP2221_GPIO_GET;
-
 	mcp->gp_idx = offsetof(struct mcp_get_gpio, gpio[offset]);
+	ret = mcp_send_data_req_status(mcp, mcp->txbuf, 1);
+	mutex_unlock(&mcp->lock);
+
+	return ret;
+}
+
+static int mcp_gpio_get_all(struct mcp2221 *mcp)
+{
+	int ret;
 
 	mutex_lock(&mcp->lock);
+	mcp->txbuf[0] = MCP2221_GPIO_GET;
+	mcp->gp_idx = MCP2221_GPIO_GET_ALL;
 	ret = mcp_send_data_req_status(mcp, mcp->txbuf, 1);
 	mutex_unlock(&mcp->lock);
 
@@ -632,6 +701,7 @@ static void mcp_gpio_set(struct gpio_chip *gc,
 {
 	struct mcp2221 *mcp = gpiochip_get_data(gc);
 
+	mutex_lock(&mcp->lock);
 	memset(mcp->txbuf, 0, 18);
 	mcp->txbuf[0] = MCP2221_GPIO_SET;
 
@@ -640,7 +710,6 @@ static void mcp_gpio_set(struct gpio_chip *gc,
 	mcp->txbuf[mcp->gp_idx - 1] = 1;
 	mcp->txbuf[mcp->gp_idx] = !!value;
 
-	mutex_lock(&mcp->lock);
 	mcp_send_data_req_status(mcp, mcp->txbuf, 18);
 	mutex_unlock(&mcp->lock);
 }
@@ -695,24 +764,162 @@ static int mcp_gpio_get_direction(struct gpio_chip *gc,
 				unsigned int offset)
 {
 	int ret;
+	u8 gpio_dir;
 	struct mcp2221 *mcp = gpiochip_get_data(gc);
 
-	mcp->txbuf[0] = MCP2221_GPIO_GET;
-
-	mcp->gp_idx = offsetof(struct mcp_get_gpio, gpio[offset]);
-
 	mutex_lock(&mcp->lock);
+	mcp->txbuf[0] = MCP2221_GPIO_GET;
+	mcp->gp_idx = offsetof(struct mcp_get_gpio, gpio[offset]);
 	ret = mcp_send_data_req_status(mcp, mcp->txbuf, 1);
+	gpio_dir = mcp->gpio_dir;
 	mutex_unlock(&mcp->lock);
 
 	if (ret)
 		return ret;
 
-	if (mcp->gpio_dir == MCP2221_DIR_IN)
+	if (gpio_dir == MCP2221_DIR_IN)
 		return GPIO_LINE_DIRECTION_IN;
 
 	return GPIO_LINE_DIRECTION_OUT;
 }
+
+static void mcp_gpio_irq_ack(struct irq_data *d)
+{
+}
+
+static void mcp_gpio_irq_mask(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct mcp2221 *mcp = gpiochip_get_data(gc);
+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+	__clear_bit(hwirq, &mcp->irq_mask);
+	__clear_bit(hwirq, &mcp->gpio_init_mask);
+	raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+	gpiochip_disable_irq(gc, hwirq);
+}
+
+static void mcp_gpio_irq_unmask(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct mcp2221 *mcp = gpiochip_get_data(gc);
+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+	if (mcp->removing) {
+		raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+		return;
+	}
+	gpiochip_enable_irq(gc, hwirq);
+	__set_bit(hwirq, &mcp->gpio_init_mask);
+	__set_bit(hwirq, &mcp->irq_mask);
+	mod_delayed_work(system_wq, &mcp->gpio_poll_worker, 0);
+	raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+}
+
+static void mcp_gpio_poll_callback(struct work_struct *work)
+{
+	struct mcp2221 *mcp = container_of(work, struct mcp2221,
+						 gpio_poll_worker.work);
+	unsigned long irq_mask;
+	unsigned long flags;
+	unsigned int irq_type;
+	bool edge_triggered, initial, is_high;
+	bool level_triggered, trigger, was_high;
+	u8 gpio_mask;
+	int irq, ret;
+	unsigned long hwirq;
+
+	raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+	irq_mask = mcp->irq_mask;
+	raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+	if (!irq_mask)
+		return;
+
+	ret = mcp_gpio_get_all(mcp);
+	if (ret == -ENODEV)
+		return;
+	if (ret < 0)
+		goto reschedule;
+	gpio_mask = ret;
+	irq_mask &= mcp->gpio_valid_mask;
+
+	for_each_set_bit(hwirq, &irq_mask, MCP_NGPIO) {
+		irq = irq_find_mapping(mcp->gc->irq.domain, hwirq);
+		if (!irq)
+			continue;
+
+		irq_type = irq_get_trigger_type(irq);
+
+		raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+		if (!test_bit(hwirq, &mcp->irq_mask)) {
+			raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+			continue;
+		}
+
+		initial = __test_and_clear_bit(hwirq, &mcp->gpio_init_mask);
+		is_high = gpio_mask & BIT(hwirq);
+		was_high = mcp->gpio_prev_state & BIT(hwirq);
+
+		level_triggered = is_high ?
+				  irq_type & IRQ_TYPE_LEVEL_HIGH :
+				  irq_type & IRQ_TYPE_LEVEL_LOW;
+		edge_triggered = !initial && (is_high != was_high) &&
+				 (is_high ?
+				  irq_type & IRQ_TYPE_EDGE_RISING :
+				  irq_type & IRQ_TYPE_EDGE_FALLING);
+		trigger = level_triggered || edge_triggered;
+
+		if (is_high)
+			mcp->gpio_prev_state |= BIT(hwirq);
+		else
+			mcp->gpio_prev_state &= ~BIT(hwirq);
+		raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+
+		if (trigger)
+			handle_nested_irq(irq);
+	}
+
+reschedule:
+	raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+	irq_mask = mcp->irq_mask;
+	raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+	if (irq_mask)
+		schedule_delayed_work(&mcp->gpio_poll_worker,
+				      msecs_to_jiffies(mcp->gpio_poll_interval_ms));
+}
+
+static unsigned int mcp_gpio_irq_startup(struct irq_data *d)
+{
+	mcp_gpio_irq_unmask(d);
+
+	return 0;
+}
+
+static void mcp_gpio_irq_shutdown(struct irq_data *d)
+{
+	mcp_gpio_irq_mask(d);
+}
+
+static int mcp_gpio_irq_type(struct irq_data *d, unsigned int type)
+{
+	return 0;
+}
+
+static const struct irq_chip mcp_gpio_irqchip = {
+	.name = "mcp2221-gpio",
+	.irq_startup = mcp_gpio_irq_startup,
+	.irq_shutdown = mcp_gpio_irq_shutdown,
+	.irq_ack = mcp_gpio_irq_ack,
+	.irq_mask = mcp_gpio_irq_mask,
+	.irq_unmask = mcp_gpio_irq_unmask,
+	.irq_set_type = mcp_gpio_irq_type,
+	.flags = IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_IMMUTABLE,
+	GPIOCHIP_IRQ_RESOURCE_HELPERS,
+};
 #endif
 
 /* Gives current state of i2c engine inside mcp2221 */
@@ -757,7 +964,9 @@ static int mcp_get_i2c_eng_state(struct mcp2221 *mcp,
 static int mcp2221_raw_event(struct hid_device *hdev,
 				struct hid_report *report, u8 *data, int size)
 {
+	const struct mcp_get_gpio *gpio;
 	u8 *buf;
+	int i;
 	struct mcp2221 *mcp = hid_get_drvdata(hdev);
 
 	if (size < 4)
@@ -845,7 +1054,25 @@ static int mcp2221_raw_event(struct hid_device *hdev,
 	case MCP2221_GPIO_GET:
 		switch (data[1]) {
 		case MCP2221_SUCCESS:
-			if ((data[mcp->gp_idx] == MCP2221_ALT_F_NOT_GPIOV) ||
+			if (mcp->gp_idx == MCP2221_GPIO_GET_ALL) {
+				if (size < sizeof(*gpio)) {
+					mcp->status = -EIO;
+					break;
+				}
+				gpio = (const struct mcp_get_gpio *)data;
+				mcp->status = 0;
+				mcp->gpio_valid_mask = 0;
+				for (i = 0; i < MCP_NGPIO; i++) {
+					if (gpio->gpio[i].value ==
+						    MCP2221_ALT_F_NOT_GPIOV ||
+					    gpio->gpio[i].direction ==
+						    MCP2221_ALT_F_NOT_GPIOD)
+						continue;
+					mcp->gpio_valid_mask |= BIT(i);
+					if (gpio->gpio[i].value)
+						mcp->status |= BIT(i);
+				}
+			} else if ((data[mcp->gp_idx] == MCP2221_ALT_F_NOT_GPIOV) ||
 				(data[mcp->gp_idx + 1] == MCP2221_ALT_F_NOT_GPIOD)) {
 				mcp->status = -ENOENT;
 			} else {
@@ -965,9 +1192,19 @@ static void mcp2221_fwnode_put(void *ptr)
 /* This is needed to be sure hid_hw_stop() isn't called twice by the subsystem */
 static void mcp2221_remove(struct hid_device *hdev)
 {
-#if IS_REACHABLE(CONFIG_IIO)
+#if IS_REACHABLE(CONFIG_GPIOLIB) || IS_REACHABLE(CONFIG_IIO)
 	struct mcp2221 *mcp = hid_get_drvdata(hdev);
+#endif
 
+#if IS_REACHABLE(CONFIG_GPIOLIB)
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&mcp->irq_lock, flags);
+	mcp->removing = true;
+	raw_spin_unlock_irqrestore(&mcp->irq_lock, flags);
+	cancel_delayed_work_sync(&mcp->gpio_poll_worker);
+#endif
+#if IS_REACHABLE(CONFIG_IIO)
 	cancel_delayed_work_sync(&mcp->init_work);
 #endif
 }
@@ -1151,6 +1388,9 @@ static int mcp2221_probe(struct hid_device *hdev,
 	struct fwnode_handle *i2c_fwnode;
 	struct fwnode_handle *usb_fwnode;
 	struct mcp2221 *mcp;
+#if IS_REACHABLE(CONFIG_GPIOLIB)
+	struct gpio_irq_chip *girq;
+#endif
 
 	mcp = devm_kzalloc(&hdev->dev, sizeof(*mcp), GFP_KERNEL);
 	if (!mcp)
@@ -1201,6 +1441,16 @@ static int mcp2221_probe(struct hid_device *hdev,
 			bridge_fwnode = usb_fwnode;
 	}
 
+#if IS_REACHABLE(CONFIG_GPIOLIB)
+	mcp->gpio_poll_interval_ms = MCP2221_GPIO_POLL_INTERVAL_MS;
+	if (bridge_fwnode)
+		fwnode_property_read_u32(bridge_fwnode,
+					 "microchip,gpio-poll-interval-ms",
+					 &mcp->gpio_poll_interval_ms);
+	if (!mcp->gpio_poll_interval_ms)
+		mcp->gpio_poll_interval_ms = MCP2221_GPIO_POLL_INTERVAL_MS;
+#endif
+
 	/* Prefer a per-bus firmware setting over the module default. */
 	i2c_clk_freq_hz = clamp_val(i2c_clk_freq, 50, 400) * 1000;
 	if (bridge_fwnode) {
@@ -1218,6 +1468,10 @@ static int mcp2221_probe(struct hid_device *hdev,
 		return ret;
 
 	hid_device_io_start(hdev);
+
+	ret = mcp_configure_gpio_sram(mcp, bridge_fwnode);
+	if (ret)
+		return ret;
 
 	/* Set I2C bus clock diviser */
 	mcp->cur_i2c_clk_div = (12000000 / i2c_clk_freq_hz) - 3;
@@ -1271,6 +1525,18 @@ static int mcp2221_probe(struct hid_device *hdev,
 	mcp->gc->can_sleep = 1;
 	mcp->gc->parent = &hdev->dev;
 	mcp->gc->fwnode = bridge_fwnode;
+
+	girq = &mcp->gc->irq;
+	gpio_irq_chip_set_chip(girq, &mcp_gpio_irqchip);
+	girq->parent_handler = NULL;
+	girq->num_parents = 0;
+	girq->parents = NULL;
+	girq->default_type = IRQ_TYPE_NONE;
+	girq->handler = handle_simple_irq;
+	girq->threaded = true;
+
+	raw_spin_lock_init(&mcp->irq_lock);
+	INIT_DELAYED_WORK(&mcp->gpio_poll_worker, mcp_gpio_poll_callback);
 
 	ret = devm_gpiochip_add_data(&hdev->dev, mcp->gc, mcp);
 	if (ret)
