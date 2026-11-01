@@ -68,6 +68,9 @@ enum {
 #define MCP_NGPIO	4
 #define MCP2221_GPIO_GET_ALL	0xff
 #define MCP2221_GPIO_POLL_INTERVAL_MS	10
+#define MCP2221_I2C_PARAM_OR_STATUS_HEADER_SIZE	4
+/* Includes the ADC values at bytes 50 through 55. */
+#define MCP2221_I2C_PARAM_OR_STATUS_MIN_SIZE	56
 #define MCP2221_SRAM_GPIO_CHANGE	BIT(7)
 #define MCP2221_SRAM_GPIO_OFFSET	8
 
@@ -105,6 +108,7 @@ struct mcp2221 {
 	struct completion wait_in_report;
 	struct delayed_work init_work;
 	u8 *rxbuf;
+	int rxbuf_len;
 	u8 txbuf[64];
 	int rxbuf_idx;
 	int status;
@@ -366,12 +370,14 @@ static int mcp_i2c_smbus_read(struct mcp2221 *mcp,
 		mcp->txbuf[3] = (u8)(msg->addr << 1);
 		total_len = msg->len;
 		mcp->rxbuf = msg->buf;
+		mcp->rxbuf_len = msg->len;
 	} else {
 		mcp->txbuf[1] = smbus_len;
 		mcp->txbuf[2] = 0;
 		mcp->txbuf[3] = (u8)(smbus_addr << 1);
 		total_len = smbus_len;
 		mcp->rxbuf = smbus_buf;
+		mcp->rxbuf_len = smbus_len;
 	}
 
 	ret = mcp_send_data_req_status(mcp, mcp->txbuf, 4);
@@ -581,6 +587,7 @@ static int mcp_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 
 			mcp->rxbuf_idx = 0;
 			mcp->rxbuf = data->block;
+			mcp->rxbuf_len = sizeof(data->block);
 			mcp->txbuf[0] = MCP2221_I2C_GET_DATA;
 			ret = mcp_send_data_req_status(mcp, mcp->txbuf, 1);
 			if (ret)
@@ -604,6 +611,7 @@ static int mcp_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 
 			mcp->rxbuf_idx = 0;
 			mcp->rxbuf = data->block;
+			mcp->rxbuf_len = sizeof(data->block);
 			mcp->txbuf[0] = MCP2221_I2C_GET_DATA;
 			ret = mcp_send_data_req_status(mcp, mcp->txbuf, 1);
 			if (ret)
@@ -969,7 +977,7 @@ static int mcp2221_raw_event(struct hid_device *hdev,
 	int i;
 	struct mcp2221 *mcp = hid_get_drvdata(hdev);
 
-	if (size < 4)
+	if (size < MCP2221_I2C_PARAM_OR_STATUS_HEADER_SIZE)
 		return 0;
 
 	switch (data[0]) {
@@ -991,6 +999,9 @@ static int mcp2221_raw_event(struct hid_device *hdev,
 	case MCP2221_I2C_PARAM_OR_STATUS:
 		switch (data[1]) {
 		case MCP2221_SUCCESS:
+			if (size < MCP2221_I2C_PARAM_OR_STATUS_MIN_SIZE)
+				return 0;
+
 			if ((mcp->txbuf[3] == MCP2221_I2C_SET_SPEED) &&
 				(data[3] != MCP2221_I2C_SET_SPEED)) {
 				mcp->status = -EAGAIN;
@@ -1029,7 +1040,10 @@ static int mcp2221_raw_event(struct hid_device *hdev,
 			}
 			if (data[2] == MCP2221_I2C_READ_COMPL ||
 			    data[2] == MCP2221_I2C_READ_PARTIAL) {
-				if (!mcp->rxbuf || mcp->rxbuf_idx < 0 || data[3] > 60) {
+				if (!mcp->rxbuf || mcp->rxbuf_idx < 0 ||
+				    mcp->rxbuf_idx > mcp->rxbuf_len ||
+				    data[3] > mcp->rxbuf_len - mcp->rxbuf_idx ||
+				    data[3] > 60) {
 					mcp->status = -EINVAL;
 					break;
 				}
