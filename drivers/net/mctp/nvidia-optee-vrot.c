@@ -152,7 +152,13 @@ static int open_ta_session(struct nvidia_ta_mctp_driver *driver)
 	int ret;
 
 	export_uuid(sess_arg.uuid, &driver->config.ta_uuid);
-	sess_arg.clnt_login = TEE_IOCTL_LOGIN_PUBLIC;
+	/*
+	 * Identify as an in-kernel client. The vRoT TA only accepts sessions
+	 * with this login (userspace cannot request it: the TEE ioctl path
+	 * rejects the REE_KERNEL range), so unprivileged processes cannot
+	 * open their own session to the RoT.
+	 */
+	sess_arg.clnt_login = TEE_IOCTL_LOGIN_REE_KERNEL;
 
 	ret = tee_client_open_session(driver->tee_ctx, &sess_arg, NULL);
 	if (ret < 0) {
