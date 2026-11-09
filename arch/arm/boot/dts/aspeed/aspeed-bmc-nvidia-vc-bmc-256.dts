@@ -269,6 +269,11 @@
                     bf4_mcu_cp2112: interface@1 {
                         reg = <1 1>;
 
+                        gpio-controller;
+                        interrupt-controller;
+                        #gpio-cells = <2>;
+                        #interrupt-cells = <2>;
+
                         i2c73: bf4_mcu_cp2112_i2c: i2c {
                             #address-cells = <1>;
                             #size-cells = <0>;
@@ -278,6 +283,14 @@
                                 reg = <0x50>;
                                 gpio-controller;
                                 #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&bf4_mcu_cp2112>;
+                                interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+
                                 gpio-line-names =
                                     "BF4_MCU_RECOVERY_N-I",
                                     "BF4_S_BMC_IO0_MCU-O",
@@ -302,6 +315,14 @@
                                 reg = <0x51>;
                                 gpio-controller;
                                 #gpio-cells = <2>;
+
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+                                interrupt-controller;
+                                #interrupt-cells = <2>;
+                                interrupt-parent = <&bf4_mcu_cp2112>;
+                                interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
+
                                 gpio-line-names =
                                     "BF4_CEC_I2C_ADDR1_STRAP_MUX-I",
                                     "",
